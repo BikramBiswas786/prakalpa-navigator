@@ -12,13 +12,17 @@
       "minimum": 0,
       "maximum": 120,
       "default": 30,
-      "editor": "python"
+      "editor": "number"
     },
     "gender": {
       "title": "Gender",
       "description": "Select your gender",
       "type": "string",
-      "enum": ["female", "male", "other"],
+      "enum": [
+        "female",
+        "male",
+        "other"
+      ],
       "default": "female",
       "editor": "select"
     },
@@ -28,13 +32,20 @@
       "type": "integer",
       "minimum": 0,
       "default": 0,
-      "editor": "python"
+      "editor": "number"
     },
     "occupation": {
       "title": "Occupation",
       "description": "Your primary occupation",
       "type": "string",
-      "enum": ["student", "unemployed", "farmer", "self-employed", "housewife", "other"],
+      "enum": [
+        "student",
+        "unemployed",
+        "farmer",
+        "self-employed",
+        "housewife",
+        "other"
+      ],
       "default": "unemployed",
       "editor": "select"
     },
@@ -42,7 +53,13 @@
       "title": "Caste Category",
       "description": "Select your caste category",
       "type": "string",
-      "enum": ["general", "sc", "st", "obc", "minority"],
+      "enum": [
+        "general",
+        "sc",
+        "st",
+        "obc",
+        "minority"
+      ],
       "default": "general",
       "editor": "select"
     },
@@ -51,8 +68,15 @@
       "description": "Which district do you live in?",
       "type": "string",
       "default": "Kolkata",
-      "editor": "textfield"
+      "editor": "textarea"
     }
   },
-  "required": ["age", "gender", "income_annual", "occupation", "caste", "district"]
+  "required": [
+    "age",
+    "gender",
+    "income_annual",
+    "occupation",
+    "caste",
+    "district"
+  ]
 }
