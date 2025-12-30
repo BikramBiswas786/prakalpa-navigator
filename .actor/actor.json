@@ -2,6 +2,8 @@
   "actorSpecification": 1,
   "name": "prakalpa-navigator",
   "title": "বাংলা প্রকল্পা নেভিগেটর",
-  "description": "৪৬+ পশ্চিমবঙ্গ সরকারি প্রকল্পা",
-  "version": "1.0.0"
+  "description": "পশ্চিমবঙ্গের ৪৬+ সরকারি প্রকল্পার সম্পূর্ণ ডাটাবেস",
+  "version": "2.0.0",
+  "buildTag": "latest",
+  "docUrl": "https://github.com/BikramBiswas786/prakalpa-navigator"
 }
