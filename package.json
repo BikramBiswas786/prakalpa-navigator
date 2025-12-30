@@ -1,0 +1,12 @@
+{
+  "name": "prakalpa-navigator",
+  "version": "1.0.0",
+  "description": "Government scheme eligibility checker for West Bengal",
+  "main": "src/main.py",
+  "scripts": {
+    "start": "python3 src/main.py"
+  },
+  "keywords": ["government-schemes", "apify", "actor"],
+  "author": "bikram786",
+  "license": "MIT"
+}
