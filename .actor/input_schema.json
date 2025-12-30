@@ -1,70 +1,51 @@
 {
-  "title": "बांग्ला प्रकल्पा नेविगेटर",
-  "description": "पश्चिमबंगाल के ४६+ सरकारी प्रकल्प खोजें",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prakalpa Navigator Input",
+  "description": "Input schema for finding government schemes",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
     "age": {
-      "title": "बय / Age",
-      "description": "आपकी उम्र (0-120 साल) दर्ज करें",
+      "title": "Age",
+      "description": "Your age in years (0-120)",
       "type": "integer",
       "minimum": 0,
       "maximum": 120,
       "default": 30
     },
     "gender": {
-      "title": "लिंग / Gender",
-      "description": "अपना लिंग चुनें",
+      "title": "Gender",
+      "description": "Select your gender",
       "type": "string",
       "enum": ["female", "male", "other"],
-      "enumTitles": ["महिला / Female", "पुरुष / Male", "अन्य / Other"],
       "default": "female"
     },
     "income_annual": {
-      "title": "बार्षिक आय / Annual Income (₹)",
-      "description": "आपकी वार्षिक आय (रुपये में)",
+      "title": "Annual Income",
+      "description": "Your annual income in rupees",
       "type": "integer",
       "minimum": 0,
       "default": 0
     },
     "occupation": {
-      "title": "पेशा / Occupation",
-      "description": "आपका पेशा क्या है?",
+      "title": "Occupation",
+      "description": "Your primary occupation",
       "type": "string",
-      "enum": ["student", "unemployed", "farmer", "fisherman", "worker", "housewife", "senior", "widow", "disabled", "self-employed", "teacher", "doctor", "engineer", "artist", "other"],
-      "enumTitles": [
-        "छात्र / Student",
-        "बेरोजगार / Unemployed",
-        "किसान / Farmer",
-        "मछुआ / Fisherman",
-        "श्रमिक / Worker",
-        "गृहिणी / Housewife",
-        "वरिष्ठ / Senior",
-        "विधवा / Widow",
-        "विकलांग / Disabled",
-        "स्वरोजगार / Self-employed",
-        "शिक्षक / Teacher",
-        "डॉक्टर / Doctor",
-        "इंजीनियर / Engineer",
-        "कलाकार / Artist",
-        "अन्य / Other"
-      ],
+      "enum": ["student", "unemployed", "farmer", "self-employed", "housewife", "other"],
       "default": "unemployed"
     },
     "caste": {
-      "title": "जाति / Caste",
-      "description": "अपनी सामाजिक श्रेणी चुनें",
+      "title": "Caste Category",
+      "description": "Select your caste category",
       "type": "string",
       "enum": ["general", "sc", "st", "obc", "minority"],
-      "enumTitles": ["सामान्य / General", "अनुसूचित जाति / SC", "अनुसूचित जनजाति / ST", "अन्य पिछड़ा वर्ग / OBC", "अल्पसंख्यक / Minority"],
       "default": "general"
     },
     "district": {
-      "title": "जिला / District",
-      "description": "आप किस जिले में रहते हैं?",
+      "title": "District",
+      "description": "Which district do you live in?",
       "type": "string",
-      "editor": "textfield",
-      "default": "कोलकाता"
+      "default": "Kolkata"
     }
   },
   "required": ["age", "gender", "income_annual", "occupation", "caste", "district"]
