@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
+"""
+Prakalpa Navigator - Government Scheme Eligibility Checker
+For West Bengal, India
+"""
 import json
+import sys
 from apify import Actor
 
+# Database of 8 government schemes
 SCHEMES_DATABASE = [
-    # ========== WOMEN & GIRL CHILD SCHEMES (8) ==========
     {
         "id": 1,
         "name_bn": "लक्ष्मीर भंडार",
         "name_en": "Lakshmir Bhandar",
         "category": "women",
+        "description": "Monthly allowance for women",
         "eligibility": {
             "age_min": 25,
             "age_max": 60,
@@ -18,17 +24,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "प्रति मासे ₹१०००"
-        },
-        "how_to_apply_bn": "दुआरे सरकार या BDO अफिस में",
-        "documents_bn": ["आधार", "बैंक पासबुक"],
-        "official_link": "https://socialsecurity.wb.gov.in/"
+            "frequency": "monthly"
+        }
     },
     {
         "id": 2,
         "name_bn": "कन्याश्री प्रकल्प",
         "name_en": "Kanyashree Prakalpa",
         "category": "girl_child",
+        "description": "Scholarship for girl children",
         "eligibility": {
             "age_min": 13,
             "age_max": 18,
@@ -37,17 +41,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 2500,
-            "description_bn": "वार्षिक ₹२५००"
-        },
-        "how_to_apply_bn": "स्कूल के माध्यम से",
-        "documents_bn": ["जन्म प्रमाणपत्र"],
-        "official_link": "https://www.wbkanyashree.gov.in/"
+            "frequency": "annual"
+        }
     },
     {
         "id": 3,
         "name_bn": "रूपाश्री प्रकल्प",
         "name_en": "Rupashree Prakalpa",
         "category": "women",
+        "description": "Marriage grant for women",
         "eligibility": {
             "gender": "female",
             "age_min": 18,
@@ -57,17 +59,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 25000,
-            "description_bn": "विवाह अनुदान ₹२५,०००"
-        },
-        "how_to_apply_bn": "BDO अफिस में",
-        "documents_bn": ["विवाह नथी"],
-        "official_link": "https://socialsecurity.wb.gov.in/"
+            "frequency": "one_time"
+        }
     },
     {
         "id": 4,
         "name_bn": "शिशु साथी",
         "name_en": "Sishu Sathi",
         "category": "child",
+        "description": "Child support program",
         "eligibility": {
             "age_min": 0,
             "age_max": 6,
@@ -75,17 +75,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 600,
-            "description_bn": "मासिक ₹६००"
-        },
-        "how_to_apply_bn": "दुआरे सरकार में",
-        "documents_bn": ["जन्म प्रमाणपत्र"],
-        "official_link": "https://icds.wb.gov.in/"
+            "frequency": "monthly"
+        }
     },
     {
         "id": 5,
         "name_bn": "सबला प्रकल्प",
         "name_en": "Sabla Prakalpa",
         "category": "girl_child",
+        "description": "Adolescent girl scheme",
         "eligibility": {
             "age_min": 13,
             "age_max": 18,
@@ -93,17 +91,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 2500,
-            "description_bn": "वार्षिक बृत्ति"
-        },
-        "how_to_apply_bn": "स्कूल में",
-        "documents_bn": ["स्कूल आईडी"],
-        "official_link": "https://icds.wb.gov.in/"
+            "frequency": "annual"
+        }
     },
     {
         "id": 6,
         "name_bn": "मातृयान",
         "name_en": "Matrivan",
         "category": "maternal_health",
+        "description": "Free transport for pregnant women",
         "eligibility": {
             "gender": "female",
             "age_min": 18,
@@ -111,17 +107,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "गर्भवती महिलाओं के लिए मुफ्त परिवहन"
-        },
-        "how_to_apply_bn": "स्वास्थ्य केंद्र में",
-        "documents_bn": ["मातृत्व कार्ड"],
-        "official_link": "https://health.wb.gov.in/"
+            "frequency": "as_needed"
+        }
     },
     {
         "id": 7,
         "name_bn": "जागो",
         "name_en": "Jago Prakalpa",
         "category": "women",
+        "description": "Women self-help group support",
         "eligibility": {
             "gender": "female",
             "age_min": 25,
@@ -129,118 +123,143 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "वार्षिक ₹५०००"
-        },
-        "how_to_apply_bn": "SHG अफिस में",
-        "documents_bn": ["SHG सदस्यपत्र"],
-        "official_link": "https://wbshg.gov.in/"
+            "frequency": "annual"
+        }
     },
     {
         "id": 8,
         "name_bn": "निज गृह निज भूमि",
         "name_en": "Nij Griha Nij Bhoomi",
         "category": "housing",
+        "description": "Land ownership assistance",
         "eligibility": {
             "income_max": 300000
         },
         "benefits": {
             "amount": 250000,
-            "description_bn": "₹२.५ लक्ष भूमि सहायता"
-        },
-        "how_to_apply_bn": "BDO अफिस में",
-        "documents_bn": ["आय प्रमाणपत्र"],
-        "official_link": "https://land.wb.gov.in/"
+            "frequency": "one_time"
+        }
     }
 ]
 
-def check_eligibility(citizen_profile):
-    """Check which schemes the citizen is eligible for"""
-    eligible_schemes = []
+
+def check_eligibility(citizen_data):
+    """
+    Check which schemes the citizen is eligible for
+    Returns: List of eligible schemes
+    """
+    eligible = []
     
     for scheme in SCHEMES_DATABASE:
-        eligibility = scheme.get("eligibility", {})
+        eligibility_rules = scheme.get("eligibility", {})
         is_eligible = True
         
         # Age check
-        if "age_min" in eligibility and eligibility["age_min"] > 0:
-            if citizen_profile.get("age", 0) < eligibility["age_min"]:
+        if "age_min" in eligibility_rules:
+            if citizen_data.get("age", 0) < eligibility_rules["age_min"]:
                 is_eligible = False
         
-        if "age_max" in eligibility and eligibility["age_max"] > 0:
-            if citizen_profile.get("age", 0) > eligibility["age_max"]:
+        if "age_max" in eligibility_rules:
+            if citizen_data.get("age", 0) > eligibility_rules["age_max"]:
                 is_eligible = False
         
         # Gender check
-        if "gender" in eligibility:
-            if citizen_profile.get("gender") != eligibility["gender"]:
+        if "gender" in eligibility_rules:
+            if citizen_data.get("gender") != eligibility_rules["gender"]:
                 is_eligible = False
         
         # Caste check
-        if "caste" in eligibility:
-            eligible_castes = eligibility["caste"] if isinstance(eligibility["caste"], list) else [eligibility["caste"]]
-            if citizen_profile.get("caste") not in eligible_castes:
-                is_eligible = False
-        
-        # Occupation check
-        if "occupation" in eligibility:
-            eligible_occupations = eligibility["occupation"] if isinstance(eligibility["occupation"], list) else [eligibility["occupation"]]
-            if citizen_profile.get("occupation") not in eligible_occupations:
+        if "caste" in eligibility_rules:
+            allowed_castes = eligibility_rules["caste"]
+            if citizen_data.get("caste") not in allowed_castes:
                 is_eligible = False
         
         # Income check
-        if "income_max" in eligibility and eligibility["income_max"] > 0:
-            if citizen_profile.get("income_annual", 0) > eligibility["income_max"]:
+        if "income_max" in eligibility_rules:
+            if citizen_data.get("income_annual", 0) > eligibility_rules["income_max"]:
                 is_eligible = False
         
         if is_eligible:
-            result = {
-                "id": scheme["id"],
-                "name_bn": scheme["name_bn"],
-                "name_en": scheme["name_en"],
+            eligible.append({
+                "scheme_id": scheme["id"],
+                "scheme_name": scheme["name_en"],
+                "scheme_name_bn": scheme["name_bn"],
                 "category": scheme["category"],
+                "description": scheme["description"],
                 "benefits_amount": scheme["benefits"]["amount"],
-                "benefits_bn": scheme["benefits"]["description_bn"],
-                "how_to_apply_bn": scheme["how_to_apply_bn"],
-                "documents_bn": scheme["documents_bn"],
-                "official_link": scheme["official_link"]
-            }
-            eligible_schemes.append(result)
+                "benefits_frequency": scheme["benefits"]["frequency"]
+            })
     
-    return eligible_schemes
+    return eligible
 
-async def main() -> None:
-    """Main actor function"""
+
+async def main():
+    """Main actor entry point"""
     async with Actor:
-        actor_input = await Actor.get_input()
-        
-        # Default test input if none provided
-        if not actor_input:
-            actor_input = {
-                "age": 35,
-                "gender": "female",
-                "income_annual": 0,
-                "occupation": "housewife",
-                "caste": "sc",
-                "district": "कोलकाता"
+        try:
+            # Get input from Apify
+            actor_input = await Actor.get_input()
+            
+            # Use default if no input
+            if not actor_input:
+                actor_input = {
+                    "age": 35,
+                    "gender": "female",
+                    "income_annual": 0,
+                    "occupation": "unemployed",
+                    "caste": "sc",
+                    "district": "Kolkata"
+                }
+            
+            # Validate required fields
+            required_fields = ["age", "gender", "income_annual", "occupation", "caste", "district"]
+            missing_fields = [f for f in required_fields if f not in actor_input]
+            
+            if missing_fields:
+                error_output = {
+                    "status": "error",
+                    "message": f"Missing required fields: {', '.join(missing_fields)}",
+                    "eligible_schemes": []
+                }
+                await Actor.push_data(error_output)
+                return
+            
+            # Check eligibility
+            eligible_schemes = check_eligibility(actor_input)
+            
+            # Prepare output
+            output = {
+                "status": "success",
+                "citizen_profile": {
+                    "age": actor_input.get("age"),
+                    "gender": actor_input.get("gender"),
+                    "income_annual": actor_input.get("income_annual"),
+                    "occupation": actor_input.get("occupation"),
+                    "caste": actor_input.get("caste"),
+                    "district": actor_input.get("district")
+                },
+                "eligible_schemes_count": len(eligible_schemes),
+                "eligible_schemes": eligible_schemes,
+                "total_schemes_in_database": len(SCHEMES_DATABASE),
+                "timestamp": "2025-12-31"
             }
-        
-        # Check eligibility
-        eligible_schemes = check_eligibility(actor_input)
-        
-        # Prepare output
-        output = {
-            "citizen_profile": actor_input,
-            "eligible_schemes_count": len(eligible_schemes),
-            "eligible_schemes": eligible_schemes,
-            "summary_bn": f"आपके लिए {len(eligible_schemes)} प्रकल्प खोजे गए",
-            "timestamp": "२०२५",
-            "total_schemes_in_database": len(SCHEMES_DATABASE)
-        }
-        
-        # ✅ FIX: Push data to Apify
-        await Actor.push_data(output)
-        
-        Actor.log.info(f"✅ पाता: {len(eligible_schemes)} योजनाएं मिलीं")
+            
+            # Push to Apify storage
+            await Actor.push_data(output)
+            
+            # Log success
+            Actor.log.info(f"✅ Success! Found {len(eligible_schemes)} eligible schemes")
+            
+        except Exception as e:
+            # Log error
+            Actor.log.error(f"❌ Error: {str(e)}")
+            error_output = {
+                "status": "error",
+                "message": str(e),
+                "eligible_schemes": []
+            }
+            await Actor.push_data(error_output)
+
 
 if __name__ == "__main__":
     import asyncio
