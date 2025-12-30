@@ -4,12 +4,42 @@
   "type": "object",
   "schemaVersion": 1,
   "properties": {
-    "age": {"title": "বয়স", "type": "integer", "minimum": 0, "maximum": 120, "default": 30},
-    "gender": {"title": "লিঙ্গ", "type": "string", "enum": ["female", "male"], "default": "female"},
-    "income_annual": {"title": "বার্ষিক আয় (₹)", "type": "integer", "minimum": 0, "default": 0},
-    "occupation": {"title": "পেশা", "type": "string", "enum": ["student","unemployed","farmer","worker","housewife","senior","widow","disabled","self-employed"], "default": "unemployed"},
-    "caste": {"title": "জাতি", "type": "string", "enum": ["general","sc","st","obc","minority"], "default": "general"},
-    "district": {"title": "জেলা", "type": "string", "default": "কলকাতা"}
+    "age": {
+      "title": "বয়স / Age",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 120,
+      "default": 30
+    },
+    "gender": {
+      "title": "লিঙ্গ / Gender",
+      "type": "string",
+      "enum": ["female", "male", "other"],
+      "default": "female"
+    },
+    "income_annual": {
+      "title": "বার্ষিক আয় / Annual Income (₹)",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "occupation": {
+      "title": "পেশা / Occupation",
+      "type": "string",
+      "enum": ["student", "unemployed", "farmer", "fisherman", "worker", "housewife", "senior", "widow", "disabled", "self-employed", "teacher", "doctor", "engineer", "artist", "other"],
+      "default": "unemployed"
+    },
+    "caste": {
+      "title": "জাতি / Caste",
+      "type": "string",
+      "enum": ["general", "sc", "st", "obc", "minority"],
+      "default": "general"
+    },
+    "district": {
+      "title": "জেলা / District",
+      "type": "string",
+      "default": "কলকাতা"
+    }
   },
-  "required": ["age", "gender"]
+  "required": ["age", "gender", "income_annual", "occupation", "caste", "district"]
 }
