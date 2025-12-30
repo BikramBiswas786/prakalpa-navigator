@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-প্রকল্পা নেভিগেটর - সম্পূর্ণ সরকারি প্রকল্পা যোগ্যতা পরীক্षক (50+ প্রকল্পা)
+প্রকল্পা নেভিগেটর - সম্পূর্ণ সরকারি প্রকল্পা যোগ্যতা পরীক্ষক (50+ প্রকল্পা)
 Prakalpa Navigator - Complete Government Schemes Eligibility Checker (50+ Schemes)
 West Bengal 2024-25 (99% Accuracy)
 
@@ -243,7 +243,8 @@ SCHEMES_DATABASE = [
             "age_min": 60,
             "caste": "sc",
             "residence": "west_bengal_since_20_01_2020",
-            "income_max": 10000
+            "income_max": 10000,
+            "age_max": None
         },
         "benefits": {
             "amount": 1000,
@@ -277,7 +278,8 @@ SCHEMES_DATABASE = [
             "age_min": 60,
             "caste": "st",
             "residence": "west_bengal_since_20_01_2020",
-            "income_max": 10000
+            "income_max": 10000,
+            "age_max": None
         },
         "benefits": {
             "amount": 1000,
@@ -388,7 +390,8 @@ SCHEMES_DATABASE = [
             "registered_farmer": True,
             "land_ownership": True,
             "residence": "west_bengal",
-            "income_max": 10000
+            "income_max": 10000,
+            "age_max": None
         },
         "benefits": {
             "amount": 1000,
@@ -424,7 +427,8 @@ SCHEMES_DATABASE = [
             "occupation": "fisherman",
             "registered_fisherman": True,
             "residence": "west_bengal",
-            "income_max": 10000
+            "income_max": 10000,
+            "age_max": None
         },
         "benefits": {
             "amount": 1000,
@@ -459,7 +463,8 @@ SCHEMES_DATABASE = [
             "occupation": "unorganized_worker",
             "registered_worker": True,
             "residence": "west_bengal",
-            "income_max": 10000
+            "income_max": 10000,
+            "age_max": None
         },
         "benefits": {
             "amount": 1000,
@@ -496,7 +501,8 @@ SCHEMES_DATABASE = [
             "income_limit": None,
             "universal_coverage": True,
             "all_ages": True,
-            "pre_existing_covered": True
+            "pre_existing_covered": True,
+            "age_max": None
         },
         "benefits": {
             "annual_coverage": 500000,
@@ -524,34 +530,14 @@ SCHEMES_DATABASE = [
 # ════════════════════════════════════════════════════════════════════════════════
 
 class PrakalpaNavi:
-    """প্রকল্পা নেভিগেটর - যোগ্যতা পরীক्षক ইঞ্জিন"""
+    """প্রকল্পা নেভিগেটর - যোগ্যতা পরীক্षক ইঞ্জিন"""
 
     def __init__(self):
         self.schemes = SCHEMES_DATABASE
         self.accuracy_threshold = 94
 
     def check_eligibility(self, citizen_profile: Dict) -> Tuple[List[Dict], Dict]:
-        """
-        নাগরিক প্রোফাইল অনুযায়ী যোগ্য প্রকল্পা খুঁজে বের করুন
-        
-        Args:
-            citizen_profile (Dict): নাগরিকের তথ্য
-                - age: বয়স (সংখ্যা)
-                - gender: 'male'/'female'
-                - caste: 'general'/'sc'/'st'/'obc'
-                - residence: 'west_bengal_permanent' / etc
-                - employment: 'government'/'private'/'self'/'unemployed'/'farmer'/'fisherman' / etc
-                - family_income_annual: বার্ষিক আয়
-                - education_level: 'uneducated'/'5th'/'8th'/'10th'/'12th'/'graduate'/'pg'
-                - disability_percentage: প্রতিবন্ধিতা (%)
-                - marital_status: 'married'/'unmarried'/'widowed'/'divorced'
-                - enrolled_institution: 'school'/'college'/'university' / None
-                - has_bank_account: True/False
-                - has_aadhar: True/False
-        
-        Returns:
-            Tuple[List[eligible_schemes], summary_dict]
-        """
+        """নাগরিক প্রোফাইল অনুযায়ী যোগ্য প্রকল্পা খুঁজে বের করুন"""
         
         eligible_schemes = []
         ineligible_schemes = []
@@ -590,7 +576,8 @@ class PrakalpaNavi:
             is_eligible = False
             reasons.append(f"ন্যূনতম বয়স {rules['age_min']} বছর প্রয়োজন")
         
-        if 'age_max' in rules and citizen.get('age', 0) > rules['age_max']:
+        # FIX: Check if age_max is not None before comparison
+        if 'age_max' in rules and rules['age_max'] is not None and citizen.get('age', 0) > rules['age_max']:
             is_eligible = False
             reasons.append(f"বয়স {rules['age_max']} বছরের কম হতে হবে")
         
@@ -705,7 +692,7 @@ class PrakalpaNavi:
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# প্রধান সম্পাদন - উদাহরণ নাগরিক প্রোফাইল সহ
+# প্রধান সম্পাদন - পরীক্ষার প্রোফাইল
 # ════════════════════════════════════════════════════════════════════════════════
 
 async def main():
@@ -716,7 +703,6 @@ async def main():
     # পরীক্ষার জন্য উদাহরণ নাগরিক প্রোফাইল
     test_profiles = [
         {
-            "name": "রীতা দেবী (35 বছরের মহিলা)",
             "age": 35,
             "gender": "female",
             "caste": "general",
@@ -731,7 +717,6 @@ async def main():
             "has_aadhar": True
         },
         {
-            "name": "সুনীল শর্मা (62 বছরের পুরুষ)",
             "age": 62,
             "gender": "male",
             "caste": "obc",
@@ -746,7 +731,6 @@ async def main():
             "has_aadhar": True
         },
         {
-            "name": "প্রিয়া সিং (16 বছরের ছাত্রী)",
             "age": 16,
             "gender": "female",
             "caste": "sc",
@@ -763,10 +747,11 @@ async def main():
         }
     ]
     
-    # প্রতিটি প্রোফাইলের জন্য যোগ্যতা পরীক্ষা করুন
-    for profile in test_profiles:
+    # প্রতিটি প্রোফাইলের জন্য যোগ্যতা পরীক्षা করুন
+    for idx, profile in enumerate(test_profiles, 1):
         print(f"\n{'='*80}")
-        print(f"প্রোফাইল: {profile['name']}")
+        print(f"পরীক্ষা প্রোফাইল #{idx}")
+        print(f"বয়স: {profile['age']} | লিঙ্গ: {profile['gender']} | জাতি: {profile['caste']}")
         print(f"{'='*80}")
         
         eligible, summary = navi.check_eligibility(profile)
@@ -779,13 +764,12 @@ async def main():
         print(f"  - ডাটাবেস নির্ভুলতা: {summary['database_accuracy_avg']}")
         print(f"\n{summary['message_bn']}")
         
-        print(f"\n🎯 যোগ্য প্রকল্পা (শীর্ষ 10):")
-        for i, scheme in enumerate(eligible[:10], 1):
+        print(f"\n🎯 যোগ্য প্রকল্পা (শীর্ষ 5):")
+        for i, scheme in enumerate(eligible[:5], 1):
             print(f"\n  {i}. {scheme['name_bn']} ({scheme['name_en']})")
             print(f"     - বিভাগ: {scheme['department_bn']}")
             print(f"     - সুবিধা: ₹{scheme.get('calculated_benefit', 0):,} ({scheme['benefits'].get('frequency_bn', scheme['benefits'].get('frequency', ''))})")
             print(f"     - ওয়েবসাইট: {scheme['website']}")
-            print(f"     - নির্ভুলতা: {scheme['accuracy_percentage']}%")
 
 
 if __name__ == "__main__":
