@@ -1,2 +1,3 @@
-apify ~= 0.10.0
+# Apify SDK already in base image, so no apify here
 pandas
+
