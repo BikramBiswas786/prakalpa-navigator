@@ -7,17 +7,17 @@ West Bengal 2024-25 (99% Accuracy)
 
 import asyncio
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 
 from apify import Actor  # Apify Actor SDK
 
 # ════════════════════════════════════════════════════════════════════════════════
-# সম্পূর্ণ ৫০+ পশ্চিমবঙ্গ সরকারি প্রকল্পা ডাটাবেসের অংশ (ডেমো: ১৩টা দেখানো)
-# বাকি স্কিমগুলো আগের মতোই SCHEMES_DATABASE লিস্টে অ্যাড করে দেবে।
+# সম্পূর্ণ ৫০+ পশ্চিমবঙ্গ সরকারি প্রকল্পা ডাটাবেস (এখানে কেবল কিছু উদাহরণ)
+# তোমার আসল কোডের সব স্কিম এখানে রেখে দেবে।
 # ════════════════════════════════════════════════════════════════════════════════
 
 SCHEMES_DATABASE = [
-    # ------ Women / Social schemes ------
+    # ═══ মহিলা কল্যাণ ═══
     {
         "id": 1,
         "priority": 1,
@@ -69,7 +69,7 @@ SCHEMES_DATABASE = [
         "category": "শিক্ষা",
         "description_bn": "মেয়েদের শিক্ষা সহায়তা ও বিবাহ অনুদান প্রোগ্রাম",
         "description_en": "Girl child education support & marriage grant",
-        "department_bn": "মহিলা ও শিশু উন্নয়ন বিভাগ",
+        "department_bn": "மহিলা ও শিশু উন্নয়ন বিভাগ",
         "department_en": "Women & Child Development Dept",
         "website": "https://www.wbkanyashree.gov.in",
         "apply_link": "https://www.wbkanyashree.gov.in/apply",
@@ -150,7 +150,7 @@ SCHEMES_DATABASE = [
         "status": "সক্রিয়",
         "last_updated": "2025-01-12",
     },
-    # ----- Jai Bangla pensions, etc. -----
+    # ═══ পেনশন স্কিম (উদাহরণ) ═══
     {
         "id": 5,
         "priority": 5,
@@ -187,7 +187,7 @@ SCHEMES_DATABASE = [
         "status": "সক্রিয়",
         "last_updated": "2025-01-15",
     },
-    # ... এখানে তোমার বাকি সব স্কিমগুলো 그대로 রাখবে ...
+    # ... তোমার বাকি সব স্কিম এখানে থাকবে ...
     {
         "id": 13,
         "priority": 13,
@@ -242,7 +242,6 @@ class PrakalpaNavigator:
         self.accuracy_threshold = 94
 
     def check_eligibility(self, citizen_profile: Dict) -> Tuple[List[Dict], Dict]:
-        """নাগরিক প্রোফাইল অনুযায়ী যোগ্য প্রকল্পা খুঁজে বের করুন"""
         eligible_schemes: List[Dict] = []
         ineligible_schemes: List[Dict] = []
 
@@ -272,7 +271,7 @@ class PrakalpaNavigator:
         reasons: List[str] = []
         is_eligible = True
 
-        # বয়স
+        # Age
         if "age_min" in rules and citizen.get("age", 0) < rules["age_min"]:
             is_eligible = False
             reasons.append(f"ন্যূনতম বয়স {rules['age_min']} বছর প্রয়োজন")
@@ -282,19 +281,19 @@ class PrakalpaNavigator:
                 is_eligible = False
                 reasons.append(f"বয়স {rules['age_max']} বছরের কম হতে হবে")
 
-        # লিঙ্গ
+        # Gender
         if "gender" in rules and citizen.get("gender") != rules["gender"]:
             is_eligible = False
             reasons.append(f"শুধুমাত্র {rules['gender']} এর জন্য")
 
-        # জাতি
+        # Caste
         if "caste" in rules:
             allowed_castes = rules["caste"] if isinstance(rules["caste"], list) else [rules["caste"]]
             if citizen.get("caste") not in allowed_castes:
                 is_eligible = False
                 reasons.append(f"জাতি আবশ্যক: {', '.join(allowed_castes)}")
 
-        # আয়
+        # Income
         income = citizen.get("family_income_annual", 0)
         for income_key in ["family_income_max", "income_max"]:
             if income_key in rules and rules[income_key] is not None:
@@ -302,19 +301,19 @@ class PrakalpaNavigator:
                     is_eligible = False
                     reasons.append(f"আয়ের সীমা অতিক্রম করেছে (₹{rules[income_key]:,})")
 
-        # সরকারি চাকরি
+        # Government job
         if "government_job" in rules and rules["government_job"] is False:
             if citizen.get("employment") == "government":
                 is_eligible = False
                 reasons.append("সরকারি কর্মচারী যোগ্য নন")
 
-        # বসবাস
+        # Residence
         if "residence" in rules:
             if citizen.get("residence") != rules["residence"]:
                 is_eligible = False
                 reasons.append("পশ্চিমবঙ্গের নির্ধারিত বাসিন্দা হতে হবে")
 
-        # প্রতিবন্ধিতা
+        # Disability
         if "disability_percentage_min" in rules:
             if citizen.get("disability_percentage", 0) < rules["disability_percentage_min"]:
                 is_eligible = False
@@ -322,7 +321,7 @@ class PrakalpaNavigator:
                     f"ন্যূনতম {rules['disability_percentage_min']}% প্রতিবন্ধিতা প্রয়োজন"
                 )
 
-        # বিধবা
+        # Widowed
         if rules.get("widowed") is True:
             if citizen.get("marital_status") != "widowed":
                 is_eligible = False
@@ -334,6 +333,7 @@ class PrakalpaNavigator:
         benefits = scheme.get("benefits", {})
         calculated_amount = 0
 
+        # caste-based amounts
         if "amount_sc_st" in benefits:
             if citizen.get("caste") in ["sc", "st"]:
                 calculated_amount = benefits["amount_sc_st"]
@@ -390,7 +390,7 @@ class PrakalpaNavigator:
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# MAIN EXECUTION FOR APIFY
+# MAIN EXECUTION FOR APIFY – টেবিল আউটপুট + HTML রিপোর্ট
 # ════════════════════════════════════════════════════════════════════════════════
 
 
@@ -398,7 +398,7 @@ async def main():
     """Apify Actor entry point."""
 
     async with Actor:
-        # Input থেকে citizen profile নাও; না থাকলে ডেমো প্রোফাইল
+        # 1) Input থেকে citizen profile নাও; না থাকলে ডিফল্ট প্রোফাইল
         actor_input = await Actor.get_input() or {}
         citizen_profile = actor_input.get(
             "citizen_profile",
@@ -418,20 +418,107 @@ async def main():
             },
         )
 
+        # 2) Eligibility চেক
         navi = PrakalpaNavigator()
         eligible, summary = navi.check_eligibility(citizen_profile)
 
-        # লগে প্রিন্ট (যেটা তুমি আগেও দেখছ)
         Actor.log.info(summary["message_bn"])
 
-        # Dataset‑এ রেজাল্ট পুশ — এখান থেকেই Apify “Output” দেখাবে
+        # 3) Dataset এ summary রেকর্ড (রান-লেভেল ইনফো) – টেবিলের প্রথম রো
         await Actor.push_data(
             {
-                "citizen_profile": citizen_profile,
-                "summary": summary,
-                "eligible_schemes": eligible,
+                "type": "summary",
+                "citizen_age": summary["citizen_age"],
+                "citizen_gender": summary["citizen_gender"],
+                "citizen_caste": summary["citizen_caste"],
+                "citizen_employment": summary["citizen_employment"],
+                "total_eligible_schemes": summary["total_eligible_schemes"],
+                "monthly_benefit_total": summary["monthly_benefit_total"],
+                "onetime_benefit_total": summary["onetime_benefit_total"],
+                "annual_income_support": summary["annual_income_support"],
+                "database_accuracy_avg": summary["database_accuracy_avg"],
+                "message_bn": summary["message_bn"],
+                "message_en": summary["message_en"],
             }
         )
+
+        # 4) প্রতিটি যোগ্য প্রকল্পাকে আলাদা row হিসেবে Dataset এ পুশ
+        rows = []
+        for s in eligible:
+            freq = s["benefits"].get("frequency_bn", s["benefits"].get("frequency", ""))
+            rows.append(
+                {
+                    "type": "scheme",
+                    "scheme_id": s["id"],
+                    "priority": s.get("priority"),
+                    "name_bn": s["name_bn"],
+                    "name_en": s["name_en"],
+                    "category": s["category"],
+                    "department_bn": s["department_bn"],
+                    "department_en": s["department_en"],
+                    "benefit_amount": s.get("calculated_benefit", 0),
+                    "benefit_frequency": freq,
+                    "website": s["website"],
+                    "apply_link": s["apply_link"],
+                    "apply_method": s.get("apply_method"),
+                    "helpline": s.get("helpline"),
+                    "last_updated": s.get("last_updated"),
+                }
+            )
+
+        if rows:
+            await Actor.push_data(rows)
+
+        # 5) Non-tech ইউজারের জন্য HTML রিপোর্ট তৈরি করে Key-value store এ রাখা
+        html_rows = []
+        for s in eligible:
+            freq = s["benefits"].get("frequency_bn", s["benefits"].get("frequency", ""))
+            html_rows.append(
+                f"<tr>"
+                f"<td>{s['name_bn']}<br><small>{s['name_en']}</small></td>"
+                f"<td>{s['department_bn']}</td>"
+                f"<td>{s['category']}</td>"
+                f"<td>₹{s.get('calculated_benefit', 0):,}</td>"
+                f"<td>{freq}</td>"
+                f"<td><a href='{s['website']}' target='_blank'>Website</a></td>"
+                f"</tr>"
+            )
+
+        html_table = f"""
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <title>Prakalpa Navigator Result</title>
+            <style>
+                body {{ font-family: sans-serif; padding: 16px; }}
+                table {{ border-collapse: collapse; width: 100%; }}
+                th, td {{ border: 1px solid #ccc; padding: 8px; text-align: left; }}
+                th {{ background: #f2f2f2; }}
+            </style>
+        </head>
+        <body>
+            <h2>প্রকল্পা নেভিগেটর - ফলাফল</h2>
+            <p>{summary['message_bn']}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>প্রকল্পা নাম</th>
+                        <th>দপ্তর</th>
+                        <th>ক্যাটাগরি</th>
+                        <th>সুবিধা (₹)</th>
+                        <th>ফ্রিকোয়েন্সি</th>
+                        <th>ওয়েবসাইট</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join(html_rows)}
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """
+
+        await Actor.set_value("OUTPUT", html_table, content_type="text/html")
 
 
 if __name__ == "__main__":
