@@ -15,6 +15,8 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
+from apify import Actor
+
 # ════════════════════════════════════════════════════════════════════════════════
 # সম্পূর্ণ ৫০+ পশ্চিমবঙ্গ সরকারি প্রকল্পা ডাটাবেস (2024-25)
 # ════════════════════════════════════════════════════════════════════════════════
@@ -579,7 +581,7 @@ SCHEMES_DATABASE = [
 # ════════════════════════════════════════════════════════════════════════════════
 
 class PrakalpaNavi:
-    """প্রকল্পা নেভিগেটর - যোগ্যতা পরীক্षক ইঞ্জিন"""
+    """প্রকল্পা নেভিগেটর - যোগ্যতা পরীক্ষক ইঞ্জিন"""
 
     def __init__(self):
         self.schemes = SCHEMES_DATABASE
@@ -587,404 +589,466 @@ class PrakalpaNavi:
 
     def check_eligibility(self, citizen_profile: Dict) -> Tuple[List[Dict], Dict]:
         """নাগরিক প্রোফাইল অনুযায়ী যোগ্য প্রকল্পা খুঁজে বের করুন"""
-        
         eligible_schemes = []
         ineligible_schemes = []
-        
+
         for scheme in self.schemes:
             is_eligible, reasons = self._check_scheme_eligibility(scheme, citizen_profile)
-            
+
             if is_eligible:
                 scheme_with_benefit = self._calculate_benefit(scheme, citizen_profile)
-                scheme_with_benefit['reasons_eligible'] = reasons
-                scheme_with_benefit['eligibility_status'] = "✅ যোগ্য"
+                scheme_with_benefit["reasons_eligible"] = reasons
+                scheme_with_benefit["eligibility_status"] = "✅ যোগ্য"
                 eligible_schemes.append(scheme_with_benefit)
             else:
-                ineligible_schemes.append({
-                    'id': scheme['id'],
-                    'name_bn': scheme['name_bn'],
-                    'name_en': scheme['name_en'],
-                    'category': scheme['category'],
-                    'reasons_ineligible': reasons,
-                    'eligibility_status': "❌ অযোগ্য"
-                })
-        
-        # Priority অনুযায়ী সাজান
-        eligible_schemes.sort(key=lambda x: x.get('priority', 999))
-        
-        # সারাংশ তৈরি করুন
+                ineligible_schemes.append(
+                    {
+                        "id": scheme["id"],
+                        "name_bn": scheme["name_bn"],
+                        "name_en": scheme["name_en"],
+                        "category": scheme["category"],
+                        "reasons_ineligible": reasons,
+                        "eligibility_status": "❌ অযোগ্য",
+                    }
+                )
+
+        eligible_schemes.sort(key=lambda x: x.get("priority", 999))
         summary = self._generate_summary(eligible_schemes, citizen_profile)
-        
         return eligible_schemes, summary
-    
+
     def _check_scheme_eligibility(self, scheme: Dict, citizen: Dict) -> Tuple[bool, List[str]]:
         """প্রতিটি প্রকল্পের যোগ্যতা পরীক্ষা করুন"""
-        rules = scheme['eligibility']
-        reasons = []
+        rules = scheme["eligibility"]
+        reasons: List[str] = []
         is_eligible = True
-        
+
         # বয়স চেক
-        if 'age_min' in rules and citizen.get('age', 0) < rules['age_min']:
+        if "age_min" in rules and citizen.get("age", 0) < rules["age_min"]:
             is_eligible = False
-            reasons.append(f"❌ ন্যূনতম বয়স {rules['age_min']} বছর প্রয়োজন (আপনার: {citizen.get('age')} বছর)")
-        
-        # বয়স সর্বোচ্চ চেক - None মান পরীক্ষা করুন
-        if 'age_max' in rules and rules['age_max'] is not None and citizen.get('age', 0) > rules['age_max']:
+            reasons.append(
+                f"❌ ন্যূনতম বয়স {rules['age_min']} বছর প্রয়োজন (আপনার: {citizen.get('age')} বছর)"
+            )
+
+        if (
+            "age_max" in rules
+            and rules["age_max"] is not None
+            and citizen.get("age", 0) > rules["age_max"]
+        ):
             is_eligible = False
-            reasons.append(f"❌ বয়স {rules['age_max']} বছরের কম হতে হবে (আপনার: {citizen.get('age')} বছর)")
-        
+            reasons.append(
+                f"❌ বয়স {rules['age_max']} বছরের কম হতে হবে (আপনার: {citizen.get('age')} বছর)"
+            )
+
         # লিঙ্গ চেক
-        if 'gender' in rules and citizen.get('gender') != rules['gender']:
+        if "gender" in rules and citizen.get("gender") != rules["gender"]:
             is_eligible = False
-            reasons.append(f"❌ শুধুমাত্র {rules['gender']} এর জন্য (আপনার: {citizen.get('gender')})")
-        
-        # জাতি চেক
-        if 'caste' in rules:
-            allowed_castes = rules['caste'] if isinstance(rules['caste'], list) else [rules['caste']]
-            if citizen.get('caste') not in allowed_castes:
+            reasons.append(
+                f"❌ শুধুমাত্র {rules['gender']} এর জন্য (আপনার: {citizen.get('gender')})"
+            )
+
+        # কন্যাশ্রী স্পেশাল রুল
+        if scheme.get("name_en") == "Kanyashree Prakalpa":
+            if citizen.get("marital_status") != "unmarried":
                 is_eligible = False
-                reasons.append(f"❌ জাতি আবশ্যক: {', '.join(allowed_castes)} (আপনার: {citizen.get('caste')})")
-        
+                reasons.append("❌ কন্যাশ্রীর জন্য অবশ্যই অবিবাহিত হতে হবে")
+            else:
+                age = citizen.get("age", 0)
+                current_class = citizen.get("current_class")
+                k1_age = rules.get("k1_age", {})
+                k1_class = rules.get("k1_class", {})
+                k2_age = rules.get("k2_age", {})
+
+                k1_age_ok = (
+                    k1_age.get("min") <= age <= k1_age.get("max") if k1_age else False
+                )
+                k1_class_ok = (
+                    current_class is not None
+                    and k1_class.get("min") <= current_class <= k1_class.get("max")
+                    if k1_class
+                    else False
+                )
+                k2_age_ok = (
+                    k2_age.get("min") <= age <= k2_age.get("max") if k2_age else False
+                )
+
+                if not (k1_age_ok and k1_class_ok) and not k2_age_ok:
+                    is_eligible = False
+                    reasons.append("❌ কন্যাশ্রীর বয়স/ক্লাস শর্ত পূরণ করছে না")
+
+        # জাতি চেক
+        if "caste" in rules:
+            allowed_castes = rules["caste"] if isinstance(rules["caste"], list) else [rules["caste"]]
+            if citizen.get("caste") not in allowed_castes:
+                is_eligible = False
+                reasons.append(
+                    f"❌ জাতি আবশ্যক: {', '.join(allowed_castes)} (আপনার: {citizen.get('caste')})"
+                )
+
         # আয় চেক
-        income = citizen.get('family_income_annual', 0)
-        for income_key in ['family_income_max', 'income_max']:
+        income = citizen.get("family_income_annual", 0)
+        for income_key in ["family_income_max", "income_max"]:
             if income_key in rules and rules[income_key] is not None:
                 if income > rules[income_key]:
                     is_eligible = False
-                    reasons.append(f"❌ আয়ের সীমা অতিক্রম করেছে (₹{rules[income_key]:,} প্রয়োজন, আপনার: ₹{income:,})")
-        
+                    reasons.append(
+                        f"❌ আয়ের সীমা অতিক্রম করেছে (₹{rules[income_key]:,} প্রয়োজন, আপনার: ₹{income:,})"
+                    )
+
         # সরকারি চাকরি চেক
-        if 'government_job' in rules and rules['government_job'] == False:
-            if citizen.get('employment') == 'government':
+        if "government_job" in rules and rules["government_job"] is False:
+            if citizen.get("employment") == "government":
                 is_eligible = False
                 reasons.append("❌ সরকারি কর্মচারী যোগ্য নন")
-        
+
         # বসবাসের জায়গা চেক
-        if 'residence' in rules:
-            if citizen.get('residence') != rules['residence']:
+        if "residence" in rules:
+            if citizen.get("residence") != rules["residence"]:
                 is_eligible = False
-                reasons.append(f"❌ পশ্চিমবঙ্গের স্থায়ী নিবাসী হতে হবে")
-        
+                reasons.append("❌ পশ্চিমবঙ্গের স্থায়ী নিবাসী হতে হবে")
+
         # প্রতিবন্ধিতা চেক
-        if 'disability_percentage_min' in rules:
-            if citizen.get('disability_percentage', 0) < rules['disability_percentage_min']:
+        if "disability_percentage_min" in rules:
+            if citizen.get("disability_percentage", 0) < rules["disability_percentage_min"]:
                 is_eligible = False
-                reasons.append(f"❌ ন্যূনতম {rules['disability_percentage_min']}% প্রতিবন্ধিতা প্রয়োজন (আপনার: {citizen.get('disability_percentage', 0)}%)")
-        
+                reasons.append(
+                    f"❌ ন্যূনতম {rules['disability_percentage_min']}% প্রতিবন্ধিতা প্রয়োজন (আপনার: {citizen.get('disability_percentage', 0)}%)"
+                )
+
         # বৈবাহিক স্থিতি চেক
-        if 'marital_status_allowed' in rules:
-            allowed_statuses = rules['marital_status_allowed']
-            if citizen.get('marital_status') not in allowed_statuses:
+        if "marital_status_allowed" in rules:
+            allowed_statuses = rules["marital_status_allowed"]
+            if citizen.get("marital_status") not in allowed_statuses:
                 is_eligible = False
-                status_str = ', '.join(allowed_statuses)
-                reasons.append(f"❌ বৈবাহিক অবস্থা প্রয়োজন: {status_str} (আপনার: {citizen.get('marital_status')})")
-        
-        if 'marital_status' in rules and 'marital_status_allowed' not in rules:
-            allowed_statuses = rules['marital_status']
+                status_str = ", ".join(allowed_statuses)
+                reasons.append(
+                    f"❌ বৈবাহিক অবস্থা প্রয়োজন: {status_str} (আপনার: {citizen.get('marital_status')})"
+                )
+
+        if "marital_status" in rules and "marital_status_allowed" not in rules:
+            allowed_statuses = rules["marital_status"]
             if isinstance(allowed_statuses, str):
                 allowed_statuses = [allowed_statuses]
-            if citizen.get('marital_status') not in allowed_statuses:
+            if citizen.get("marital_status") not in allowed_statuses:
                 is_eligible = False
-                status_str = ', '.join(allowed_statuses)
-                reasons.append(f"❌ বৈবাহিক অবস্থা প্রয়োজন: {status_str} (আপনার: {citizen.get('marital_status')})")
-        
-        if 'widowed' in rules and rules['widowed'] == True:
-            if citizen.get('marital_status') != 'widowed':
+                status_str = ", ".join(allowed_statuses)
+                reasons.append(
+                    f"❌ বৈবাহিক অবস্থা প্রয়োজন: {status_str} (আপনার: {citizen.get('marital_status')})"
+                )
+
+        if "widowed" in rules and rules["widowed"] is True:
+            if citizen.get("marital_status") != "widowed":
                 is_eligible = False
                 reasons.append("❌ বিধবা মহিলা হতে হবে")
-        
-        if 'unmarried_status' in rules and rules['unmarried_status'] == True:
-            if citizen.get('marital_status') != 'unmarried':
+
+        if "unmarried_status" in rules and rules["unmarried_status"] is True:
+            if citizen.get("marital_status") != "unmarried":
                 is_eligible = False
                 reasons.append("❌ অবিবাহিত থাকতে হবে")
-        
-        if 'has_dependents_min' in rules:
-            has_dependents = citizen.get('has_dependents', 0)
-            if has_dependents < rules['has_dependents_min']:
+
+        if "has_dependents_min" in rules:
+            has_dependents = citizen.get("has_dependents", 0)
+            if has_dependents < rules["has_dependents_min"]:
                 is_eligible = False
-                reasons.append(f"❌ ন্যূনতম {rules['has_dependents_min']}জন নির্ভরশীল প্রয়োজন (আপনার: {has_dependents})")
-        
-        if 'enrolled_in_institution' in rules and rules['enrolled_in_institution'] == True:
-            if citizen.get('enrolled_institution') not in ['school', 'college']:
+                reasons.append(
+                    f"❌ ন্যূনতম {rules['has_dependents_min']}জন নির্ভরশীল প্রয়োজন (আপনার: {has_dependents})"
+                )
+
+        if "enrolled_in_institution" in rules and rules["enrolled_in_institution"] is True:
+            if citizen.get("enrolled_institution") not in ["school", "college"]:
                 is_eligible = False
                 reasons.append("❌ স্কুল বা কলেজে পড়তে হবে")
-        
-        # যদি কোনো কারণ না থাকে তবে সব শর্ত পূরণ হয়েছে
+
         if not reasons:
             reasons.append("✅ সকল যোগ্যতা মানদণ্ড পূরণ করেছেন")
-        
+
         return is_eligible, reasons
-    
+
     def _calculate_benefit(self, scheme: Dict, citizen: Dict) -> Dict:
         """প্রকল্পের সুবিধা পরিমাণ নির্ধারণ করুন"""
-        benefits = scheme['benefits'].copy()
+        benefits = scheme["benefits"].copy()
         calculated_amount = 0
-        
-        # জাতি-ভিত্তিক পরিমাণ (Lakshmir Bhandar)
-        if 'amount_sc_st' in benefits:
-            if citizen.get('caste') in ['sc', 'st']:
-                calculated_amount = benefits['amount_sc_st']
-            elif citizen.get('caste') == 'obc':
-                calculated_amount = benefits.get('amount_obc', benefits.get('amount_general', 0))
+
+        if "amount_sc_st" in benefits:
+            if citizen.get("caste") in ["sc", "st"]:
+                calculated_amount = benefits["amount_sc_st"]
+            elif citizen.get("caste") == "obc":
+                calculated_amount = benefits.get(
+                    "amount_obc",
+                    benefits.get("amount_general", 0),
+                )
             else:
-                calculated_amount = benefits.get('amount_general', 0)
-        
-        # সাধারণ পরিমাণ
-        elif 'amount' in benefits:
-            calculated_amount = benefits['amount']
-        
-        # বার্ষিক কভারেজ (বীমা)
-        elif 'annual_coverage' in benefits:
-            calculated_amount = benefits['annual_coverage']
-        
-        # প্রকল্পে calculated_amount যোগ করুন
-        return {**scheme, 'calculated_benefit': calculated_amount}
-    
+                calculated_amount = benefits.get("amount_general", 0)
+        elif "amount" in benefits:
+            calculated_amount = benefits["amount"]
+        elif "annual_coverage" in benefits:
+            calculated_amount = benefits["annual_coverage"]
+
+        return {**scheme, "calculated_benefit": calculated_amount}
+
     def _generate_summary(self, eligible_schemes: List[Dict], citizen: Dict) -> Dict:
         """সারাংশ তৈরি করুন"""
-        
-        # মাসিক সুবিধা গণনা করুন
         monthly_total = sum(
-            s.get('calculated_benefit', 0) 
-            for s in eligible_schemes 
-            if 'monthly' in s.get('benefits', {}).get('frequency', '').lower()
+            s.get("calculated_benefit", 0)
+            for s in eligible_schemes
+            if "monthly" in s.get("benefits", {}).get("frequency", "").lower()
         )
-        
-        # এককালীন সুবিধা গণনা করুন
+
         onetime_total = sum(
-            s.get('calculated_benefit', 0) 
-            for s in eligible_schemes 
-            if 'one-time' in s.get('benefits', {}).get('frequency', '').lower()
+            s.get("calculated_benefit", 0)
+            for s in eligible_schemes
+            if "one-time" in s.get("benefits", {}).get("frequency", "").lower()
         )
-        
-        # গড় যথার্থতা
+
         avg_accuracy = (
-            sum(s.get('accuracy_percentage', 95) for s in eligible_schemes) / 
-            len(eligible_schemes) if eligible_schemes else 0
+            sum(s.get("accuracy_percentage", 95) for s in eligible_schemes) / len(eligible_schemes)
+            if eligible_schemes
+            else 0
         )
-        
+
         return {
-            'total_eligible_schemes': len(eligible_schemes),
-            'monthly_benefit_total': monthly_total,
-            'onetime_benefit_total': onetime_total,
-            'annual_income_support': monthly_total * 12,
-            'database_accuracy_avg': f"{avg_accuracy:.1f}%",
-            'citizen_age': citizen.get('age', 'N/A'),
-            'citizen_gender': citizen.get('gender', 'N/A'),
-            'citizen_caste': citizen.get('caste', 'N/A'),
-            'citizen_employment': citizen.get('employment', 'N/A'),
-            'citizen_marital_status': citizen.get('marital_status', 'N/A'),
-            'generated_datetime': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'message_bn': f"✅ {len(eligible_schemes)}টি প্রকল্পের জন্য যোগ্য | মাসিক: ₹{monthly_total:,} | এককালীন: ₹{onetime_total:,}",
-            'message_en': f"✅ Eligible for {len(eligible_schemes)} schemes | Monthly: ₹{monthly_total:,} | One-time: ₹{onetime_total:,}"
+            "total_eligible_schemes": len(eligible_schemes),
+            "monthly_benefit_total": monthly_total,
+            "onetime_benefit_total": onetime_total,
+            "annual_income_support": monthly_total * 12,
+            "database_accuracy_avg": f"{avg_accuracy:.1f}%",
+            "citizen_age": citizen.get("age", "N/A"),
+            "citizen_gender": citizen.get("gender", "N/A"),
+            "citizen_caste": citizen.get("caste", "N/A"),
+            "citizen_employment": citizen.get("employment", "N/A"),
+            "citizen_marital_status": citizen.get("marital_status", "N/A"),
+            "generated_datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "message_bn": (
+                f"✅ {len(eligible_schemes)}টি প্রকল্পের জন্য যোগ্য | মাসিক: ₹{monthly_total:,} | "
+                f"এককালীন: ₹{onetime_total:,}"
+            ),
+            "message_en": (
+                f"✅ Eligible for {len(eligible_schemes)} schemes | Monthly: ₹{monthly_total:,} | "
+                f"One-time: ₹{onetime_total:,}"
+            ),
         }
 
     def generate_dataframe_report(self, eligible_schemes: List[Dict]) -> pd.DataFrame:
         """যোগ্য প্রকল্পের DataFrame রিপোর্ট তৈরি করুন"""
         data = []
-        
+
         for scheme in eligible_schemes:
-            data.append({
-                'আইডি': scheme['id'],
-                'প্রকল্পা নাম (বাংলা)': scheme['name_bn'],
-                'Scheme Name (English)': scheme['name_en'],
-                'বিভাগ': scheme['department_bn'],
-                'ক্যাটেগরি': scheme['category'],
-                'সুবিধার পরিমাণ (₹)': scheme.get('calculated_benefit', 0),
-                'ফ্রিকোয়েন্সি': scheme['benefits'].get('frequency_bn', scheme['benefits'].get('frequency', '')),
-                'আবেদন পদ্ধতি': scheme['apply_method'],
-                'প্রসেসিং সময়': scheme['processing_time'],
-                'স্ট্যাটাস': scheme['status'],
-                'ওয়েবসাইট': scheme['website'],
-                'হেল্পলাইন': scheme['helpline'],
-                'যথার্থতা %': scheme['accuracy_percentage'],
-                'যোগ্যতা মানদণ্ড': ', '.join(scheme['reasons_eligible'][:2])  # প্রথম 2টি কারণ দেখান
-            })
-        
+            data.append(
+                {
+                    "আইডি": scheme["id"],
+                    "প্রকল্পা নাম (বাংলা)": scheme["name_bn"],
+                    "Scheme Name (English)": scheme["name_en"],
+                    "বিভাগ": scheme["department_bn"],
+                    "ক্যাটেগরি": scheme["category"],
+                    "সুবিধার পরিমাণ (₹)": scheme.get("calculated_benefit", 0),
+                    "ফ্রিকোয়েন্সি": scheme["benefits"].get(
+                        "frequency_bn",
+                        scheme["benefits"].get("frequency", ""),
+                    ),
+                    "আবেদন পদ্ধতি": scheme["apply_method"],
+                    "প্রসেসিং সময়": scheme["processing_time"],
+                    "স্ট্যাটাস": scheme["status"],
+                    "ওয়েবসাইট": scheme["website"],
+                    "হেল্পলাইন": scheme["helpline"],
+                    "যথার্থতা %": scheme["accuracy_percentage"],
+                    "যোগ্যতা মানদণ্ড": ", ".join(scheme["reasons_eligible"][:2]),
+                }
+            )
+
         df = pd.DataFrame(data)
         return df
 
     def generate_ineligible_report(self, ineligible_schemes: List[Dict]) -> pd.DataFrame:
         """অযোগ্য প্রকল্পের DataFrame রিপোর্ট তৈরি করুন"""
         data = []
-        
+
         for scheme in ineligible_schemes:
-            data.append({
-                'আইডি': scheme['id'],
-                'প্রকল্পা নাম (বাংলা)': scheme['name_bn'],
-                'Scheme Name (English)': scheme['name_en'],
-                'ক্যাটেগরি': scheme['category'],
-                'অযোগ্যতার কারণ': ' | '.join(scheme['reasons_ineligible'][:3]),  # প্রথম 3টি কারণ দেখান
-                'স্ট্যাটাস': scheme['eligibility_status']
-            })
-        
+            data.append(
+                {
+                    "আইডি": scheme["id"],
+                    "প্রকল্পা নাম (বাংলা)": scheme["name_bn"],
+                    "Scheme Name (English)": scheme["name_en"],
+                    "ক্যাটেগরি": scheme["category"],
+                    "অযোগ্যতার কারণ": " | ".join(scheme["reasons_ineligible"][:3]),
+                    "স্ট্যাটাস": scheme["eligibility_status"],
+                }
+            )
+
         df = pd.DataFrame(data)
         return df
 
 
 # ════════════════════════════════════════════════════════════════════════════════
-# প্রধান সম্পাদন - পরীক্ষার প্রোফাইল
+# প্রধান সম্পাদন - পরীক্ষার প্রোফাইল + Apify Output
 # ════════════════════════════════════════════════════════════════════════════════
 
 async def main():
-    """প্রধান সম্পাদন"""
-    
-    navi = PrakalpaNavi()
-    
-    # পরীক্ষার জন্য উদাহরণ নাগরিক প্রোফাইল
-    test_profiles = [
-        {
-            "age": 35,
-            "gender": "female",
-            "caste": "general",
-            "residence": "west_bengal_permanent",
-            "employment": "unemployed",
-            "family_income_annual": 80000,
-            "education_level": "10th",
-            "disability_percentage": 0,
-            "marital_status": "unmarried",
-            "enrolled_institution": None,
-            "has_bank_account": True,
-            "has_aadhar": True,
-            "profile_name": "35 বছর বয়সী অবিবাহিত নারী - সাধারণ",
-            "note": "Lakshmir Bhandar, Swasthya Sathi, Swachar Sakti এ যোগ্য"
-        },
-        {
-            "age": 62,
-            "gender": "male",
-            "caste": "obc",
-            "residence": "west_bengal_permanent",
-            "employment": "farmer",
-            "family_income_annual": 60000,
-            "education_level": "8th",
-            "disability_percentage": 0,
-            "marital_status": "married",
-            "enrolled_institution": None,
-            "has_bank_account": True,
-            "has_aadhar": True,
-            "profile_name": "62 বছর বয়সী কৃষক (OBC পুরুষ)",
-            "note": "Jai Bangla Old Age Pension এ যোগ্য"
-        },
-        {
-            "age": 16,
-            "gender": "female",
-            "caste": "sc",
-            "residence": "west_bengal_permanent",
-            "employment": "student",
-            "family_income_annual": 100000,
-            "education_level": "10th",
-            "disability_percentage": 0,
-            "marital_status": "unmarried",
-            "enrolled_institution": "school",
-            "current_class": 10,
-            "has_bank_account": True,
-            "has_aadhar": True,
-            "profile_name": "16 বছর বয়সী ছাত্রী (SC) - Kanyashree K1",
-            "note": "Kanyashree Prakalpa K1 এ যোগ্য (₹750/বছর)"
-        },
-        {
-            "age": 30,
-            "gender": "female",
-            "caste": "obc",
-            "residence": "west_bengal_permanent",
-            "employment": "self_employed",
-            "family_income_annual": 120000,
-            "education_level": "12th",
-            "disability_percentage": 0,
-            "marital_status": "unmarried",
-            "enrolled_institution": None,
-            "has_dependents": 1,
-            "has_bank_account": True,
-            "has_aadhar": True,
-            "profile_name": "30 বছর বয়সী অবিবাহিত মা (OBC)",
-            "note": "একাধিক প্রকল্পের জন্য যোগ্য"
-        },
-        {
-            "age": 28,
-            "gender": "female",
-            "caste": "sc",
-            "residence": "west_bengal_permanent",
-            "employment": "unemployed",
-            "family_income_annual": 95000,
-            "education_level": "10th",
-            "disability_percentage": 45,
-            "marital_status": "unmarried",
-            "enrolled_institution": None,
-            "has_bank_account": True,
-            "has_aadhar": True,
-            "profile_name": "28 বছর বয়সী অবিবাহিত মহিলা (SC) - 45% প্রতিবন্ধী",
-            "note": "মানবিক পেনশন এবং অন্যান্য প্রকল্পের জন্য যোগ্য"
-        }
-    ]
-    
-    # প্রতিটি প্রোফাইলের জন্য যোগ্যতা পরীক্ষা করুন
-    for idx, profile in enumerate(test_profiles, 1):
-        print(f"\n{'='*100}")
-        print(f"পরীক্ষা প্রোফাইল #{idx}: {profile.get('profile_name', f'Profile {idx}')}")
-        print(f"{'='*100}")
-        print(f"বয়স: {profile['age']} | লিঙ্গ: {profile['gender']} | জাতি: {profile['caste']} | বৈবাহিক: {profile['marital_status']}")
-        if profile.get('has_dependents'):
-            print(f"নির্ভরশীল: {profile['has_dependents']}জন সন্তান")
-        print(f"পরিবার আয়: ₹{profile.get('family_income_annual', 0):,}/বছর")
-        print(f"নোট: {profile.get('note', 'N/A')}")
-        
-        eligible, summary = navi.check_eligibility(profile)
-        
-        print(f"\n📊 সারাংশ:")
-        print(f"  ✅ যোগ্য প্রকল্পা: {summary['total_eligible_schemes']}টি")
-        print(f"  💰 মাসিক সুবিধা: ₹{summary['monthly_benefit_total']:,}")
-        print(f"  💵 এককালীন সুবিধা: ₹{summary['onetime_benefit_total']:,}")
-        print(f"  📅 বার্ষিক আয় সহায়তা: ₹{summary['annual_income_support']:,}")
-        print(f"  📈 ডাটাবেস নির্ভুলতা: {summary['database_accuracy_avg']}")
-        print(f"  🕐 রিপোর্ট তৈরি: {summary['generated_datetime']}")
-        print(f"\n{summary['message_bn']}")
-        
-        if eligible:
-            print(f"\n🎯 যোগ্য প্রকল্পা (সমস্ত {len(eligible)}টি):")
-            
-            # DataFrame রিপোর্ট তৈরি করুন
-            df_eligible = navi.generate_dataframe_report(eligible)
-            print("\n" + "="*120)
-            print("যোগ্য প্রকল্পার বিস্তারিত তালিকা:")
-            print("="*120)
-            pd.set_option('display.max_columns', None)
-            pd.set_option('display.max_colwidth', None)
-            pd.set_option('display.width', None)
-            print(df_eligible.to_string(index=False))
-            
-            # CSV ফাইলে সংরক্ষণ করুন
-            csv_filename = f"eligible_schemes_profile_{idx}_bengali.csv"
-            df_eligible.to_csv(csv_filename, index=False, encoding='utf-8-sig')
-            print(f"\n✅ ফাইল সংরক্ষণ: {csv_filename}")
-        
-        # অযোগ্য প্রকল্পা দেখান
-        all_schemes = navi.schemes
-        ineligible = []
-        for scheme in all_schemes:
-            is_eligible, _ = navi._check_scheme_eligibility(scheme, profile)
-            if not is_eligible:
-                ineligible_data = {
-                    'id': scheme['id'],
-                    'name_bn': scheme['name_bn'],
-                    'name_en': scheme['name_en'],
-                    'category': scheme['category'],
-                    'reasons_ineligible': _,
-                    'eligibility_status': "❌ অযোগ্য"
+    async with Actor:
+        navi = PrakalpaNavi()
+
+        test_profiles = [
+            {
+                "age": 35,
+                "gender": "female",
+                "caste": "general",
+                "residence": "west_bengal_permanent",
+                "employment": "unemployed",
+                "family_income_annual": 80000,
+                "education_level": "10th",
+                "disability_percentage": 0,
+                "marital_status": "unmarried",
+                "enrolled_institution": None,
+                "has_bank_account": True,
+                "has_aadhar": True,
+                "profile_name": "35 বছর বয়সী অবিবাহিত নারী - সাধারণ",
+                "note": "Lakshmir Bhandar, Swasthya Sathi, Swachar Sakti এ যোগ্য",
+            },
+            {
+                "age": 62,
+                "gender": "male",
+                "caste": "obc",
+                "residence": "west_bengal_permanent",
+                "employment": "farmer",
+                "family_income_annual": 60000,
+                "education_level": "8th",
+                "disability_percentage": 0,
+                "marital_status": "married",
+                "enrolled_institution": None,
+                "has_bank_account": True,
+                "has_aadhar": True,
+                "profile_name": "62 বছর বয়সী কৃষক (OBC পুরুষ)",
+                "note": "Jai Bangla Old Age Pension এ যোগ্য",
+            },
+            {
+                "age": 16,
+                "gender": "female",
+                "caste": "sc",
+                "residence": "west_bengal_permanent",
+                "employment": "student",
+                "family_income_annual": 100000,
+                "education_level": "10th",
+                "disability_percentage": 0,
+                "marital_status": "unmarried",
+                "enrolled_institution": "school",
+                "current_class": 10,
+                "has_bank_account": True,
+                "has_aadhar": True,
+                "profile_name": "16 বছর বয়সী ছাত্রী (SC) - Kanyashree K1",
+                "note": "Kanyashree Prakalpa K1 এ যোগ্য (₹750/বছর)",
+            },
+            {
+                "age": 30,
+                "gender": "female",
+                "caste": "obc",
+                "residence": "west_bengal_permanent",
+                "employment": "self_employed",
+                "family_income_annual": 120000,
+                "education_level": "12th",
+                "disability_percentage": 0,
+                "marital_status": "unmarried",
+                "enrolled_institution": None,
+                "has_dependents": 1,
+                "has_bank_account": True,
+                "has_aadhar": True,
+                "profile_name": "30 বছর বয়সী অবিবাহিত মা (OBC)",
+                "note": "একাধিক প্রকল্পের জন্য যোগ্য",
+            },
+            {
+                "age": 28,
+                "gender": "female",
+                "caste": "sc",
+                "residence": "west_bengal_permanent",
+                "employment": "unemployed",
+                "family_income_annual": 95000,
+                "education_level": "10th",
+                "disability_percentage": 45,
+                "marital_status": "unmarried",
+                "enrolled_institution": None,
+                "has_bank_account": True,
+                "has_aadhar": True,
+                "profile_name": "28 বছর বয়সী অবিবাহিত মহিলা (SC) - 45% প্রতিবন্ধী",
+                "note": "মানবিক পেনশন এবং অন্যান্য প্রকল্পের জন্য যোগ্য",
+            },
+        ]
+
+        actor_input = await Actor.get_input() or {}
+        profiles = actor_input.get("profiles") or test_profiles
+
+        for idx, profile in enumerate(profiles, 1):
+            print("\n" + "=" * 100)
+            print(f"পরীক্ষা প্রোফাইল #{idx}: {profile.get('profile_name', f'Profile {idx}')}")
+            print("=" * 100)
+            print(
+                f"বয়স: {profile['age']} | লিঙ্গ: {profile['gender']} | জাতি: {profile['caste']} | বৈবাহিক: {profile['marital_status']}"
+            )
+            if profile.get("has_dependents"):
+                print(f"নির্ভরশীল: {profile['has_dependents']}জন সন্তান")
+            print(f"পরিবার আয়: ₹{profile.get('family_income_annual', 0):,}/বছর")
+            print(f"নোট: {profile.get('note', 'N/A')}")
+
+            eligible, summary = navi.check_eligibility(profile)
+
+            print("\n📊 সারাংশ:")
+            print(f"  ✅ যোগ্য প্রকল্পা: {summary['total_eligible_schemes']}টি")
+            print(f"  💰 মাসিক সুবিধা: ₹{summary['monthly_benefit_total']:,}")
+            print(f"  💵 এককালীন সুবিধা: ₹{summary['onetime_benefit_total']:,}")
+            print(f"  📅 বার্ষিক আয় সহায়তা: ₹{summary['annual_income_support']:,}")
+            print(f"  📈 ডাটাবেস নির্ভুলতা: {summary['database_accuracy_avg']}")
+            print(f"  🕐 রিপোর্ট তৈরি: {summary['generated_datetime']}")
+            print(f"\n{summary['message_bn']}")
+
+            if eligible:
+                print(f"\n🎯 যোগ্য প্রকল্পা (সমস্ত {len(eligible)}টি):")
+
+                df_eligible = navi.generate_dataframe_report(eligible)
+                print("\n" + "=" * 120)
+                print("যোগ্য প্রকল্পার বিস্তারিত তালিকা:")
+                print("=" * 120)
+                pd.set_option("display.max_columns", None)
+                pd.set_option("display.max_colwidth", None)
+                pd.set_option("display.width", None)
+                print(df_eligible.to_string(index=False))
+
+                csv_filename = f"eligible_schemes_profile_{idx}_bengali.csv"
+                df_eligible.to_csv(csv_filename, index=False, encoding="utf-8-sig")
+                print(f"\n✅ ফাইল সংরক্ষণ: {csv_filename}")
+
+            all_schemes = navi.schemes
+            ineligible: List[Dict] = []
+            for scheme in all_schemes:
+                is_eligible, reasons = navi._check_scheme_eligibility(scheme, profile)
+                if not is_eligible:
+                    ineligible_data = {
+                        "id": scheme["id"],
+                        "name_bn": scheme["name_bn"],
+                        "name_en": scheme["name_en"],
+                        "category": scheme["category"],
+                        "reasons_ineligible": reasons,
+                        "eligibility_status": "❌ অযোগ্য",
+                    }
+                    ineligible.append(ineligible_data)
+
+            if ineligible:
+                print(f"\n❌ অযোগ্য প্রকল্পা ({len(ineligible)}টি):")
+                df_ineligible = navi.generate_ineligible_report(ineligible)
+                print("=" * 120)
+                print("অযোগ্য প্রকল্পা এবং কারণ:")
+                print("=" * 120)
+                print(df_ineligible.to_string(index=False))
+
+                csv_filename = f"ineligible_schemes_profile_{idx}_bengali.csv"
+                df_ineligible.to_csv(csv_filename, index=False, encoding="utf-8-sig")
+                print(f"\n✅ অযোগ্য প্রকল্পার ফাইল: {csv_filename}")
+
+            await Actor.push_data(
+                {
+                    "profile_index": idx,
+                    "profile_name": profile.get("profile_name"),
+                    "profile": profile,
+                    "summary": summary,
+                    "eligible_schemes": eligible,
+                    "ineligible_schemes": ineligible,
                 }
-                ineligible.append(ineligible_data)
-        
-        if ineligible:
-            print(f"\n❌ অযোগ্য প্রকল্পা ({len(ineligible)}টি):")
-            df_ineligible = navi.generate_ineligible_report(ineligible)
-            print("="*120)
-            print("অযোগ্য প্রকল্পা এবং কারণ:")
-            print("="*120)
-            print(df_ineligible.to_string(index=False))
-            
-            # CSV ফাইলে সংরক্ষণ করুন
-            csv_filename = f"ineligible_schemes_profile_{idx}_bengali.csv"
-            df_ineligible.to_csv(csv_filename, index=False, encoding='utf-8-sig')
-            print(f"\n✅ অযোগ্য প্রকল্পার ফাইল: {csv_filename}")
+            )
 
 
 if __name__ == "__main__":
