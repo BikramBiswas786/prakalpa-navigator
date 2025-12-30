@@ -37,7 +37,7 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 2500,
-            "description_bn": "বার্ষিক ₹২৫০০ বৃত্তি + ১৮ বছরে ₹৫০,০০০"
+            "description_bn": "বার্ষিক ₹२५०० বৃত्ति + १८ वर्षे ₹५०,०००"
         },
         "how_to_apply_bn": "স্কুলের মাধ্যমে বা wbkanyashree.gov.in",
         "documents_bn": ["জন্ম শংসাপত্র", "আয়ের সার্টিফিকেট", "পিতামাতার পরিচয়"],
@@ -75,7 +75,7 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 600,
-            "description_bn": "মাসিক ₹৬০০ শিশু লালনের জন্য"
+            "description_bn": "মাসিক ₹६०० শিশু লালনের জন্য"
         },
         "how_to_apply_bn": "দুয়ারে সরকার বা ICDS কেন্দ্রে",
         "documents_bn": ["জন্ম শংসাপত্র", "অভিভাবকের পরিচয়"],
@@ -93,7 +93,7 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 2500,
-            "description_bn": "বার্ষিক বৃত্তি ও স্বাস্থ্য সেবা"
+            "description_bn": "বার্ষিক বৃত्ति ও স্বাস्थ्य सेवा"
         },
         "how_to_apply_bn": "স্কুল বা ICDS কেন্দ্রে",
         "documents_bn": ["স্কুল আইডি", "জন্ম শংসাপত্র"],
@@ -111,10 +111,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "গর্ভবতী মহিলাদের জন্য বিনামূল্যে পরিবহন"
+            "description_bn": "গর्भवती মহिলাদের জন্য বিনামূল्য পরिवहन"
         },
-        "how_to_apply_bn": "স্থানীয় আঙ্গনওয়াড়ি বা স্বাস্থ্য কেন্দ্রে",
-        "documents_bn": ["মাতৃত্ব কার্ড", "আধার"],
+        "how_to_apply_bn": "স্থানীয় আঙ্গনওয়াড়ি বা স্বাস্थ্য কেন্দ্রে",
+        "documents_bn": ["মাতৃত्व कार्ड", "आधार"],
         "official_link": "https://health.wb.gov.in/"
     },
     {
@@ -129,10 +129,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "বার্ষিক ₹५०००  মহিলা স্বয়ংসেবক দল সদস্যদের"
+            "description_bn": "বার्ष़िक ₹५००० महिला स्वयंसेवक दल सदस्यों के लिए"
         },
         "how_to_apply_bn": "SHG অফিস বা পঞ্চায়েতে",
-        "documents_bn": ["SHG সদস্যপত্র", "ব্যাংক পাসবুক"],
+        "documents_bn": ["SHG सदस्यपत्र", "ব্যাংক পাসबुक"],
         "official_link": "https://wbshg.gov.in/"
     },
     {
@@ -145,10 +145,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 250000,
-            "description_bn": "গৃহহীনদের জন্য ₹२.५ লক্ষ ভূমি ও নির্মাণ সহায়তা"
+            "description_bn": "গृहहीनों के लिए ₹२.५ लक्ष भूमि एवं निर्माण सहायता"
         },
         "how_to_apply_bn": "BDO অফিসে আবেদন করুন",
-        "documents_bn": ["আয়ের সার্টিফিকেট", "নিবাস প্রমাণ"],
+        "documents_bn": ["আয়ের सार्टिফिকेट", "निवास प्रमाण"],
         "official_link": "https://land.wb.gov.in/"
     },
 
@@ -166,10 +166,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "বার্ষিক ₹५००० বৃত্তি"
+            "description_bn": "বার्ष़िक ₹५००० छात्रवृत्ति"
         },
-        "how_to_apply_bn": "স্কুলের মাধ্যমে",
-        "documents_bn": ["স্কুল আইডি", "জাতি সার্টিফিকেট"],
+        "how_to_apply_bn": "স্কুলের मাध्यমে",
+        "documents_bn": ["स्कूल आईडी", "जाति प्रमाणपत्र"],
         "official_link": "https://schooleducation.wb.gov.in/"
     },
     {
@@ -184,10 +184,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000000,
-            "description_bn": "₹১০ লক্ষ পর্যন্ত শিক্ষা ঋণ (০% সুদ)"
+            "description_bn": "₹१० लक्ष तक शिक्षा ऋण (०% सुद)"
         },
-        "how_to_apply_bn": "ব্যাংক বা শিক্ষা বিভাগে",
-        "documents_bn": ["স্কুল সার্টিফিকেট", "অভিভাবকের পরিচয়"],
+        "how_to_apply_bn": "ব্যাংক বা শিক্ষা বिभाগে",
+        "documents_bn": ["स्कूल प्रमाणपत्र", "अभिभावक की पहचान"],
         "official_link": "https://www.wbheducation.gov.in/"
     },
     {
@@ -202,15 +202,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "ক্লাস IX-XII শিক্ষার্থীদের বিনামূল্যে সাইকেল"
+            "description_bn": "क्लास IX-XII छात्रों के लिए मुफ्त साइकिल"
         },
         "how_to_apply_bn": "স্কুলের মাধ্যমে",
-        "documents_bn": ["স্টুডেন্ট আইডি"],
+        "documents_bn": ["स्टूडेंट आईडी"],
         "official_link": "https://schooleducation.wb.gov.in/"
     },
     {
         "id": 12,
-        "name_bn": "স্বামী বিবেকানন্দ বৃত্তি",
+        "name_bn": "স্বামী বিবেকানন्द বৃत्তি",
         "name_en": "Swami Vivekananda Scholarship",
         "category": "education",
         "eligibility": {
@@ -220,15 +220,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "প্রতি বছর ₹५००० মেধা ভিত্তিক বৃত্তি"
+            "description_bn": "प्रति वर्ष ₹५००० योग्यता आधारित छात्रवृत्ति"
         },
-        "how_to_apply_bn": "স্কুল/কলেজের মাধ্যমে",
-        "documents_bn": ["পাসের সার্টিফিকেট", "মার্কশীট"],
+        "how_to_apply_bn": "স্কूল/কলেজের মাধ্যমে",
+        "documents_bn": ["पास प्रमाणपत्र", "मार्कशीट"],
         "official_link": "https://scholarships.gov.in/"
     },
     {
         "id": 13,
-        "name_bn": "ঐক্যশ্রী বৃত্তি",
+        "name_bn": "ঐক्যশ্রী বৃত्তि",
         "name_en": "Aikyashree Scholarship",
         "category": "education",
         "eligibility": {
@@ -239,10 +239,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "সংখ্যালঘু ছাত্রদের জন্য ₹५००० বৃত্তি"
+            "description_bn": "अल्पसंख्यक छात्रों के लिए ₹५००० छात्रवृत्ति"
         },
-        "how_to_apply_bn": "স্কুল/কলেজে",
-        "documents_bn": ["ধর্মীয় পরিচয়পত্র", "মার্কশীট"],
+        "how_to_apply_bn": "स्कूल/कॉलेज में",
+        "documents_bn": ["धार्मिक पहचान", "मार्कशीट"],
         "official_link": "https://scholarships.gov.in/"
     },
     {
@@ -257,10 +257,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "IIT/JEE আকাঙ্ক্ষীদের বিনামূল্যে কোচিং"
+            "description_bn": "IIT/JEE आकांक्षियों के लिए मुफ्त कोचिंग"
         },
         "how_to_apply_bn": "WBJEE অফিসে",
-        "documents_bn": ["স্টুডেন্ট আইডি", "বাসস্থান প্রমাণ"],
+        "documents_bn": ["स्टूडेंट आईडी", "निवास प्रमाण"],
         "official_link": "https://wbjee.nic.in/"
     },
 
@@ -276,15 +276,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 10000,
-            "description_bn": "প্রতি ঋতু ₹१००००  ফসলের ক্ষতির বিপরীতে"
+            "description_bn": "प्रति ऋतु ₹१०००० फसल नुकसान के विरुद्ध"
         },
-        "how_to_apply_bn": "কৃষি বিভাগ বা দুয়ারে সরকার",
-        "documents_bn": ["জমির দলিল", "আধার"],
+        "how_to_apply_bn": "कृषि विभाग या दुआरे सरकार",
+        "documents_bn": ["जमीन के कागजات", "आधार"],
         "official_link": "https://krishakbandhu.net/"
     },
     {
         "id": 16,
-        "name_bn": "বাংলা শস্য বীমা",
+        "name_bn": "বাংলা শস्य बीমा",
         "name_en": "Bangla Shasya Bima",
         "category": "agriculture",
         "eligibility": {
@@ -292,15 +292,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 50000,
-            "description_bn": "ফসলের বীমা কভার ₹५००००"
+            "description_bn": "फसल बीमा कवर ₹५००००"
         },
-        "how_to_apply_bn": "বীমা অফিসে",
-        "documents_bn": ["জমির নথি", "ফসলের রেকর্ড"],
+        "how_to_apply_bn": "बीमा कार्यालय में",
+        "documents_bn": ["जमीन का दस्तावेज़", "फसल रिकॉर्ड"],
         "official_link": "https://pmfby.gov.in/"
     },
     {
         "id": 17,
-        "name_bn": "আমার ফসল আমার গোলা",
+        "name_bn": "আমার ফসল আমার गोला",
         "name_en": "Amar Fasal Amar Gola",
         "category": "agriculture",
         "eligibility": {
@@ -309,15 +309,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "গোডাউন সুবিধা ও ঋণের ব্যবস্থা"
+            "description_bn": "गोदाम सुविधा और ऋण की व्यवस्था"
         },
-        "how_to_apply_bn": "কৃষি বিভাগ",
-        "documents_bn": ["কৃষক আইডি", "জমির তালিকা"],
+        "how_to_apply_bn": "कृषि विभाग",
+        "documents_bn": ["किसान आईडी", "जमीन की सूची"],
         "official_link": "https://agriculture.wb.gov.in/"
     },
     {
         "id": 18,
-        "name_bn": "আমার ফসল আমার গাড়ি",
+        "name_bn": "আমার ফসल আমার गाड़ी",
         "name_en": "Amar Fasal Amar Gadi",
         "category": "agriculture",
         "eligibility": {
@@ -326,15 +326,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "কৃষকদের পরিবহন সহায়তা"
+            "description_bn": "किसानों के लिए परिवहन सहायता"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা কৃষি অফিস",
-        "documents_bn": ["কৃষক পরিচয়", "আয়ের সার্টিফিকেট"],
+        "how_to_apply_bn": "पंचायत या कृषि कार्यालय",
+        "documents_bn": ["किसान पहचान", "आय प्रमाण"],
         "official_link": "https://agriculture.wb.gov.in/"
     },
     {
         "id": 19,
-        "name_bn": "কৃষক বার্ধক্য ভাতা",
+        "name_bn": "कृषक वार्धक्य भत्ता",
         "name_en": "Krishak Bardhakyia Bhatta",
         "category": "pension",
         "eligibility": {
@@ -344,17 +344,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "মাসিক পেনশন ₹१०००"
+            "description_bn": "मासिक पेंशन ₹१०००"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা বিভাগীয় অফিস",
-        "documents_bn": ["বয়স প্রমাণ", "কৃষক আইডি"],
+        "how_to_apply_bn": "पंचायत या विभागीय कार्यालय",
+        "documents_bn": ["आयु प्रमाण", "किसान आईडी"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
 
     # ========== FISHERIES SCHEMES (4) ==========
     {
         "id": 20,
-        "name_bn": "মৎস্যজীবী বন্ধু",
+        "name_bn": "मत्स्यजीवी बंधु",
         "name_en": "Matsyajeebi Bandhu",
         "category": "fisheries",
         "eligibility": {
@@ -363,15 +363,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "মাসিক সহায়তা ₹५०००"
+            "description_bn": "मासिक सहायता ₹५०००"
         },
-        "how_to_apply_bn": "মৎস্য দপ্তর",
-        "documents_bn": ["ফিশিং লাইসেন্স", "আধার"],
+        "how_to_apply_bn": "मछली विभाग",
+        "documents_bn": ["मछली पकड़ने का लाइसेंस", "आधार"],
         "official_link": "https://fisheries.wb.gov.in/"
     },
     {
         "id": 21,
-        "name_bn": "মৎস্যজীবী ক্রেডিট কার্ড",
+        "name_bn": "मत्स्यजीवी क्रेडिट कार्ड",
         "name_en": "Matsyajeebi Credit Card",
         "category": "fisheries",
         "eligibility": {
@@ -379,15 +379,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 500000,
-            "description_bn": "₹५ লক্ষ পর্যন্ত ঋণ (৩% সুদ)"
+            "description_bn": "₹५ लक्ष तक ऋण (३% ब्याज)"
         },
-        "how_to_apply_bn": "ব্যাংক বা মৎস্য দপ্তর",
-        "documents_bn": ["ফিশিং আইডি"],
+        "how_to_apply_bn": "बैंक या मछली विभाग",
+        "documents_bn": ["मछली आईडी"],
         "official_link": "https://fisheries.wb.gov.in/"
     },
     {
         "id": 22,
-        "name_bn": "সমুদ্র সাথী",
+        "name_bn": "समुद्र साथी",
         "name_en": "Samudra Sathi",
         "category": "fisheries",
         "eligibility": {
@@ -395,15 +395,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "মৌসুমী বন্ধ সময় ₹५००० মাসিক"
+            "description_bn": "मौसमी बंद समय ₹५००० मासिक"
         },
-        "how_to_apply_bn": "মৎস্য সমবায় সমিতি",
-        "documents_bn": ["ফিশিং লাইসেন্স", "ব্যাংক অ্যাকাউন্ট"],
+        "how_to_apply_bn": "मछली सहकारी समिति",
+        "documents_bn": ["मछली पकड़ने का लाइसेंस", "बैंक खाता"],
         "official_link": "https://fisheries.wb.gov.in/"
     },
     {
         "id": 23,
-        "name_bn": "মৎস্যজীবী বার্ধক্য ভাতা",
+        "name_bn": "मत्स्यजीवी वार्धक्य भत्ता",
         "name_en": "Matsyajeebi Bardhakyia Bhatta",
         "category": "pension",
         "eligibility": {
@@ -413,17 +413,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "মাসিক পেনশন ₹१०००"
+            "description_bn": "मासिक पेंशन ₹१०००"
         },
-        "how_to_apply_bn": "মৎস্য দপ্তর",
-        "documents_bn": ["বয়স প্রমাণ", "কর্মজীবনের প্রমাণ"],
+        "how_to_apply_bn": "मछली विभाग",
+        "documents_bn": ["आयु प्रमाण", "कार्य जीवन प्रमाण"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
 
     # ========== HEALTH SCHEMES (2) ==========
     {
         "id": 24,
-        "name_bn": "স্বাস্থ্য সাথী",
+        "name_bn": "स्वास्थ्य साथी",
         "name_en": "Swasthya Sathi",
         "category": "health",
         "eligibility": {
@@ -431,15 +431,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 500000,
-            "description_bn": "বার্ষিক ₹५ লক্ষ স্বাস্থ্য বীমা কভার"
+            "description_bn": "वार्षिक ₹५ लक्ष स्वास्थ्य बीमा कवर"
         },
-        "how_to_apply_bn": "দুয়ারে সরকার বা হাসপাতালে",
-        "documents_bn": ["আয়ের সার্টিফিকেট", "পরিবারের তালিকা"],
+        "how_to_apply_bn": "दुआरे सरकार या अस्पताल में",
+        "documents_bn": ["आय प्रमाण", "परिवार की सूची"],
         "official_link": "https://health.wb.gov.in/"
     },
     {
         "id": 25,
-        "name_bn": "খাদ্য সাথী",
+        "name_bn": "खाद्य साथी",
         "name_en": "Khadya Sathi",
         "category": "food_security",
         "eligibility": {
@@ -447,17 +447,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "বিনামূল্যে খাদ্য শস্য ও রেশনিং সুবিধা"
+            "description_bn": "मुफ्त खाद्य अनाज और राशन सुविधा"
         },
-        "how_to_apply_bn": "রেশন ডিলার বা BDO",
-        "documents_bn": ["পরিবারের তালিকা", "আয়ের সার্টিফিকেট"],
+        "how_to_apply_bn": "राशन डीलर या BDO",
+        "documents_bn": ["परिवार की सूची", "आय प्रमाण"],
         "official_link": "https://foodsupply.wb.gov.in/"
     },
 
     # ========== PENSION SCHEMES (6) ==========
     {
         "id": 26,
-        "name_bn": "বার্ধক্য পেনশন",
+        "name_bn": "वार्धक्य पेंशन",
         "name_en": "Old Age Pension",
         "category": "pension",
         "eligibility": {
@@ -466,15 +466,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "মাসিক ₹१००० বয়স্ক ভাতা"
+            "description_bn": "मासिक ₹१००० वृद्ध भत्ता"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা BDO অফিস",
-        "documents_bn": ["বয়স প্রমাণ", "আয় সার্টিফিকেট"],
+        "how_to_apply_bn": "पंचायत या BDO कार्यालय",
+        "documents_bn": ["आयु प्रमाण", "आय प्रमाण"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 27,
-        "name_bn": "বিধবা ভাতা",
+        "name_bn": "विधवा भत्ता",
         "name_en": "Widow Pension",
         "category": "pension",
         "eligibility": {
@@ -484,15 +484,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "মাসিক ₹१००० বিধবা ভাতা"
+            "description_bn": "मासिक ₹१००० विधवा भत्ता"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা BDO",
-        "documents_bn": ["বিবাহের নথি", "স্বামীর মৃত্য শংসাপত্র"],
+        "how_to_apply_bn": "पंचायत या BDO",
+        "documents_bn": ["विवाह दस्तावेज़", "पति की मृत्यु प्रमाण"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 28,
-        "name_bn": "প্রতিবন্ধী পেনশন",
+        "name_bn": "विकलांग पेंशन",
         "name_en": "Disability Pension",
         "category": "pension",
         "eligibility": {
@@ -501,15 +501,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "মাসিক ₹१००० প্রতিবন্ধী ভাতা"
+            "description_bn": "मासिक ₹१००० विकलांग भत्ता"
         },
-        "how_to_apply_bn": "বিভাগীয় অফিস",
-        "documents_bn": ["প্রতিবন্ধিতা সার্টিফিকেট", "আয় প্রমাণ"],
+        "how_to_apply_bn": "विभागीय कार्यालय",
+        "documents_bn": ["विकलांगता प्रमाणपत्र", "आय प्रमाण"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 29,
-        "name_bn": "তপশিলী বন্ধু",
+        "name_bn": "तपसिली बंधु",
         "name_en": "Taposili Bandhu",
         "category": "pension",
         "eligibility": {
@@ -519,15 +519,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "SC বয়স্কদের জন্য মাসিক ₹१०००"
+            "description_bn": "SC वृद्धों के लिए मासिक ₹१०००"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা BDO",
-        "documents_bn": ["বয়স প্রমাণ", "SC সার্টিফিকেট"],
+        "how_to_apply_bn": "पंचायत या BDO",
+        "documents_bn": ["आयु प्रमाण", "SC प्रमाणपत्र"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 30,
-        "name_bn": "জয় জোহর",
+        "name_bn": "जय जोहर",
         "name_en": "Jai Johar",
         "category": "pension",
         "eligibility": {
@@ -537,15 +537,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "ST বয়স্কদের জন্য মাসিক ₹१०००"
+            "description_bn": "ST वृद्धों के लिए मासिक ₹१०००"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা বিভাগীয় অফিস",
-        "documents_bn": ["বয়স প্রমাণ", "ST সার্টিফিকেট"],
+        "how_to_apply_bn": "पंचायत या विभागीय कार्यालय",
+        "documents_bn": ["आयु प्रमाण", "ST प्रमाणपत्र"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 31,
-        "name_bn": "মানবিক পেনশন",
+        "name_bn": "मानवीय पेंशन",
         "name_en": "Manabik Pension",
         "category": "pension",
         "eligibility": {
@@ -554,17 +554,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "সকল দরিদ্রের জন্য মাসিক ₹१०००"
+            "description_bn": "सभी गरीबों के लिए मासिक ₹१०००"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা BDO",
-        "documents_bn": ["আয় সার্টিফিকেট", "বাসস্থান প্রমাণ"],
+        "how_to_apply_bn": "पंचायत या BDO",
+        "documents_bn": ["आय प्रमाण", "निवास प्रमाण"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
 
     # ========== HOUSING SCHEMES (2) ==========
     {
         "id": 32,
-        "name_bn": "গীতাঞ্জলি আবাসন",
+        "name_bn": "गीतांजलि आवास",
         "name_en": "Gitanjali Abassan",
         "category": "housing",
         "eligibility": {
@@ -572,15 +572,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 300000,
-            "description_bn": "₹३ লক্ষ আবাসন সহায়তা"
+            "description_bn": "₹३ लक्ष आवास सहायता"
         },
-        "how_to_apply_bn": "হাউসিং বোর্ড বা BDO",
-        "documents_bn": ["আয় সার্টিফিকেট", "ভূমি পত্র"],
+        "how_to_apply_bn": "हाउसिंग बोर्ड या BDO",
+        "documents_bn": ["आय प्रमाण", "भूमि दस्तावेज़"],
         "official_link": "https://housing.wb.gov.in/"
     },
     {
         "id": 33,
-        "name_bn": "আকাঙ্ক্ষা আবাসন",
+        "name_bn": "आकांक्षा आवास",
         "name_en": "Akanksha Abassan",
         "category": "housing",
         "eligibility": {
@@ -588,17 +588,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 200000,
-            "description_bn": "₹२ লক्ष নির্মাণ সহায়তা"
+            "description_bn": "₹२ लक्ष निर्माण सहायता"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা হাউসিং বোর্ড",
-        "documents_bn": ["ভূমির নথি", "আয় প্রমাণ"],
+        "how_to_apply_bn": "पंचायत या हाउसिंग बोर्ड",
+        "documents_bn": ["भूमि दस्तावेज़", "आय प्रमाण"],
         "official_link": "https://housing.wb.gov.in/"
     },
 
     # ========== EMPLOYMENT & BUSINESS SCHEMES (4) ==========
     {
         "id": 34,
-        "name_bn": "যুবশ্রী",
+        "name_bn": "युवश्री",
         "name_en": "Yuvasree",
         "category": "employment",
         "eligibility": {
@@ -608,15 +608,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 15000,
-            "description_bn": "প্রশিক্ষণের সময় মাসিক ₹१५०००"
+            "description_bn": "प्रशिक्षण के दौरान मासिक ₹१५०००"
         },
-        "how_to_apply_bn": "দক্ষতা উন্নয়ন বোর্ড",
-        "documents_bn": ["শিক্ষাগত যোগ্যতা", "বেকারত্ব সার্টিফিকেট"],
+        "how_to_apply_bn": "कौशल विकास बोर्ड",
+        "documents_bn": ["शैक्षणिक योग्यता", "बेरोजगारी प्रमाण"],
         "official_link": "https://skill.wb.gov.in/"
     },
     {
         "id": 35,
-        "name_bn": "কর্মসাথী",
+        "name_bn": "कर्मसाथी",
         "name_en": "Karma Sathi",
         "category": "entrepreneurship",
         "eligibility": {
@@ -626,15 +626,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000000,
-            "description_bn": "₹१० लक्ष স্টার্টআপ ঋণ (১% সুদ)"
+            "description_bn": "₹१० लक्ष स्टार्टअप ऋण (१% ब्याज)"
         },
-        "how_to_apply_bn": "ব্যাংক বা MSME অফিস",
-        "documents_bn": ["ব্যবসায়িক পরিকল্পনা", "শিক্ষাগত যোগ্যতা"],
+        "how_to_apply_bn": "बैंक या MSME कार्यालय",
+        "documents_bn": ["व्यावसायिक योजना", "शैक्षणिक योग्यता"],
         "official_link": "https://msme.wb.gov.in/"
     },
     {
         "id": 36,
-        "name_bn": "গতিধারা",
+        "name_bn": "गति धारा",
         "name_en": "Gati Dhara",
         "category": "transport",
         "eligibility": {
@@ -643,15 +643,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 150000,
-            "description_bn": "টাক্সি/অটো চালকদের জন্য ₹१.५ लक्ष"
+            "description_bn": "टैक्सी/ऑटो चालकों के लिए ₹१.५ लक्ष"
         },
-        "how_to_apply_bn": "পরিবহন দপ্তর",
-        "documents_bn": ["ড্রাইভিং লাইসেন্স", "যানবাহনের কাগজ"],
+        "how_to_apply_bn": "परिवहन विभाग",
+        "documents_bn": ["ड्राइविंग लाइसेंस", "वाहन दस्तावेज़"],
         "official_link": "https://transport.wb.gov.in/"
     },
     {
         "id": 37,
-        "name_bn": "ভবিষ্যৎ ক্রেডিট কার্ড",
+        "name_bn": "भविष्यत क्रेडिट कार्ड",
         "name_en": "Bhavishyat Credit Card",
         "category": "entrepreneurship",
         "eligibility": {
@@ -661,17 +661,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 500000,
-            "description_bn": "₹५ লক্ষ ০% সুদ ঋণ"
+            "description_bn": "₹५ लक्ष ०% ब्याज ऋण"
         },
-        "how_to_apply_bn": "ব্যাংক বা MSME বোর্ড",
-        "documents_bn": ["আধার", "ব্যবসায়িক প্রস্তাব"],
+        "how_to_apply_bn": "बैंक या MSME बोर्ड",
+        "documents_bn": ["आधार", "व्यावसायिक प्रस्ताव"],
         "official_link": "https://msme.wb.gov.in/"
     },
 
     # ========== ARTISAN & CULTURE SCHEMES (3) ==========
     {
         "id": 38,
-        "name_bn": "চা সুন্দরী",
+        "name_bn": "चा सुंदरी",
         "name_en": "Cha Sundari",
         "category": "artisan",
         "eligibility": {
@@ -680,15 +680,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "চা বাগানের মহিলা শ্রমিকদের জন্য আবাসন"
+            "description_bn": "चाय बागानों की महिला श्रमिकों के लिए आवास"
         },
-        "how_to_apply_bn": "চা বোর্ড অফিস",
-        "documents_bn": ["কর্মপত্র", "পরিচয় কার্ড"],
+        "how_to_apply_bn": "चाय बोर्ड कार्यालय",
+        "documents_bn": ["कार्य दस्तावेज़", "पहचान कार्ड"],
         "official_link": "https://teaboard.gov.in/"
     },
     {
         "id": 39,
-        "name_bn": "কারিগর বার্ধক্য ভাতা",
+        "name_bn": "कारीगर वार्धक्य भत्ता",
         "name_en": "Karigara Bardhakyia Bhatta",
         "category": "pension",
         "eligibility": {
@@ -698,15 +698,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "কারিগরদের জন্য মাসিক ₹१०००"
+            "description_bn": "कारीगरों के लिए मासिक ₹१०००"
         },
-        "how_to_apply_bn": "বিভাগীয় অফিস বা পঞ্চায়েত",
-        "documents_bn": ["বয়স প্রমাণ", "কর্মজীবনের সার্টিফিকেট"],
+        "how_to_apply_bn": "विभागीय कार्यालय या पंचायत",
+        "documents_bn": ["आयु प्रमाण", "कार्य जीवन प्रमाण"],
         "official_link": "https://labour.wb.gov.in/"
     },
     {
         "id": 40,
-        "name_bn": "লোক প্রসার",
+        "name_bn": "लोक प्रसार",
         "name_en": "Lok Prosar",
         "category": "culture",
         "eligibility": {
@@ -715,17 +715,17 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 1000,
-            "description_bn": "লোক শিল্পীদের জন্য মাসিক ₹१०००"
+            "description_bn": "लोक कलाकारों के लिए मासिक ₹१०००"
         },
-        "how_to_apply_bn": "সংস্কৃতি বিভাগ",
-        "documents_bn": ["শিল্পীর প্রশংসাপত্র", "কর্মজীবনের প্রমাণ"],
+        "how_to_apply_bn": "संस्कृति विभाग",
+        "documents_bn": ["कलाकार प्रशंसापत्र", "कार्य जीवन प्रमाण"],
         "official_link": "https://culture.wb.gov.in/"
     },
 
     # ========== UTILITY & OTHER SCHEMES (5) ==========
     {
         "id": 41,
-        "name_bn": "হাসির আলো",
+        "name_bn": "हसीर आलो",
         "name_en": "Hasir Alo",
         "category": "utility",
         "eligibility": {
@@ -733,15 +733,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "দরিদ্রদের জন্য বিনামূল্যে ৭৫ ইউনিট বিদ্যুৎ"
+            "description_bn": "गरीबों के लिए मुफ्त 75 यूनिट बिजली"
         },
-        "how_to_apply_bn": "বিদ্যুৎ বিতরণ কোম্পানি",
-        "documents_bn": ["আয় সার্টিফিকেট", "বিদ্যুৎ বিল"],
+        "how_to_apply_bn": "बिजली वितरण कंपनी",
+        "documents_bn": ["आय प्रमाण", "बिजली बिल"],
         "official_link": "https://wbsedcl.in/"
     },
     {
         "id": 42,
-        "name_bn": "মা ক্যান্টিন",
+        "name_bn": "मा कैंटीन",
         "name_en": "Ma Canteen",
         "category": "food",
         "eligibility": {
@@ -749,15 +749,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "সাশ্রয়ী মূল্যে ও পুষ্টিকর খাবার"
+            "description_bn": "सस्ती और पौष्टिक भोजन"
         },
-        "how_to_apply_bn": "স্থানীয় ক্যান্টিনে",
-        "documents_bn": ["কোনো ডকুমেন্ট প্রয়োজন নেই"],
+        "how_to_apply_bn": "स्थानीय कैंटीन में",
+        "documents_bn": ["कोई दस्तावेज़ आवश्यक नहीं"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     },
     {
         "id": 43,
-        "name_bn": "সবুজশ্রী",
+        "name_bn": "सबुज श्री",
         "name_en": "Sabuj Shree",
         "category": "environment",
         "eligibility": {
@@ -766,15 +766,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 0,
-            "description_bn": "প্রতিটি নবজাতকের জন্য একটি গাছ রোপণ"
+            "description_bn": "प्रत्येक नवजात के लिए एक पेड़"
         },
-        "how_to_apply_bn": "হাসপাতাল বা স্বাস্থ্য কেন্দ্র",
-        "documents_bn": ["জন্ম শংসাপত্র"],
+        "how_to_apply_bn": "अस्पताल या स्वास्थ्य केंद्र",
+        "documents_bn": ["जन्म प्रमाणपत्र"],
         "official_link": "https://environment.wb.gov.in/"
     },
     {
         "id": 44,
-        "name_bn": "শ্রমশ্রী",
+        "name_bn": "श्रम श्री",
         "name_en": "Shrama Shree",
         "category": "worker",
         "eligibility": {
@@ -784,15 +784,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 5000,
-            "description_bn": "প্রবাসী শ্রমিকদের জন্য মাসিক ₹५०००"
+            "description_bn": "प्रवासी श्रमिकों के लिए मासिक ₹५०००"
         },
-        "how_to_apply_bn": "শ্রম বিভাগ",
-        "documents_bn": ["পরিচয় কার্ড", "পাসপোর্ট কপি"],
+        "how_to_apply_bn": "श्रम विभाग",
+        "documents_bn": ["पहचान कार्ड", "पासपोर्ट कॉपी"],
         "official_link": "https://labour.wb.gov.in/"
     },
     {
         "id": 45,
-        "name_bn": "তারুণ্যের স্বপ্ন",
+        "name_bn": "तारुण्य का स्वप्न",
         "name_en": "Taruner Swapna",
         "category": "education",
         "eligibility": {
@@ -802,15 +802,15 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 10000,
-            "description_bn": "ক্যারিয়ার উন্নয়নে ₹१००००"
+            "description_bn": "कैरियर विकास के लिए ₹१००००"
         },
-        "how_to_apply_bn": "স্কুল/কলেজ",
-        "documents_bn": ["পরিচয় কার্ড", "আয় প্রমাণ"],
+        "how_to_apply_bn": "स्कूल/कॉलेज",
+        "documents_bn": ["पहचान कार्ड", "आय प्रमाण"],
         "official_link": "https://schooleducation.wb.gov.in/"
     },
     {
         "id": 46,
-        "name_bn": "সমব্যথী",
+        "name_bn": "सम्बथी",
         "name_en": "Sambathi",
         "category": "welfare",
         "eligibility": {
@@ -818,10 +818,10 @@ SCHEMES_DATABASE = [
         },
         "benefits": {
             "amount": 2000,
-            "description_bn": "অসহায় ব্যক্তির শেষকার সংস্কারে ₹२०००"
+            "description_bn": "असहाय व्यक्ति के अंत्येष्टि में ₹२०००"
         },
-        "how_to_apply_bn": "পঞ্চায়েত বা BDO",
-        "documents_bn": ["মৃত্যু শংসাপত্র"],
+        "how_to_apply_bn": "पंचायत या BDO",
+        "documents_bn": ["मृत्यु प्रमाणपत्र"],
         "official_link": "https://socialsecurity.wb.gov.in/"
     }
 ]
@@ -894,7 +894,7 @@ async def main() -> None:
                 "income_annual": 0,
                 "occupation": "housewife",
                 "caste": "sc",
-                "district": "কলকাতা"
+                "district": "कोलकाता"
             }
         
         # Check eligibility
@@ -905,8 +905,8 @@ async def main() -> None:
             "citizen_profile": actor_input,
             "eligible_schemes_count": len(eligible_schemes),
             "eligible_schemes": eligible_schemes,
-            "summary_bn": f"আপনার জন্য {len(eligible_schemes)}টি প্রকল্পা পাওয়া গেছে",
-            "timestamp": "২০२५",
+            "summary_bn": f"आपके लिए {len(eligible_schemes)} प्रकल्प खोजे गए",
+            "timestamp": "२०२५",
             "total_schemes_in_database": len(SCHEMES_DATABASE)
         }
         
@@ -917,4 +917,3 @@ async def main() -> None:
 if __name__ == "__main__":
     import asyncio
     asyncio.run(main())
-
