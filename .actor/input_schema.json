@@ -26,6 +26,19 @@
       "default": "female",
       "editor": "select"
     },
+    "marital_status": {
+      "title": "Marital Status",
+      "description": "Select your marital status",
+      "type": "string",
+      "enum": [
+        "unmarried",
+        "married",
+        "widowed",
+        "divorced"
+      ],
+      "default": "unmarried",
+      "editor": "select"
+    },
     "income_annual": {
       "title": "Annual Income",
       "description": "Your annual income in rupees (₹)",
@@ -74,6 +87,7 @@
   "required": [
     "age",
     "gender",
+    "marital_status",
     "income_annual",
     "occupation",
     "caste",
