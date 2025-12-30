@@ -1,2 +1,2 @@
-apify-client>=1.7.0
-apify>=1.7.0
+apify ~= 0.10.0
+pandas
