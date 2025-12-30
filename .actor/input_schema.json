@@ -1,0 +1,15 @@
+{
+  "title": "বাংলা প্রকল্পা নেভিগেটর",
+  "description": "পশ্চিমবঙ্গের ৪৬+ সরকারি প্রকল্পা খুঁজুন",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "age": {"title": "বয়স", "type": "integer", "minimum": 0, "maximum": 120, "default": 30},
+    "gender": {"title": "লিঙ্গ", "type": "string", "enum": ["female", "male"], "default": "female"},
+    "income_annual": {"title": "বার্ষিক আয় (₹)", "type": "integer", "minimum": 0, "default": 0},
+    "occupation": {"title": "পেশা", "type": "string", "enum": ["student","unemployed","farmer","worker","housewife","senior","widow","disabled","self-employed"], "default": "unemployed"},
+    "caste": {"title": "জাতি", "type": "string", "enum": ["general","sc","st","obc","minority"], "default": "general"},
+    "district": {"title": "জেলা", "type": "string", "default": "কলকাতা"}
+  },
+  "required": ["age", "gender"]
+}
