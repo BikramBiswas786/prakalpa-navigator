@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Prakalpa Navigator Input",
-  "description": "Input schema for finding government schemes",
+  "description": "Input schema for finding government schemes in West Bengal",
   "type": "object",
   "schemaVersion": 1,
   "properties": {
@@ -11,41 +11,47 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 120,
-      "default": 30
+      "default": 30,
+      "editor": "number"
     },
     "gender": {
       "title": "Gender",
       "description": "Select your gender",
       "type": "string",
       "enum": ["female", "male", "other"],
-      "default": "female"
+      "default": "female",
+      "editor": "select"
     },
     "income_annual": {
       "title": "Annual Income",
-      "description": "Your annual income in rupees",
+      "description": "Your annual income in rupees (₹)",
       "type": "integer",
       "minimum": 0,
-      "default": 0
+      "default": 0,
+      "editor": "number"
     },
     "occupation": {
       "title": "Occupation",
       "description": "Your primary occupation",
       "type": "string",
       "enum": ["student", "unemployed", "farmer", "self-employed", "housewife", "other"],
-      "default": "unemployed"
+      "default": "unemployed",
+      "editor": "select"
     },
     "caste": {
       "title": "Caste Category",
       "description": "Select your caste category",
       "type": "string",
       "enum": ["general", "sc", "st", "obc", "minority"],
-      "default": "general"
+      "default": "general",
+      "editor": "select"
     },
     "district": {
       "title": "District",
       "description": "Which district do you live in?",
       "type": "string",
-      "default": "Kolkata"
+      "default": "Kolkata",
+      "editor": "textinput"
     }
   },
   "required": ["age", "gender", "income_annual", "occupation", "caste", "district"]
