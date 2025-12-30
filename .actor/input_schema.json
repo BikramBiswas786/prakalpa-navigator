@@ -9,37 +9,76 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 120,
-      "default": 30
+      "default": 30,
+      "description": "Enter your age (0-120 years)"
     },
     "gender": {
       "title": "লিঙ্গ / Gender",
       "type": "string",
-      "enum": ["female", "male", "other"],
-      "default": "female"
+      "enum": [
+        "female",
+        "male",
+        "other"
+      ],
+      "default": "female",
+      "description": "Select your gender identity"
     },
     "income_annual": {
       "title": "বার্ষিক আয় / Annual Income (₹)",
       "type": "integer",
       "minimum": 0,
-      "default": 0
+      "default": 0,
+      "description": "Your annual income in rupees (₹)"
     },
     "occupation": {
       "title": "পেশা / Occupation",
       "type": "string",
-      "enum": ["student", "unemployed", "farmer", "fisherman", "worker", "housewife", "senior", "widow", "disabled", "self-employed", "teacher", "doctor", "engineer", "artist", "other"],
-      "default": "unemployed"
+      "enum": [
+        "student",
+        "unemployed",
+        "farmer",
+        "fisherman",
+        "worker",
+        "housewife",
+        "senior",
+        "widow",
+        "disabled",
+        "self-employed",
+        "teacher",
+        "doctor",
+        "engineer",
+        "artist",
+        "other"
+      ],
+      "default": "unemployed",
+      "description": "What is your primary occupation?"
     },
     "caste": {
       "title": "জাতি / Caste",
       "type": "string",
-      "enum": ["general", "sc", "st", "obc", "minority"],
-      "default": "general"
+      "enum": [
+        "general",
+        "sc",
+        "st",
+        "obc",
+        "minority"
+      ],
+      "default": "general",
+      "description": "Select your social category"
     },
     "district": {
       "title": "জেলা / District",
       "type": "string",
-      "default": "কলকাতা"
+      "default": "কলকাতা",
+      "description": "Which district do you live in?"
     }
   },
-  "required": ["age", "gender", "income_annual", "occupation", "caste", "district"]
+  "required": [
+    "age",
+    "gender",
+    "income_annual",
+    "occupation",
+    "caste",
+    "district"
+  ]
 }
