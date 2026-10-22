@@ -14,20 +14,36 @@ A free AI helper for West Bengal Government administration, in Bengali and Engli
 - Which schemes someone may be eligible for
 - Write an application to the SDO or BDO; explain a government letter
 
-## How it runs
+## Two ways to run it (same `index.html`)
 
-The page runs as a claude.ai Artifact. The AI answers use the viewer's own Claude account, including the free plan, so the app itself costs nothing to run. Each person who uses it needs to sign in to claude.ai, and the owner shares the link from the page's **Share** menu.
+| | claude.ai Artifact | Public website (Vercel) |
+|---|---|---|
+| Who can use it | People signed in to claude.ai (free plan works), shared from the page's **Share** menu | Anyone with the link, no login |
+| AI | Claude, on each viewer's own account | Google Gemini free tier, through `api/chat.js` |
+| Cost | Free | Free (Vercel Hobby + Gemini free quota) |
+
+The page detects where it is running: inside claude.ai it uses Claude; anywhere else it calls `api/chat`.
+
+### Put the public website online (free)
+
+1. Get a free Gemini API key at https://aistudio.google.com/apikey (Google account, no card).
+2. On https://vercel.com import this GitHub repository, set **Root Directory** to `prashasan-mitra`.
+3. In the project's **Settings → Environment Variables** add `GEMINI_API_KEY` (and optionally `GEMINI_MODEL`, default `gemini-flash-latest`). Redeploy.
+
+The free Gemini quota is shared by everyone using the site (roughly hundreds to about a thousand questions a day, depending on the model). When it runs out, users see a "try later" message until the next day. Google may use free-tier prompts to improve its products, so the website warns users not to enter confidential or personal information.
 
 Office details (officer, sub-division, district, memo prefix) are set once under **অফিসের তথ্য** and are used in every draft.
 
 ## Accuracy and safety
 
 - The standing instructions forbid the AI from inventing GO numbers, dates or limits, and tell it to say where to verify.
-- A dated "recent updates" list (October 2026) is built into the instructions: the 2026 OBC list changes, DA, contractual pay, HRMS leave. Items taken from news reports are marked "reported". Update the `UPDATES` text in `index.html` when new orders come out.
+- A knowledge base dated October 2026 is built into the instructions (`UPDATES` in `index.html`): the May 2026 change of government; caste certificates, including the 14.05.2026 re-verification order and the 18.05.2026 OBC list; all major prakalpa (Annapurna Bhandar, Ayushman Bharat, Kanyashree, Rupashree, Jai Bangla pensions, Krishak Bandhu, scholarships and more); DA, contractual pay and HRMS. News-sourced items are marked "reported" and schemes whose continuation is unconfirmed are marked "status?". Edit that text when new orders come out.
 - Do not attach confidential files or personal data (Aadhaar, bank details).
 - This is not an official Government of West Bengal application. Get your Head of Office's approval before using it for official work.
 
 ## Files
 
-- `index.html` is the whole app: the page fragment the Artifact tool publishes (no `<html>` wrapper).
+- `index.html`: the whole app. The claude.ai Artifact is published from a copy with the `<html>/<head>/<body>` wrapper lines removed.
+- `api/chat.js`: the Vercel function for the public website (input limits, same-origin check, streaming from Gemini).
+- `vercel.json`, `package.json`: Vercel settings.
 - Libraries load on demand from jsDelivr, pinned to exact versions: pdf.js and mammoth to read PDF and Word files, SheetJS for Excel, JSZip to build Word files, and html2pdf for PDF.
