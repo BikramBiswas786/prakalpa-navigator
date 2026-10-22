@@ -80,6 +80,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .railnote { font-size: .8rem; color: var(--muted); line-height: 1.45; }
 .railnote ul { margin: 4px 0 0; padding-left: 1rem; display: grid; gap: 3px; }
 @media (max-width: 900px) { .rail { display: none; } }
+.sample-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: .82rem; font-family: var(--f-display); }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
@@ -174,6 +175,11 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
     <aside class="rail" aria-label="Ready tasks">
       <section><h2 id="rail-title">অফিসের কাজ</h2><div class="tasks" id="rail-tasks"></div></section>
       <section><h2>প্রকল্প</h2><div class="chips" id="scheme-chips"></div></section>
+      <section class="railnote" id="rail-format">
+        <h2>অফিসের ফরম্যাট</h2>
+        <span id="rail-sample"></span>
+        <div style="margin-top:6px"><button class="btn small" type="button" id="open-settings2">নমুনা চিঠি দিন</button></div>
+      </section>
       <section class="railnote">
         <h2>ফাইল দিন</h2>
         GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (📎)। AI সেটা পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।
@@ -221,6 +227,10 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
     <div class="field"><label for="s-memo">Memo prefix</label><input id="s-memo" name="memo"></div>
     <div class="field"><label for="s-lang">Answer language</label>
       <select id="s-lang" name="lang"><option value="auto">Same as my question</option><option value="bn">Always Bengali</option><option value="en">Always English</option></select></div>
+    <div class="field"><label for="sample-in">অফিসের নমুনা চিঠি (লেটারহেড ও ফরম্যাট)</label>
+      <p style="margin:0;color:var(--muted);font-size:.82rem">অফিস থেকে যাওয়া একটি পুরনো চিঠি (Word বা PDF) দিন। সব খসড়া সেই লেটারহেড, মেমো নম্বর ও স্বাক্ষরের ধরনে লেখা হবে।</p>
+      <div class="sample-row"><span id="sample-status"></span><button class="btn small" type="button" id="sample-clear" hidden>সরান</button></div>
+      <input type="file" id="sample-in" accept=".docx,.pdf,.txt"></div>
     <div style="display:flex;gap:8px"><button class="btn primary" value="save">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
   </form>
 </dialog>
@@ -264,21 +274,21 @@ const TASKS = {
     ["জাতি শংসাপত্র (SC/ST/OBC)", "কীভাবে আবেদন, কী নথি, ২০২৬-এর নতুন নিয়ম", "জাতি শংসাপত্রের (SC / ST / OBC) জন্য কীভাবে আবেদন করব, কী কী নথি লাগবে, এবং ২০২৬-এ কী নতুন নিয়ম হয়েছে? আমার শ্রেণি: "],
     ["কোন সার্টিফিকেট লাগবে?", "বাসস্থান, আয়, EWS, NCL", "আমার এই কাজের জন্য কোন সার্টিফিকেট লাগবে এবং কোথায় আবেদন করব? কাজটি হল: "],
     ["আবেদনের নিয়ম ও নথি", "কোন পোর্টাল, কী কাগজ, কত দিন", "নিচের পরিষেবার জন্য কীভাবে আবেদন করব, কী কী নথি লাগবে, কোন অফিসে যাব — ধাপে ধাপে বলুন:\n"],
-    ["প্রকল্পে যোগ্য কিনা", "লক্ষ্মীর ভাণ্ডার, কন্যাশ্রী, পেনশন…", "আমি কোন সরকারি প্রকল্পে যোগ্য হতে পারি? আমার তথ্য:\nবয়স: \nলিঙ্গ: \nপরিবারের আয়: \nশ্রেণি (SC/ST/OBC/General): \nগ্রাম না শহর: "],
+    ["প্রকল্পে যোগ্য কিনা", "অন্নপূর্ণা, কন্যারত্ন, পেনশন…", "আমি কোন সরকারি প্রকল্পে যোগ্য হতে পারি? আমার তথ্য:\nবয়স: \nলিঙ্গ: \nপরিবারের আয়: \nশ্রেণি (SC/ST/OBC/General): \nগ্রাম না শহর: "],
     ["আবেদনপত্র লিখে দিন", "SDO/BDO-র কাছে দরখাস্ত", "মহকুমা শাসকের কাছে একটি দরখাস্ত লিখে দিন। বিষয়: \nআমার নাম ও ঠিকানা: (ফাঁকা রাখুন, আমি পরে লিখব)\nবিস্তারিত: "],
     ["সরকারি চিঠি বুঝিয়ে দিন", "যে নোটিশ বা চিঠি পেয়েছেন", "সংযুক্ত সরকারি চিঠি / নোটিশটি সহজ বাংলায় বুঝিয়ে দিন। আমাকে কী করতে হবে এবং কত দিনের মধ্যে?"],
     ["অভিযোগ জানাতে চাই", "কোথায় ও কীভাবে অভিযোগ করব", "আমার একটি সমস্যার অভিযোগ কোথায় এবং কীভাবে জানাব? সমস্যা: "]
   ]
 };
 
-const SCHEMES = ["অন্নপূর্ণা ভাণ্ডার", "আয়ুষ্মান ভারত", "কন্যাশ্রী", "রূপশ্রী", "জয় বাংলা পেনশন", "কৃষকবন্ধু", "তরুণের স্বপ্ন", "স্কলারশিপ (OASIS, ঐক্যশ্রী)", "স্টুডেন্ট ক্রেডিট কার্ড", "যুব ভাতা", "বাংলার বাড়ি / আবাস", "রেশন কার্ড"];
+const SCHEMES = ["অন্নপূর্ণা যোজনা (আগে লক্ষ্মীর ভাণ্ডার)", "আয়ুষ্মান ভারত (আগে স্বাস্থ্যসাথী)", "বার্ধক্য / বিধবা / প্রতিবন্ধী পেনশন", "কন্যারত্ন (আগে কন্যাশ্রী)", "রূপশ্রী", "উচ্চশিক্ষায় ছাত্রীদের ৫০,০০০ টাকা", "সারথি (আগে সবুজসাথী)", "মহিলাদের বিনামূল্যে বাস", "কৃষক সহায়তা ও PM-KISAN", "ভরসা কর্মসাথী (যুব ভাতা)", "জন কল্যাণ শিবির", "স্কলারশিপ (OASIS, SVMCM)", "আবাস / রেশন কার্ড"];
 
 /* ---------------- the standing instructions sent with every question ---------------- */
 const UPDATES = `KNOWLEDGE BASE, compiled October 2026 from official orders and news reports. (reported) = from news or secondary sites, not yet checked against the order; always tell the user to verify those. (status?) = continuation under the new government not confirmed.
 
 A. GOVERNMENT CONTEXT 2026
-- After the 2026 Assembly election the BJP formed the government; Suvendu Adhikari was sworn in as Chief Minister on 09.05.2026; first Cabinet meeting 11.05.2026 (reported). The new government said existing welfare schemes will not simply be discontinued, but several are being renamed or merged with Central schemes (reported).
-- Before that, the previous government's February 2026 budget raised Lakshmir Bhandar, announced a youth allowance and a 7th Pay Commission (reported).
+- The BJP won the 2026 Assembly election (about 207-208 of 294 seats). Suvendu Adhikari was sworn in as Chief Minister on 09.05.2026; first Cabinet meeting 11.05.2026. The TMC government of Mamata Banerjee is no longer in office.
+- The new government has renamed several schemes, merged some with Central schemes (Ayushman Bharat, PM-KISAN, Beti Bachao Beti Padhao) and presented its first full budget for 2026-27 on 22.06.2026. Treat any scheme name or amount from before May 2026 as possibly out of date.
 
 B. CASTE CERTIFICATES (SDO office work)
 - Law: W.B. Scheduled Castes and Scheduled Tribes (Identification) Act, 1994 and Rules, 1995. Issuing authority: Sub-Divisional Officer (in Kolkata, the officer notified by the State). Apply online at castcertificatewb.gov.in (also at camps). In block areas the BDO enquires and recommends; in municipal areas a Deputy Magistrate of the SDO office does.
@@ -293,24 +303,24 @@ B. CASTE CERTIFICATES (SDO office work)
 C. OTHER CERTIFICATES
 - Residential, income and similar certificates: through e-District (edistrict.wb.gov.in) or the office. Income: BDO for rural, SDO for municipal areas; no fee. Residential: SDO, after enquiry by BDO/Inspector/municipality.
 
-D. SCHEMES (PRAKALPA) - status October 2026
-1. Annapurna Bhandar / Annapurna Yojana: replaced Lakshmir Bhandar from 01.06.2026 (one source says 03.06.2026); Rs. 3,000 per month to eligible women (reported); existing Lakshmir Bhandar beneficiaries reportedly moved over without a fresh application. New eligibility details vary between sources (not confirmed). Earlier Lakshmir Bhandar: women 25-60, Rs. 1,500 per month General and Rs. 1,700 SC/ST after the February 2026 budget.
-2. Ayushman Bharat PM-JAY: West Bengal joined in 2026 (reported July-August 2026); cashless treatment up to Rs. 5 lakh per family per year; replaces Swasthya Sathi, whose cards were reportedly honoured during the changeover. Check sha.wbhealth.gov.in / beneficiary.nha.gov.in.
-3. Free travel for women in State transport buses (reported, from June 2026).
-4. Kanyashree (status?): K1 annual Rs. 1,000 for unmarried girls aged 13-18 studying in Class VIII-XII; K2 one-time Rs. 25,000 at age 18-19 if unmarried and in education/training. Apply through the school/college. wbkanyashree.gov.in.
-5. Rupashree (status?): one-time Rs. 25,000 for marriage of a woman aged 18+ whose family income is up to Rs. 1.5 lakh a year; apply before the marriage through BDO (rural) or SDO/municipality (urban). wbrupashree.gov.in.
-6. Jai Bangla pensions (status?): Old Age (60+), Widow, Manabik (40%+ disability), Taposili Bandhu (SC, 60+), Jai Johar (ST, 60+), and old-age pensions for farmers, fishermen, artisans: Rs. 1,000 per month; one source reports Rs. 1,500 from 01.08.2026 (unconfirmed). jaibangla.wb.gov.in.
-7. Krishak Bandhu (Natun) (status?): Rs. 10,000 per acre per year in two instalments (pro rata, minimum Rs. 4,000) for farmers and sharecroppers; Rs. 2 lakh to the family if a farmer aged 18-60 dies. krishakbandhu.wb.gov.in. PM-KISAN (Central, Rs. 6,000 a year) also applies.
-8. Taruner Swapna: one-time Rs. 10,000 for a tablet/smartphone for Class XI-XII students, through the school.
-9. Scholarships: OASIS for SC/ST/OBC (oasis.gov.in, verified by the institution); Aikyashree for minorities (WBMDFC); Sikshashree for SC/ST day scholars Class V-VIII; Swami Vivekananda Merit-cum-Means (svmcm.wbhed.gov.in).
-10. Student Credit Card (status?): education loan up to Rs. 10 lakh at about 4% simple interest, up to age 40. wbscc.wb.gov.in.
-11. Youth allowance: February 2026 budget announced an allowance for unemployed youth (reported). The new government's youth card ("Yuva Shakti Bharosa" / "Bhorsa Karmasathi") is reported for implementation from October 2026 with tentative criteria age 21-45 and family income below Rs. 1 lakh; no official notification found.
-12. Housing: Banglar Bari / PMAY-Gramin through the BDO.
-13. Food: digital ration card and free ration through food.wb.gov.in and the local food inspector.
-14. Duare Sarkar camps (status?), Bhabishyat Credit Card (status?).
+D. SCHEMES (PRAKALPA) UNDER THE BJP-LED STATE GOVERNMENT - status October 2026. The previous (TMC) government's scheme names and amounts are OUT OF DATE unless stated here; always give the current name first, and the old name in brackets so people recognise it.
+1. Annapurna Yojana / Annapurna Bhandar (old: Lakshmir Bhandar): Rs. 3,000 per month by DBT to eligible women, from June 2026 (01.06 or 03.06.2026). Budget 22.06.2026 allotted Rs. 36,000 crore; women aged 25-60 (some sources say 21). Existing Lakshmir Bhandar beneficiaries were moved over without a fresh application. A beneficiary cannot draw Annapurna and the widow pension together and must choose one (Women & Child Development & Social Welfare Dept. directive, reported by ThePrint). Other conditions (income limit, ration card category) and the window for fresh applications vary between sources (reported); official portals named: socialsecurity.wb.gov.in / socialregistry.wb.gov.in. Warn people against look-alike private websites.
+2. Ayushman Bharat PM-JAY (old: Swasthya Sathi): West Bengal joined in 2026; cashless treatment up to Rs. 5 lakh per family per year; Swasthya Sathi cards were honoured during the changeover (reported). Check eligibility at beneficiary.nha.gov.in.
+3. Social welfare pensions - Old Age, Widow, Disability (Manabik), and NSAP pensions: raised from Rs. 1,000 to Rs. 1,500 per month by DBT from 01.08.2026 (Cabinet decision reported by AIR/newsonair and The Statesman). The previous government's waiting list was scrapped; a fresh list of eligible beneficiaries is being prepared. (The old umbrella name was "Jai Bangla"; Taposili Bandhu (SC) and Jai Johar (ST) pensions: status?)
+4. Kanyaratna (old: Kanyashree): renamed by the CM on 14.08.2026. Schoolgirls get a one-time Rs. 1,000 in 2026; Rs. 2,000 a year from the 2027 academic year; about 20.13 lakh girls this year; Education Department to issue detailed guidelines. Beti Bachao Beti Padhao also launched in the State. Applications go through the school/college.
+5. Higher-education grant for girls: Rs. 50,000 one-time to unmarried female students pursuing higher education (Budget 22.06.2026, reported; guidelines not seen).
+6. Rupashree: reported to continue under the new government with some changes: one-time Rs. 25,000 for the first marriage of a woman aged 18+ with family income up to Rs. 1.5 lakh a year (status of changes?). wbrupashree.gov.in.
+7. Sarathi (old: Sabooj Sathi): bicycles for school students, renamed (reported).
+8. Free bus travel for women in State transport buses (from June 2026, reported).
+9. Farmers: Krishak Bandhu (Natun) - no official change found; still Rs. 10,000 per acre per year in two instalments (minimum Rs. 4,000), Rs. 2 lakh death benefit (status?). Budget 22.06.2026 announced an extra Rs. 3,000 a year to farmer families on top of PM-KISAN (Rs. 6,000 a year), a Rs. 2 per unit electricity subsidy for irrigation pumps, and a waiver of irrigation fees for government tube-wells/RLI (reported).
+10. Youth: Bhorsa Karmasathi (also reported as "Yuva Shakti Bharosa") - Rs. 3,000 per month to unemployed youth (Budget 22.06.2026; reported criteria age 21-45, low family income; notification and portal not seen). The previous government's Banglar Yuva Sathi (February 2026) is superseded (status?).
+11. Jobs: 33% reservation for women in recruitment for one lakh government posts (Budget 22.06.2026, reported).
+12. Government camps: Duare Sarkar is reported to be continued as "Jan Kalyan Shivir" (first camps 15-17.06.2026; portal jks.wb.gov.in, helpline 1800-345-0117 - single source, verify).
+13. Scholarships: OASIS for SC/ST/OBC (oasis.gov.in, verified by the institution); Swami Vivekananda Merit-cum-Means (svmcm.wbhed.gov.in); Aikyashree, Sikshashree, Taruner Swapna, Student Credit Card: status?
+14. Housing: PMAY-Gramin / Banglar Bari through the BDO (status?). Food: ration card and free ration through food.wb.gov.in (PMGKAY).
 
 E. EMPLOYEES
-- DA/DR raised to 38% from 01.10.2026 (reported; one source cites Finance Dept. Memo No. 2834-F(P2) dated 04.08.2026, unconfirmed). 7th Pay Commission announced (reported).
+- DA/DR raised to 38% from 01.10.2026 after a 20-percentage-point hike announced in the 2026-27 budget (reported; one source cites Finance Dept. Memo No. 2834-F(P2) dated 04.08.2026, unconfirmed).
 - Contractual/casual workers: Finance Dept. 2024 order - Group-C initial remuneration Rs. 17,000, Rs. 600 annual enhancement, steps at 5/10/15/20 years; 2016 order - 10 days medical leave plus 30 off days a year. School Education contractual remuneration raised from 01.10.2026 (reported, amounts not confirmed).
 - HRMS: casual leave online from 15.03.2024, other leave from 01.05.2024; paper leave applications not accepted after the cut-off.
 - File movement: WFTS and e-Office.
@@ -321,14 +331,19 @@ function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
   const lang = settings.lang === "bn" ? "Always reply in Bengali (Bangla script)." : settings.lang === "en" ? "Always reply in English unless asked for a Bengali draft." :
     "Reply in the language of the user's latest message. Bengali, or Bengali typed in English letters, gets a reply in standard Bengali script (চলিত, with usual Government terms).";
-  const office = `MODE: OFFICE. The user is a staff member of an SDO office in West Bengal. Help with administrative work.
-Drafting conventions:
-- Notesheet: title "NOTE" (or "নোট"), subject line, numbered paragraphs. Para 1 states the PUC (paper under consideration) and refers to flags ("Flag-A"). Then facts, the rule or GO position, and the proposal. End with "Submitted for kind perusal and orders." or "DFA placed below for approval, if approved." Leave signature/date blanks for Dealing Assistant, Head Assistant, Deputy Magistrate, Sub-Divisional Officer as fits.
-- Letters and memos: letterhead lines (Government of West Bengal / ${off}), "Memo No. ${settings.memo}/____  Date: dd.mm.yyyy", To, Sub, Ref, Sir/Madam, body, "Yours faithfully" and signature block, and when needed "Memo No. ____/1(n) — Copy forwarded for information and necessary action to:". Bengali drafts use পশ্চিমবঙ্গ সরকার, স্মারক নং, তারিখ, প্রতি, বিষয়, সূত্র, মহাশয়/মহাশয়া, ভবদীয়, মহকুমা শাসক, প্রতিলিপি.
-- Put ______ for any fact you were not given. Never make up names, numbers or dates in a draft.
-- When asked for a draft, output the draft first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
-- Tables in Markdown (they are exported to Excel).`;
-  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Remind that government services are free at Duare Sarkar camps and offices and that nobody should pay touts. When they want an application written, write it with blanks for personal details.`;
+  const fmt = settings.sampleText ? `\nOFFICE FORMAT SAMPLE (a real letter of this office, file "${settings.sampleName}"). Copy its letterhead, memo number style, date style, addressing, signature block and endorsement style exactly for every letter; change only the content:\n<<<\n${settings.sampleText}\n>>>` : "";
+  const office = `MODE: OFFICE. The user is a dealing employee of an SDO office in West Bengal.
+How this office works (follow it):
+- Every application and case is decided only by the Sub-Divisional Officer (SDO). Employees never approve or reject anything; they examine, write the note and prepare the draft.
+- Notesheet: written by the dealing employee and put up directly to the SDO. Write it as continuous paragraphs of prose, the way a file note is written: first the PUC (paper under consideration) and how it was received, then the facts and what was examined, then the rule or GO position, then the proposal for the SDO's orders. End with a line such as "Put up for kind perusal and orders, please." or "Draft for approval (DFA) placed below for kind approval and signature." Then the dealing employee's signature and date line. Leave space below for the SDO's order; do not write the SDO's decision.
+- Draft (DFA): prepared by the employee on behalf of the SDO, to be issued over the SDO's signature. The signature block is the SDO: "${settings.officer}, ${settings.subdiv}" (in Bengali: ${settings.subdiv === "Sadar" ? "মহকুমা শাসক, সদর" : "মহকুমা শাসক, " + settings.subdiv}).
+- Style: drafts and notes are written in PARAGRAPHS, not in points. Do not use bullet points or numbered points inside a note or a letter unless the user asks for a list (for example a list of enclosures or copy recipients, which stay as the usual short lines). Use plain formal Government language.
+- Letterhead and layout: if the user attached a sample letter, or an office format sample is given below, copy that letterhead and layout exactly. If there is no sample, do not invent a letterhead: write one line "[অফিসের লেটারহেড / Office letterhead]" at the top, then "Memo No. ______  Date: __.__.____", and after the draft suggest attaching one old letter of the office so the format can be matched.
+- Usual parts: Memo No. and Date, To, Sub, Ref, Sir/Madam, body paragraphs, "Yours faithfully", signature of the SDO, and when needed "Memo No. ____/1(n) Date: ____ — Copy forwarded for information and necessary action to:" with the recipients as short lines. Bengali drafts use স্মারক নং, তারিখ, প্রতি, বিষয়, সূত্র, মহাশয়/মহাশয়া, ভবদীয়, মহকুমা শাসক, প্রতিলিপি.
+- Put ______ for any fact you were not given. Never make up names, numbers or dates.
+- When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
+- Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.`;
   return `You are "Prashasan Mitra" (প্রশাসন মিত্র), a free helper for West Bengal Government administration. It is not an official Government application.
 Today is ${today()}. ${off}
 ${mode === "office" ? office : pub}
@@ -341,7 +356,7 @@ Accuracy rules, most important:
 - If the user attached a document, answer from it and quote the relevant paragraph or clause number.
 - Explain rules; do not decide individual cases. The competent authority decides.
 - If the user shares Aadhaar numbers, bank details or similar, do not repeat them and suggest removing them.
-Format: Markdown. **Bold** for key words, numbered steps where order matters, tables only when they help. Keep it focused.
+Format: Markdown. In OFFICE mode notes and drafts are paragraphs (see above). In PUBLIC mode numbered steps are fine where order matters. Tables only when they help. Keep it focused.
 ${UPDATES}`;
 }
 
@@ -592,6 +607,8 @@ function render() {
   $("#mode-public").setAttribute("aria-pressed", mode === "public");
   $("#rail-title").textContent = mode === "office" ? "অফিসের কাজ" : "জনসাধারণের জন্য";
   $("#rail-tasks").innerHTML = TASKS[mode].map((t, k) => `<button class="task" type="button" data-task="${k}"><b>${esc(t[0])}</b><small>${esc(t[1])}</small></button>`).join("");
+  $("#rail-format").hidden = mode !== "office";
+  $("#rail-sample").textContent = settings.sampleText ? `চালু: ${settings.sampleName}` : "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।";
   $("#scheme-chips").innerHTML = SCHEMES.map((n, k) => `<button class="chip" type="button" data-scheme="${k}">${esc(n)}</button>`).join("");
   $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
   $("#q").placeholder = mode === "office" ? "বাংলা বা ইংরেজিতে লিখুন… যেমন: শো-কজ নোটিশের নোটশিট লিখে দিন" : "আপনার প্রশ্ন লিখুন… যেমন: আয়ের সার্টিফিকেট কোথায় পাব?";
@@ -734,9 +751,24 @@ document.addEventListener("click", e => {
   if (e.target.closest("#mode-office")) { mode = "office"; store.set("mode", mode); render(); }
   if (e.target.closest("#mode-public")) { mode = "public"; store.set("mode", mode); render(); }
   if (e.target.closest("#new-chat")) { if (ctl) ctl.abort(); messages = []; pendingFiles = []; persist(); render(); }
-  if (e.target.closest("#open-settings")) {
-    const f = $("#settings-form"); Object.keys(DEFAULTS).forEach(k => { f.elements[k].value = settings[k]; }); $("#settings").showModal();
+  if (e.target.closest("#open-settings, #open-settings2")) {
+    const f = $("#settings-form"); Object.keys(DEFAULTS).forEach(k => { f.elements[k].value = settings[k]; }); showSample(); $("#settings").showModal();
   }
+  if (e.target.closest("#sample-clear")) { delete settings.sampleName; delete settings.sampleText; store.set("settings", settings); showSample(); render(); toast("নমুনা চিঠি সরানো হয়েছে"); }
+});
+function showSample() {
+  $("#sample-status").textContent = settings.sampleText ? `চালু: ${settings.sampleName}` : "কোনও নমুনা দেওয়া নেই";
+  $("#sample-clear").hidden = !settings.sampleText;
+}
+$("#sample-in").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const r = await readFile(f);
+    if (!r.text || !r.text.trim()) throw new Error("এই ফাইল থেকে লেখা পড়া গেল না। Word (.docx) বা লেখা-সহ PDF দিন।");
+    settings.sampleName = f.name; settings.sampleText = r.text.replace(/\[Page \d+\]\n?/g, "").trim().slice(0, 6000);
+    store.set("settings", settings); showSample(); render(); toast("নমুনা চিঠি সংরক্ষিত। এখন থেকে খসড়া এই ফরম্যাটে হবে।");
+  } catch (err) { toast(err.message || "ফাইল পড়া গেল না"); }
 });
 function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]`); if (el) el.outerHTML = msgHtml(messages[k], k); }
 $("#settings").addEventListener("close", () => {

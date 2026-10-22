@@ -2,8 +2,10 @@
 
 A free AI helper for West Bengal Government administration, in Bengali and English.
 
-**Office mode** (for SDO / BDO office staff)
-- Write notesheets (PUC, flags, proposal, "Submitted for kind perusal and orders")
+**Office mode** (for SDO office staff)
+- Follows how an SDO office works: the dealing employee writes the notesheet and puts it up directly to the SDO; the employee prepares the draft (DFA) for the SDO's signature; only the SDO approves or rejects
+- Notes and drafts are written in paragraphs, not in points
+- **Office format sample:** upload one old letter of your office (Word or PDF) under অফিসের তথ্য. Every draft then copies its letterhead, memo number style and signature block. Without a sample the letterhead is left as a blank line to fill
 - Draft letters and memos (memo no., subject, reference, copy forwarded to), in Bengali or English
 - Attach a GO or circular (PDF, Word, Excel, or a photo of a scanned page) and get a plain summary, the steps your office has to take, and a draft note
 - Hearing and show-cause notices, RTI replies, report tables, translation
@@ -11,7 +13,7 @@ A free AI helper for West Bengal Government administration, in Bengali and Engli
 
 **Public mode** (for citizens)
 - Which certificate is needed, where to apply, what documents to bring
-- Which schemes someone may be eligible for
+- Which schemes someone may be eligible for, using the current names of the BJP-led State government's schemes (Annapurna Yojana, Kanyaratna, Sarathi, Ayushman Bharat, pensions at Rs. 1,500 and so on), with the old name in brackets
 - Write an application to the SDO or BDO; explain a government letter
 
 ## Two ways to run it (same `index.html`)
