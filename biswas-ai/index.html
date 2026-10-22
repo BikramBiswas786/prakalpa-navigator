@@ -259,7 +259,7 @@ textarea.paper { white-space: pre-wrap; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v5</small></div>
+    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v6</small></div>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
@@ -850,9 +850,9 @@ F. SOURCES TO NAME: wb.gov.in, finance.wb.gov.in, wbxpress.com (copies of WB ord
 /* send only the parts of the knowledge base this conversation needs (saves free-tier tokens) */
 function knowledge() {
   const parts = UPDATES.split(/\n(?=[A-F]\. )/);
-  const said = messages.filter(m => m.role === "user").map(m => m.shown || m.content).join(" ") + " " + ($("#q") ? $("#q").value : "");
-  const schemes = /প্রকল্প|প্রকল্পা|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|শ্রী|রত্ন|সাথী|scheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|scholar|স্কলার|আবাস|রেশন|শিবির|বাস/i.test(said);
-  const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|leave|salary|pay|contractual|চুক্তি|কর্মচারী|employee|WFTS|e-?office/i.test(said);
+  const said = messages.filter(m => m.role === "user").slice(-6).map(m => m.shown || m.content.slice(0, 2000)).join(" ") + " " + ($("#q") ? $("#q").value : "");
+  const schemes = /প্রকল্প|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|কন্যারত্ন|কন্যাশ্রী|রূপশ্রী|অন্নপূর্ণা|আয়ুষ্মান|স্বাস্থ্যসাথী|কৃষকবন্ধু|কিষাণ|স্কলারশিপ|বৃত্তি|আবাস যোজনা|রেশন কার্ড|উজ্জ্বলা|বিশ্বকর্মা|কর্মসাথী|সারথি|\bscheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|kisan|scholarship|awas|ration card|ujjwala|vishwakarma/i.test(said);
+  const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|\bleave\b|salary|\bpay\b|contractual|চুক্তিভিত্তিক|কর্মচারীর|employee|WFTS|e-?office/i.test(said);
   const keep = parts.filter(t => {
     const sec = t.trim().charAt(0);
     if (sec === "D") return false;            // replaced by the live catalogue below
@@ -1147,7 +1147,7 @@ async function offer(name, data) {
 }
 
 /* ---------------- one way to ask the AI, used by every tab ---------------- */
-const PROVIDER_NAMES = { claude: "Claude", gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" };
+const PROVIDER_NAMES = { bikram: "বিক্রম AI", claude: "Claude", gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" };
 const CLIENT_TIMEOUT_MS = 150000;
 const ERR = {
   bn: {
@@ -1520,10 +1520,69 @@ function replaceDoc(text, j, md) {
   let n = -1;
   return text.replace(/(<<<DOC[^>\n]*>>>)([\s\S]*?)(<<<END DOC>>>)/g, (all, a, body, b) => (++n === j ? `${a}\n${md}\n${b}` : all));
 }
+/* What Bikram asks right after a choice, before any AI call. [docType, Bengali, English] */
+const BK_FLOW = [
+  ["notesheet", "ঠিক আছে, নোটশিট লিখব। নিচের তথ্য একসঙ্গে লিখে পাঠান (যা জানা নেই বাদ দিন, আমি ফাঁকা রাখব):\n\n১. **বিষয়**\n২. **PUC** — কোন আবেদন / চিঠি, কার কাছ থেকে, কবে পাওয়া\n৩. **মূল তথ্য** — কী যাচাই হয়েছে, কোন রিপোর্ট এসেছে\n৪. **প্রস্তাব** — SDO-র কাছে কী আদেশ চাইছেন\n৫. **ভাষা** — বাংলা না ইংরেজি\n\nচিঠি বা GO থাকলে ক্লিপ বোতামে সংযুক্ত করুন।", "Sure, I will write the notesheet. Send these details together (skip what you don't know; I will leave blanks):\n\n1. **Subject**\n2. **PUC** — which application / letter, from whom, received when\n3. **Main facts** — what was checked, which report came\n4. **Proposal** — what order you want from the SDO\n5. **Language** — Bengali or English\n\nAttach the letter or GO with the clip button if you have it."],
+  ["letter", "ঠিক আছে, SDO-র স্বাক্ষরের জন্য খসড়া চিঠি (DFA) লিখব। জানান:\n\n১. **প্রাপক** — পদ ও অফিস\n২. **বিষয়**\n৩. **সূত্র** — আগের চিঠি / আবেদনের নম্বর ও তারিখ (থাকলে)\n৪. **চিঠিতে কী জানাতে বা চাইতে হবে**\n৫. **প্রতিলিপি** কাকে কাকে (থাকলে)\n৬. **ভাষা** — বাংলা না ইংরেজি", "Sure, I will write the draft letter (DFA) for the SDO's signature. Tell me:\n\n1. **To** — designation and office\n2. **Subject**\n3. **Reference** — earlier letter / application number and date (if any)\n4. **What the letter must say or ask**\n5. **Copy to** whom (if any)\n6. **Language** — Bengali or English"],
+  ["order", "ঠিক আছে, অফিস আদেশ লিখব। জানান:\n\n১. **কী বিষয়ে আদেশ**\n২. **কাকে নিয়ে** (নাম / পদ)\n৩. **আদেশে কী বলা হবে** এবং কবে থেকে কার্যকর\n৪. **প্রতিলিপি** কাকে কাকে\n৫. **ভাষা**", "Sure, I will write the office order. Tell me:\n\n1. **What the order is about**\n2. **Who it concerns** (name / designation)\n3. **What it orders** and from when\n4. **Copy to** whom\n5. **Language**"],
+  ["notice", "ঠিক আছে, নোটিশ লিখব। জানান:\n\n১. **শুনানির নোটিশ না শো-কজ**\n২. **কার নামে** (নাম-ঠিকানা ফাঁকাও রাখা যায়)\n৩. **কোন বিষয়ে / কী অভিযোগ**\n৪. **শুনানির তারিখ-সময়-স্থান** বা **উত্তরের সময়সীমা**\n৫. **কী নথি আনতে হবে** (শুনানি হলে)\n৬. **ভাষা**", "Sure, I will write the notice. Tell me:\n\n1. **Hearing notice or show-cause**\n2. **Addressed to** (name and address can be left blank)\n3. **In what matter / what allegation**\n4. **Hearing date, time, place** or **time allowed to reply**\n5. **Documents to bring** (for a hearing)\n6. **Language**"],
+  ["report", "ঠিক আছে, রিপোর্ট লিখব। জানান:\n\n১. **কোন রিপোর্ট** — এনকোয়ারি, মাসিক, জাতি শংসাপত্র পুনর্যাচাই, না অন্য\n২. **কাকে পাঠানো হবে**\n৩. **তথ্য ও সংখ্যা** (পেস্ট করুন বা ফাইল সংযুক্ত করুন)\n৪. **সুপারিশ / মন্তব্য**\n৫. **ভাষা**", "Sure, I will write the report. Tell me:\n\n1. **Which report** — enquiry, monthly, caste certificate re-verification, or other\n2. **To whom**\n3. **Facts and figures** (paste them or attach a file)\n4. **Recommendation / remarks**\n5. **Language**"],
+  ["table", "ঠিক আছে, Excel টেবিল বানাব। লিখে বা পেস্ট করে দিন:\n\n১. **কলামগুলোর নাম** (যেমন: ক্রম, ব্লক, আবেদন, দেওয়া, বাতিল)\n২. **তথ্য / সংখ্যা** — যেভাবে আছে সেভাবেই লিখুন\n৩. **শিরোনাম** (যেমন: অক্টোবর ২০২৬-এর জাতি শংসাপত্রের বিবরণী)\n\nExcel, PDF বা ছবি থেকেও করা যায় — ক্লিপ বোতামে সংযুক্ত করুন।", "Sure, I will make the Excel table. Type or paste:\n\n1. **Column names** (e.g. No., Block, Applications, Issued, Rejected)\n2. **Data / figures** — as they are\n3. **Title** (e.g. Caste certificate statement, October 2026)\n\nIt can also be made from an Excel, PDF or photo — attach it with the clip button."],
+  ["other", "ঠিক আছে, Word / PDF ফাইল বানাব। জানান:\n\n১. **কী ধরনের নথি** — চিঠি, বিজ্ঞপ্তি, প্রত্যয়নপত্র, আবেদন, না অন্য\n২. **কাকে / কার জন্য**\n৩. **বিষয় ও মূল কথা**\n৪. **ভাষা**\n\nলেখা হয়ে গেলে নিচে Word ও PDF বোতাম পাবেন।", "Sure, I will make the Word / PDF file. Tell me:\n\n1. **What kind of document** — letter, notice, certificate, application, or other\n2. **To / for whom**\n3. **Subject and main points**\n4. **Language**\n\nWhen it is written, Word and PDF buttons appear under it."],
+  null
+];
+const BK_DESC = { notesheet: "notesheet put up by the dealing employee to the SDO", letter: "draft letter (DFA) for the SDO's signature", order: "office order issued over the SDO's signature", notice: "notice (hearing or show-cause) issued over the SDO's signature", report: "report", table: "table for Excel (a Markdown table with a header row; put the title above the table as a bold line)", other: "official document" };
+let bkPending = store.get("bk:pending", null);   // docType Bikram asked questions for
+const setPending = v => { bkPending = v; store.set("bk:pending", v); };
+const BUILTIN_EXAMPLES = `--- Model notesheet (Bengali) ---
+**নোট**
+
+**বিষয়:** শ্রী রমেশ মণ্ডল, গ্রাম ও পোস্ট দক্ষিণপাড়া-র তফসিলি জাতি শংসাপত্রের আবেদন।
+**সূত্র:** আবেদন নং ______, তারিখ __.__.____ (পতাকা-ক)।
+
+বিচার্য পত্রটি (PUC) শ্রী রমেশ মণ্ডলের অনলাইন আবেদন, যেখানে তিনি নমঃশূদ্র (তফসিলি জাতি) সম্প্রদায়ভুক্ত হিসেবে জাতি শংসাপত্র চেয়েছেন। আবেদনের সঙ্গে পিতার জাতি শংসাপত্র, ভোটার কার্ড ও বাসস্থানের প্রমাণ জমা পড়েছে।
+
+আবেদনটি তদন্তের জন্য সমষ্টি উন্নয়ন আধিকারিক, ______ ব্লকের কাছে পাঠানো হয়েছিল। তাঁর তদন্ত প্রতিবেদন (পতাকা-খ) অনুযায়ী আবেদনকারী জন্ম থেকে উক্ত ঠিকানায় বসবাস করছেন এবং স্থানীয়ভাবে নমঃশূদ্র সম্প্রদায়ভুক্ত হিসেবে পরিচিত। পোর্টালে পিতার শংসাপত্র যাচাই করে সঠিক পাওয়া গেছে।
+
+পশ্চিমবঙ্গ তফসিলি জাতি ও তফসিলি উপজাতি (শনাক্তকরণ) আইন, ১৯৯৪ অনুযায়ী আবেদনকারী শংসাপত্র পাওয়ার যোগ্য বলে মনে হয়। শংসাপত্রের খসড়া অনুমোদনের জন্য নিচে রাখা হল।
+
+সদয় অবগতি ও আদেশের জন্য পেশ করা হল।
+
+(ডিলিং অ্যাসিস্ট্যান্ট)
+তারিখ: __.__.____
+
+মহকুমা শাসক, ______
+
+--- Model draft letter for the SDO's signature (Bengali) ---
+**পশ্চিমবঙ্গ সরকার**
+**মহকুমা শাসকের কার্যালয়, ______ মহকুমা**
+
+স্মারক নং: ______/SDO          তারিখ: __.__.____
+
+প্রতি,
+সমষ্টি উন্নয়ন আধিকারিক,
+______ ব্লক।
+
+**বিষয়:** জাতি শংসাপত্রের আবেদনের তদন্ত প্রতিবেদন প্রেরণ প্রসঙ্গে।
+**সূত্র:** এই দপ্তরের স্মারক নং ______, তারিখ ______।
+
+মহাশয়,
+
+উপরোক্ত বিষয় ও সূত্রের প্রতি আপনার দৃষ্টি আকর্ষণ করা হচ্ছে। উক্ত পত্রের মাধ্যমে ছয়টি জাতি শংসাপত্রের আবেদন আপনার দপ্তরে তদন্তের জন্য পাঠানো হয়েছিল, কিন্তু আজ পর্যন্ত কোনও প্রতিবেদন এই দপ্তরে পৌঁছায়নি।
+
+আবেদনকারীরা নির্দিষ্ট সময়ের মধ্যে পরিষেবা পাওয়ার অধিকারী। অতএব আগামী সাত দিনের মধ্যে প্রতিটি আবেদনের সুস্পষ্ট সুপারিশ সহ তদন্ত প্রতিবেদন এই দপ্তরে পাঠানোর জন্য অনুরোধ করা হচ্ছে।
+
+বিষয়টি অতি জরুরি হিসেবে গণ্য করবেন।
+
+ভবদীয়,
+
+মহকুমা শাসক
+______ মহকুমা`;
 function bikramRules() {
   const mem = memory.length ? memory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
-  const ex = examples.slice(-3).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 2500)}`).join("\n\n");
+  const ex = examples.slice(-3).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 2500)}`).join("\n\n") || BUILTIN_EXAMPLES;
   return `
+These Bikram AI rules override any earlier output-format rule.
 YOU ARE "BIKRAM AI" (বিক্রম AI), the office-work chat inside Biswas AI for Office, made by Bikram Biswas. Work like an experienced dealing assistant and drafting partner, in a natural chat.
 How to work:
 - If the user has not said what they need, greet in one line and ask what to create: notesheet, draft letter (DFA), office order, notice (hearing / show-cause), report, RTI reply, Excel table, Word file, PDF, or anything else.
@@ -1536,7 +1595,8 @@ Memory (it makes you better over time):
 - When you learn a lasting fact or preference (names and designations, office details, preferred language or layout, a correction the user makes, recurring tasks), add at the very end of your reply a block: a line <<<MEMORY>>>, then one fact per line starting with "- ", then a line <<<END MEMORY>>>. Only durable, useful facts. To drop a wrong memory write "- FORGET: <words of that memory>". Skip the block when there is nothing new.
 WHAT YOU REMEMBER:
 ${mem}
-${ex ? `DRAFTS THIS OFFICE APPROVED (follow their style and layout):\n${ex}` : ""}`;
+${examples.length ? "DRAFTS THIS OFFICE APPROVED (follow their style and layout):" : "MODEL DOCUMENTS (follow this standard of language, structure and layout; English documents use the same structure):"}
+${ex}`;
 }
 const DOC_LABEL = { notesheet: ["নোটশিট", "Notesheet"], letter: ["চিঠি", "Letter"], order: ["আদেশ", "Order"], notice: ["নোটিশ", "Notice"], report: ["রিপোর্ট", "Report"], table: ["টেবিল / Excel", "Table / Excel"], other: ["নথি", "Document"] };
 const docLabel = type => (DOC_LABEL[type] || DOC_LABEL.other)[settings.lang === "en" ? 1 : 0];
@@ -1570,11 +1630,14 @@ function bikramMsgHtml(m, k) {
   }
   let j = -1;
   const parts = shown ? splitDocs(shown).map(p => p.t === "doc" ? docCardHtml(p, k, ++j, m.done) : `<div class="doc bk-text">${mdToHtml(p.md)}</div>`).join("") : (m.done ? "" : `<div class="doc">${thinkingHtml(m)}</div>`);
+  const plainLong = m.done && m.via !== "bikram" && shown && !/<<<DOC/.test(shown) && ((shown.length > 120 && /\n\s*\n/.test(shown.trim())) || parseMd(shown).some(b => b.t === "table"));
+  const hasTable = plainLong && parseMd(shown).some(b => b.t === "table");
   return `<div class="msg ai bk" data-k="${k}">
     ${parts}
+    ${plainLong ? `<div class="actions">${CAN_PRINT ? `<button class="btn small" data-act="print">${esc(t("doc_print"))}</button>` : ""}<button class="btn small" data-act="copy">${esc(t("copy"))}</button>${canSave() ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button></div>` : ""}
     ${m.learned && m.learned.length ? `<div class="learned">${esc(t("mem_learned"))}${m.learned.map(esc).join(" · ")}</div>` : ""}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
-    ${m.via && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
+    ${m.via && m.via !== "bikram" && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
   </div>`;
 }
 function bikramWelcome() {
@@ -1666,8 +1729,10 @@ async function ask(text) {
   const imgs = attachImages(files);
   if (imgs.length) content += `\n\n(${imgs.length} image(s) attached: ${files.filter(f => f.images).map(f => f.name + (f.kind === "scan" ? " — scanned PDF pages" : "")).join(", ")}. Read them carefully, including Bengali text.)`;
   const box = messages;
+  const wantDoc = box === chats.office ? bkPending : null;
+  if (wantDoc) { content += `\n\n[Bikram AI task: using the details above, earlier messages and any attached file, write the ${BK_DESC[wantDoc] || "document"} now, complete and ready to print. Put it in one <<<DOC type="${wantDoc}" title="short English title">>> ... <<<END DOC>>> block. Paragraphs, not points. Leave ______ for anything not given. Do not ask more questions now.]`; setPending(null); }
   box.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
-  const ai = { role: "assistant", content: "", done: false, started: Date.now() };
+  const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
   renderChat(); scrollDown(); setBusy(true);
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
@@ -1679,7 +1744,11 @@ async function ask(text) {
   try {
     const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = r.text; ai.via = r.via;
-    if (agent) { const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines); }
+    if (agent) {
+      const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
+      // the AI forgot the document markers: treat the whole answer as the document
+      if (wantDoc && !DOC_START.test(ai.content)) ai.content = `<<<DOC type="${wantDoc}" title="${wantDoc}">>>\n${ai.content.replace(/^```[a-z]*\n?|```\s*$/g, "").trim()}\n<<<END DOC>>>`;
+    }
     if (r.truncated) ai.error = errText("cut");
   } catch (e) {
     const code = e && e.code;
@@ -1840,7 +1909,13 @@ document.addEventListener("click", e => {
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
   // Bikram AI
-  if ((x = el("[data-bk]"))) return ask(t("bk_choices")[+x.dataset.bk][2]);
+  if ((x = el("[data-bk]"))) {
+    const i = +x.dataset.bk, flow = BK_FLOW[i];
+    if (!flow) return ask(t("bk_choices")[i][2]);
+    messages.push({ role: "user", content: t("bk_choices")[i][2], shown: t("bk_choices")[i][2], done: true });
+    messages.push({ role: "assistant", content: flow[settings.lang === "en" ? 2 : 1], done: true, via: "bikram" });
+    setPending(flow[0]); persist(); renderChat(); scrollDown(); q.focus(); return;
+  }
   if ((x = el("[data-dact]"))) {
     const k = +x.dataset.k, j = +x.dataset.j, m = messages[k], act = x.dataset.dact;
     const d = splitDocs(splitMemory(m.content).clean).filter(p => p.t === "doc")[j];
@@ -1863,6 +1938,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-act]"))) {
     const k = +x.closest(".msg").dataset.k; const m = messages[k]; const act = x.dataset.act;
     if (act === "copy") navigator.clipboard.writeText(m.content).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+    else if (act === "print") printDoc(m.content);
     else if (act === "edit") { m.editing = true; updateAt(k); const ta = $(`#edit-${k}`); if (ta) ta.focus(); }
     else if (act === "edit-save") { m.content = $(`#edit-${k}`).value; m.editing = false; updateAt(k); persist(); toast(t("saved_edit")); }
     else if (act === "todraft") { draft.prev = draft.text; draft.text = m.content; saveDraft(); go("office", "draft"); }
