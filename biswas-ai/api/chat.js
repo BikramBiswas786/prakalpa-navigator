@@ -37,13 +37,30 @@ const ORDER = list("PROVIDER_ORDER", "gemini,nvidia,groq,mistral,openrouter,clou
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_OUT = 8192;
+// A provider that has not produced any text within FIRST_TEXT_MS is skipped and
+// the next one is tried; a stream that goes silent for IDLE_MS is ended.
+const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 25000;
+const IDLE_MS = Number(env("IDLE_MS")) || 60000;
 
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 const configured = () => ORDER.filter(id => env(PROVIDERS[id].key) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
 
-export function GET() {
+export async function GET(request) {
   const ids = configured();
-  return json({ configured: ids.length > 0, providers: ids });
+  const test = request && new URL(request.url).searchParams.get("test");
+  if (!test) return json({ configured: ids.length > 0, providers: ids });
+  // Key check: ask every configured model a tiny question, in parallel.
+  const body = { system: "Reply with one short word.", messages: [{ role: "user", content: "Say OK" }], images: [] };
+  const checks = [];
+  for (const id of ids) for (const model of PROVIDERS[id].models) {
+    checks.push((async () => {
+      const t0 = Date.now();
+      const r = await attempt(PROVIDERS[id], model, body, null, 20000);
+      if (r.ok) { try { await r.stream.cancel(); } catch { /* ignore */ } }
+      return { provider: id, model, ok: r.ok, status: r.status || null, ms: Date.now() - t0, error: r.ok ? "" : r.error };
+    })());
+  }
+  return json({ providers: ids, results: await Promise.all(checks) });
 }
 
 function validate(body) {
@@ -125,36 +142,90 @@ function openaiEvent(ev) {
   return out;
 }
 
-function relay(upstream, parse) {
-  const enc = new TextEncoder(), dec = new TextDecoder();
-  return new ReadableStream({
-    async start(controller) {
-      const reader = upstream.body.getReader();
-      let buf = "", finish = "";
-      const handle = line => {
-        line = line.trim();
-        if (!line.startsWith("data:")) return;
-        const data = line.slice(5).trim();
-        if (!data || data === "[DONE]") return;
-        let ev; try { ev = JSON.parse(data); } catch { return; }
-        const r = parse(ev);
-        if (r.text) controller.enqueue(enc.encode(r.text));
-        if (r.finish) finish = r.finish;
-      };
-      try {
-        for (;;) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, { stream: true });
-          const lines = buf.split(/\r?\n/); buf = lines.pop();
-          lines.forEach(handle);
-        }
-        handle(buf);
-        if (finish) controller.enqueue(enc.encode("\u0000" + finish));
-        controller.close();
-      } catch (e) { controller.error(e); }
+const timeout = (ms, label) => new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms));
+
+// Sends one request and waits for the first piece of text. Resolves with
+// {ok: true, stream} (a text stream starting with that first piece) or
+// {ok: false, status, error} so the caller can move on to the next model.
+async function attempt(p, model, body, signal, firstMs = FIRST_TEXT_MS) {
+  const ctl = new AbortController();
+  const stop = () => ctl.abort();
+  if (signal) signal.addEventListener("abort", stop, { once: true });
+  const fail = (status, error) => { ctl.abort(); return { ok: false, status, error: String(error || "").slice(0, 300) }; };
+  let upstream;
+  try {
+    upstream = await Promise.race([
+      (p.kind === "gemini" ? geminiRequest : openaiRequest)(p, model, env(p.key), body, ctl.signal),
+      timeout(firstMs, "no response in time")
+    ]);
+  } catch (e) { return fail(0, e.message || "network error"); }
+  if (!upstream.ok || upstream.status !== 200 || !upstream.body) {
+    const text = await upstream.text().catch(() => "");
+    return fail(upstream.status, (text || upstream.statusText).replace(/\s+/g, " "));
+  }
+  const parse = p.kind === "gemini" ? geminiEvent : openaiEvent;
+  const reader = upstream.body.getReader();
+  const dec = new TextDecoder();
+  const isJson = /application\/json/.test(upstream.headers.get("content-type") || "");
+  let buf = "", raw = "", finish = "";
+  const pending = [];
+  const eat = line => {
+    line = line.trim();
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let ev; try { ev = JSON.parse(data); } catch { return; }
+    if (ev.error) { finish = finish || "ERROR"; return; }
+    const r = parse(ev);
+    if (r.text) pending.push(r.text);
+    if (r.finish) finish = r.finish;
+  };
+  const pump = async ms => {
+    const { value, done } = await Promise.race([reader.read(), timeout(ms, "silent")]);
+    if (done) return false;
+    const chunk = dec.decode(value, { stream: true });
+    if (isJson) { raw += chunk; return true; }
+    buf += chunk;
+    const lines = buf.split(/\r?\n/); buf = lines.pop();
+    lines.forEach(eat);
+    return true;
+  };
+  // Phase 1: wait for the first text.
+  const deadline = Date.now() + firstMs;
+  try {
+    while (!pending.length) {
+      const left = deadline - Date.now();
+      if (left <= 0) return fail(200, "no text in time");
+      if (!(await pump(left))) break;
     }
+  } catch (e) { return fail(200, e.message); }
+  if (isJson && !pending.length) {
+    // Provider ignored stream:true and sent one JSON answer.
+    try {
+      const j = JSON.parse(raw);
+      const t = p.kind === "gemini" ? geminiEvent(Array.isArray(j) ? j[0] : j).text : ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "");
+      if (t) pending.push(t);
+    } catch { /* fall through */ }
+  }
+  if (!pending.length) { if (buf) eat(buf); }
+  if (!pending.length) return fail(200, finish === "BLOCKED" ? "blocked" : "empty answer");
+  // Phase 2: hand over a stream that starts with what we already have.
+  const enc = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const flush = () => { while (pending.length) controller.enqueue(enc.encode(pending.shift())); };
+      try {
+        flush();
+        while (await pump(IDLE_MS)) flush();
+        if (buf) eat(buf);
+        flush();
+        if (finish && finish !== "ERROR") controller.enqueue(enc.encode("\u0000" + finish));
+      } catch { controller.enqueue(enc.encode("\u0000CUT")); }
+      finally { try { controller.close(); } catch { /* closed */ } ctl.abort(); }
+    },
+    cancel() { ctl.abort(); }
   });
+  return { ok: true, stream };
 }
 
 export async function POST(request) {
@@ -177,20 +248,17 @@ export async function POST(request) {
     const p = PROVIDERS[id];
     if (wantsVision && !p.vision) continue;
     for (const model of p.models) {
-      let upstream;
-      try {
-        upstream = await (p.kind === "gemini" ? geminiRequest : openaiRequest)(p, model, env(p.key), body, request.signal);
-      } catch { tried.push(`${id}:${model}:network`); continue; }
-      if (upstream.ok && upstream.body) {
-        const stream = relay(upstream, p.kind === "gemini" ? geminiEvent : openaiEvent);
-        return new Response(stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
+      if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
+      const r = await attempt(p, model, body, request.signal);
+      if (r.ok) {
+        console.log(`answered by ${id}/${model}` + (tried.length ? ` after: ${tried.join(" | ")}` : ""));
+        return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
       }
-      if (upstream.status === 429) sawLimit = true;
-      tried.push(`${id}:${model}:${upstream.status}`);
-      try { await upstream.body?.cancel(); } catch { /* ignore */ }
+      if (r.status === 429) sawLimit = true;
+      tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
     }
   }
   if (wantsVision && !tried.length) return json({ error: "no_vision" }, 422);
-  console.warn("all providers failed", tried.join(" "));
+  console.warn("all providers failed:\n  " + tried.join("\n  "));
   return json({ error: sawLimit ? "rate_limited" : "upstream", tried: tried.length }, sawLimit ? 429 : 502);
 }
