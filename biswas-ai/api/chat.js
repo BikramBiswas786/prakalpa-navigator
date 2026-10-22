@@ -22,7 +22,7 @@ const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.t
 
 const PROVIDERS = {
   gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-latest,gemini-flash-lite-latest") },
-  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "meta/llama-4-maverick-17b-128e-instruct,moonshotai/kimi-k2-instruct,meta/llama-3.3-70b-instruct") },
+  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "moonshotai/kimi-k2-instruct,deepseek-ai/deepseek-v3.1,meta/llama-4-maverick-17b-128e-instruct,meta/llama-3.3-70b-instruct") },
   mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-medium-latest,mistral-small-latest") },
   groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-120b,llama-3.3-70b-versatile,openai/gpt-oss-20b") },
   openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "moonshotai/kimi-k2:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
