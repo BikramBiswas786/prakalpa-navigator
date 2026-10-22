@@ -7,10 +7,10 @@ The app has two separate sections, switched in the header (অফিস / জন
 ### অফিস — Office (for SDO office staff)
 | Tab | What it does |
 |---|---|
+| **বিক্রম AI / Bikram AI** (first tab) | A chat that works like a drafting partner: it asks what to create (notesheet, DFA, order, notice, report, Excel, Word, PDF), asks only for the missing details, then writes the document in paragraphs. Each document appears as a printable page in the chat with **Print, Word, PDF, Excel** (tables), Edit, "open in drafting desk" and **Keep as approved**. **Memory:** Bikram AI saves lasting facts it learns (names, designations, office, preferred formats, corrections) and the drafts you approve, and uses them in every later conversation; see, add, delete, export or import them in the **Memory / স্মৃতি** panel. The model does not retrain; it improves through this memory and your approved examples. |
 | **লেখার টেবিল / Drafting desk** | Choose the document (notesheet put up to the SDO, DFA for the SDO's signature, office order, hearing or show-cause notice, RTI reply, enquiry report, caste certificate re-verification report, general letter), fill To / Subject / PUC / facts, attach a GO or letter, and the AI writes it on a paper-style page in paragraphs. Edit it yourself or give an "AI revise" instruction; undo; print view; save as **Word** or **PDF**. Uses the office's own letterhead when a sample letter is set in Settings. |
 | **টেবিল / Excel** | Editable grid; "make a table from this text" with AI; open an Excel / CSV file; save as **Excel** or **PDF**; copy to paste into Excel. |
 | **ফাইল টুল / File tools** | Word → PDF, Excel → PDF, photos → PDF, merge PDFs, take text out of a PDF or Word file (copy it or send it to the drafting desk). Runs inside the browser; files are not uploaded. |
-| **AI চ্যাট / AI chat** | Ask anything; attach PDFs, Word, Excel or photos; send any answer to the drafting desk or save it as Word / PDF / Excel. |
 
 Office rules built into the AI: the dealing employee writes the note and the draft, puts them up directly to the SDO, and only the SDO approves or rejects; notes and drafts are in paragraphs, not points.
 

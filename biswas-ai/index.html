@@ -167,6 +167,16 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 #langpick { width: min(420px, calc(100vw - 32px)); text-align: center; }
 #langpick .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
 #langpick .choices button { padding: 22px 10px; font-size: 1.3rem; font-family: var(--f-display); font-weight: 700; }
+.docard { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 10px; display: grid; gap: 8px; min-width: 0; }
+.docard-h { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
+.docard .paper { min-height: 0; resize: none; box-shadow: none; padding: clamp(14px, 3vw, 32px); }
+.bk-text { background: none; border: 0; padding: 0; }
+.msg.ai.bk { gap: 10px; }
+.learned { font-size: .78rem; color: var(--ok); background: var(--ok-soft); border-radius: 6px; padding: 4px 8px; }
+#memory { width: min(640px, calc(100vw - 24px)); max-height: 90vh; }
+.memlist { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; max-height: 32vh; overflow: auto; }
+.memlist li { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: .88rem; }
+.memlist li.lead { border: 0; }
 .ver { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; align-self: center; }
 .subnav { background: var(--surface); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
 .subnav::-webkit-scrollbar { display: none; }
@@ -249,7 +259,7 @@ textarea.paper { white-space: pre-wrap; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v4</small></div>
+    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v5</small></div>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
@@ -365,7 +375,7 @@ textarea.paper { white-space: pre-wrap; }
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -387,6 +397,19 @@ textarea.paper { white-space: pre-wrap; }
       <input type="file" id="sample-in" accept=".docx,.pdf,.txt"></div>
     <div style="display:flex;gap:8px"><button class="btn primary" value="save" data-t="save">Save</button><button class="btn" value="cancel" formnovalidate data-t="cancel">Cancel</button></div>
   </form>
+</dialog>
+
+<dialog id="memory" aria-labelledby="mem-h">
+  <div class="form">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2 id="mem-h" data-t="mem_title"></h2><button class="btn small" type="button" id="memory-close" data-t="close"></button></div>
+    <p class="lead" data-t="mem_help"></p>
+    <h3 data-t="mem_facts"></h3>
+    <ul class="memlist" id="mem-list"></ul>
+    <form class="revise" id="mem-addform"><input id="mem-new" aria-label="New memory"><button class="btn" type="submit" data-t="mem_add"></button></form>
+    <h3 data-t="mem_examples"></h3>
+    <ul class="memlist" id="mem-ex"></ul>
+    <div class="tools"><button class="btn small" type="button" id="mem-export" data-t="mem_export"></button><input type="file" id="mem-file" hidden accept=".json,application/json"><button class="btn small" type="button" id="mem-import" data-t="mem_import"></button><button class="btn small" type="button" id="mem-clear" data-t="mem_clear"></button></div>
+  </div>
 </dialog>
 
 <dialog id="langpick" aria-labelledby="langpick-h">
@@ -413,7 +436,7 @@ const DEFAULTS = { officer: "Sub-Divisional Officer", subdiv: "Sadar", district:
 let settings = Object.assign({}, DEFAULTS, store.get("settings", {}));
 if (settings.lang !== "en") settings.lang = "bn";   // one switch: screen language = answer language
 let mode = store.get("mode", "office");          // section: "office" or "public"
-let tabs = Object.assign({ office: "draft", public: "catalog" }, store.get("tabs", {}));
+let tabs = Object.assign({ office: "chat", public: "catalog" }, store.get("tabs", {}));
 const chats = { office: store.get("chat:office", store.get("chat", [])), public: store.get("chat:public", []) };
 let messages = chats[mode];   // {role, content, shown, files, via}
 let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
@@ -445,6 +468,13 @@ const STR = {
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
     dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
     ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
+    tab_bikram: "বিক্রম AI", ph_bikram: "বিক্রম AI-কে লিখুন… যেমন: শো-কজ নোটিশের একটা নোটশিট লাগবে",
+    bk_hello_h: "নমস্কার, আমি বিক্রম AI", bk_hello_p: "কী তৈরি করবেন বলুন — নোটশিট, খসড়া চিঠি, আদেশ, নোটিশ, রিপোর্ট, Excel, Word বা PDF। দরকারি তথ্য আমি জিজ্ঞাসা করে নেব, তারপর অনুচ্ছেদে লিখে দেব। প্রিন্ট, Word, PDF, Excel বোতাম লেখার নিচেই থাকবে। যত কাজ করবেন, তত আপনার অফিসের নাম, ফরম্যাট ও পছন্দ মনে রাখব।",
+    bk_choices: [["নোটশিট", "SDO-র কাছে পেশ", "আমি একটি নোটশিট তৈরি করতে চাই।"], ["খসড়া চিঠি (DFA)", "SDO-র স্বাক্ষরের জন্য", "আমি SDO-র স্বাক্ষরের জন্য একটি খসড়া চিঠি তৈরি করতে চাই।"], ["অফিস আদেশ", "মেমোরান্ডাম / আদেশ", "আমি একটি অফিস আদেশ তৈরি করতে চাই।"], ["নোটিশ", "শুনানি / শো-কজ", "আমি একটি নোটিশ (শুনানি / শো-কজ) তৈরি করতে চাই।"], ["রিপোর্ট", "এনকোয়ারি / মাসিক / পুনর্যাচাই", "আমি একটি রিপোর্ট তৈরি করতে চাই।"], ["Excel টেবিল", "তালিকা, হিসাব, বিবরণী", "আমি একটি Excel টেবিল তৈরি করতে চাই।"], ["Word / PDF ফাইল", "যেকোনো চিঠি বা নথি", "আমি একটি Word / PDF ফাইল তৈরি করতে চাই।"], ["অন্য কিছু", "যা দরকার বলুন", "নমস্কার, আমার একটা কাজে সাহায্য দরকার।"]],
+    doc_print: "প্রিন্ট", doc_approve: "অনুমোদিত হিসেবে রাখুন", doc_approved: "রাখা হয়েছে। পরের খসড়ায় বিক্রম AI এই ধরন মেনে চলবে।", doc_saved: "নথি সংশোধিত",
+    mem_btn: "স্মৃতি", mem_title: "বিক্রম AI-এর স্মৃতি", mem_help: "বিক্রম AI কথাবার্তা থেকে স্থায়ী তথ্য (নাম, পদ, অফিস, পছন্দের ফরম্যাট, সংশোধন) মনে রাখে এবং অনুমোদিত খসড়ার ধরন মেনে চলে। স্মৃতি এই ব্রাউজারে থাকে; অন্য কম্পিউটারে নিতে ফাইলে রাখুন।", mem_facts: "মনে রাখা তথ্য", mem_examples: "অনুমোদিত খসড়ার নমুনা", mem_add: "যোগ করুন", mem_add_ph: "নতুন তথ্য, যেমন: স্বাক্ষরকারী — শ্রী অমুক, মহকুমা শাসক, কালনা",
+    mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
+    mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "Biswas AI for Office",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
@@ -488,6 +518,13 @@ const STR = {
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
     dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
     ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
+    tab_bikram: "Bikram AI", ph_bikram: "Write to Bikram AI… e.g. I need a notesheet for a show-cause notice",
+    bk_hello_h: "Hello, I am Bikram AI", bk_hello_p: "Tell me what to create — notesheet, draft letter, order, notice, report, Excel, Word or PDF. I will ask for the details I need, then write it in paragraphs. Print, Word, PDF and Excel buttons appear under every document. The more we work, the more I remember your office's names, formats and preferences.",
+    bk_choices: [["Notesheet", "Put up to the SDO", "I want to create a notesheet."], ["Draft letter (DFA)", "For the SDO's signature", "I want to create a draft letter for the SDO's signature."], ["Office order", "Memorandum / order", "I want to create an office order."], ["Notice", "Hearing / show-cause", "I want to create a notice (hearing / show-cause)."], ["Report", "Enquiry / monthly / re-verification", "I want to create a report."], ["Excel table", "List, account, statement", "I want to create an Excel table."], ["Word / PDF file", "Any letter or document", "I want to create a Word / PDF file."], ["Something else", "Tell me what you need", "Hello, I need help with a task."]],
+    doc_print: "Print", doc_approve: "Keep as approved", doc_approved: "Kept. Bikram AI will follow this style in later drafts.", doc_saved: "Document updated",
+    mem_btn: "Memory", mem_title: "Bikram AI's memory", mem_help: "Bikram AI remembers lasting facts from your chats (names, designations, office, preferred formats, corrections) and follows the style of drafts you approve. Memory stays in this browser; save it to a file to move it to another computer.", mem_facts: "Remembered facts", mem_examples: "Approved draft examples", mem_add: "Add", mem_add_ph: "New fact, e.g. Signing officer — Sri X, SDO, Kalna",
+    mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
+    mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "for Office",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
@@ -1165,7 +1202,7 @@ async function serverAsk(system, turns, imgs, { signal, onText }) {
 
 /* turns: [{role, content}] ending with the user's request. Resolves {text, via, truncated};
    rejects {code, text?}. A 150 s guard turns a hang into a clear "timeout". */
-async function aiRun(turns, { images = [], onText = () => {}, signal } = {}) {
+async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false } = {}) {
   if (!engine) throw { code: "not_ready" };
   const guard = new AbortController();
   let timedOut = false;
@@ -1174,7 +1211,8 @@ async function aiRun(turns, { images = [], onText = () => {}, signal } = {}) {
   try {
     const opts = { cache: false, signal: guard.signal, onText };
     if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
-    const r = engine === "claude" ? await sample([{ role: "user", content: rules() }, ...turns], opts) : await serverAsk(rules(), turns, images, opts);
+    const system = rules() + (agent ? bikramRules() : "");
+    const r = engine === "claude" ? await sample([{ role: "user", content: system }, ...turns], opts) : await serverAsk(system, turns, images, opts);
     return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
   } catch (e) {
     if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
@@ -1191,7 +1229,7 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { office: ["draft", "table", "files", "chat"], public: ["catalog", "chat"] };
+const TABS = { office: ["chat", "draft", "table", "files"], public: ["catalog", "chat"] };
 const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog" };
 function showView() {
   let tab = tabs[mode];
@@ -1199,7 +1237,7 @@ function showView() {
   $("#sec-office").setAttribute("aria-pressed", mode === "office");
   $("#sec-public").setAttribute("aria-pressed", mode === "public");
   $("#open-settings").hidden = mode !== "office";
-  $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" && mode === "public" ? "tab_helper" : TAB_LABEL[id]))}</button>`).join("");
+  $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
   ["draft", "table", "files", "catalog", "detail", "chat"].forEach(id => { $("#v-" + id).hidden = id !== tab; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
@@ -1235,6 +1273,7 @@ function applyLang() {
   $("#d-paper").placeholder = t("d_paper_ph");
   $("#d-rev").placeholder = t("d_rev_ph");
   $("#t-src").placeholder = t("t_src_ph");
+  $("#mem-new").placeholder = t("mem_add_ph");
 }
 
 /* ---------------- OFFICE: drafting desk ---------------- */
@@ -1431,10 +1470,133 @@ function openDetail(id) {
   try { history.replaceState(null, "", "#s-" + id); } catch (e) { /* ignore */ }
 }
 
+/* ---------------- Bikram AI: office chat that asks, writes documents and remembers ---------------- */
+// Memory lives in this browser (and can be exported / imported as a file). The model itself does not
+// retrain; it gets better here by reading these remembered facts and the drafts the user approved.
+let memory = store.get("bk:memory", []);        // [{text, at}]
+let examples = store.get("bk:examples", []);    // [{type, title, md, at}]
+const saveMemory = () => { store.set("bk:memory", memory); store.set("bk:examples", examples); };
+const MEM_MAX = 80, EX_MAX = 10;
+function learn(lines) {
+  const added = [];
+  for (let line of lines) {
+    line = line.replace(/^\s*[-*•]\s*/, "").trim();
+    if (!line) continue;
+    const forget = line.match(/^FORGET:\s*(.+)$/i);
+    if (forget) { const key = forget[1].toLowerCase(); memory = memory.filter(m => !m.text.toLowerCase().includes(key)); continue; }
+    if (line.length > 300 || memory.some(m => m.text.toLowerCase() === line.toLowerCase())) continue;
+    memory.push({ text: line, at: today() }); added.push(line);
+  }
+  if (memory.length > MEM_MAX) memory = memory.slice(-MEM_MAX);
+  saveMemory();
+  return added;
+}
+const DOC_START = /<<<DOC([^>\n]*)>>>/, DOC_END = "<<<END DOC>>>";
+// Pulls the hidden memory block out of a reply (also while it is still streaming).
+function splitMemory(text) {
+  const i = text.indexOf("<<<MEMORY>>>");
+  if (i < 0) return { clean: text.replace(/<<<?M?E?M?O?R?Y?>?>?>?\s*$/, ""), lines: [] };
+  const j = text.indexOf("<<<END MEMORY>>>", i);
+  const body = text.slice(i + 12, j < 0 ? undefined : j);
+  return { clean: (text.slice(0, i) + (j < 0 ? "" : text.slice(j + 16))).trim(), lines: j < 0 ? [] : body.split("\n") };
+}
+// Splits a reply into chat text and document blocks.
+function splitDocs(text) {
+  const out = []; let rest = text;
+  for (;;) {
+    const m = rest.match(DOC_START);
+    if (!m) { if (rest.trim()) out.push({ t: "text", md: rest.replace(/<<<D?O?C?[^>\n]*$/, "") }); break; }
+    if (rest.slice(0, m.index).trim()) out.push({ t: "text", md: rest.slice(0, m.index) });
+    const attr = m[1];
+    const after = rest.slice(m.index + m[0].length);
+    const end = after.indexOf(DOC_END);
+    out.push({ t: "doc", type: (attr.match(/type="([^"]*)"/) || [])[1] || "other", title: (attr.match(/title="([^"]*)"/) || [])[1] || "document", md: (end < 0 ? after : after.slice(0, end)).trim(), open: end < 0 });
+    if (end < 0) break;
+    rest = after.slice(end + DOC_END.length);
+  }
+  return out;
+}
+function replaceDoc(text, j, md) {
+  let n = -1;
+  return text.replace(/(<<<DOC[^>\n]*>>>)([\s\S]*?)(<<<END DOC>>>)/g, (all, a, body, b) => (++n === j ? `${a}\n${md}\n${b}` : all));
+}
+function bikramRules() {
+  const mem = memory.length ? memory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
+  const ex = examples.slice(-3).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 2500)}`).join("\n\n");
+  return `
+YOU ARE "BIKRAM AI" (বিক্রম AI), the office-work chat inside Biswas AI for Office, made by Bikram Biswas. Work like an experienced dealing assistant and drafting partner, in a natural chat.
+How to work:
+- If the user has not said what they need, greet in one line and ask what to create: notesheet, draft letter (DFA), office order, notice (hearing / show-cause), report, RTI reply, Excel table, Word file, PDF, or anything else.
+- Then ask only for what is missing, at most two or three short questions at a time (subject, PUC / reference, addressee, key facts and dates, language). Use what you already remember instead of asking again. If the user says "you decide" or has given enough, write it.
+- When you produce a document, put it between a line <<<DOC type="notesheet|letter|order|notice|report|table|other" title="short English title">>> and a line <<<END DOC>>>. Inside: only the document in Markdown, ready to print, written in paragraphs (not points), except naturally list-like parts such as enclosures or copy-to lines. For Excel or any tabular need, use type="table" and a Markdown table.
+- Outside the block write at most two short lines (what to fill in or check) and offer to change anything. For a change request, output the complete revised document in a new block.
+- Word, PDF, Excel and Print buttons appear under every document automatically; do not explain how to convert files.
+Memory (it makes you better over time):
+- What you remember about this user and office is listed below. Use it (names, designations, office, preferred language and format) without asking again.
+- When you learn a lasting fact or preference (names and designations, office details, preferred language or layout, a correction the user makes, recurring tasks), add at the very end of your reply a block: a line <<<MEMORY>>>, then one fact per line starting with "- ", then a line <<<END MEMORY>>>. Only durable, useful facts. To drop a wrong memory write "- FORGET: <words of that memory>". Skip the block when there is nothing new.
+WHAT YOU REMEMBER:
+${mem}
+${ex ? `DRAFTS THIS OFFICE APPROVED (follow their style and layout):\n${ex}` : ""}`;
+}
+const DOC_LABEL = { notesheet: ["নোটশিট", "Notesheet"], letter: ["চিঠি", "Letter"], order: ["আদেশ", "Order"], notice: ["নোটিশ", "Notice"], report: ["রিপোর্ট", "Report"], table: ["টেবিল / Excel", "Table / Excel"], other: ["নথি", "Document"] };
+const docLabel = type => (DOC_LABEL[type] || DOC_LABEL.other)[settings.lang === "en" ? 1 : 0];
+const CAN_PRINT = (() => { try { return window.self === window.top; } catch (e) { return false; } })();
+function printDoc(md) {
+  const f = document.createElement("iframe");
+  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Serif+Bengali:wght@400;700&display=swap"><style>@page{size:A4;margin:18mm 16mm}body{font:12pt/1.65 "Noto Serif","Noto Serif Bengali",serif;color:#000}table{border-collapse:collapse;width:100%}th,td{border:1px solid #555;padding:4px 6px;text-align:left;vertical-align:top}p{margin:0 0 9pt}</style></head><body>${mdToHtml(md)}</body></html>`;
+  f.onload = () => { setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { toast(t("dl_fail")); } setTimeout(() => f.remove(), 60000); }, 400); };
+  document.body.append(f);
+}
+function docCardHtml(d, k, j, done) {
+  const isTable = d.type === "table" || parseMd(d.md).some(b => b.t === "table");
+  return `<div class="docard">
+    <div class="docard-h"><span class="pill ok">${esc(docLabel(d.type))}</span> <b>${esc(d.title)}</b></div>
+    <div class="paper doc">${mdToHtml(d.md)}</div>
+    ${done && !d.open ? `<div class="actions">
+      ${CAN_PRINT ? `<button class="btn small primary" data-dact="print" data-k="${k}" data-j="${j}">${esc(t("doc_print"))}</button>` : ""}
+      ${canSave() ? `<button class="btn small" data-dact="docx" data-k="${k}" data-j="${j}">Word</button><button class="btn small" data-dact="pdf" data-k="${k}" data-j="${j}">PDF</button>${isTable ? `<button class="btn small" data-dact="xlsx" data-k="${k}" data-j="${j}">Excel</button>` : ""}` : ""}
+      <button class="btn small" data-dact="edit" data-k="${k}" data-j="${j}">${esc(t("edit"))}</button>
+      <button class="btn small" data-dact="desk" data-k="${k}" data-j="${j}">${esc(t("tab_draft"))} →</button>
+      <button class="btn small" data-dact="approve" data-k="${k}" data-j="${j}">${esc(t("doc_approve"))}</button>
+    </div>` : ""}
+  </div>`;
+}
+function bikramMsgHtml(m, k) {
+  const shown = splitMemory(m.content).clean;
+  if (m.editDoc != null) {
+    const d = splitDocs(shown).filter(p => p.t === "doc")[m.editDoc];
+    return `<div class="msg ai" data-k="${k}"><textarea class="edit-area" id="edoc-${k}" aria-label="${esc(t("edit"))}">${esc(d ? d.md : "")}</textarea><div class="actions"><button class="btn small primary" data-dact="edit-save" data-k="${k}" data-j="${m.editDoc}">${esc(t("save"))}</button></div></div>`;
+  }
+  let j = -1;
+  const parts = shown ? splitDocs(shown).map(p => p.t === "doc" ? docCardHtml(p, k, ++j, m.done) : `<div class="doc bk-text">${mdToHtml(p.md)}</div>`).join("") : (m.done ? "" : `<div class="doc">${thinkingHtml(m)}</div>`);
+  return `<div class="msg ai bk" data-k="${k}">
+    ${parts}
+    ${m.learned && m.learned.length ? `<div class="learned">${esc(t("mem_learned"))}${m.learned.map(esc).join(" · ")}</div>` : ""}
+    ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
+    ${m.via && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
+  </div>`;
+}
+function bikramWelcome() {
+  const ch = t("bk_choices");
+  return `<div class="welcome">
+    <h2>${esc(t("bk_hello_h"))}</h2>
+    <p>${esc(t("bk_hello_p"))}</p>
+    <div class="starters">${ch.map((c, i) => `<button class="starter" type="button" data-bk="${i}"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></button>`).join("")}</div>
+    <p class="sch-note">${esc(t("mem_count", memory.length, examples.length))} <button class="btn small" type="button" data-open-memory>${esc(t("mem_btn"))}</button></p>
+  </div>`;
+}
+function renderMemory() {
+  $("#mem-list").innerHTML = memory.length ? memory.map((m, i) => `<li><span>${esc(m.text)}</span> <button class="btn small" type="button" data-mem-del="${i}" aria-label="${esc(t("remove"))}">✕</button></li>`).join("") : `<li class="lead">${esc(t("mem_empty"))}</li>`;
+  $("#mem-ex").innerHTML = examples.length ? examples.map((e, i) => `<li><span>${esc(docLabel(e.type))}: ${esc(e.title)} <small class="lead">${esc(e.at)}</small></span> <button class="btn small" type="button" data-ex-del="${i}" aria-label="${esc(t("remove"))}">✕</button></li>`).join("") : `<li class="lead">${esc(t("mem_empty"))}</li>`;
+}
+function openMemory() { renderMemory(); $("#memory").showModal(); }
+
 /* ---------------- AI chat (both sections) ---------------- */
 const tasks = () => TASKS[mode][settings.lang] || TASKS[mode].bn;
 function welcomeHtml() {
   const office = mode === "office";
+  if (office) return bikramWelcome();
   return `<div class="welcome">
     <h2>${esc(t(office ? "w_office_h" : "w_public_h"))}</h2>
     <p>${esc(t(office ? "w_office_p" : "w_public_p"))}</p>
@@ -1447,6 +1609,7 @@ function thinkingHtml(m) {
   return `<span class="thinking">${esc(t("thinking"))} <span class="secs" data-started="${m.started || Date.now()}">${s}</span> ${esc(t("secs"))}<small${s < 20 ? " hidden" : ""}>${esc(t("slow"))}</small></span>`;
 }
 function msgHtml(m, k) {
+  if (m.role !== "user" && mode === "office") return bikramMsgHtml(m, k);
   if (m.role === "user") {
     return `<div class="msg user">${m.files && m.files.length ? `<div class="files">${m.files.map(f => `<span class="file">${esc(f)}</span>`).join("")}</div>` : ""}<div class="bubble">${esc(m.shown ?? m.content)}</div></div>`;
   }
@@ -1464,7 +1627,8 @@ function msgHtml(m, k) {
 }
 function renderChat() {
   $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
-  $("#q").placeholder = t(mode === "office" ? "ph_office" : "ph_public");
+  $("#q").placeholder = t(mode === "office" ? "ph_bikram" : "ph_public");
+  $("#open-memory").hidden = mode !== "office";
   renderPending();
 }
 const render = renderChat;
@@ -1511,9 +1675,11 @@ async function ask(text) {
   while (turns.length && turns[0].role !== "user") turns.shift();
   ctl = new AbortController();
   const live = () => box === messages;
+  const agent = box === chats.office;
   try {
-    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = r.text; ai.via = r.via;
+    if (agent) { const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines); }
     if (r.truncated) ai.error = errText("cut");
   } catch (e) {
     const code = e && e.code;
@@ -1621,6 +1787,16 @@ document.addEventListener("change", e => {
 });
 
 $("#c-search").addEventListener("input", renderCatalog);
+$("#mem-addform").addEventListener("submit", e => { e.preventDefault(); const v = $("#mem-new").value.trim(); if (!v) return; learn([v]); $("#mem-new").value = ""; renderMemory(); });
+$("#mem-file").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    learn((j.memory || []).map(m => m.text || m));
+    for (const ex of j.examples || []) if (ex && ex.md && !examples.some(x => x.md === ex.md)) examples.push(ex);
+    examples = examples.slice(-EX_MAX); saveMemory(); renderMemory(); toast(t("mem_imported"));
+  } catch (err) { toast(t("dl_fail")); }
+});
 
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
@@ -1663,6 +1839,27 @@ document.addEventListener("click", e => {
   // chat
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
+  // Bikram AI
+  if ((x = el("[data-bk]"))) return ask(t("bk_choices")[+x.dataset.bk][2]);
+  if ((x = el("[data-dact]"))) {
+    const k = +x.dataset.k, j = +x.dataset.j, m = messages[k], act = x.dataset.dact;
+    const d = splitDocs(splitMemory(m.content).clean).filter(p => p.t === "doc")[j];
+    if (act === "edit-save") { m.content = replaceDoc(m.content, j, $(`#edoc-${k}`).value); m.editDoc = null; updateAt(k); persist(); return toast(t("doc_saved")); }
+    if (!d) return;
+    if (act === "print") return printDoc(d.md);
+    if (act === "edit") { m.editDoc = j; updateAt(k); return; }
+    if (act === "desk") { draft.prev = draft.text; draft.text = d.md; saveDraft(); return go("office", "draft"); }
+    if (act === "approve") { examples.push({ type: d.type, title: d.title, md: d.md.slice(0, 4000), at: today() }); if (examples.length > EX_MAX) examples = examples.slice(-EX_MAX); saveMemory(); return toast(t("doc_approved")); }
+    const name = (d.title.replace(/[^A-Za-z0-9 _-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40) || d.type);
+    return save(act, d.md, x, name);
+  }
+  if (el("[data-open-memory], #open-memory")) return openMemory();
+  if (el("#memory-close")) return $("#memory").close();
+  if ((x = el("[data-mem-del]"))) { memory.splice(+x.dataset.memDel, 1); saveMemory(); return renderMemory(); }
+  if ((x = el("[data-ex-del]"))) { examples.splice(+x.dataset.exDel, 1); saveMemory(); return renderMemory(); }
+  if (el("#mem-export")) return offer(`bikram-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI for Office", memory, examples }, null, 2)], { type: "application/json" }));
+  if (el("#mem-import")) return $("#mem-file").click();
+  if (el("#mem-clear")) { memory = []; examples = []; saveMemory(); renderMemory(); return toast(t("mem_cleared")); }
   if ((x = el("[data-act]"))) {
     const k = +x.closest(".msg").dataset.k; const m = messages[k]; const act = x.dataset.act;
     if (act === "copy") navigator.clipboard.writeText(m.content).then(() => toast(t("copied")), () => toast(t("copy_fail")));
