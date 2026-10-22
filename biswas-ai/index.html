@@ -46,6 +46,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 var(--f-body); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
@@ -159,6 +160,13 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc .tbl { overflow: visible; }
 /* ---- two sections: header, sub-tabs, page views ---- */
 .app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+.langbox { display: flex; align-items: center; gap: 8px; border: 2px solid var(--accent); border-radius: 10px; padding: 3px 4px 3px 10px; background: var(--accent-soft); }
+.langbox > span { font-size: .78rem; font-weight: 600; color: var(--accent); white-space: nowrap; }
+.langbox .seg { border-color: var(--accent); }
+@media (max-width: 600px) { .langbox > span { display: none; } .langbox { padding: 2px; } }
+#langpick { width: min(420px, calc(100vw - 32px)); text-align: center; }
+#langpick .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+#langpick .choices button { padding: 22px 10px; font-size: 1.3rem; font-family: var(--f-display); font-weight: 700; }
 .ver { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; align-self: center; }
 .subnav { background: var(--surface); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
 .subnav::-webkit-scrollbar { display: none; }
@@ -241,14 +249,17 @@ textarea.paper { white-space: pre-wrap; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span><small class="ver" title="App version">v3</small></div>
+    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v4</small></div>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
     </div>
-    <div class="seg" role="group" aria-label="Language">
-      <button type="button" id="lang-bn" aria-pressed="true">বাংলা</button>
-      <button type="button" id="lang-en" aria-pressed="false">EN</button>
+    <div class="langbox" role="group" aria-labelledby="lang-label">
+      <span id="lang-label">ভাষা / Language</span>
+      <div class="seg">
+        <button type="button" id="lang-bn" aria-pressed="true" lang="bn">বাংলা</button>
+        <button type="button" id="lang-en" aria-pressed="false" lang="en">English</button>
+      </div>
     </div>
     <button class="btn" id="open-settings" type="button" data-t="settings">সেটিংস</button>
   </header>
@@ -378,6 +389,12 @@ textarea.paper { white-space: pre-wrap; }
   </form>
 </dialog>
 
+<dialog id="langpick" aria-labelledby="langpick-h">
+  <h2 id="langpick-h">ভাষা বেছে নিন · Choose your language</h2>
+  <p class="lead">পরে উপরের সুইচ থেকে বদলাতে পারবেন। · You can change it later from the switch at the top.</p>
+  <div class="choices"><button class="btn primary" type="button" data-pick-lang="bn" lang="bn">বাংলা</button><button class="btn primary" type="button" data-pick-lang="en" lang="en">English</button></div>
+</dialog>
+
 <dialog id="status">
   <div class="form">
     <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2 data-t="stat_title"></h2><button class="btn small" type="button" id="status-close" data-t="close">বন্ধ</button></div>
@@ -428,6 +445,7 @@ const STR = {
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
     dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
     ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
+    brand: "বিশ্বাস AI", brand_sub: "Biswas AI for Office",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
@@ -470,6 +488,7 @@ const STR = {
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
     dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
     ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
+    brand: "Biswas AI", brand_sub: "for Office",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
@@ -1164,8 +1183,8 @@ async function aiRun(turns, { images = [], onText = () => {}, signal } = {}) {
 }
 function aiFailed(e) {
   const code = e && e.code;
-  if (code === "server_unconfigured") showBanner(errText(code));
-  if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) showBanner(errText(code === "not_granted" ? code : "sampling_disabled"));
+  if (code === "server_unconfigured") showBanner(() => errText(code));
+  if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) showBanner(() => errText(code === "not_granted" ? code : "sampling_disabled"));
   return code === "not_ready" ? t("no_ai") : errText(code);
 }
 const attachText = files => files.filter(f => f.text).map(f => `--- Attached file: ${f.name} ---\n${f.text}\n--- End of ${f.name} ---`).join("\n\n");
@@ -1194,8 +1213,20 @@ function go(section, tab) {
   store.set("tabs", tabs);
   showView();
 }
+function setLang(lang) {
+  settings.lang = lang === "en" ? "en" : "bn";
+  store.set("settings", settings); store.set("langChosen", true);
+  if (gridIsDefault()) { grid = GRID_DEFAULT[settings.lang].map(r => r.slice()); saveGrid(); }
+  if (draft.text === "" ) { draft.lang = settings.lang; saveDraft(); }
+  applyLang();
+  $("#f-grid").dataset.lang = "";
+  const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1];
+  if (mode === "public" && tabs.public === "detail" && id) openDetail(id); else showView();
+}
 function applyLang() {
   document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
+  document.title = settings.lang === "en" ? "Biswas AI for Office" : "বিশ্বাস AI · Biswas AI for Office";
+  if (bannerText) $("#banner-text").textContent = bannerText();
   document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
   $("#lang-bn").setAttribute("aria-pressed", settings.lang === "bn");
   $("#lang-en").setAttribute("aria-pressed", settings.lang === "en");
@@ -1269,7 +1300,9 @@ Output only the document in Markdown, ready to print. No preface and no notes af
 }
 
 /* ---------------- OFFICE: table / Excel ---------------- */
-let grid = store.get("grid", [["ক্রম", "বিবরণ", "সংখ্যা"], ["1", "", ""], ["2", "", ""]]);
+const GRID_DEFAULT = { bn: [["ক্রম", "বিবরণ", "সংখ্যা"], ["1", "", ""], ["2", "", ""]], en: [["No.", "Particulars", "Number"], ["1", "", ""], ["2", "", ""]] };
+let grid = store.get("grid", GRID_DEFAULT[settings.lang]);
+const gridIsDefault = () => Object.values(GRID_DEFAULT).some(d => JSON.stringify(d) === JSON.stringify(grid));
 const saveGrid = () => store.set("grid", grid);
 function renderGrid() {
   const w = Math.max(1, ...grid.map(r => r.length));
@@ -1491,7 +1524,8 @@ async function ask(text) {
     ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();
   }
 }
-function showBanner(text) { $("#banner-text").textContent = text; $("#banner").hidden = false; }
+let bannerText = null;
+function showBanner(make) { bannerText = make; $("#banner-text").textContent = make(); $("#banner").hidden = false; }
 
 /* ---------------- AI status (key check) ---------------- */
 async function openStatus() {
@@ -1594,7 +1628,8 @@ document.addEventListener("click", e => {
   if ((x = el("[data-tab]"))) return go(mode, x.dataset.tab);
   if (el("#sec-office")) return go("office");
   if (el("#sec-public")) return go("public");
-  if (el("#lang-bn, #lang-en")) { settings.lang = el("#lang-en") ? "en" : "bn"; store.set("settings", settings); applyLang(); $("#f-grid").dataset.lang = ""; if (tabs.public === "detail" && mode === "public") { const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id) return openDetail(id); } return showView(); }
+  if (el("#lang-bn, #lang-en")) return setLang(el("#lang-en") ? "en" : "bn");
+  if ((x = el("[data-pick-lang]"))) { $("#langpick").close(); return setLang(x.dataset.pickLang); }
   // catalogue
   if ((x = el("[data-cat]"))) { catFilter = x.dataset.cat; return renderCatalog(); }
   if ((x = el("[data-open]"))) return openDetail(x.dataset.open);
@@ -1670,19 +1705,20 @@ Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editin
 if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
 applyLang();
 { const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id && SERVICES.some(s => s.id === id)) { mode = "public"; messages = chats.public; openDetail(id); } else showView(); }
+if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
 (async () => {
   if (!window.claude || !window.claude.use) {
     engine = "server"; imageLimits = { maxCount: 4 };
     $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
-    try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(errText("server_unconfigured")); }
-    catch (e) { showBanner(t("unreachable")); }
+    try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
+    catch (e) { showBanner(() => t("unreachable")); }
     if (tabs[mode] === "chat") renderChat();
     return;
   }
   const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
   sample = s; downloads = d;
   if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
-  else showBanner(t("no_ai_claude"));
+  else showBanner(() => t("no_ai_claude"));
   if (tabs[mode] === "chat") renderChat();
 })();
 </script>
