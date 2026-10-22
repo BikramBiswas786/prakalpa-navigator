@@ -159,6 +159,7 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc .tbl { overflow: visible; }
 /* ---- two sections: header, sub-tabs, page views ---- */
 .app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+.ver { font-family: var(--f-mono); font-size: .7rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; align-self: center; }
 .subnav { background: var(--surface); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
 .subnav::-webkit-scrollbar { display: none; }
 .subnav button { border: 0; background: none; padding: 10px 14px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-display); font-size: 1rem; }
@@ -240,7 +241,7 @@ textarea.paper { white-space: pre-wrap; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span></div>
+    <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span><small class="ver" title="App version">v3</small></div>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
