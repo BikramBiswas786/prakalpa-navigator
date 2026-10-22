@@ -157,85 +157,187 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc h1, .pdf-doc h2, .pdf-doc h3 { font-size: 13pt; margin: 8pt 0 6pt; }
 .pdf-doc hr { border: 0; border-top: 1px solid #999; }
 .pdf-doc .tbl { overflow: visible; }
-/* menu drawer, language switch, schemes, status */
-.menu-btn { display: none; }
-@media (max-width: 900px) {
-  .menu-btn { display: inline-flex; }
-  .brand span { display: none; }
-  header.top { gap: 8px; }
-  body.rail-open .rail { display: grid; position: fixed; top: 0; bottom: 0; left: 0; width: min(320px, 86vw); z-index: 30; box-shadow: 0 0 40px rgba(0,0,0,.3); padding-top: calc(16px + env(safe-area-inset-top, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
-  body.rail-open .scrim { display: block; }
-}
-.scrim { display: none; position: fixed; inset: 0; background: rgba(10, 10, 30, .4); z-index: 25; }
-.rail-close { display: none; }
-@media (max-width: 900px) { .rail-close { display: inline-flex; justify-self: end; } }
-.big { padding: 10px 16px; font-size: .95rem; }
-#schemes { width: min(960px, calc(100vw - 24px)); max-height: 92vh; padding: 0; }
-#schemes .sch-head { position: sticky; top: 0; background: var(--surface); padding: 16px 20px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; z-index: 1; }
-#schemes .sch-head .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-#schemes .sch-head input { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 8px 10px; width: 100%; }
-.sch-note { font-size: .82rem; color: var(--muted); margin: 0; }
-.sch-list { padding: 16px 20px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-.sch { border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 8px; align-content: start; background: var(--sheet); min-width: 0; }
-.sch h3 { font-size: 1.08rem; color: var(--accent); }
-.sch .old { font-size: .8rem; color: var(--muted); }
-.sch dl { margin: 0; display: grid; gap: 6px; }
-.sch dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
-.sch dd { margin: 0; font-size: .9rem; }
+/* ---- two sections: header, sub-tabs, page views ---- */
+.app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+.subnav { background: var(--surface); border-bottom: 1px solid var(--line); display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+.subnav::-webkit-scrollbar { display: none; }
+.subnav button { border: 0; background: none; padding: 10px 14px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-display); font-size: 1rem; }
+.subnav button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.views { min-height: 0; position: relative; }
+.view { height: 100%; }
+.page { overflow-y: auto; }
+.page-inner { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; display: grid; gap: 16px; }
+.page-inner > h2 { font-size: 1.4rem; }
+.lead { color: var(--muted); margin: 0; font-size: .9rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 7px 9px; width: 100%; min-height: 110px; resize: vertical; }
+.tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.status-line { font-size: .82rem; color: var(--muted); }
+.chat.view { display: grid; grid-template-rows: auto 1fr auto; }
+/* drafting desk */
+.draft-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .draft-grid { grid-template-columns: minmax(0, 1fr); } }
+.paperwrap { display: grid; gap: 10px; min-width: 0; }
+.paper { width: 100%; min-height: 62vh; background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: clamp(16px, 4vw, 44px); font: 15.5px/1.75 var(--f-doc); color: var(--ink); resize: vertical; box-shadow: 0 10px 30px -20px rgba(20, 20, 50, .45); }
+.paper:focus { outline: 2px solid var(--accent-soft); }
+textarea.paper { white-space: pre-wrap; }
+.revise { display: flex; gap: 8px; flex-wrap: wrap; }
+.revise input { flex: 1 1 240px; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; }
+.fmt-note { font-size: .8rem; color: var(--muted); }
+.fmt-note button { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; text-decoration: underline; }
+/* table maker */
+.gridwrap { overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); max-height: 60vh; }
+#t-grid { border-collapse: collapse; min-width: 100%; font-size: .92rem; }
+#t-grid td { border: 1px solid var(--line); padding: 6px 8px; min-width: 110px; vertical-align: top; outline: none; }
+#t-grid td:focus { background: var(--accent-soft); }
+#t-grid tr:first-child td { background: var(--accent-soft); font-weight: 600; }
+#t-grid td.rh { min-width: 0; width: 1%; color: var(--muted); font-size: .75rem; text-align: center; background: var(--paper); font-weight: 400; user-select: none; }
+/* file tools */
+.toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.tool h3 { color: var(--accent); font-size: 1.08rem; }
+.tool p { margin: 0; color: var(--muted); font-size: .86rem; }
+.tool .picked { font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+.tool textarea { width: 100%; min-height: 160px; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 8px; font: 13px/1.5 var(--f-body); }
+/* catalogue */
+.c-top { display: grid; gap: 10px; }
+.c-top input { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 11px 14px; width: 100%; font-size: 1rem; }
+.cat-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.cat-chips .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+.card { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 14px; cursor: pointer; display: grid; gap: 6px; align-content: start; color: var(--ink); }
+.card:hover { border-color: var(--accent); }
+.card h3 { font-size: 1.05rem; color: var(--accent); }
+.card .old { font-size: .78rem; color: var(--muted); }
+.card .b { font-size: .88rem; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tag { font-size: .72rem; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; color: var(--muted); }
 .pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .74rem; font-weight: 600; width: max-content; }
 .pill.ok { background: var(--ok-soft); color: var(--ok); }
 .pill.rep { background: var(--warn-soft); color: var(--warn); }
 .pill.unc { background: var(--bad-soft); color: var(--bad); }
+/* scheme detail */
+.detail { max-width: 860px; width: 100%; margin: 0 auto; display: grid; gap: 14px; }
+.detail h2 { font-size: 1.6rem; color: var(--accent); }
+.detail .benefit { font-size: 1.05rem; background: var(--accent-soft); border-radius: var(--r); padding: 12px 16px; }
+.detail section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 18px; }
+.detail section h3 { font-size: 1rem; margin-bottom: 6px; }
+.detail ul, .detail ol { margin: 0; padding-left: 1.3rem; display: grid; gap: 4px; }
+.linkbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.linkbtns a { text-decoration: none; }
 .thinking .secs { font-variant-numeric: tabular-nums; }
 .thinking small { display: block; font-size: .78rem; margin-top: 4px; }
 #status table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 #status th, #status td { border-bottom: 1px solid var(--line); padding: 6px 4px; text-align: left; vertical-align: top; }
 #status td.err { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
 #status .tbl { overflow-x: auto; max-height: 60vh; }
+.sch-note { font-size: .82rem; color: var(--muted); margin: 0; }
+.big { padding: 10px 16px; font-size: .95rem; }
+@media (max-width: 600px) { .brand span { display: none; } header.top { gap: 8px; } }
+@media print { .app > header, .subnav { display: none !important; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <button class="btn menu-btn" id="menu" type="button" data-t="menu">মেনু</button>
     <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span></div>
-    <div class="seg" role="group" aria-label="Mode">
-      <button type="button" id="mode-office" aria-pressed="true" data-t="office">অফিস</button>
-      <button type="button" id="mode-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
+    <div class="seg" role="group" aria-label="Section">
+      <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
+      <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
     </div>
     <div class="seg" role="group" aria-label="Language">
       <button type="button" id="lang-bn" aria-pressed="true">বাংলা</button>
       <button type="button" id="lang-en" aria-pressed="false">EN</button>
     </div>
-    <button class="btn" id="open-schemes" type="button" data-t="schemes">প্রকল্প</button>
-    <button class="btn" id="new-chat" type="button" data-t="newchat">নতুন চ্যাট</button>
     <button class="btn" id="open-settings" type="button" data-t="settings">সেটিংস</button>
   </header>
+  <nav class="subnav" id="subnav" role="tablist"></nav>
 
-  <div class="body">
-    <div class="scrim" id="scrim"></div>
-    <aside class="rail" aria-label="Menu">
-      <button class="btn small rail-close" id="rail-close" type="button" data-t="close">বন্ধ</button>
-      <section><h2 id="rail-title"></h2><div class="tasks" id="rail-tasks"></div></section>
-      <section><h2 data-t="rail_schemes">প্রকল্প</h2><div class="chips" id="scheme-chips"></div>
-        <div style="margin-top:8px"><button class="btn small" type="button" id="open-schemes2" data-t="all_schemes">সব প্রকল্পের বিস্তারিত</button></div></section>
-      <section class="railnote" id="rail-format">
-        <h2 data-t="rail_format">অফিসের ফরম্যাট</h2>
-        <span id="rail-sample"></span>
-        <div style="margin-top:6px"><button class="btn small" type="button" id="open-settings2" data-t="give_sample">নমুনা চিঠি দিন</button></div>
-      </section>
-      <section class="railnote">
-        <h2 data-t="rail_files">ফাইল দিন</h2>
-        <span data-t="files_help"></span>
-      </section>
-      <section class="railnote">
-        <button class="btn small" type="button" id="open-status" data-t="status">AI অবস্থা</button>
-      </section>
-      <section class="railnote" id="owner-notice" hidden></section>
-    </aside>
+  <main class="views">
+    <!-- OFFICE: drafting desk -->
+    <section class="view page" id="v-draft" hidden>
+      <div class="page-inner draft-grid">
+        <form class="panel" id="d-form">
+          <h2 data-t="d_title"></h2>
+          <div class="field"><label for="d-type" data-t="d_type"></label><select id="d-type"></select></div>
+          <div class="field"><label for="d-lang" data-t="d_lang"></label><select id="d-lang"><option value="bn">বাংলা</option><option value="en">English</option></select></div>
+          <div class="field"><label for="d-to" data-t="d_to"></label><input id="d-to"></div>
+          <div class="field"><label for="d-sub" data-t="d_sub"></label><input id="d-sub"></div>
+          <div class="field"><label for="d-ref" data-t="d_ref"></label><input id="d-ref"></div>
+          <div class="field"><label for="d-facts" data-t="d_facts"></label><textarea id="d-facts"></textarea></div>
+          <div class="tools"><input type="file" id="d-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,image/*"><button class="btn small" type="button" id="d-attach" data-t="d_attach"></button></div>
+          <div class="pending" id="d-files"></div>
+          <button class="btn primary big" type="submit" id="d-write" data-t="d_write"></button>
+          <div class="fmt-note" id="d-fmt"></div>
+        </form>
+        <div class="paperwrap">
+          <div class="tools">
+            <button class="btn small" type="button" id="d-toggle"></button>
+            <button class="btn small" type="button" id="d-docx">Word</button>
+            <button class="btn small" type="button" id="d-pdf">PDF</button>
+            <button class="btn small" type="button" id="d-copy" data-t="copy"></button>
+            <button class="btn small" type="button" id="d-undo" data-t="d_undo"></button>
+            <button class="btn small" type="button" id="d-clear" data-t="d_clear"></button>
+            <span class="status-line" id="d-status"></span>
+          </div>
+          <textarea class="paper" id="d-paper" spellcheck="false"></textarea>
+          <div class="paper doc" id="d-view" hidden></div>
+          <form class="revise" id="d-revform"><input id="d-rev"><button class="btn" type="submit" id="d-revise" data-t="d_revise"></button></form>
+        </div>
+      </div>
+    </section>
 
-    <section class="chat">
+    <!-- OFFICE: table / Excel -->
+    <section class="view page" id="v-table" hidden>
+      <div class="page-inner">
+        <h2 data-t="t_title"></h2>
+        <div class="tools">
+          <button class="btn small" type="button" id="t-addrow" data-t="t_addrow"></button>
+          <button class="btn small" type="button" id="t-addcol" data-t="t_addcol"></button>
+          <button class="btn small" type="button" id="t-delrow" data-t="t_delrow"></button>
+          <button class="btn small" type="button" id="t-delcol" data-t="t_delcol"></button>
+          <input type="file" id="t-file" hidden accept=".xlsx,.xls,.csv"><button class="btn small" type="button" id="t-open" data-t="t_import"></button>
+          <button class="btn small primary" type="button" id="t-xlsx">Excel</button>
+          <button class="btn small" type="button" id="t-pdf">PDF</button>
+          <button class="btn small" type="button" id="t-copy" data-t="t_copy"></button>
+          <button class="btn small" type="button" id="t-clear" data-t="d_clear"></button>
+        </div>
+        <p class="lead" data-t="t_note"></p>
+        <div class="gridwrap"><table id="t-grid"></table></div>
+        <form class="panel" id="t-aiform">
+          <h3 data-t="t_ai_h"></h3>
+          <div class="field"><textarea id="t-src" aria-label="Source text"></textarea></div>
+          <div class="tools"><button class="btn primary" type="submit" id="t-make" data-t="t_make"></button><span class="status-line" id="t-status"></span></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- OFFICE: file tools -->
+    <section class="view page" id="v-files" hidden>
+      <div class="page-inner">
+        <h2 data-t="f_title"></h2>
+        <p class="lead" data-t="f_note"></p>
+        <div class="toolgrid" id="f-grid"></div>
+      </div>
+    </section>
+
+    <!-- PUBLIC: catalogue and detail -->
+    <section class="view page" id="v-catalog" hidden>
+      <div class="page-inner">
+        <div class="c-top">
+          <input id="c-search" type="search" aria-label="Search">
+          <div class="cat-chips" id="c-cats"></div>
+          <p class="sch-note"><span id="c-count"></span> · <span data-t="c_note"></span></p>
+        </div>
+        <div class="cards" id="c-list"></div>
+      </div>
+    </section>
+    <section class="view page" id="v-detail" hidden>
+      <div class="page-inner"><div class="detail" id="detail"></div></div>
+    </section>
+
+    <!-- BOTH: AI chat -->
+    <section class="view chat" id="v-chat" hidden>
       <div class="banner" id="banner" hidden><div id="banner-text"></div></div>
       <div class="scroll" id="scroll"><div class="thread" id="thread"></div></div>
       <div class="composer">
@@ -251,11 +353,12 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
           </form>
-          <div class="hint"><span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
-  </div>
+  </main>
+  <div class="railnote" id="owner-notice" hidden></div>
 </div>
 
 <dialog id="settings">
@@ -272,15 +375,6 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
       <input type="file" id="sample-in" accept=".docx,.pdf,.txt"></div>
     <div style="display:flex;gap:8px"><button class="btn primary" value="save" data-t="save">Save</button><button class="btn" value="cancel" formnovalidate data-t="cancel">Cancel</button></div>
   </form>
-</dialog>
-
-<dialog id="schemes">
-  <div class="sch-head">
-    <div class="row"><h2 data-t="sch_title"></h2><button class="btn small" type="button" id="schemes-close" data-t="close">বন্ধ</button></div>
-    <p class="sch-note" data-t="sch_note"></p>
-    <input id="sch-search" type="search" aria-label="Search">
-  </div>
-  <div class="sch-list" id="sch-list"></div>
 </dialog>
 
 <dialog id="status">
@@ -300,8 +394,10 @@ const store = {
 const DEFAULTS = { officer: "Sub-Divisional Officer", subdiv: "Sadar", district: "", memo: "SDO" };
 let settings = Object.assign({}, DEFAULTS, store.get("settings", {}));
 if (settings.lang !== "en") settings.lang = "bn";   // one switch: screen language = answer language
-let mode = store.get("mode", "office");
-let messages = store.get("chat", []);   // {role, content, shown, files, via}
+let mode = store.get("mode", "office");          // section: "office" or "public"
+let tabs = Object.assign({ office: "draft", public: "catalog" }, store.get("tabs", {}));
+const chats = { office: store.get("chat:office", store.get("chat", [])), public: store.get("chat:public", []) };
+let messages = chats[mode];   // {role, content, shown, files, via}
 let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
 let sample = null, downloads = null, imageLimits = null;
 let engine = null;   // "claude" inside claude.ai, "server" on the website
@@ -319,6 +415,18 @@ const OWNER_NOTICE = "";
 /* ---------------- screen text, Bengali and English ---------------- */
 const STR = {
   bn: {
+    tab_draft: "লেখার টেবিল", tab_table: "টেবিল / Excel", tab_files: "ফাইল টুল", tab_chat: "AI চ্যাট", tab_catalog: "প্রকল্প ও পরিষেবা", tab_helper: "AI সহায়ক",
+    d_title: "খসড়া তৈরি", d_type: "কী লিখবেন", d_lang: "ভাষা", d_to: "প্রাপক (যাকে পাঠানো হবে)", d_sub: "বিষয়", d_ref: "সূত্র / PUC", d_facts: "মূল তথ্য ও নির্দেশ", d_facts_ph: "যেমন: আবেদনকারী শ্রী … জাতি শংসাপত্রের আবেদন করেছেন; BDO-র রিপোর্ট পাওয়া গেছে; শুনানি ১৫.১১.২০২৬ তারিখে …",
+    d_attach: "ফাইল যোগ করুন (GO, চিঠি)", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
+    d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
+    types: { notesheet: "নোটশিট (SDO-র কাছে পেশ)", dfa: "খসড়া চিঠি (DFA, SDO-র স্বাক্ষরে)", order: "অফিস আদেশ / মেমোরান্ডাম", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "এনকোয়ারি রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই রিপোর্ট", letter: "সাধারণ সরকারি চিঠি" },
+    t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
+    f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
+    f_w2p: "Word → PDF", f_w2p_d: "একটি .docx ফাইল PDF করুন।", f_x2p: "Excel → PDF", f_x2p_d: "একটি Excel / CSV ফাইলের টেবিল PDF করুন।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
+    f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
+    c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
+    dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
+    ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
@@ -349,6 +457,18 @@ const STR = {
     lib_fail: "দরকারি অংশ লোড হয়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", no_image_view: "এখন ছবি পাঠানো যাচ্ছে না। PDF বা Word দিন।", scanned_pdf: "এটি স্ক্যান করা PDF, লেখা পড়া যাচ্ছে না। পাতার ছবি তুলে দিন।", bad_type: n => `${n}: এই ধরনের ফাইল পড়া যায় না। PDF, Word (.docx), Excel বা ছবি দিন।`
   },
   en: {
+    tab_draft: "Drafting desk", tab_table: "Table / Excel", tab_files: "File tools", tab_chat: "AI chat", tab_catalog: "Schemes and services", tab_helper: "AI helper",
+    d_title: "Create a draft", d_type: "What to write", d_lang: "Language", d_to: "To (addressee)", d_sub: "Subject", d_ref: "Reference / PUC", d_facts: "Main facts and instructions", d_facts_ph: "e.g. Sri … applied for a caste certificate; BDO's report received; hearing on 15.11.2026 …",
+    d_attach: "Add file (GO, letter)", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
+    d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
+    types: { notesheet: "Notesheet (put up to the SDO)", dfa: "Draft letter (DFA, for the SDO's signature)", order: "Office order / memorandum", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste certificate re-verification report", letter: "General official letter" },
+    t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
+    f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", f_choose: "Choose file", f_run: "Convert",
+    f_w2p: "Word → PDF", f_w2p_d: "Turn a .docx file into PDF.", f_x2p: "Excel → PDF", f_x2p_d: "Turn the tables of an Excel / CSV file into PDF.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
+    f_pick: "Choose a file first.", f_done: "Done", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
+    c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
+    dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
+    ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
@@ -379,6 +499,7 @@ const STR = {
     lib_fail: "A needed part did not load. Check the internet and try again.", no_image_view: "Images can't be sent right now. Use a PDF or Word file.", scanned_pdf: "This is a scanned PDF without text. Take photos of the pages instead.", bad_type: n => `${n}: this file type can't be read. Use PDF, Word (.docx), Excel or an image.`
   }
 };
+const tt = (k, sub) => ((STR[settings.lang] || STR.bn)[k] || {})[sub] || sub;
 const t = (k, ...a) => { const v = (STR[settings.lang] || STR.bn)[k]; return typeof v === "function" ? v(...a) : (v ?? k); };
 
 /* ---------------- ready tasks: [title, subtitle, text put into the box] ---------------- */
@@ -431,54 +552,198 @@ const TASKS = {
   }
 };
 
-/* ---------------- schemes and services (October 2026; keep in line with section D of UPDATES) ---------------- */
-// st: ok = confirmed by official or several major sources; rep = reported; unc = continuation or details unconfirmed
-const SCHEME_DATA = [
-  { st: "rep",
-    bn: { n: "অন্নপূর্ণা যোজনা", old: "লক্ষ্মীর ভাণ্ডার", b: "মাসে ৩,০০০ টাকা সরাসরি ব্যাঙ্কে (DBT), জুন ২০২৬ থেকে।", w: "রাজ্যের যোগ্য মহিলা, বয়স ২৫–৬০ (কিছু সূত্রে ২১ থেকে)। পুরনো লক্ষ্মীর ভাণ্ডার উপভোক্তারা নতুন আবেদন ছাড়াই যুক্ত।", h: "নতুন আবেদন: সরকারি শিবির / BDO / পুরসভা। পোর্টাল: socialsecurity.wb.gov.in। নকল ওয়েবসাইট এড়িয়ে চলুন।", x: "বিধবা ভাতা আর অন্নপূর্ণা একসঙ্গে পাওয়া যাবে না, যেকোনো একটি বেছে নিতে হবে।" },
-    en: { n: "Annapurna Yojana", old: "Lakshmir Bhandar", b: "Rs 3,000 a month by DBT, from June 2026.", w: "Eligible women aged 25–60 (some sources say from 21). Existing Lakshmir Bhandar beneficiaries moved over without a new application.", h: "New applications: Government camp / BDO / municipality. Portal: socialsecurity.wb.gov.in. Avoid look-alike websites.", x: "The widow pension and Annapurna cannot be drawn together; choose one." } },
-  { st: "ok",
-    bn: { n: "বার্ধক্য, বিধবা ও প্রতিবন্ধী ভাতা", old: "জয় বাংলা পেনশন", b: "মাসে ১,৫০০ টাকা (আগে ১,০০০), ১ আগস্ট ২০২৬ থেকে, DBT-তে।", w: "৬০ বছর বা তার বেশি বয়সী; বিধবা; ৪০% বা বেশি প্রতিবন্ধী।", h: "BDO (গ্রাম) / পুরসভা (শহর)। আগের সরকারের অপেক্ষমাণ তালিকা বাতিল, নতুন যোগ্য তালিকা তৈরি হচ্ছে।", x: "তপশিলি বন্ধু (SC) ও জয় জোহার (ST) ভাতার বর্তমান অবস্থা নিশ্চিত নয়।" },
-    en: { n: "Old age, widow and disability pension", old: "Jai Bangla pension", b: "Rs 1,500 a month (was Rs 1,000) from 1 August 2026, by DBT.", w: "Age 60 or above; widows; 40% or more disability.", h: "BDO (rural) / municipality (urban). The previous government's waiting list was scrapped; a new list of eligible people is being made.", x: "Status of Taposili Bandhu (SC) and Jai Johar (ST) pensions is not confirmed." } },
-  { st: "rep",
-    bn: { n: "আয়ুষ্মান ভারত (PM-JAY)", old: "স্বাস্থ্যসাথী", b: "পরিবার প্রতি বছরে ৫ লক্ষ টাকা পর্যন্ত নগদহীন চিকিৎসা।", w: "যোগ্য পরিবার (কেন্দ্রীয় তালিকা অনুযায়ী)।", h: "beneficiary.nha.gov.in-এ যোগ্যতা দেখুন; সরকারি হাসপাতাল বা CSC-তে আয়ুষ্মান কার্ড।", x: "পরিবর্তনের সময় স্বাস্থ্যসাথী কার্ড চলছিল বলে খবর।" },
-    en: { n: "Ayushman Bharat (PM-JAY)", old: "Swasthya Sathi", b: "Cashless treatment up to Rs 5 lakh per family per year.", w: "Eligible families (as per the Central list).", h: "Check eligibility at beneficiary.nha.gov.in; get the Ayushman card at a Government hospital or CSC.", x: "Swasthya Sathi cards were reportedly accepted during the changeover." } },
-  { st: "ok",
-    bn: { n: "কন্যারত্ন", old: "কন্যাশ্রী", b: "২০২৬-এ এককালীন ১,০০০ টাকা; ২০২৭ শিক্ষাবর্ষ থেকে বছরে ২,০০০ টাকা।", w: "স্কুলছাত্রী (এ বছর প্রায় ২০.১৩ লক্ষ)।", h: "স্কুলের মাধ্যমে। শিক্ষা দপ্তর বিস্তারিত নির্দেশিকা দেবে।", x: "রাজ্যে 'বেটি বচাও বেটি পড়াও'-ও চালু হয়েছে।" },
-    en: { n: "Kanyaratna", old: "Kanyashree", b: "One-time Rs 1,000 in 2026; Rs 2,000 a year from the 2027 academic year.", w: "Schoolgirls (about 20.13 lakh this year).", h: "Through the school. The Education Department will issue detailed guidelines.", x: "Beti Bachao Beti Padhao has also been launched in the State." } },
-  { st: "rep",
-    bn: { n: "উচ্চশিক্ষায় ছাত্রীদের অনুদান", old: "", b: "এককালীন ৫০,০০০ টাকা (বাজেট ২২.০৬.২০২৬)।", w: "উচ্চশিক্ষারত অবিবাহিত ছাত্রী।", h: "নির্দেশিকা ও আবেদনের পদ্ধতি এখনও প্রকাশিত হয়নি।", x: "" },
-    en: { n: "Higher-education grant for girls", old: "", b: "One-time Rs 50,000 (Budget 22.06.2026).", w: "Unmarried female students in higher education.", h: "Guidelines and application method not yet published.", x: "" } },
-  { st: "unc",
-    bn: { n: "রূপশ্রী", old: "", b: "প্রথম বিবাহে এককালীন ২৫,০০০ টাকা।", w: "১৮+ বয়সী কন্যা, পারিবারিক আয় বছরে ১.৫ লক্ষ টাকা পর্যন্ত।", h: "বিয়ের আগে BDO (গ্রাম) / SDO বা পুরসভা (শহর)। wbrupashree.gov.in", x: "নতুন সরকারে কিছু পরিবর্তন সহ চলছে বলে খবর; বিস্তারিত নিশ্চিত নয়।" },
-    en: { n: "Rupashree", old: "", b: "One-time Rs 25,000 for a first marriage.", w: "Women aged 18+, family income up to Rs 1.5 lakh a year.", h: "Before the marriage, at the BDO (rural) / SDO or municipality (urban). wbrupashree.gov.in", x: "Reported to continue with some changes under the new government; details unconfirmed." } },
-  { st: "rep",
-    bn: { n: "সারথি", old: "সবুজসাথী", b: "স্কুলছাত্রছাত্রীদের সাইকেল।", w: "নির্দিষ্ট শ্রেণির সরকারি / সাহায্যপ্রাপ্ত স্কুলের পড়ুয়া।", h: "স্কুলের মাধ্যমে।", x: "" },
-    en: { n: "Sarathi", old: "Sabooj Sathi", b: "Bicycles for school students.", w: "Students of the covered classes in Government / aided schools.", h: "Through the school.", x: "" } },
-  { st: "rep",
-    bn: { n: "মহিলাদের বিনামূল্যে বাসযাত্রা", old: "", b: "রাজ্য সরকারি পরিবহণের বাসে বিনামূল্যে যাতায়াত, জুন ২০২৬ থেকে।", w: "মহিলা যাত্রী।", h: "আলাদা আবেদন লাগে কিনা নিশ্চিত নয়; পরিবহণ দপ্তরের বিজ্ঞপ্তি দেখুন।", x: "" },
-    en: { n: "Free bus travel for women", old: "", b: "Free travel in State transport buses from June 2026.", w: "Women passengers.", h: "Whether any registration is needed is unconfirmed; see the Transport Department notice.", x: "" } },
-  { st: "rep",
-    bn: { n: "কৃষক সহায়তা ও PM-KISAN", old: "কৃষকবন্ধু", b: "PM-KISAN বছরে ৬,০০০ + রাজ্যের অতিরিক্ত ৩,০০০ টাকা (বাজেট); সেচ পাম্পে ইউনিট প্রতি ২ টাকা বিদ্যুৎ ভর্তুকি; সরকারি গভীর নলকূপ / RLI-এর সেচকর মকুব।", w: "কৃষক পরিবার।", h: "কৃষি দপ্তর / BDO; pmkisan.gov.in; krishakbandhu.wb.gov.in", x: "কৃষকবন্ধু (নতুন): একর প্রতি বছরে ১০,০০০ (ন্যূনতম ৪,০০০), মৃত্যুতে ২ লক্ষ — নতুন সরকারে কোনও সরকারি পরিবর্তন পাওয়া যায়নি।" },
-    en: { n: "Farmer support and PM-KISAN", old: "Krishak Bandhu", b: "PM-KISAN Rs 6,000 a year + extra Rs 3,000 from the State (Budget); Rs 2 per unit power subsidy for irrigation pumps; irrigation fees waived for Government tube-wells / RLI.", w: "Farmer families.", h: "Agriculture office / BDO; pmkisan.gov.in; krishakbandhu.wb.gov.in", x: "Krishak Bandhu (Natun): Rs 10,000 per acre a year (minimum Rs 4,000), Rs 2 lakh on death — no official change found under the new government." } },
-  { st: "rep",
-    bn: { n: "ভরসা কর্মসাথী (যুব ভাতা)", old: "বাংলার যুবসাথী", b: "বেকার যুবক-যুবতীদের মাসে ৩,০০০ টাকা (বাজেট ২২.০৬.২০২৬)।", w: "বয়স ২১–৪৫ (প্রাথমিক তথ্য), কম পারিবারিক আয়।", h: "সরকারি বিজ্ঞপ্তি ও পোর্টাল এখনও দেখা যায়নি।", x: "অন্য নাম: 'যুব শক্তি ভরসা কার্ড'।" },
-    en: { n: "Bhorsa Karmasathi (youth allowance)", old: "Banglar Yuva Sathi", b: "Rs 3,000 a month for unemployed youth (Budget 22.06.2026).", w: "Age 21–45 (tentative), low family income.", h: "Official notification and portal not seen yet.", x: "Also reported as 'Yuva Shakti Bharosa card'." } },
-  { st: "rep",
-    bn: { n: "সরকারি চাকরিতে মহিলাদের ৩৩% সংরক্ষণ", old: "", b: "এক লক্ষ সরকারি পদে নিয়োগে মহিলাদের জন্য ৩৩% (বাজেট ২২.০৬.২০২৬)।", w: "মহিলা চাকরিপ্রার্থী।", h: "নিয়োগ বিজ্ঞপ্তি অনুযায়ী।", x: "" },
-    en: { n: "33% of Government jobs for women", old: "", b: "33% reservation for women in recruitment to one lakh posts (Budget 22.06.2026).", w: "Women job seekers.", h: "As per each recruitment notice.", x: "" } },
-  { st: "unc",
-    bn: { n: "জন কল্যাণ শিবির", old: "দুয়ারে সরকার", b: "এক জায়গায় সরকারি পরিষেবা ও প্রকল্পের আবেদন।", w: "সকল নাগরিক।", h: "jks.wb.gov.in; হেল্পলাইন 1800-345-0117 (একটি সূত্র, যাচাই করুন)।", x: "প্রথম শিবির ১৫–১৭ জুন ২০২৬ বলে খবর।" },
-    en: { n: "Jan Kalyan Shivir", old: "Duare Sarkar", b: "Government services and scheme applications in one place.", w: "All citizens.", h: "jks.wb.gov.in; helpline 1800-345-0117 (single source, verify).", x: "First camps reported on 15–17 June 2026." } },
-  { st: "ok",
-    bn: { n: "জাতি শংসাপত্র (SC / ST / OBC)", old: "", b: "শংসাপত্র দেন মহকুমা শাসক (SDO)।", w: "রাজ্যের তালিকাভুক্ত SC / ST / OBC সম্প্রদায়।", h: "castcertificatewb.gov.in বা সরকারি শিবির। গ্রামে BDO, শহরে SDO অফিস তদন্ত করে।", x: "২০১১-র পর দেওয়া সব শংসাপত্রের পুনর্যাচাই চলছে (আদেশ ১৪.০৫.২০২৬)। নতুন OBC তালিকা: ৬৬টি শ্রেণি, ৭% সংরক্ষণ, OBC-A/B ভাগ আর নেই (১৮.০৫.২০২৬)।" },
-    en: { n: "Caste certificate (SC / ST / OBC)", old: "", b: "Issued by the Sub-Divisional Officer (SDO).", w: "Communities in the State SC / ST / OBC lists.", h: "castcertificatewb.gov.in or a Government camp. The BDO (rural) or SDO office (urban) does the enquiry.", x: "All certificates issued since 2011 are being re-verified (order 14.05.2026). New OBC list: 66 classes, 7% reservation, no OBC-A/B split (18.05.2026)." } },
-  { st: "ok",
-    bn: { n: "স্কলারশিপ", old: "", b: "OASIS (SC/ST/OBC ছাত্রছাত্রী), স্বামী বিবেকানন্দ মেরিট-কাম-মিনস।", w: "নির্দিষ্ট আয়সীমা ও নম্বরের শর্ত অনুযায়ী।", h: "oasis.gov.in, svmcm.wbhed.gov.in; প্রতিষ্ঠান অনলাইনে যাচাই করে।", x: "ঐক্যশ্রী, শিক্ষাশ্রী, তরুণের স্বপ্ন, স্টুডেন্ট ক্রেডিট কার্ডের বর্তমান অবস্থা নিশ্চিত নয়।" },
-    en: { n: "Scholarships", old: "", b: "OASIS (SC/ST/OBC students), Swami Vivekananda Merit-cum-Means.", w: "As per income and marks conditions.", h: "oasis.gov.in, svmcm.wbhed.gov.in; the institution verifies online.", x: "Status of Aikyashree, Sikshashree, Taruner Swapna and Student Credit Card is unconfirmed." } },
-  { st: "unc",
-    bn: { n: "আবাস যোজনা ও রেশন কার্ড", old: "বাংলার বাড়ি", b: "গ্রামীণ আবাস (PMAY-G); বিনামূল্যে রেশন (PMGKAY)।", w: "যোগ্য পরিবার।", h: "আবাস: BDO। রেশন কার্ড: food.wb.gov.in বা খাদ্য পরিদর্শক।", x: "" },
-    en: { n: "Housing and ration card", old: "Banglar Bari", b: "Rural housing (PMAY-G); free ration (PMGKAY).", w: "Eligible families.", h: "Housing: BDO. Ration card: food.wb.gov.in or the food inspector.", x: "" } }
+
+/* ---------------- public catalogue: schemes and services (October 2026) ----------------
+   st:  ok  = confirmed by an official or several major sources
+        rep = reported in news, official guideline not seen
+        unc = continuation or details under the new government unconfirmed
+   by:  state = West Bengal Government, central = Government of India
+   Fields per language: n name, old earlier name, b benefit, c criteria, d documents, s steps, x note */
+const CATS = [
+  ["all", "সব", "All"], ["women", "মহিলা ও কন্যা", "Women and girls"], ["pension", "ভাতা ও পেনশন", "Pensions"],
+  ["health", "স্বাস্থ্য", "Health"], ["students", "ছাত্রছাত্রী", "Students"], ["farmers", "কৃষক", "Farmers"],
+  ["work", "যুব, শ্রমিক ও কারিগর", "Youth, workers, artisans"], ["housing", "আবাস, খাদ্য ও গ্যাস", "Housing, food, gas"],
+  ["certs", "শংসাপত্র ও পরিষেবা", "Certificates and services"]
+];
+const SERVICES = [
+  { id: "annapurna", cat: "women", st: "ok", by: "state", help: "",
+    links: [["অন্নপূর্ণা পোর্টাল", "Annapurna portal", "https://socialsecurity.wb.gov.in"]],
+    bn: { n: "অন্নপূর্ণা যোজনা", old: "লক্ষ্মীর ভাণ্ডার", b: "যোগ্য মহিলাদের মাসে ৩,০০০ টাকা সরাসরি ব্যাঙ্কে (DBT), জুন ২০২৬ থেকে।",
+      c: ["পশ্চিমবঙ্গের স্থায়ী বাসিন্দা মহিলা", "বয়স ২৫ থেকে ৬০ বছর (কিছু সূত্রে ২১ থেকে, যাচাই করুন)", "নিজের নামে আধার-যুক্ত ব্যাঙ্ক অ্যাকাউন্ট", "স্থায়ী সরকারি চাকরি বা সরকারি পেনশন পান না", "বিধবা ভাতা পেলে যেকোনো একটি বেছে নিতে হবে"],
+      d: ["আধার কার্ড", "ভোটার কার্ড (EPIC)", "রেশন কার্ড", "ব্যাঙ্ক পাসবুকের প্রথম পাতা", "SC / ST / OBC হলে জাতি শংসাপত্র", "পাসপোর্ট সাইজ ছবি"],
+      s: ["পুরনো লক্ষ্মীর ভাণ্ডার উপভোক্তাদের নতুন আবেদন লাগে না", "নতুন আবেদনকারী: socialsecurity.wb.gov.in থেকে ফর্ম (বাংলা / ইংরেজি) নামান বা সরকারি শিবির / BDO / পুরসভা থেকে নিন", "ফর্ম পূরণ করে নথির প্রতিলিপি সহ শিবির বা অফিসে জমা দিন", "প্রাপ্তিস্বীকার রসিদ রাখুন; পোর্টালে অবস্থা দেখুন"],
+      x: "১ জুন ২০২৬ থেকে ৯০ দিনের নথিভুক্তি চলেছিল; সময়সীমা বাড়ানো হয়েছে কিনা পোর্টালে দেখুন। নকল ওয়েবসাইটে তথ্য দেবেন না।" },
+    en: { n: "Annapurna Yojana", old: "Lakshmir Bhandar", b: "Rs 3,000 a month by direct bank transfer (DBT) to eligible women, from June 2026.",
+      c: ["Woman permanently resident in West Bengal", "Age 25 to 60 (some sources say from 21; verify)", "Aadhaar-linked bank account in her own name", "Not a regular Government employee or Government pensioner", "A widow-pension holder must choose one of the two"],
+      d: ["Aadhaar card", "Voter card (EPIC)", "Ration card", "First page of bank passbook", "Caste certificate if SC / ST / OBC", "Passport-size photo"],
+      s: ["Existing Lakshmir Bhandar beneficiaries do not need to apply again", "New applicants: download the form (Bengali / English) from socialsecurity.wb.gov.in or collect it at a Government camp / BDO / municipality", "Submit the filled form with copies of documents at the camp or office", "Keep the acknowledgement; check status on the portal"],
+      x: "A 90-day enrolment drive ran from 1 June 2026; check the portal for any extension. Do not give details to look-alike websites." } },
+  { id: "kanyaratna", cat: "women", st: "ok", by: "state", help: "",
+    links: [["কন্যাশ্রী / কন্যারত্ন পোর্টাল", "Kanyashree / Kanyaratna portal", "https://www.wbkanyashree.gov.in"]],
+    bn: { n: "কন্যারত্ন", old: "কন্যাশ্রী", b: "২০২৬-এ স্কুলছাত্রীদের এককালীন ১,০০০ টাকা; ২০২৭ শিক্ষাবর্ষ থেকে বছরে ২,০০০ টাকা।",
+      c: ["স্কুলে পড়া ছাত্রী (এ বছর প্রায় ২০.১৩ লক্ষ)", "অবিবাহিত", "ব্যাঙ্ক অ্যাকাউন্ট থাকতে হবে"], d: ["স্কুলের পরিচয়পত্র / ভর্তির প্রমাণ", "আধার কার্ড", "ব্যাঙ্ক পাসবুক", "বয়সের প্রমাণ"],
+      s: ["স্কুলের মাধ্যমে আবেদন হয়", "শিক্ষা দপ্তরের নতুন নির্দেশিকা অনুযায়ী স্কুল তালিকা পাঠাবে"], x: "১৪ আগস্ট ২০২৬ নাম বদল ঘোষণা। বিস্তারিত নির্দেশিকা শিক্ষা দপ্তর দেবে। রাজ্যে 'বেটি বচাও বেটি পড়াও'-ও চালু।" },
+    en: { n: "Kanyaratna", old: "Kanyashree", b: "One-time Rs 1,000 to schoolgirls in 2026; Rs 2,000 a year from the 2027 academic year.",
+      c: ["Girl studying in school (about 20.13 lakh this year)", "Unmarried", "Must have a bank account"], d: ["School ID / proof of enrolment", "Aadhaar card", "Bank passbook", "Proof of age"],
+      s: ["Applications go through the school", "The school sends the list under the Education Department's new guidelines"], x: "Rename announced on 14 August 2026; detailed guidelines will come from the Education Department. Beti Bachao Beti Padhao has also started in the State." } },
+  { id: "girlsgrant", cat: "women", st: "rep", by: "state", help: "", links: [],
+    bn: { n: "উচ্চশিক্ষায় ছাত্রীদের অনুদান", old: "", b: "উচ্চশিক্ষারত অবিবাহিত ছাত্রীদের এককালীন ৫০,০০০ টাকা (বাজেট ২২.০৬.২০২৬)।", c: ["উচ্চশিক্ষায় (কলেজ / বিশ্ববিদ্যালয়) পাঠরত", "অবিবাহিত ছাত্রী"], d: ["নির্দেশিকা প্রকাশের পর জানা যাবে"], s: ["আবেদনের পদ্ধতি এখনও প্রকাশিত হয়নি; কলেজ ও উচ্চশিক্ষা দপ্তরের বিজ্ঞপ্তি দেখুন"], x: "" },
+    en: { n: "Higher-education grant for girls", old: "", b: "One-time Rs 50,000 for unmarried female students in higher education (Budget 22.06.2026).", c: ["Studying in college / university", "Unmarried female student"], d: ["Will be known when guidelines are issued"], s: ["Application method not yet published; watch notices from colleges and the Higher Education Department"], x: "" } },
+  { id: "rupashree", cat: "women", st: "unc", by: "state", help: "",
+    links: [["রূপশ্রী পোর্টাল", "Rupashree portal", "https://wbrupashree.gov.in"]],
+    bn: { n: "রূপশ্রী", old: "", b: "প্রথম বিবাহে এককালীন ২৫,০০০ টাকা।", c: ["কন্যার বয়স ১৮ বা তার বেশি", "পারিবারিক বার্ষিক আয় ১.৫ লক্ষ টাকা পর্যন্ত", "প্রথম বিবাহ", "পশ্চিমবঙ্গের বাসিন্দা"], d: ["বয়সের প্রমাণ", "পারিবারিক আয়ের স্ব-ঘোষণা", "বাসস্থানের প্রমাণ", "কন্যার নিজের ব্যাঙ্ক অ্যাকাউন্ট", "পাত্রের বয়সের প্রমাণ", "বিয়ের নিমন্ত্রণপত্র (যদি থাকে)"],
+      s: ["বিয়ের অন্তত ৩০ দিন আগে আবেদন করুন", "গ্রাম: BDO অফিস; শহর: SDO অফিস / পুরসভা", "যাচাইয়ের পর টাকা কন্যার অ্যাকাউন্টে"], x: "নতুন সরকারে কিছু পরিবর্তন সহ চলছে বলে খবর; বিস্তারিত নিশ্চিত নয়।" },
+    en: { n: "Rupashree", old: "", b: "One-time Rs 25,000 for a first marriage.", c: ["Bride aged 18 or above", "Family income up to Rs 1.5 lakh a year", "First marriage", "Resident of West Bengal"], d: ["Proof of age", "Self-declaration of family income", "Proof of residence", "Bride's own bank account", "Groom's proof of age", "Wedding invitation (if any)"],
+      s: ["Apply at least 30 days before the marriage", "Rural: BDO office; urban: SDO office / municipality", "After verification the money goes to the bride's account"], x: "Reported to continue with some changes under the new government; details unconfirmed." } },
+  { id: "freebus", cat: "women", st: "rep", by: "state", help: "", links: [],
+    bn: { n: "মহিলাদের বিনামূল্যে বাসযাত্রা", old: "", b: "রাজ্য সরকারি পরিবহণের বাসে মহিলাদের বিনামূল্যে যাতায়াত, জুন ২০২৬ থেকে।", c: ["মহিলা যাত্রী", "রাজ্য সরকারি পরিবহণ সংস্থার বাস"], d: ["পরিচয়পত্র সঙ্গে রাখুন (প্রয়োজন হলে)"], s: ["আলাদা কার্ড বা নথিভুক্তি লাগে কিনা পরিবহণ দপ্তরের বিজ্ঞপ্তি দেখুন"], x: "" },
+    en: { n: "Free bus travel for women", old: "", b: "Free travel for women in State transport buses from June 2026.", c: ["Women passengers", "Buses of State transport undertakings"], d: ["Carry an ID card (if asked)"], s: ["Check the Transport Department notice on whether a card or registration is needed"], x: "" } },
+  { id: "pmmvy", cat: "women", st: "ok", by: "central", help: "",
+    links: [["PMMVY পোর্টাল", "PMMVY portal", "https://pmmvy.wcd.gov.in"]],
+    bn: { n: "প্রধানমন্ত্রী মাতৃ বন্দনা যোজনা", old: "", b: "প্রথম সন্তানের জন্য ৫,০০০ টাকা (দুই কিস্তিতে); দ্বিতীয় সন্তান কন্যা হলে ৬,০০০ টাকা।", c: ["গর্ভবতী বা স্তন্যদায়ী মা", "সরকারি / PSU-তে নিয়মিত চাকরি করেন না"], d: ["আধার কার্ড", "MCP (মা ও শিশু সুরক্ষা) কার্ড", "ব্যাঙ্ক / পোস্ট অফিস অ্যাকাউন্ট", "সন্তানের জন্ম শংসাপত্র (পরের কিস্তিতে)"], s: ["নিকটবর্তী অঙ্গনওয়াড়ি কেন্দ্রে বা ANM-এর কাছে নাম নথিভুক্ত করুন", "অথবা pmmvy.wcd.gov.in-এ অনলাইনে"], x: "" },
+    en: { n: "PM Matru Vandana Yojana", old: "", b: "Rs 5,000 for the first child (two instalments); Rs 6,000 if the second child is a girl.", c: ["Pregnant or breastfeeding mother", "Not in regular Government / PSU employment"], d: ["Aadhaar card", "MCP (Mother and Child Protection) card", "Bank / post office account", "Child's birth certificate (for later instalment)"], s: ["Register at the nearest Anganwadi centre or with the ANM", "Or online at pmmvy.wcd.gov.in"], x: "" } },
+  { id: "sukanya", cat: "women", st: "ok", by: "central", help: "", links: [["ইন্ডিয়া পোস্ট", "India Post", "https://www.indiapost.gov.in"]],
+    bn: { n: "সুকন্যা সমৃদ্ধি যোজনা", old: "", b: "কন্যা সন্তানের জন্য সঞ্চয় অ্যাকাউন্ট, সরকারি সুদ ও আয়কর ছাড়।", c: ["কন্যার বয়স ১০ বছরের কম", "পরিবারে সর্বাধিক দুই কন্যা (যমজ হলে ব্যতিক্রম)"], d: ["কন্যার জন্ম শংসাপত্র", "অভিভাবকের আধার ও প্যান", "ঠিকানার প্রমাণ", "ছবি"], s: ["পোস্ট অফিস বা অনুমোদিত ব্যাঙ্কে অ্যাকাউন্ট খুলুন", "বছরে ন্যূনতম ২৫০ টাকা, সর্বোচ্চ ১.৫ লক্ষ টাকা জমা"], x: "" },
+    en: { n: "Sukanya Samriddhi Yojana", old: "", b: "Savings account for a girl child with Government interest rate and tax benefit.", c: ["Girl under 10 years", "At most two girls per family (exception for twins)"], d: ["Girl's birth certificate", "Parent's Aadhaar and PAN", "Address proof", "Photo"], s: ["Open the account at a post office or authorised bank", "Deposit at least Rs 250 and at most Rs 1.5 lakh a year"], x: "" } },
+
+  { id: "pension", cat: "pension", st: "ok", by: "state", help: "",
+    links: [["সামাজিক সুরক্ষা পোর্টাল", "Social security portal", "https://socialsecurity.wb.gov.in"], ["জাতীয় সামাজিক সহায়তা (NSAP)", "NSAP", "https://nsap.nic.in"]],
+    bn: { n: "বার্ধক্য, বিধবা ও প্রতিবন্ধী ভাতা", old: "জয় বাংলা পেনশন", b: "মাসে ১,৫০০ টাকা (আগে ১,০০০), ১ আগস্ট ২০২৬ থেকে, DBT-তে। NSAP-এর কেন্দ্রীয় ভাতাও ১,৫০০ টাকা।",
+      c: ["বার্ধক্য: বয়স ৬০ বা তার বেশি", "বিধবা: স্বামীর মৃত্যু হয়েছে (অন্নপূর্ণা ও বিধবা ভাতা একসঙ্গে নয়)", "প্রতিবন্ধী: ৪০% বা বেশি প্রতিবন্ধকতা", "পশ্চিমবঙ্গের বাসিন্দা, অন্য সরকারি পেনশন পান না"],
+      d: ["আধার কার্ড", "ভোটার কার্ড", "বয়সের প্রমাণ", "বিধবা হলে স্বামীর মৃত্যু শংসাপত্র", "প্রতিবন্ধী হলে UDID / প্রতিবন্ধী শংসাপত্র", "ব্যাঙ্ক পাসবুক", "ছবি"],
+      s: ["গ্রাম: BDO অফিস / পঞ্চায়েত; শহর: পুরসভা", "সরকারি শিবিরেও আবেদন জমা দেওয়া যায়", "আগের সরকারের অপেক্ষমাণ তালিকা বাতিল; নতুন যোগ্য তালিকায় নাম তুলতে আবার আবেদন করুন"],
+      x: "তপশিলি বন্ধু (SC) ও জয় জোহার (ST) ভাতার বর্তমান অবস্থা নিশ্চিত নয়।" },
+    en: { n: "Old age, widow and disability pension", old: "Jai Bangla pension", b: "Rs 1,500 a month (was Rs 1,000) from 1 August 2026, by DBT. Central NSAP pensions were also raised to Rs 1,500.",
+      c: ["Old age: 60 or above", "Widow: husband deceased (cannot draw Annapurna at the same time)", "Disability: 40% or more", "Resident of West Bengal, no other Government pension"],
+      d: ["Aadhaar card", "Voter card", "Proof of age", "Husband's death certificate (widow)", "UDID / disability certificate (disability)", "Bank passbook", "Photo"],
+      s: ["Rural: BDO office / panchayat; urban: municipality", "Applications are also taken at Government camps", "The old waiting list was scrapped; apply again to be on the new list of eligible people"],
+      x: "Status of Taposili Bandhu (SC) and Jai Johar (ST) pensions is not confirmed." } },
+  { id: "apy", cat: "pension", st: "ok", by: "central", help: "", links: [["অটল পেনশন (PFRDA)", "Atal Pension (PFRDA)", "https://www.pfrda.org.in"]],
+    bn: { n: "অটল পেনশন যোজনা", old: "", b: "৬০ বছর বয়স থেকে মাসে ১,০০০ থেকে ৫,০০০ টাকা নিশ্চিত পেনশন, জমার পরিমাণ অনুযায়ী।", c: ["বয়স ১৮ থেকে ৪০", "সেভিংস ব্যাঙ্ক অ্যাকাউন্ট", "আয়করদাতা নন"], d: ["আধার", "ব্যাঙ্ক অ্যাকাউন্ট", "মোবাইল নম্বর"], s: ["নিজের ব্যাঙ্ক বা পোস্ট অফিসে ফর্ম জমা দিন", "মাসিক কিস্তি অ্যাকাউন্ট থেকে স্বয়ংক্রিয়ভাবে কাটা হয়"], x: "" },
+    en: { n: "Atal Pension Yojana", old: "", b: "Guaranteed pension of Rs 1,000 to 5,000 a month from age 60, depending on contributions.", c: ["Age 18 to 40", "Savings bank account", "Not an income-tax payer"], d: ["Aadhaar", "Bank account", "Mobile number"], s: ["Submit the form at your bank or post office", "Monthly contribution is auto-debited"], x: "" } },
+
+  { id: "ayushman", cat: "health", st: "ok", by: "central", help: "14555",
+    links: [["যোগ্যতা দেখুন ও কার্ড", "Check eligibility and card", "https://beneficiary.nha.gov.in"], ["রাজ্য স্বাস্থ্য সংস্থা", "State Health Agency", "https://sha.wbhealth.gov.in"]],
+    bn: { n: "আয়ুষ্মান ভারত (PM-JAY)", old: "স্বাস্থ্যসাথী", b: "পরিবার প্রতি বছরে ৫ লক্ষ টাকা পর্যন্ত নগদহীন চিকিৎসা, তালিকাভুক্ত সরকারি ও বেসরকারি হাসপাতালে।",
+      c: ["কেন্দ্রীয় তালিকায় (SECC / রাজ্যের তালিকা) নাম থাকা যোগ্য পরিবার", "৭০ বছর বা তার বেশি বয়সী সকল নাগরিক (আয় নির্বিশেষে, কেন্দ্রীয় নিয়ম)"],
+      d: ["আধার কার্ড", "রেশন কার্ড / পরিবারের পরিচয়", "মোবাইল নম্বর"],
+      s: ["beneficiary.nha.gov.in-এ মোবাইল দিয়ে লগইন করে নাম খুঁজুন", "আধার e-KYC করে আয়ুষ্মান কার্ড নিন (নিজে অথবা CSC / সরকারি হাসপাতালে)", "হাসপাতালে 'আয়ুষ্মান মিত্র'-কে কার্ড দেখান"],
+      x: "পশ্চিমবঙ্গ ২০২৬-এ যুক্ত হয়েছে; পরিবর্তনের সময় স্বাস্থ্যসাথী কার্ড চলছিল বলে খবর। হেল্পলাইন ১৪৫৫৫।" },
+    en: { n: "Ayushman Bharat (PM-JAY)", old: "Swasthya Sathi", b: "Cashless treatment up to Rs 5 lakh per family per year in empanelled Government and private hospitals.",
+      c: ["Eligible families in the Central list (SECC / State list)", "All citizens aged 70 or above, regardless of income (Central rule)"],
+      d: ["Aadhaar card", "Ration card / family ID", "Mobile number"],
+      s: ["Log in at beneficiary.nha.gov.in with your mobile and search your name", "Do Aadhaar e-KYC and get the Ayushman card (yourself, or at a CSC / Government hospital)", "Show the card to the 'Ayushman Mitra' at the hospital"],
+      x: "West Bengal joined in 2026; Swasthya Sathi cards were reportedly accepted during the changeover. Helpline 14555." } },
+
+  { id: "oasis", cat: "students", st: "ok", by: "state", help: "",
+    links: [["OASIS স্কলারশিপ", "OASIS scholarship", "https://oasis.gov.in"]],
+    bn: { n: "OASIS স্কলারশিপ (SC / ST / OBC)", old: "", b: "SC, ST ও OBC ছাত্রছাত্রীদের প্রি-ম্যাট্রিক ও পোস্ট-ম্যাট্রিক বৃত্তি।", c: ["SC / ST / OBC ছাত্রছাত্রী", "দপ্তর নির্ধারিত পারিবারিক আয়সীমার মধ্যে", "স্বীকৃত প্রতিষ্ঠানে পাঠরত"], d: ["জাতি শংসাপত্র", "আয়ের শংসাপত্র", "আগের পরীক্ষার মার্কশিট", "ভর্তির রসিদ", "আধার", "ছাত্রছাত্রীর নিজের ব্যাঙ্ক অ্যাকাউন্ট"], s: ["oasis.gov.in-এ নতুন নথিভুক্তি", "ফর্ম পূরণ ও নথি আপলোড", "প্রতিষ্ঠান অনলাইনে যাচাই করে পাঠায়"], x: "২০১১-র পর দেওয়া জাতি শংসাপত্র পুনর্যাচাইয়ের আওতায়।" },
+    en: { n: "OASIS scholarship (SC / ST / OBC)", old: "", b: "Pre-matric and post-matric scholarships for SC, ST and OBC students.", c: ["SC / ST / OBC student", "Family income within the department's limit", "Studying in a recognised institution"], d: ["Caste certificate", "Income certificate", "Last exam marksheet", "Admission receipt", "Aadhaar", "Student's own bank account"], s: ["Register at oasis.gov.in", "Fill the form and upload documents", "The institution verifies online and forwards"], x: "Caste certificates issued since 2011 are under re-verification." } },
+  { id: "svmcm", cat: "students", st: "ok", by: "state", help: "",
+    links: [["SVMCM পোর্টাল", "SVMCM portal", "https://svmcm.wbhed.gov.in"]],
+    bn: { n: "স্বামী বিবেকানন্দ মেরিট-কাম-মিনস বৃত্তি", old: "", b: "মেধাবী ও আর্থিকভাবে দুর্বল ছাত্রছাত্রীদের বৃত্তি (একাদশ শ্রেণি থেকে উচ্চশিক্ষা)।", c: ["মাধ্যমিক / উচ্চ মাধ্যমিক / স্নাতকে নির্ধারিত ন্যূনতম নম্বর", "পারিবারিক আয় দপ্তর নির্ধারিত সীমার মধ্যে", "পশ্চিমবঙ্গের বাসিন্দা"], d: ["মার্কশিট", "আয়ের শংসাপত্র", "ভর্তির প্রমাণ", "আধার", "ব্যাঙ্ক অ্যাকাউন্ট"], s: ["svmcm.wbhed.gov.in-এ নথিভুক্তি ও আবেদন", "প্রতিষ্ঠান যাচাই করে"], x: "" },
+    en: { n: "Swami Vivekananda Merit-cum-Means scholarship", old: "", b: "Scholarship for meritorious students from low-income families (Class XI to higher education).", c: ["Minimum marks in Madhyamik / HS / graduation as notified", "Family income within the notified limit", "Resident of West Bengal"], d: ["Marksheet", "Income certificate", "Proof of admission", "Aadhaar", "Bank account"], s: ["Register and apply at svmcm.wbhed.gov.in", "The institution verifies"], x: "" } },
+  { id: "nsp", cat: "students", st: "ok", by: "central", help: "",
+    links: [["জাতীয় স্কলারশিপ পোর্টাল", "National Scholarship Portal", "https://scholarships.gov.in"]],
+    bn: { n: "জাতীয় স্কলারশিপ পোর্টাল (কেন্দ্রীয় বৃত্তি)", old: "", b: "সংখ্যালঘু, প্রতিবন্ধী ও অন্যান্য ছাত্রছাত্রীদের কেন্দ্রীয় বৃত্তি এক পোর্টালে।", c: ["প্রতিটি বৃত্তির নিজস্ব আয় ও নম্বরের শর্ত"], d: ["আধার", "আয়ের শংসাপত্র", "মার্কশিট", "ব্যাঙ্ক অ্যাকাউন্ট", "প্রতিষ্ঠানের তথ্য"], s: ["scholarships.gov.in-এ One Time Registration (OTR)", "যোগ্য বৃত্তি বেছে আবেদন"], x: "ঐক্যশ্রী, শিক্ষাশ্রী (রাজ্য) বৃত্তির বর্তমান অবস্থা নিশ্চিত নয়।" },
+    en: { n: "National Scholarship Portal (Central scholarships)", old: "", b: "Central scholarships for minority, disabled and other students on one portal.", c: ["Each scholarship has its own income and marks conditions"], d: ["Aadhaar", "Income certificate", "Marksheet", "Bank account", "Institution details"], s: ["Do the One Time Registration (OTR) at scholarships.gov.in", "Choose the eligible scholarship and apply"], x: "Status of the State's Aikyashree and Sikshashree scholarships is unconfirmed." } },
+  { id: "sarathi", cat: "students", st: "rep", by: "state", help: "", links: [],
+    bn: { n: "সারথি (সাইকেল)", old: "সবুজসাথী", b: "সরকারি ও সাহায্যপ্রাপ্ত স্কুলের ছাত্রছাত্রীদের বিনামূল্যে সাইকেল।", c: ["নির্দিষ্ট শ্রেণির ছাত্রছাত্রী (আগে নবম থেকে দ্বাদশ)", "সরকারি / সাহায্যপ্রাপ্ত স্কুল"], d: ["স্কুলের নথি"], s: ["স্কুলের মাধ্যমে বিতরণ, আলাদা আবেদন লাগে না"], x: "" },
+    en: { n: "Sarathi (bicycles)", old: "Sabooj Sathi", b: "Free bicycles for students of Government and aided schools.", c: ["Students of the covered classes (earlier Class IX–XII)", "Government / aided school"], d: ["School records"], s: ["Distributed through the school; no separate application"], x: "" } },
+  { id: "taruner", cat: "students", st: "unc", by: "state", help: "", links: [],
+    bn: { n: "তরুণের স্বপ্ন ও স্টুডেন্ট ক্রেডিট কার্ড", old: "", b: "তরুণের স্বপ্ন: একাদশ-দ্বাদশের পড়ুয়াদের ট্যাব / ফোনের জন্য ১০,০০০ টাকা। স্টুডেন্ট ক্রেডিট কার্ড: ১০ লক্ষ টাকা পর্যন্ত শিক্ষাঋণ।", c: ["নতুন সরকারে এই দুই প্রকল্প চলছে কিনা নিশ্চিত নয়"], d: ["—"], s: ["স্কুল বা wbscc.wb.gov.in-এ সর্বশেষ বিজ্ঞপ্তি দেখুন"], x: "" },
+    en: { n: "Taruner Swapna and Student Credit Card", old: "", b: "Taruner Swapna: Rs 10,000 for a tablet/phone for Class XI–XII. Student Credit Card: education loan up to Rs 10 lakh.", c: ["Whether these continue under the new government is unconfirmed"], d: ["—"], s: ["Check the latest notice at the school or wbscc.wb.gov.in"], x: "" } },
+
+  { id: "pmkisan", cat: "farmers", st: "rep", by: "central", help: "155261",
+    links: [["PM-KISAN", "PM-KISAN", "https://pmkisan.gov.in"]],
+    bn: { n: "PM-KISAN ও রাজ্যের অতিরিক্ত সহায়তা", old: "", b: "PM-KISAN: বছরে ৬,০০০ টাকা (তিন কিস্তি)। রাজ্য বাজেট (২২.০৬.২০২৬): কৃষক পরিবারকে অতিরিক্ত ৩,০০০ টাকা; সেচ পাম্পে ইউনিট প্রতি ২ টাকা বিদ্যুৎ ভর্তুকি; সরকারি গভীর নলকূপ / RLI-এর সেচকর মকুব।",
+      c: ["নিজের নামে চাষের জমি আছে এমন কৃষক পরিবার", "আয়করদাতা, সাংবিধানিক পদাধিকারী, ১০,০০০ টাকার বেশি পেনশনভোগী ইত্যাদি বাদ"], d: ["আধার", "জমির রেকর্ড (খতিয়ান / পরচা)", "আধার-যুক্ত ব্যাঙ্ক অ্যাকাউন্ট", "মোবাইল নম্বর"],
+      s: ["pmkisan.gov.in-এ 'New Farmer Registration' অথবা কৃষি দপ্তর / CSC-তে", "e-KYC সম্পূর্ণ করুন", "রাজ্যের অতিরিক্ত ৩,০০০ টাকার নির্দেশিকা কৃষি দপ্তর থেকে দেখুন"], x: "" },
+    en: { n: "PM-KISAN and State top-up", old: "", b: "PM-KISAN: Rs 6,000 a year (three instalments). State Budget (22.06.2026): extra Rs 3,000 to farmer families; Rs 2 per unit power subsidy for irrigation pumps; irrigation fees waived for Government tube-wells / RLI.",
+      c: ["Farmer family with cultivable land in their name", "Excludes income-tax payers, constitutional post holders, pensioners above Rs 10,000, etc."], d: ["Aadhaar", "Land record (khatian / porcha)", "Aadhaar-linked bank account", "Mobile number"],
+      s: ["'New Farmer Registration' at pmkisan.gov.in or through the Agriculture office / CSC", "Complete e-KYC", "See the Agriculture Department for guidelines on the State's extra Rs 3,000"], x: "" } },
+  { id: "krishakbandhu", cat: "farmers", st: "unc", by: "state", help: "",
+    links: [["কৃষকবন্ধু পোর্টাল", "Krishak Bandhu portal", "https://krishakbandhu.wb.gov.in"]],
+    bn: { n: "কৃষকবন্ধু (নতুন)", old: "", b: "একর প্রতি বছরে ১০,০০০ টাকা দুই কিস্তিতে (ন্যূনতম ৪,০০০); ১৮–৬০ বছরের কৃষকের মৃত্যুতে পরিবারকে ২ লক্ষ টাকা।", c: ["জমির মালিক কৃষক বা নথিভুক্ত বর্গাদার", "পশ্চিমবঙ্গের বাসিন্দা"], d: ["আধার", "জমির রেকর্ড / বর্গা নথি", "ব্যাঙ্ক অ্যাকাউন্ট", "ছবি"], s: ["krishakbandhu.wb.gov.in অথবা কৃষি অফিস / সরকারি শিবিরে আবেদন"], x: "নতুন সরকারে কোনও সরকারি পরিবর্তন পাওয়া যায়নি; চালু আছে কিনা পোর্টালে দেখুন।" },
+    en: { n: "Krishak Bandhu (Natun)", old: "", b: "Rs 10,000 per acre a year in two instalments (minimum Rs 4,000); Rs 2 lakh to the family if a farmer aged 18–60 dies.", c: ["Land-owning farmer or recorded sharecropper", "Resident of West Bengal"], d: ["Aadhaar", "Land record / barga record", "Bank account", "Photo"], s: ["Apply at krishakbandhu.wb.gov.in or the Agriculture office / Government camp"], x: "No official change found under the new government; check the portal for status." } },
+
+  { id: "youth", cat: "work", st: "rep", by: "state", help: "", links: [],
+    bn: { n: "ভরসা কর্মসাথী / যুব শক্তি (যুব ভাতা)", old: "বাংলার যুবসাথী", b: "বেকার যুবক-যুবতীদের মাসিক ভাতা: বাজেটে ৩,০০০ টাকা; কিছু সূত্রে স্নাতকদের ৩,০০০ ও অন্যদের ২,০০০ টাকা।", c: ["বয়স ২১–৪৫ (প্রাথমিক তথ্য)", "বেকার", "কম পারিবারিক আয় (প্রাথমিক তথ্যে বছরে ১ লক্ষ টাকার কম)"], d: ["সরকারি বিজ্ঞপ্তির পর জানা যাবে"], s: ["সরকারি বিজ্ঞপ্তি ও পোর্টাল এখনও দেখা যায়নি; যুবকল্যাণ দপ্তরের ঘোষণা দেখুন"], x: "নকল 'আবেদন' ওয়েবসাইট থেকে সাবধান।" },
+    en: { n: "Bhorsa Karmasathi / Yuva Shakti (youth allowance)", old: "Banglar Yuva Sathi", b: "Monthly allowance for unemployed youth: Rs 3,000 in the Budget; some sources say Rs 3,000 for graduates and Rs 2,000 for others.", c: ["Age 21–45 (tentative)", "Unemployed", "Low family income (tentatively below Rs 1 lakh a year)"], d: ["Will be known after the official notification"], s: ["No official notification or portal yet; watch the Youth Services Department"], x: "Beware of fake 'application' websites." } },
+  { id: "vishwakarma", cat: "work", st: "ok", by: "central", help: "1800-267-7777",
+    links: [["PM বিশ্বকর্মা পোর্টাল", "PM Vishwakarma portal", "https://pmvishwakarma.gov.in"]],
+    bn: { n: "প্রধানমন্ত্রী বিশ্বকর্মা", old: "", b: "কারিগর ও শিল্পীদের প্রশিক্ষণ (দৈনিক ৫০০ টাকা ভাতা), যন্ত্রপাতির জন্য ১৫,০০০ টাকা, ৫% সুদে জামানতহীন ঋণ: প্রথমে ১ লক্ষ, পরে ২ লক্ষ টাকা।",
+      c: ["১৮টি প্রথাগত পেশার কারিগর (ছুতোর, কামার, কুমোর, দর্জি, নাপিত, ধোপা, মালাকার, ঝুড়ি-মাদুর বোনা ইত্যাদি)", "বয়স ১৮ বা বেশি", "পরিবারে একজন", "সরকারি চাকরিজীবীর পরিবার নয়"], d: ["আধার", "মোবাইল নম্বর", "ব্যাঙ্ক অ্যাকাউন্ট", "রেশন কার্ড"],
+      s: ["নিকটবর্তী CSC (কমন সার্ভিস সেন্টার)-এ আধার দিয়ে নথিভুক্তি", "পঞ্চায়েত / পুরসভা স্তরে যাচাই", "প্রশিক্ষণ শেষে সার্টিফিকেট, টুলকিট ভাউচার ও ঋণ"], x: "মে ২০২৬-এ রাজ্যে চালু; প্রায় ৭.৭৯ লক্ষ কারিগর আগে থেকেই নথিভুক্ত।" },
+    en: { n: "PM Vishwakarma", old: "", b: "For artisans: training with Rs 500 a day stipend, Rs 15,000 for tools, collateral-free loans at 5%: Rs 1 lakh, then Rs 2 lakh.",
+      c: ["Artisan in one of 18 traditional trades (carpenter, blacksmith, potter, tailor, barber, washerman, garland maker, basket/mat weaver, etc.)", "Age 18 or above", "One person per family", "Not from a Government employee's family"], d: ["Aadhaar", "Mobile number", "Bank account", "Ration card"],
+      s: ["Register with Aadhaar at the nearest CSC (Common Service Centre)", "Verification at panchayat / municipality level", "After training: certificate, toolkit voucher and loan"], x: "Started in the State in May 2026; about 7.79 lakh artisans were already enrolled." } },
+  { id: "eshram", cat: "work", st: "ok", by: "central", help: "14434",
+    links: [["ই-শ্রম পোর্টাল", "e-Shram portal", "https://eshram.gov.in"]],
+    bn: { n: "ই-শ্রম কার্ড (অসংগঠিত শ্রমিক)", old: "", b: "অসংগঠিত শ্রমিকদের জাতীয় নথিভুক্তি; বিভিন্ন কেন্দ্রীয় সামাজিক সুরক্ষা প্রকল্পের সুবিধা।", c: ["বয়স ১৬ থেকে ৫৯", "অসংগঠিত ক্ষেত্রের শ্রমিক (নির্মাণ, গৃহকর্মী, খেতমজুর, হকার ইত্যাদি)", "EPFO / ESIC সদস্য নন, আয়করদাতা নন"], d: ["আধার", "আধার-যুক্ত মোবাইল", "ব্যাঙ্ক অ্যাকাউন্ট"], s: ["eshram.gov.in-এ নিজে নথিভুক্তি অথবা CSC-তে"], x: "" },
+    en: { n: "e-Shram card (unorganised workers)", old: "", b: "National registration of unorganised workers, linking them to Central social security schemes.", c: ["Age 16 to 59", "Unorganised worker (construction, domestic, farm labour, vendor, etc.)", "Not an EPFO / ESIC member or income-tax payer"], d: ["Aadhaar", "Aadhaar-linked mobile", "Bank account"], s: ["Self-register at eshram.gov.in or at a CSC"], x: "" } },
+  { id: "svanidhi", cat: "work", st: "ok", by: "central", help: "",
+    links: [["PM SVANidhi", "PM SVANidhi", "https://pmsvanidhi.mohua.gov.in"]],
+    bn: { n: "প্রধানমন্ত্রী স্বনিধি (হকার ঋণ)", old: "", b: "শহরের ফুটপাত বিক্রেতাদের জামানতহীন কার্যকরী মূলধন ঋণ, সময়ে শোধে বেশি ঋণ ও সুদে ভর্তুকি।", c: ["শহর এলাকার রাস্তার বিক্রেতা", "পুরসভার বিক্রেতা শংসাপত্র / সুপারিশপত্র"], d: ["আধার", "ভোটার কার্ড", "বিক্রেতা শংসাপত্র বা পুরসভার সুপারিশ", "ব্যাঙ্ক অ্যাকাউন্ট"], s: ["pmsvanidhi.mohua.gov.in-এ বা পুরসভা / CSC-তে আবেদন"], x: "" },
+    en: { n: "PM SVANidhi (street-vendor loan)", old: "", b: "Collateral-free working-capital loans for urban street vendors, with larger loans and interest subsidy for timely repayment.", c: ["Street vendor in an urban area", "Vending certificate / letter of recommendation from the municipality"], d: ["Aadhaar", "Voter card", "Vending certificate or municipal recommendation", "Bank account"], s: ["Apply at pmsvanidhi.mohua.gov.in or through the municipality / CSC"], x: "" } },
+
+  { id: "pmayg", cat: "housing", st: "rep", by: "central", help: "",
+    links: [["PMAY-গ্রামীণ", "PMAY-Gramin", "https://pmayg.nic.in"]],
+    bn: { n: "প্রধানমন্ত্রী আবাস যোজনা – গ্রামীণ", old: "বাংলার বাড়ি / বাংলা আবাস যোজনা", b: "গ্রামে পাকা বাড়ি তৈরির সহায়তা: সমতলে ১.২০ লক্ষ টাকা, পাহাড় / দুর্গম এলাকায় ১.৩০ লক্ষ টাকা; MGNREGA-তে মজুরি ও শৌচালয়ের সহায়তা।",
+      c: ["গ্রামে কাঁচা বা জীর্ণ বাড়ি / গৃহহীন পরিবার", "আবাস+ সমীক্ষা / তালিকায় নাম", "আগে সরকারি আবাস পাননি"], d: ["আধার", "জব কার্ড", "ব্যাঙ্ক অ্যাকাউন্ট", "জমির নথি"], s: ["পঞ্চায়েত / BDO অফিসে যোগাযোগ; গ্রামসভায় তালিকা যাচাই", "অনুমোদনের পর কিস্তিতে টাকা অ্যাকাউন্টে"], x: "নতুন সরকার রাজ্যে বড় আকারে PMAY চালুর কথা বলেছে; নতুন তালিকার বিজ্ঞপ্তি দেখুন।" },
+    en: { n: "PM Awas Yojana – Gramin", old: "Banglar Bari / Bangla Awas Yojana", b: "Help to build a pucca house in villages: Rs 1.20 lakh in plains, Rs 1.30 lakh in hilly / difficult areas; MGNREGA wages and toilet support.",
+      c: ["Rural family that is homeless or lives in a kutcha / dilapidated house", "Name in the Awaas+ survey / list", "Has not received Government housing before"], d: ["Aadhaar", "Job card", "Bank account", "Land document"], s: ["Contact the panchayat / BDO office; the list is verified in the Gram Sabha", "After approval, money comes to the account in instalments"], x: "The new government has announced a large PMAY rollout; watch for notices of new lists." } },
+  { id: "pmayu", cat: "housing", st: "ok", by: "central", help: "",
+    links: [["PMAY-শহর ২.০", "PMAY-Urban 2.0", "https://pmay-urban.gov.in"]],
+    bn: { n: "প্রধানমন্ত্রী আবাস যোজনা – শহর ২.০", old: "", b: "শহরের দরিদ্র ও নিম্ন / মধ্য আয়ের পরিবারের পাকা বাড়ির সহায়তা।", c: ["শহর এলাকা", "দেশের কোথাও নিজের পাকা বাড়ি নেই", "আয়ের শ্রেণি (EWS / LIG / MIG) অনুযায়ী"], d: ["আধার", "আয়ের প্রমাণ", "ব্যাঙ্ক অ্যাকাউন্ট", "জমির নথি (নিজে বাড়ি বানালে)"], s: ["pmay-urban.gov.in-এ আবেদন বা পুরসভায়"], x: "" },
+    en: { n: "PM Awas Yojana – Urban 2.0", old: "", b: "Housing support for urban poor and low / middle-income families.", c: ["Urban area", "No pucca house anywhere in India", "As per income group (EWS / LIG / MIG)"], d: ["Aadhaar", "Income proof", "Bank account", "Land document (for self-construction)"], s: ["Apply at pmay-urban.gov.in or the municipality"], x: "" } },
+  { id: "ration", cat: "housing", st: "ok", by: "state", help: "1800-345-5505",
+    links: [["খাদ্য দপ্তর", "Food Department", "https://food.wb.gov.in"]],
+    bn: { n: "রেশন কার্ড ও বিনামূল্যে রেশন", old: "খাদ্যসাথী", b: "ডিজিটাল রেশন কার্ড; যোগ্য পরিবারকে বিনামূল্যে খাদ্যশস্য (PMGKAY)।", c: ["পশ্চিমবঙ্গের বাসিন্দা পরিবার", "কার্ডের শ্রেণি (AAY / PHH / অন্যান্য) আয় ও অবস্থা অনুযায়ী"], d: ["আধার", "ঠিকানার প্রমাণ", "পরিবারের সদস্যদের তথ্য", "ছবি"], s: ["food.wb.gov.in-এ নতুন কার্ডের ফর্ম (Form 3 ইত্যাদি) পূরণ অথবা খাদ্য পরিদর্শক / BDO / পুরসভা অফিসে", "আধার-রেশন সংযোগ (e-KYC) রেশন দোকানে"], x: "" },
+    en: { n: "Ration card and free ration", old: "Khadya Sathi", b: "Digital ration card; free food grains for eligible families (PMGKAY).", c: ["Family resident in West Bengal", "Card category (AAY / PHH / others) by income and condition"], d: ["Aadhaar", "Address proof", "Family member details", "Photo"], s: ["Fill the new-card form (Form 3 etc.) at food.wb.gov.in or at the food inspector / BDO / municipality office", "Do Aadhaar–ration e-KYC at the ration shop"], x: "" } },
+  { id: "ujjwala", cat: "housing", st: "rep", by: "central", help: "1800-266-6696",
+    links: [["উজ্জ্বলা পোর্টাল", "Ujjwala portal", "https://www.pmuy.gov.in"]],
+    bn: { n: "প্রধানমন্ত্রী উজ্জ্বলা যোজনা (রান্নার গ্যাস)", old: "", b: "দরিদ্র পরিবারের মহিলাদের জামানত ছাড়া LPG সংযোগ, প্রথম রিফিল ও স্টোভ।", c: ["প্রাপ্তবয়স্ক মহিলা", "দরিদ্র পরিবার (নির্ধারিত শ্রেণি)", "পরিবারে আগে LPG সংযোগ নেই"], d: ["আধার", "রেশন কার্ড", "ব্যাঙ্ক অ্যাকাউন্ট", "স্ব-ঘোষণা"], s: ["pmuy.gov.in-এ বা নিকটবর্তী গ্যাস ডিস্ট্রিবিউটরের কাছে আবেদন"], x: "রাজ্যে নতুন পর্যায় চালুর খবর আছে; ডিস্ট্রিবিউটরের কাছে যাচাই করুন।" },
+    en: { n: "PM Ujjwala Yojana (cooking gas)", old: "", b: "Deposit-free LPG connection with first refill and stove for women of poor households.", c: ["Adult woman", "Poor household (notified categories)", "No LPG connection in the household"], d: ["Aadhaar", "Ration card", "Bank account", "Self-declaration"], s: ["Apply at pmuy.gov.in or at the nearest gas distributor"], x: "A new phase is reported in the State; confirm with the distributor." } },
+
+  { id: "caste", cat: "certs", st: "ok", by: "state", help: "",
+    links: [["জাতি শংসাপত্র পোর্টাল", "Caste certificate portal", "https://castcertificatewb.gov.in"]],
+    bn: { n: "SC / ST জাতি শংসাপত্র", old: "", b: "তফসিলি জাতি / উপজাতি শংসাপত্র, দেন মহকুমা শাসক (SDO)।",
+      c: ["রাজ্যের তফসিলি তালিকাভুক্ত জাতি / উপজাতি", "আবেদনকারী বা পূর্বপুরুষ রাষ্ট্রপতির আদেশের তারিখে (SC ১০.০৮.১৯৫০, ST ০৬.০৯.১৯৫০) পশ্চিমবঙ্গের সাধারণ বাসিন্দা", "বিবাহিত মহিলার ক্ষেত্রে পিতার জাতি"],
+      d: ["ছবি", "আধার / ভোটার কার্ড", "বর্তমান ঠিকানার প্রমাণ", "বাবা বা পিতৃকুলের রক্তের সম্পর্কের আত্মীয়ের জাতি শংসাপত্র", "আত্মীয় হলে সম্পর্কের প্রমাণ", "জন্ম / স্কুল শংসাপত্র", "স্ব-ঘোষণা"],
+      s: ["castcertificatewb.gov.in-এ অনলাইন আবেদন বা সরকারি শিবিরে", "গ্রামে BDO, শহরে SDO অফিস তদন্ত করে", "প্রয়োজনে শুনানি", "SDO অনুমোদন করলে শংসাপত্র; পোর্টালে 'Check Certificate'-এ যাচাই করা যায়"],
+      x: "২০১১-র পর দেওয়া সব SC / ST / OBC শংসাপত্রের পুনর্যাচাই চলছে (আদেশ ১৪.০৫.২০২৬)। প্রতারণায় পাওয়া শংসাপত্র বাতিল ও শাস্তিযোগ্য।" },
+    en: { n: "SC / ST caste certificate", old: "", b: "Scheduled Caste / Tribe certificate, issued by the Sub-Divisional Officer (SDO).",
+      c: ["Caste / tribe in the State's Scheduled list", "Applicant or ancestors ordinarily resident in West Bengal on the Presidential Order date (SC 10.08.1950, ST 06.09.1950)", "A married woman takes her father's caste"],
+      d: ["Photo", "Aadhaar / voter card", "Present address proof", "Caste certificate of father or a paternal blood relative", "Relationship proof if a relative", "Birth / school certificate", "Self-declaration"],
+      s: ["Apply online at castcertificatewb.gov.in or at a Government camp", "The BDO (rural) or SDO office (urban) does the enquiry", "Hearing if needed", "The SDO approves and issues; verify on the portal under 'Check Certificate'"],
+      x: "All SC / ST / OBC certificates issued since 2011 are being re-verified (order 14.05.2026). Certificates obtained by fraud are cancelled and punishable." } },
+  { id: "obc", cat: "certs", st: "ok", by: "state", help: "",
+    links: [["জাতি শংসাপত্র পোর্টাল", "Caste certificate portal", "https://castcertificatewb.gov.in"], ["অনগ্রসর শ্রেণি কল্যাণ দপ্তর", "Backward Classes Welfare Dept.", "https://anagrasarkalyan.gov.in"]],
+    bn: { n: "OBC শংসাপত্র (নতুন তালিকা)", old: "OBC-A / OBC-B", b: "রাজ্যের নতুন OBC তালিকায় ৬৬টি শ্রেণি, রাজ্য সরকারি চাকরিতে ৭% সংরক্ষণ; OBC-A / B ভাগ আর নেই (বিজ্ঞপ্তি ৯৪৪ ও ৯৪৫-BCW, ১৮.০৫.২০২৬)।",
+      c: ["ভারতের নাগরিক", "১৫.০৩.১৯৯৩ থেকে পশ্চিমবঙ্গের স্থায়ী বাসিন্দা", "নতুন ৬৬ শ্রেণির তালিকাভুক্ত সম্প্রদায়", "ক্রিমি লেয়ারের বাইরে (পারিবারিক আয়সীমা দপ্তরের সর্বশেষ আদেশ অনুযায়ী)"],
+      d: ["নাগরিকত্ব / পরিচয়ের প্রমাণ", "১৯৯৩ থেকে বসবাসের প্রমাণ (পুরনো ভোটার তালিকা, জমির নথি, স্কুলের নথি)", "বর্তমান ঠিকানার প্রমাণ", "বাবা / আত্মীয়ের OBC শংসাপত্র (যদি থাকে)", "পারিবারিক আয়ের প্রমাণ", "ক্রিমি লেয়ার নয় এমন স্ব-ঘোষণা"],
+      s: ["castcertificatewb.gov.in-এ আবেদন", "BDO / SDO অফিসে তদন্ত", "SDO শংসাপত্র দেন"], x: "২০১০-এর পর দেওয়া পুরনো OBC শংসাপত্র নিয়ে আদালতের রায় ও পুনর্যাচাই চলছে; নির্বাচন কমিশন SIR শুনানিতে ২০১০-এর পরের OBC শংসাপত্র গ্রহণ করছে না।" },
+    en: { n: "OBC certificate (new list)", old: "OBC-A / OBC-B", b: "New State OBC list of 66 classes with 7% reservation in State Government jobs; no OBC-A / B split (notifications 944 and 945-BCW, 18.05.2026).",
+      c: ["Citizen of India", "Permanent resident of West Bengal since 15.03.1993", "Community in the new 66-class list", "Outside the creamy layer (family income limit as per the latest order)"],
+      d: ["Proof of citizenship / identity", "Proof of residence since 1993 (old voter list, land record, school record)", "Present address proof", "OBC certificate of father / relative (if any)", "Family income proof", "Self-declaration of not being in the creamy layer"],
+      s: ["Apply at castcertificatewb.gov.in", "Enquiry by the BDO / SDO office", "The SDO issues the certificate"], x: "Court rulings and re-verification affect OBC certificates issued after 2010; the Election Commission does not accept post-2010 OBC certificates in SIR hearings." } },
+  { id: "ncl", cat: "certs", st: "ok", by: "state", help: "", links: [["NCBC কেন্দ্রীয় তালিকা", "NCBC Central list", "http://www.ncbc.nic.in"]],
+    bn: { n: "OBC নন-ক্রিমি লেয়ার (কেন্দ্রীয় ফর্ম্যাট)", old: "", b: "কেন্দ্রীয় চাকরি ও ভর্তির (UPSC, SSC, NEET, JEE) জন্য, দেন SDO।", c: ["সম্প্রদায় কেন্দ্রীয় OBC তালিকায় থাকতে হবে", "বাবা-মায়ের আয় বছরে ৮ লক্ষ টাকার কম (বেতন ও কৃষি আয় বাদে)", "বাবা-মা গ্রুপ A পদে থাকলে ক্রিমি লেয়ার"], d: ["নিজের OBC শংসাপত্র", "বাবা-মায়ের তিন বছরের আয়ের প্রমাণ", "বাবা-মায়ের চাকরির বিবরণ", "ঠিকানার প্রমাণ", "কেন্দ্রীয় ফর্ম্যাটে স্ব-ঘোষণা"], s: ["SDO অফিস / অনলাইনে আবেদন", "নিয়োগ বা ভর্তির বিজ্ঞপ্তিতে চাওয়া ফর্ম্যাট ও আর্থিক বছর মিলিয়ে নিন"], x: "প্রতি বছর নতুন করে নিতে হয়।" },
+    en: { n: "OBC non-creamy layer (Central format)", old: "", b: "For Central jobs and admissions (UPSC, SSC, NEET, JEE); issued by the SDO.", c: ["Community must be in the Central OBC list", "Parents' income below Rs 8 lakh a year (excluding salary and farm income)", "Parents in Group A posts are creamy layer"], d: ["Own OBC certificate", "Parents' income proof for three years", "Parents' service details", "Address proof", "Self-declaration in Central format"], s: ["Apply at the SDO office / online", "Match the format and financial year asked in the recruitment or admission notice"], x: "Must be renewed every year." } },
+  { id: "ews", cat: "certs", st: "ok", by: "state", help: "", links: [["ই-ডিস্ট্রিক্ট", "e-District", "https://edistrict.wb.gov.in"]],
+    bn: { n: "EWS শংসাপত্র", old: "", b: "সাধারণ শ্রেণির আর্থিকভাবে দুর্বলদের ১০% সংরক্ষণের জন্য। গ্রামে BDO, শহরে SDO, কলকাতায় DWO দেন।", c: ["সাধারণ শ্রেণি (SC / ST / OBC নন)", "আগের আর্থিক বছরে পারিবারিক মোট আয় ৮ লক্ষ টাকার কম", "৫ একর বা বেশি কৃষিজমি নেই; ১,০০০ বর্গফুট বা বড় ফ্ল্যাট নেই; নির্দিষ্ট মাপের বেশি বসতজমি নেই"], d: ["পরিচয় ও ঠিকানার প্রমাণ", "পরিবারের সবার আয়ের প্রমাণ", "জমির নথি", "আয় ও সম্পদের স্ব-ঘোষণা"], s: ["ই-ডিস্ট্রিক্ট বা অফিসে আবেদন", "তদন্তের পর শংসাপত্র"], x: "পশ্চিমবঙ্গে ১ কাঠা = ৭২০ বর্গফুট।" },
+    en: { n: "EWS certificate", old: "", b: "For the 10% reservation for economically weaker General-category people. Issued by the BDO (rural), SDO (urban), DWO (Kolkata).", c: ["General category (not SC / ST / OBC)", "Total family income below Rs 8 lakh in the previous financial year", "No 5+ acres of farm land; no flat of 1,000 sq ft or more; no house plot above the notified size"], d: ["Identity and address proof", "Income proof of all family members", "Land records", "Self-declaration of income and assets"], s: ["Apply on e-District or at the office", "Certificate after enquiry"], x: "In West Bengal 1 katha = 720 sq ft." } },
+  { id: "residential", cat: "certs", st: "ok", by: "state", help: "", links: [["ই-ডিস্ট্রিক্ট", "e-District", "https://edistrict.wb.gov.in"]],
+    bn: { n: "বাসস্থান শংসাপত্র", old: "", b: "পশ্চিমবঙ্গে বসবাসের প্রমাণ, দেন SDO (তদন্তের পর)।", c: ["আবেদনকারী ঠিকানায় সাধারণভাবে বসবাস করেন", "উদ্দেশ্য অনুযায়ী কত বছরের বসবাস দরকার তা বিজ্ঞপ্তিতে দেখুন"], d: ["ছবি", "ভোটার কার্ড / আধার", "রেশন কার্ড", "জমির নথি / ভাড়ার রসিদ", "স্কুল শংসাপত্র", "বিদ্যুৎ বিল", "প্রয়োজনে প্রধান / কাউন্সিলরের শংসাপত্র"], s: ["ই-ডিস্ট্রিক্ট বা SDO অফিসে আবেদন", "BDO / পরিদর্শক / পুরসভা তদন্ত করে", "SDO শংসাপত্র দেন"], x: "" },
+    en: { n: "Residential certificate", old: "", b: "Proof of residence in West Bengal, issued by the SDO after enquiry.", c: ["Applicant ordinarily lives at the address", "Years of residence needed depend on the purpose; see the notice"], d: ["Photo", "Voter card / Aadhaar", "Ration card", "Land record / rent receipt", "School certificate", "Electricity bill", "Pradhan / councillor certificate if asked"], s: ["Apply on e-District or at the SDO office", "BDO / inspector / municipality enquires", "The SDO issues the certificate"], x: "" } },
+  { id: "income", cat: "certs", st: "ok", by: "state", help: "", links: [["ই-ডিস্ট্রিক্ট", "e-District", "https://edistrict.wb.gov.in"]],
+    bn: { n: "আয়ের শংসাপত্র", old: "", b: "পারিবারিক আয়ের প্রমাণ। গ্রামে BDO, শহরে SDO দেন। কোনও ফি নেই।", c: ["প্রকল্প, বৃত্তি, ভর্তি বা আদালতের প্রয়োজনে যে কেউ"], d: ["ছবি", "পরিচয়পত্র", "বাসস্থানের প্রমাণ", "বেতনের শংসাপত্র / ITR / প্রধান বা কাউন্সিলরের আয়ের শংসাপত্র", "পরিবারের সব উপার্জনকারীর আয়ের স্ব-ঘোষণা"], s: ["ই-ডিস্ট্রিক্টে আবেদন", "তদন্তের পর শংসাপত্র ডাউনলোড"], x: "" },
+    en: { n: "Income certificate", old: "", b: "Proof of family income. Issued by the BDO (rural) or SDO (urban). No fee.", c: ["Anyone who needs it for a scheme, scholarship, admission or court"], d: ["Photo", "ID proof", "Residence proof", "Salary certificate / ITR / income certificate from pradhan or councillor", "Self-declaration of income of all earning members"], s: ["Apply on e-District", "Download the certificate after enquiry"], x: "" } },
+  { id: "camps", cat: "certs", st: "unc", by: "state", help: "1800-345-0117",
+    links: [["জন কল্যাণ শিবির", "Jan Kalyan Shivir", "https://jks.wb.gov.in"], ["বাংলা সহায়তা কেন্দ্র", "Bangla Sahayata Kendra", "https://bsk.wb.gov.in"], ["অভিযোগ: আমাদের পাড়া আমাদের সমাধান", "Grievance: Amader Para Amader Samadhan", "https://apas.wb.gov.in"]],
+    bn: { n: "সরকারি শিবির, সহায়তা কেন্দ্র ও অভিযোগ", old: "দুয়ারে সরকার", b: "এক জায়গায় সরকারি পরিষেবা ও প্রকল্পের আবেদন; বিনামূল্যে অনলাইন আবেদনে সাহায্য; অভিযোগ জানানোর পোর্টাল।", c: ["সকল নাগরিক"], d: ["যে পরিষেবার জন্য যাচ্ছেন তার নথি"], s: ["জন কল্যাণ শিবিরের তারিখ ও স্থান: jks.wb.gov.in", "বাংলা সহায়তা কেন্দ্রে বিনামূল্যে অনলাইন আবেদন করানো যায়", "অভিযোগ: apas.wb.gov.in বা হেল্পলাইন"], x: "জন কল্যাণ শিবিরের নাম ও পোর্টাল একটি সূত্র থেকে পাওয়া (প্রথম শিবির ১৫–১৭ জুন ২০২৬); যাচাই করুন।" },
+    en: { n: "Government camps, help centres and grievances", old: "Duare Sarkar", b: "Government services and scheme applications in one place; free help with online applications; grievance portal.", c: ["All citizens"], d: ["Documents for the service you need"], s: ["Camp dates and places: jks.wb.gov.in", "Bangla Sahayata Kendra helps with online applications free of cost", "Grievances: apas.wb.gov.in or helpline"], x: "The Jan Kalyan Shivir name and portal come from a single source (first camps 15–17 June 2026); verify." } }
 ];
 
 /* ---------------- the standing instructions sent with every question ---------------- */
@@ -531,12 +796,14 @@ function knowledge() {
   const said = messages.filter(m => m.role === "user").map(m => m.shown || m.content).join(" ") + " " + ($("#q") ? $("#q").value : "");
   const schemes = /প্রকল্প|প্রকল্পা|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|শ্রী|রত্ন|সাথী|scheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|scholar|স্কলার|আবাস|রেশন|শিবির|বাস/i.test(said);
   const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|leave|salary|pay|contractual|চুক্তি|কর্মচারী|employee|WFTS|e-?office/i.test(said);
-  return parts.filter(t => {
+  const keep = parts.filter(t => {
     const sec = t.trim().charAt(0);
-    if (sec === "D") return mode === "public" || schemes;
+    if (sec === "D") return false;            // replaced by the live catalogue below
     if (sec === "E") return mode === "office" || staff;
     return true;
-  }).join("\n");
+  });
+  if (mode === "public" || schemes) keep.push(catalogueText());
+  return keep.join("\n");
 }
 
 function rules() {
@@ -657,7 +924,8 @@ const LIBS = {
   html2pdf: "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js",
   pdfjs: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
   pdfworker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
-  mammoth: "https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"
+  mammoth: "https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js",
+  pdflib: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"
 };
 const loaded = {};
 function load(name) {
@@ -765,10 +1033,13 @@ async function toXlsx(md) {
   });
   return new Uint8Array(X.write(wb, { bookType: "xlsx", type: "array" }));
 }
-function fileBase(md) {
+const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`; };
+// Some browsers replace non-English file names with "download", so names stay in plain English letters.
+function fileBase(md, hint) {
+  if (hint) return `${hint}-${stamp()}`;
   const first = parseMd(md).find(b => b.t === "h" || b.t === "p");
-  const t = first ? plain(first.text).split("\n")[0] : "draft";
-  return (t.replace(/[\\/:*?"<>|#]/g, " ").replace(/\s+/g, " ").trim().slice(0, 50) || "draft");
+  const ascii = (first ? plain(first.text).split("\n")[0] : "").replace(/[^A-Za-z0-9 ._-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 40);
+  return ascii.length >= 3 ? `${ascii}-${stamp()}` : `document-${stamp()}`;
 }
 const canSave = () => !!downloads || engine === "server";
 async function saveFile(filename, data) {
@@ -778,12 +1049,23 @@ async function saveFile(filename, data) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-async function save(kind, md, btn) {
+
+/* The AI reads the same catalogue the public pages show, so both always agree. */
+function catalogueText() {
+  const st = { ok: "confirmed", rep: "reported - verify", unc: "status unconfirmed" };
+  return "D. SCHEMES AND SERVICES (catalogue, October 2026; current names of the BJP-led State government, earlier names in brackets)\n" +
+    SERVICES.map((s, i) => {
+      const e = s.en;
+      return `${i + 1}. ${e.n}${e.old ? ` (earlier: ${e.old})` : ""} [${s.by === "central" ? "Central" : "State"}; ${st[s.st]}]: ${e.b} Eligibility: ${e.c.join("; ")}. Documents: ${e.d.join("; ")}. How to apply: ${e.s.join("; ")}.${s.links.length ? " Links: " + s.links.map(l => l[2]).join(", ") + "." : ""}${s.help ? " Helpline " + s.help + "." : ""}${e.x ? " Note: " + e.x : ""}`;
+    }).join("\n");
+}
+
+async function save(kind, md, btn, hint) {
   if (!canSave()) return toast(t("no_save"));
   const label = btn.textContent; btn.disabled = true; btn.textContent = t("making");
   try {
     const data = kind === "docx" ? await toDocx(md) : kind === "pdf" ? await toPdf(md) : await toXlsx(md);
-    await saveFile(`${fileBase(md)}.${kind}`, data);
+    await saveFile(`${fileBase(md, hint)}.${kind}`, data);
     toast(t("file_ready"));
   } catch (e) {
     if (e && e.code === "declined") toast(t("dl_cancel"));
@@ -791,107 +1073,48 @@ async function save(kind, md, btn) {
     else toast((e && e.message) || t("dl_fail"));
   } finally { btn.disabled = false; btn.textContent = label; }
 }
+async function htmlToPdf(html, landscape) {
+  await load("html2pdf");
+  const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = html;
+  if (landscape) sheet.style.width = "267mm";
+  await document.fonts.ready;
+  return window.html2pdf().set({
+    margin: [12, 12, 12, 12], image: { type: "jpeg", quality: 0.95 },
+    html2canvas: { scale: 2, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: landscape ? "landscape" : "portrait" },
+    pagebreak: { mode: ["css", "legacy"] }
+  }).from(sheet).outputPdf("blob");
+}
+async function offer(name, data) {
+  try { await saveFile(name, data); toast(t("file_ready")); }
+  catch (e) { toast(e && e.code === "declined" ? t("dl_cancel") : (e && e.message) || t("dl_fail")); }
+}
 
-/* ---------------- rendering ---------------- */
+/* ---------------- one way to ask the AI, used by every tab ---------------- */
 const PROVIDER_NAMES = { claude: "Claude", gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" };
-const tasks = () => TASKS[mode][settings.lang] || TASKS[mode].bn;
-
-function welcomeHtml() {
-  const office = mode === "office";
-  return `<div class="welcome">
-    <h2>${esc(t(office ? "w_office_h" : "w_public_h"))}</h2>
-    <p>${esc(t(office ? "w_office_p" : "w_public_p"))}</p>
-    <div><button class="btn primary big" type="button" data-open-schemes>${esc(t("see_schemes"))}</button></div>
-    <div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>
-  </div>`;
-}
-function thinkingHtml(m) {
-  const s = Math.max(0, Math.round((Date.now() - (m.started || Date.now())) / 1000));
-  return `<span class="thinking">${esc(t("thinking"))} <span class="secs" data-started="${m.started || Date.now()}">${s}</span> ${esc(t("secs"))}<small${s < 20 ? " hidden" : ""}>${esc(t("slow"))}</small></span>`;
-}
-function msgHtml(m, k) {
-  if (m.role === "user") {
-    return `<div class="msg user">${m.files && m.files.length ? `<div class="files">${m.files.map(f => `<span class="file">${esc(f)}</span>`).join("")}</div>` : ""}<div class="bubble">${esc(m.shown ?? m.content)}</div></div>`;
-  }
-  const hasTable = parseMd(m.content).some(b => b.t === "table");
-  return `<div class="msg ai" data-k="${k}">
-    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
-    ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
-    ${m.via && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
-    ${m.done && m.content ? `<div class="actions">
-      ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
-      ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
-    </div>` : ""}
-  </div>`;
-}
-function applyLang() {
-  document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
-  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
-  $("#lang-bn").setAttribute("aria-pressed", settings.lang === "bn");
-  $("#lang-en").setAttribute("aria-pressed", settings.lang === "en");
-  $("#sch-search").placeholder = t("search");
-}
-function render() {
-  $("#mode-office").setAttribute("aria-pressed", mode === "office");
-  $("#mode-public").setAttribute("aria-pressed", mode === "public");
-  $("#rail-title").textContent = t(mode === "office" ? "rail_office" : "rail_public");
-  $("#rail-tasks").innerHTML = tasks().map((x, k) => `<button class="task" type="button" data-task="${k}"><b>${esc(x[0])}</b><small>${esc(x[1])}</small></button>`).join("");
-  $("#rail-format").hidden = mode !== "office";
-  $("#rail-sample").textContent = settings.sampleText ? t("format_on") + settings.sampleName : t("format_off");
-  $("#scheme-chips").innerHTML = SCHEME_DATA.map((s, k) => `<button class="chip" type="button" data-scheme="${k}">${esc(s[settings.lang].n)}</button>`).join("");
-  $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
-  $("#q").placeholder = t(mode === "office" ? "ph_office" : "ph_public");
-  renderPending();
-}
-function renderPending() {
-  $("#pending").innerHTML = pendingFiles.map((f, k) => `<span class="file">${esc(f.name)}${f.kind === "scan" ? esc(t("scan")) : ""}<button type="button" data-unpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
-}
-function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]`); if (el) el.outerHTML = msgHtml(messages[k], k); else render(); }
-const updateLast = () => updateAt(messages.length - 1);
-const scrollDown = () => { const s = $("#scroll"); s.scrollTop = messages.length ? s.scrollHeight : 0; };
-const persist = () => {
-  const keep = messages.filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
-  store.set("chat", keep.slice(-40));
-};
-function setBusy(b) {
-  const s = $("#send");
-  s.innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
-}
-// live seconds counter while waiting for the first words
-setInterval(() => {
-  document.querySelectorAll(".thinking .secs").forEach(el => {
-    const s = Math.round((Date.now() - Number(el.dataset.started)) / 1000);
-    el.textContent = s;
-    const hint = el.parentElement.querySelector("small");
-    if (hint) hint.hidden = s < 20;
-  });
-}, 1000);
-
-/* ---------------- asking ---------------- */
+const CLIENT_TIMEOUT_MS = 150000;
 const ERR = {
   bn: {
     not_granted: "AI ব্যবহারের অনুমতি দেওয়া হয়নি। পাতাটি আবার খুলে অনুমতি দিন।", sampling_disabled: "এই অ্যাকাউন্টে AI চালু নেই।",
     rate_limited: "আজকের ফ্রি AI-এর সীমা শেষ বা খুব বেশি প্রশ্ন একসঙ্গে এসেছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।", session_expired: "আবার সাইন ইন করুন।",
-    prompt_too_large: "লেখা বা ফাইল খুব বড়। ছোট অংশ দিন বা নতুন চ্যাট শুরু করুন।", refused: "এই প্রশ্নের উত্তর দেওয়া গেল না। অন্যভাবে জিজ্ঞাসা করুন।",
+    prompt_too_large: "লেখা বা ফাইল খুব বড়। ছোট অংশ দিন বা নতুন চ্যাট শুরু করুন।", refused: "এর উত্তর দেওয়া গেল না। অন্যভাবে লিখুন।",
     image_rejected: "ছবিটি নেওয়া গেল না। অন্য ছবি দিন।", images_unavailable: "এখন ছবি পড়তে পারে এমন AI পাওয়া যাচ্ছে না। লেখা-সহ PDF বা Word দিন।",
-    empty_completion: "কোনও উত্তর আসেনি। প্রশ্নটি সহজ করে আবার লিখুন।", server_unconfigured: "সার্ভারে কোনও AI key দেওয়া নেই। Render-এ Environment-এ key যোগ করুন।",
-    timeout: "অনেকক্ষণ কোনও উত্তর আসেনি। মেনু থেকে 'AI অবস্থা পরীক্ষা' করে দেখুন কোন key কাজ করছে।", all_failed: "কোনও AI উত্তর দিতে পারল না। মেনু থেকে 'AI অবস্থা পরীক্ষা' করে দেখুন।",
-    cut: "উত্তর মাঝপথে কেটে গেছে। ছোট অংশে জিজ্ঞাসা করুন।", upstream_error: "সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।"
+    empty_completion: "কোনও উত্তর আসেনি। আবার চেষ্টা করুন।", server_unconfigured: "সার্ভারে কোনও AI key দেওয়া নেই। Render-এ Environment-এ key যোগ করুন।",
+    timeout: "অনেকক্ষণ কোনও উত্তর আসেনি। 'AI অবস্থা পরীক্ষা' করে দেখুন কোন key কাজ করছে।", all_failed: "কোনও AI উত্তর দিতে পারল না। 'AI অবস্থা পরীক্ষা' করে দেখুন।",
+    cut: "উত্তর মাঝপথে কেটে গেছে। ছোট অংশে চেষ্টা করুন।", upstream_error: "সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।", busy: "আগের কাজটি চলছে, একটু অপেক্ষা করুন।"
   },
   en: {
     not_granted: "Permission to use the AI was not given. Reopen the page and allow it.", sampling_disabled: "The AI is not available for this account.",
-    rate_limited: "Today's free AI limit is used up, or too many questions came at once. Try again later.", session_expired: "Please sign in again.",
-    prompt_too_large: "The text or file is too large. Send a smaller part or start a new chat.", refused: "This question could not be answered. Try asking differently.",
+    rate_limited: "Today's free AI limit is used up, or too many requests came at once. Try again later.", session_expired: "Please sign in again.",
+    prompt_too_large: "The text or file is too large. Send a smaller part or start a new chat.", refused: "This could not be answered. Try wording it differently.",
     image_rejected: "That image could not be used. Try another one.", images_unavailable: "No AI that can read images is available now. Use a PDF or Word file with text.",
-    empty_completion: "No answer came back. Ask again more simply.", server_unconfigured: "No AI keys are set on the server. Add keys under Environment in Render.",
-    timeout: "No answer for a long time. Use 'Check AI status' in the menu to see which keys work.", all_failed: "No AI could answer. Use 'Check AI status' in the menu.",
-    cut: "The answer was cut short. Ask for less at a time.", upstream_error: "Connection problem. Please try again."
+    empty_completion: "No answer came back. Please try again.", server_unconfigured: "No AI keys are set on the server. Add keys under Environment in Render.",
+    timeout: "No answer for a long time. Use 'Check AI status' to see which keys work.", all_failed: "No AI could answer. Use 'Check AI status'.",
+    cut: "The answer was cut short. Try a smaller part.", upstream_error: "Connection problem. Please try again.", busy: "The previous request is still running; please wait."
   }
 };
 const errText = code => (ERR[settings.lang] || ERR.bn)[code] || (ERR[settings.lang] || ERR.bn).upstream_error;
 const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
 
-/* website: our own /api/chat, which tries the free AI providers in turn */
 async function serverAsk(system, turns, imgs, { signal, onText }) {
   const images = [];
   for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
@@ -920,76 +1143,357 @@ async function serverAsk(system, turns, imgs, { signal, onText }) {
   return { text, truncated: flag === "MAX_TOKENS" || flag === "CUT", via };
 }
 
-const CLIENT_TIMEOUT_MS = 150000;
+/* turns: [{role, content}] ending with the user's request. Resolves {text, via, truncated};
+   rejects {code, text?}. A 150 s guard turns a hang into a clear "timeout". */
+async function aiRun(turns, { images = [], onText = () => {}, signal } = {}) {
+  if (!engine) throw { code: "not_ready" };
+  const guard = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; guard.abort(); }, CLIENT_TIMEOUT_MS);
+  if (signal) signal.addEventListener("abort", () => guard.abort(), { once: true });
+  try {
+    const opts = { cache: false, signal: guard.signal, onText };
+    if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
+    const r = engine === "claude" ? await sample([{ role: "user", content: rules() }, ...turns], opts) : await serverAsk(rules(), turns, images, opts);
+    return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
+  } catch (e) {
+    if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+function aiFailed(e) {
+  const code = e && e.code;
+  if (code === "server_unconfigured") showBanner(errText(code));
+  if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) showBanner(errText(code === "not_granted" ? code : "sampling_disabled"));
+  return code === "not_ready" ? t("no_ai") : errText(code);
+}
+const attachText = files => files.filter(f => f.text).map(f => `--- Attached file: ${f.name} ---\n${f.text}\n--- End of ${f.name} ---`).join("\n\n");
+const attachImages = files => files.flatMap(f => f.images || []);
+
+/* ---------------- sections and tabs ---------------- */
+const TABS = { office: ["draft", "table", "files", "chat"], public: ["catalog", "chat"] };
+const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog" };
+function showView() {
+  let tab = tabs[mode];
+  if (!TABS[mode].includes(tab) && !(mode === "public" && tab === "detail")) tab = tabs[mode] = TABS[mode][0];
+  $("#sec-office").setAttribute("aria-pressed", mode === "office");
+  $("#sec-public").setAttribute("aria-pressed", mode === "public");
+  $("#open-settings").hidden = mode !== "office";
+  $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" && mode === "public" ? "tab_helper" : TAB_LABEL[id]))}</button>`).join("");
+  ["draft", "table", "files", "catalog", "detail", "chat"].forEach(id => { $("#v-" + id).hidden = id !== tab; });
+  if (tab === "draft") renderDraftForm();
+  if (tab === "table") renderGrid();
+  if (tab === "files") renderTools();
+  if (tab === "catalog") renderCatalog();
+  if (tab === "chat") { renderChat(); scrollDown(); }
+}
+function go(section, tab) {
+  if (section && section !== mode) { mode = section; store.set("mode", mode); messages = chats[mode]; }
+  if (tab) tabs[mode] = tab;
+  store.set("tabs", tabs);
+  showView();
+}
+function applyLang() {
+  document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+  $("#lang-bn").setAttribute("aria-pressed", settings.lang === "bn");
+  $("#lang-en").setAttribute("aria-pressed", settings.lang === "en");
+  $("#c-search").placeholder = t("c_search");
+  $("#d-facts").placeholder = t("d_facts_ph");
+  $("#d-paper").placeholder = t("d_paper_ph");
+  $("#d-rev").placeholder = t("d_rev_ph");
+  $("#t-src").placeholder = t("t_src_ph");
+}
+
+/* ---------------- OFFICE: drafting desk ---------------- */
+const DOC_TYPES = {
+  notesheet: "Notesheet (office note) written by the dealing employee and put up directly to the SDO: continuous paragraphs (PUC and how it was received, facts and what was examined, rule or GO position, proposal), ending with a line asking for orders, the dealing employee's signature and date line, and blank space for the SDO's order. Do not write the SDO's decision.",
+  dfa: "Draft letter (DFA) prepared by the employee to be issued over the SDO's signature: memo number and date, To, Sub, Ref, Sir/Madam, body in paragraphs, Yours faithfully, the SDO's signature block, and 'copy forwarded' lines if relevant.",
+  order: "Office order / memorandum issued over the SDO's signature.",
+  hearing: "Notice of hearing to an applicant, issued over the SDO's signature, stating date, time, place and the original documents to bring.",
+  showcause: "Show-cause notice issued over the SDO's signature, stating the allegation, the rule involved and the time allowed to reply.",
+  rti: "Reply by the Public Information Officer under the RTI Act, 2005: application details, point-wise replies, and the first appellate authority's name and address as blanks with the 30-day appeal period.",
+  enquiry: "Enquiry report from the enquiring officer to the SDO: particulars, how the enquiry was done, persons examined, findings, and recommendation.",
+  reverify: "Re-verification report on a caste certificate (SC / ST / OBC) under the 2026 re-verification drive, from the enquiring officer to the SDO: certificate particulars, documents checked, local enquiry, findings, and recommendation (genuine / to be cancelled after hearing).",
+  letter: "General official letter."
+};
+let draft = store.get("draft", { type: "notesheet", lang: settings.lang, to: "", sub: "", ref: "", facts: "", text: "", prev: "" });
+let draftFiles = [];
+let draftBusy = null;
+let draftPreview = false;
+const saveDraft = () => store.set("draft", draft);
+function renderDraftForm() {
+  $("#d-type").innerHTML = Object.keys(DOC_TYPES).map(k => `<option value="${k}" ${k === draft.type ? "selected" : ""}>${esc(tt("types", k))}</option>`).join("");
+  $("#d-lang").value = draft.lang || settings.lang;
+  ["to", "sub", "ref", "facts"].forEach(k => { const el = $("#d-" + k); if (el.value !== draft[k]) el.value = draft[k] || ""; });
+  if ($("#d-paper").value !== draft.text) $("#d-paper").value = draft.text || "";
+  $("#d-files").innerHTML = draftFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-dunpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
+  $("#d-fmt").innerHTML = settings.sampleText ? esc(t("d_fmt_on") + settings.sampleName) : `${esc(t("d_fmt_off"))}<button type="button" id="d-fmt-btn">${esc(t("give_sample"))}</button>`;
+  $("#d-toggle").textContent = t(draftPreview ? "d_editmode" : "d_preview");
+  $("#d-paper").hidden = draftPreview; $("#d-view").hidden = !draftPreview;
+  if (draftPreview) $("#d-view").innerHTML = mdToHtml(draft.text) || `<p class="lead">${esc(t("d_empty"))}</p>`;
+  $("#d-undo").disabled = !draft.prev;
+  $("#d-write").textContent = draftBusy ? t("d_writing") : t("d_write");
+}
+function draftStatus(text) { $("#d-status").textContent = text || ""; }
+async function runDraft(turns, images) {
+  if (draftBusy) return toast(errText("busy"));
+  draftBusy = new AbortController();
+  const before = draft.text;
+  const t0 = Date.now();
+  const tick = setInterval(() => draftStatus(`${t("d_writing")} ${Math.round((Date.now() - t0) / 1000)} ${t("secs")}`), 1000);
+  draftPreview = false; renderDraftForm(); draftStatus(t("d_writing"));
+  try {
+    const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { $("#d-paper").value = text; } });
+    draft.prev = before; draft.text = r.text; saveDraft();
+    draftStatus(`${t("answered_by")}${PROVIDER_NAMES[r.via] || r.via || ""}${r.truncated ? " · " + errText("cut") : ""}`);
+  } catch (e) {
+    if (e && e.text) { draft.prev = before; draft.text = e.text; saveDraft(); }
+    else $("#d-paper").value = draft.text;
+    draftStatus(aiFailed(e));
+  } finally { clearInterval(tick); draftBusy = null; renderDraftForm(); }
+}
+function draftRequest() {
+  const lang = draft.lang === "en" ? "English" : "Bengali";
+  return `Write the following office document.
+Type: ${DOC_TYPES[draft.type]}
+Language: ${lang}
+To / addressee: ${draft.to || "______"}
+Subject: ${draft.sub || "(take it from the facts)"}
+Reference / PUC: ${draft.ref || "—"}
+Facts and instructions:
+${draft.facts || "(see attached file)"}
+${attachText(draftFiles)}
+Output only the document in Markdown, ready to print. No preface and no notes after it. Use paragraphs, not points.`;
+}
+
+/* ---------------- OFFICE: table / Excel ---------------- */
+let grid = store.get("grid", [["ক্রম", "বিবরণ", "সংখ্যা"], ["1", "", ""], ["2", "", ""]]);
+const saveGrid = () => store.set("grid", grid);
+function renderGrid() {
+  const w = Math.max(1, ...grid.map(r => r.length));
+  grid = grid.map(r => Array.from({ length: w }, (_, i) => r[i] ?? ""));
+  $("#t-grid").innerHTML = grid.map((r, ri) => `<tr><td class="rh">${ri ? ri : ""}</td>${r.map((c, ci) => `<td contenteditable="true" data-r="${ri}" data-c="${ci}">${esc(c)}</td>`).join("")}</tr>`).join("");
+}
+const gridHtml = () => `<table><thead><tr>${grid[0].map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${grid.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+function gridToXlsx() {
+  const X = window.XLSX; const wb = X.utils.book_new();
+  const rows = grid.map(r => r.map(c => { const n = Number(String(c).replace(/,/g, "")); return c !== "" && /^-?[\d,]+(\.\d+)?$/.test(c) && !isNaN(n) ? n : c; }));
+  const ws = X.utils.aoa_to_sheet(rows);
+  ws["!cols"] = rows[0].map((_, ci) => ({ wch: Math.min(50, Math.max(8, ...rows.map(r => String(r[ci] ?? "").length + 2))) }));
+  X.utils.book_append_sheet(wb, ws, "Sheet1");
+  return new Uint8Array(X.write(wb, { bookType: "xlsx", type: "array" }));
+}
+let tableBusy = false;
+
+/* ---------------- OFFICE: file tools ---------------- */
+const TOOLS = [
+  { id: "w2p", accept: ".docx", multi: false },
+  { id: "x2p", accept: ".xlsx,.xls,.csv", multi: false },
+  { id: "i2p", accept: "image/*", multi: true },
+  { id: "mrg", accept: ".pdf", multi: true },
+  { id: "p2t", accept: ".pdf,.docx", multi: false }
+];
+const toolFiles = {};
+function renderTools() {
+  if ($("#f-grid").dataset.lang === settings.lang) return;
+  $("#f-grid").dataset.lang = settings.lang;
+  $("#f-grid").innerHTML = TOOLS.map(x => `<article class="panel tool" data-tool="${x.id}">
+    <h3>${esc(t("f_" + x.id))}</h3><p>${esc(t("f_" + x.id + "_d"))}</p>
+    <input type="file" hidden id="tf-${x.id}" accept="${x.accept}" ${x.multi ? "multiple" : ""}>
+    <div class="tools"><button class="btn small" type="button" data-pick="${x.id}">${esc(t("f_choose"))}</button><button class="btn small primary" type="button" data-run="${x.id}">${esc(t("f_run"))}</button></div>
+    <div class="picked" id="tp-${x.id}"></div>
+    ${x.id === "p2t" ? `<textarea id="tp-out" hidden aria-label="Text"></textarea><div class="tools" id="tp-acts" hidden><button class="btn small" type="button" id="tp-copy">${esc(t("copy"))}</button><button class="btn small" type="button" id="tp-draft">${esc(t("f_to_draft"))}</button><button class="btn small" type="button" id="tp-docx">Word</button></div>` : ""}
+  </article>`).join("");
+}
+const baseName = n => { const a = n.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 40); return a.length >= 2 ? a : `file-${stamp()}`; };
+async function runTool(id, btn) {
+  const files = toolFiles[id] || [];
+  if (!files.length) return toast(t("f_pick"));
+  const label = btn.textContent; btn.disabled = true; btn.textContent = t("making");
+  try {
+    if (id === "w2p") {
+      await load("mammoth");
+      const r = await window.mammoth.convertToHtml({ arrayBuffer: await files[0].arrayBuffer() });
+      await offer(baseName(files[0].name) + ".pdf", await htmlToPdf(r.value));
+    } else if (id === "x2p") {
+      await load("xlsx");
+      const wb = window.XLSX.read(new Uint8Array(await files[0].arrayBuffer()), { type: "array" });
+      const html = wb.SheetNames.map(n => `<h3>${esc(n)}</h3>` + window.XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" }).replace(/^[\s\S]*?<table/i, "<table").replace(/<\/table>[\s\S]*$/i, "</table>")).join("");
+      await offer(baseName(files[0].name) + ".pdf", await htmlToPdf(html, true));
+    } else if (id === "i2p" || id === "mrg") {
+      await load("pdflib");
+      const { PDFDocument } = window.PDFLib;
+      const out = await PDFDocument.create();
+      for (const f of files) {
+        if (id === "mrg") {
+          const src = await PDFDocument.load(await f.arrayBuffer(), { ignoreEncryption: true });
+          (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
+        } else {
+          let bytes = await f.arrayBuffer(), img;
+          if (f.type === "image/png") img = await out.embedPng(bytes);
+          else if (f.type === "image/jpeg") img = await out.embedJpg(bytes);
+          else { // other formats: redraw as JPEG
+            const bmp = await createImageBitmap(f); const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
+            img = await out.embedJpg(await (await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9))).arrayBuffer());
+          }
+          const page = out.addPage([595.28, 841.89]); const m = 28;
+          const sc = Math.min((595.28 - 2 * m) / img.width, (841.89 - 2 * m) / img.height, 1);
+          page.drawImage(img, { x: (595.28 - img.width * sc) / 2, y: (841.89 - img.height * sc) / 2, width: img.width * sc, height: img.height * sc });
+        }
+      }
+      const bytes = await out.save();
+      await offer((id === "mrg" ? "merged" : baseName(files[0].name)) + ".pdf", new Blob([bytes], { type: "application/pdf" }));
+    } else if (id === "p2t") {
+      let text = "";
+      if (/\.docx$/i.test(files[0].name)) { await load("mammoth"); text = (await window.mammoth.extractRawText({ arrayBuffer: await files[0].arrayBuffer() })).value; }
+      else {
+        await load("pdfworker"); await load("pdfjs");
+        const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await files[0].arrayBuffer()) }).promise;
+        for (let n = 1; n <= pdf.numPages; n++) { const c = await (await pdf.getPage(n)).getTextContent(); text += `--- ${n} ---\n` + c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n"; }
+        if (!text.replace(/--- \d+ ---|\s/g, "")) throw new Error(t("scanned_pdf"));
+      }
+      const out = $("#tp-out"); out.value = text.trim(); out.hidden = false; $("#tp-acts").hidden = false;
+      toast(t("f_done"));
+    }
+  } catch (e) { toast((e && e.message) || t("dl_fail")); }
+  finally { btn.disabled = false; btn.textContent = label; }
+}
+
+/* ---------------- PUBLIC: catalogue and detail ---------------- */
+let catFilter = "all";
+const pillHtml = st => `<span class="pill ${st}">${esc(t(st === "ok" ? "st_ok" : st === "rep" ? "st_rep" : "st_unc"))}</span>`;
+function renderCatalog() {
+  const L = settings.lang;
+  $("#c-cats").innerHTML = CATS.map(c => `<button class="chip" type="button" data-cat="${c[0]}" aria-pressed="${c[0] === catFilter}">${esc(L === "en" ? c[2] : c[1])}</button>`).join("");
+  const q = $("#c-search").value.trim().toLowerCase();
+  const list = SERVICES.filter(s => (catFilter === "all" || s.cat === catFilter) && (!q || JSON.stringify([s.bn, s.en]).toLowerCase().includes(q)));
+  $("#c-count").textContent = t("c_count", list.length);
+  $("#c-list").innerHTML = list.length ? list.map(s => `<button class="card" type="button" data-open="${s.id}">
+    <h3>${esc(s[L].n)}</h3>${s[L].old ? `<span class="old">${esc(t("old"))}${esc(s[L].old)}</span>` : ""}
+    <span class="b">${esc(s[L].b)}</span>
+    <span class="tags">${pillHtml(s.st)}<span class="tag">${esc(t(s.by === "central" ? "by_central" : "by_state"))}</span></span>
+  </button>`).join("") : `<p>${esc(t("no_match"))}</p>`;
+}
+function openDetail(id) {
+  const s = SERVICES.find(x => x.id === id); if (!s) return;
+  const d = s[settings.lang];
+  const L = settings.lang === "en" ? 1 : 0;
+  $("#detail").innerHTML = `
+    <div><button class="btn small" type="button" data-back>${esc(t("dt_back"))}</button></div>
+    <h2>${esc(d.n)}</h2>
+    ${d.old ? `<div class="lead">${esc(t("old"))}${esc(d.old)}</div>` : ""}
+    <div class="tags">${pillHtml(s.st)}<span class="tag">${esc(t(s.by === "central" ? "by_central" : "by_state"))}</span><span class="tag">${esc(t("dt_updated"))}</span></div>
+    <div class="benefit"><b>${esc(t("dt_benefit"))}:</b> ${esc(d.b)}</div>
+    <section><h3>${esc(t("dt_crit"))}</h3><ul>${d.c.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>
+    <section><h3>${esc(t("dt_docs"))}</h3><ul>${d.d.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>
+    <section><h3>${esc(t("dt_steps"))}</h3><ol>${d.s.map(x => `<li>${esc(x)}</li>`).join("")}</ol></section>
+    <section><h3>${esc(t("dt_links"))}</h3>${s.links.length ? `<div class="linkbtns">${s.links.map(l => `<a class="btn primary" href="${esc(l[2])}" target="_blank" rel="noopener">${esc(l[L])} ↗</a>`).join("")}</div><p class="sch-note" style="margin-top:6px">${s.links.map(l => esc(l[2].replace(/^https?:\/\//, ""))).join(" · ")}</p>` : `<p class="lead">${esc(t("dt_nolink"))}</p>`}
+      ${s.help ? `<p style="margin:8px 0 0"><b>${esc(t("dt_help"))}:</b> <span style="font-family:var(--f-mono)">${esc(s.help)}</span></p>` : ""}</section>
+    ${d.x ? `<section><h3>${esc(t("dt_note"))}</h3><p style="margin:0">${esc(d.x)}</p></section>` : ""}
+    <div class="tools"><button class="btn primary" type="button" data-ask-about="${s.id}">${esc(t("dt_ask"))}</button><button class="btn" type="button" data-ask-app="${s.id}">${esc(t("dt_app"))}</button></div>`;
+  tabs.public = "detail"; showView();
+  $("#v-detail").scrollTop = 0;
+  try { history.replaceState(null, "", "#s-" + id); } catch (e) { /* ignore */ }
+}
+
+/* ---------------- AI chat (both sections) ---------------- */
+const tasks = () => TASKS[mode][settings.lang] || TASKS[mode].bn;
+function welcomeHtml() {
+  const office = mode === "office";
+  return `<div class="welcome">
+    <h2>${esc(t(office ? "w_office_h" : "w_public_h"))}</h2>
+    <p>${esc(t(office ? "w_office_p" : "w_public_p"))}</p>
+    ${office ? "" : `<div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>`}
+    <div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>
+  </div>`;
+}
+function thinkingHtml(m) {
+  const s = Math.max(0, Math.round((Date.now() - (m.started || Date.now())) / 1000));
+  return `<span class="thinking">${esc(t("thinking"))} <span class="secs" data-started="${m.started || Date.now()}">${s}</span> ${esc(t("secs"))}<small${s < 20 ? " hidden" : ""}>${esc(t("slow"))}</small></span>`;
+}
+function msgHtml(m, k) {
+  if (m.role === "user") {
+    return `<div class="msg user">${m.files && m.files.length ? `<div class="files">${m.files.map(f => `<span class="file">${esc(f)}</span>`).join("")}</div>` : ""}<div class="bubble">${esc(m.shown ?? m.content)}</div></div>`;
+  }
+  const hasTable = parseMd(m.content).some(b => b.t === "table");
+  return `<div class="msg ai" data-k="${k}">
+    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
+    ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
+    ${m.via && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
+    ${m.done && m.content ? `<div class="actions">
+      ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
+      ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
+      ${mode === "office" && !m.editing ? `<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button>` : ""}
+    </div>` : ""}
+  </div>`;
+}
+function renderChat() {
+  $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
+  $("#q").placeholder = t(mode === "office" ? "ph_office" : "ph_public");
+  renderPending();
+}
+const render = renderChat;
+function renderPending() {
+  $("#pending").innerHTML = pendingFiles.map((f, k) => `<span class="file">${esc(f.name)}${f.kind === "scan" ? esc(t("scan")) : ""}<button type="button" data-unpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
+}
+function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]`); if (el) el.outerHTML = msgHtml(messages[k], k); else renderChat(); }
+const updateLast = () => updateAt(messages.length - 1);
+const scrollDown = () => { const s = $("#scroll"); s.scrollTop = messages.length ? s.scrollHeight : 0; };
+const persist = () => {
+  for (const sec of ["office", "public"]) {
+    const keep = chats[sec].filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
+    store.set("chat:" + sec, keep.slice(-40));
+  }
+};
+function setBusy(b) {
+  $("#send").innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+}
+setInterval(() => {
+  document.querySelectorAll(".thinking .secs").forEach(el => {
+    const s = Math.round((Date.now() - Number(el.dataset.started)) / 1000);
+    el.textContent = s;
+    const hint = el.parentElement.querySelector("small");
+    if (hint) hint.hidden = s < 20;
+  });
+}, 1000);
 async function ask(text) {
   if (!engine) return toast(t("no_ai"));
+  if (ctl) return toast(errText("busy"));
+  if (tabs[mode] !== "chat") go(mode, "chat");
   const files = pendingFiles; pendingFiles = [];
   let content = text;
-  const docs = files.filter(f => f.text);
-  if (docs.length) content += "\n\n" + docs.map(f => `--- Attached file: ${f.name} ---\n${f.text}\n--- End of ${f.name} ---`).join("\n\n");
-  const imgs = files.flatMap(f => f.images || []);
+  const docs = attachText(files);
+  if (docs) content += "\n\n" + docs;
+  const imgs = attachImages(files);
   if (imgs.length) content += `\n\n(${imgs.length} image(s) attached: ${files.filter(f => f.images).map(f => f.name + (f.kind === "scan" ? " — scanned PDF pages" : "")).join(", ")}. Read them carefully, including Bengali text.)`;
-  messages.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
+  const box = messages;
+  box.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
   const ai = { role: "assistant", content: "", done: false, started: Date.now() };
-  messages.push(ai);
-  render(); scrollDown(); setBusy(true);
-
-  let turns = messages.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
+  box.push(ai);
+  renderChat(); scrollDown(); setBusy(true);
+  let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
   while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
   while (turns.length && turns[0].role !== "user") turns.shift();
-  const input = [{ role: "user", content: rules() }, ...turns];
-
   ctl = new AbortController();
-  let timedOut = false;
-  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, CLIENT_TIMEOUT_MS);
+  const live = () => box === messages;
   try {
-    const opts = { cache: false, signal: ctl.signal, onText: ({ text }) => { ai.content = text; updateLast(); } };
-    if (imgs.length) opts.images = imgs.slice(0, (imageLimits && imageLimits.maxCount) || 4);
-    const r = engine === "claude" ? await sample(input, opts) : await serverAsk(rules(), turns, imgs, opts);
-    ai.content = r.text; ai.via = r.via || (engine === "claude" ? "claude" : "");
+    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    ai.content = r.text; ai.via = r.via;
     if (r.truncated) ai.error = errText("cut");
   } catch (e) {
     const code = e && e.code;
     ai.content = code === "refused" ? "" : ((e && e.text) || ai.content);
-    if (code === "cancelled" && timedOut) ai.error = errText("timeout");
-    else if (code !== "cancelled") ai.error = errText(code);
-    if (code === "server_unconfigured") showBanner(errText(code));
-    if (["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(code)) showBanner(errText(code === "not_granted" ? code : "sampling_disabled"));
-    if (!ai.content && code === "cancelled" && !timedOut) ai.content = t("stopped");
+    if (code === "cancelled") { if (!ai.content) ai.content = t("stopped"); }
+    else ai.error = aiFailed(e);
   } finally {
-    clearTimeout(timer);
-    ai.done = true; ctl = null; setBusy(false); updateLast(); persist();
+    ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();
   }
 }
 function showBanner(text) { $("#banner-text").textContent = text; $("#banner").hidden = false; }
 
-/* ---------------- schemes page ---------------- */
-function renderSchemes() {
-  const q = $("#sch-search").value.trim().toLowerCase();
-  const L = settings.lang;
-  const list = SCHEME_DATA.map((s, k) => ({ s, k })).filter(({ s }) => !q || JSON.stringify([s.bn, s.en]).toLowerCase().includes(q));
-  const pill = st => `<span class="pill ${st === "ok" ? "ok" : st === "rep" ? "rep" : "unc"}">${esc(t(st === "ok" ? "st_ok" : st === "rep" ? "st_rep" : "st_unc"))}</span>`;
-  $("#sch-list").innerHTML = list.length ? list.map(({ s, k }) => {
-    const d = s[L];
-    return `<article class="sch">
-      <h3>${esc(d.n)}</h3>
-      ${d.old ? `<div class="old">${esc(t("old"))}${esc(d.old)}</div>` : ""}
-      ${pill(s.st)}
-      <dl>
-        <div><dt>${esc(t("f_benefit"))}</dt><dd>${esc(d.b)}</dd></div>
-        <div><dt>${esc(t("f_who"))}</dt><dd>${esc(d.w)}</dd></div>
-        <div><dt>${esc(t("f_how"))}</dt><dd>${esc(d.h)}</dd></div>
-        ${d.x ? `<div><dt>${esc(t("f_note"))}</dt><dd>${esc(d.x)}</dd></div>` : ""}
-      </dl>
-      <div><button class="btn small" type="button" data-ask-scheme="${k}">${esc(t("ask_ai"))}</button></div>
-    </article>`;
-  }).join("") : `<p>${esc(t("no_match"))}</p>`;
-}
-function openSchemes() { closeMenu(); renderSchemes(); $("#schemes").showModal(); }
-
 /* ---------------- AI status (key check) ---------------- */
 async function openStatus() {
-  closeMenu();
   const body = $("#status-body");
   $("#status").showModal();
   if (engine === "claude") { body.innerHTML = `<p>${esc(t("stat_claude"))}</p>`; return; }
@@ -1002,10 +1506,6 @@ async function openStatus() {
     }</tbody></table></div><p class="sch-note">${esc(t("stat_help"))}</p>`;
   } catch (e) { body.innerHTML = `<p>${esc(t("stat_err"))}</p>`; }
 }
-
-/* ---------------- menu drawer (phones) ---------------- */
-const openMenu = () => document.body.classList.add("rail-open");
-const closeMenu = () => document.body.classList.remove("rail-open");
 
 /* ---------------- events ---------------- */
 const q = $("#q");
@@ -1021,47 +1521,128 @@ $("#ask").addEventListener("submit", e => {
   ask(text || t("file_default"));
 });
 $("#attach").addEventListener("click", () => $("#file-in").click());
-$("#file-in").addEventListener("change", async e => {
-  const list = Array.from(e.target.files || []); e.target.value = "";
+async function readInto(list, arr, after) {
   for (const f of list) {
     toast(`${f.name} ${t("reading")}`);
-    try { pendingFiles.push(await readFile(f)); renderPending(); }
-    catch (err) { toast(err.message || t("dl_fail")); }
+    try { arr.push(await readFile(f)); after(); } catch (err) { toast(err.message || t("dl_fail")); }
   }
+}
+$("#file-in").addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, pendingFiles, renderPending); });
+
+// drafting desk
+$("#d-form").addEventListener("input", e => {
+  const k = (e.target.id || "").replace("d-", "");
+  if (["type", "lang", "to", "sub", "ref", "facts"].includes(k)) { draft[k] = e.target.value; saveDraft(); }
 });
-$("#sch-search").addEventListener("input", renderSchemes);
+$("#d-paper").addEventListener("input", e => { draft.text = e.target.value; saveDraft(); });
+$("#d-attach").addEventListener("click", () => $("#d-file").click());
+$("#d-file").addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, draftFiles, renderDraftForm); });
+$("#d-form").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!draft.facts.trim() && !draftFiles.length && !draft.sub.trim()) return toast(t("d_need"));
+  runDraft([{ role: "user", content: draftRequest() }], attachImages(draftFiles));
+});
+$("#d-revform").addEventListener("submit", e => {
+  e.preventDefault();
+  const how = $("#d-rev").value.trim();
+  if (!draft.text.trim()) return toast(t("d_empty"));
+  if (!how) return $("#d-rev").focus();
+  runDraft([{ role: "user", content: `Here is the current document:\n<<<\n${draft.text}\n>>>\nRevise it as follows: ${how}\nKeep the same format and paragraphs style. Output only the revised document, nothing else.` }], []);
+  $("#d-rev").value = "";
+});
+
+// table maker
+$("#t-grid").addEventListener("input", e => { const td = e.target.closest("td[data-r]"); if (!td) return; grid[+td.dataset.r][+td.dataset.c] = td.innerText.replace(/\n+$/, ""); saveGrid(); });
+$("#t-aiform").addEventListener("submit", async e => {
+  e.preventDefault();
+  const src = $("#t-src").value.trim(); if (!src) return $("#t-src").focus();
+  if (tableBusy) return toast(errText("busy"));
+  tableBusy = true; $("#t-status").textContent = t("d_writing");
+  try {
+    const r = await aiRun([{ role: "user", content: `Turn the following information into one clean table for an office report. Reply with only a Markdown table (header row first, then a separator row), no other text. Keep numbers as plain numbers. Language of headings: ${settings.lang === "en" ? "English" : "Bengali"}.\n\n${src}` }]);
+    const tb = parseMd(r.text).find(b => b.t === "table");
+    if (!tb) throw { code: "no_table" };
+    grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); renderGrid();
+    $("#t-status").textContent = `${t("t_loaded")} · ${t("answered_by")}${PROVIDER_NAMES[r.via] || r.via || ""}`;
+  } catch (err) { $("#t-status").textContent = err && err.code === "no_table" ? t("t_bad") : aiFailed(err); }
+  finally { tableBusy = false; }
+});
+$("#t-file").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  try {
+    await load("xlsx");
+    const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
+    grid = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" }).map(r => r.map(c => String(c)));
+    if (!grid.length) grid = [[""]];
+    saveGrid(); renderGrid(); toast(t("t_loaded"));
+  } catch (err) { toast(t("dl_fail")); }
+});
+
+// file tools
+document.addEventListener("change", e => {
+  const m = (e.target.id || "").match(/^tf-(\w+)$/); if (!m) return;
+  toolFiles[m[1]] = Array.from(e.target.files || []);
+  $("#tp-" + m[1]).textContent = toolFiles[m[1]].map(f => f.name).join(", ");
+});
+
+$("#c-search").addEventListener("input", renderCatalog);
+
 document.addEventListener("click", e => {
-  const tk = e.target.closest("[data-task]");
-  if (tk) { closeMenu(); q.value = tasks()[+tk.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
-  const sc = e.target.closest("[data-scheme]");
-  if (sc) { closeMenu(); $("#sch-search").value = ""; renderSchemes(); $("#schemes").showModal(); const card = $("#sch-list").children[+sc.dataset.scheme]; if (card) card.scrollIntoView({ block: "center" }); return; }
-  const as = e.target.closest("[data-ask-scheme]");
-  if (as) { $("#schemes").close(); if (mode !== "public" && !messages.length) { mode = "public"; store.set("mode", mode); render(); } ask(t("ask_scheme", SCHEME_DATA[+as.dataset.askScheme][settings.lang].n)); return; }
-  if (e.target.closest("[data-open-schemes], #open-schemes, #open-schemes2")) return openSchemes();
-  if (e.target.closest("#schemes-close")) return $("#schemes").close();
-  if (e.target.closest("#open-status")) return openStatus();
-  if (e.target.closest("#status-close")) return $("#status").close();
-  if (e.target.closest("#menu")) return openMenu();
-  if (e.target.closest("#rail-close, #scrim")) return closeMenu();
-  const un = e.target.closest("[data-unpend]"); if (un) { pendingFiles.splice(+un.dataset.unpend, 1); renderPending(); return; }
-  const a = e.target.closest("[data-act]");
-  if (a) {
-    const k = +a.closest(".msg").dataset.k; const m = messages[k]; const act = a.dataset.act;
+  const el = sel => e.target.closest(sel);
+  let x;
+  if ((x = el("[data-tab]"))) return go(mode, x.dataset.tab);
+  if (el("#sec-office")) return go("office");
+  if (el("#sec-public")) return go("public");
+  if (el("#lang-bn, #lang-en")) { settings.lang = el("#lang-en") ? "en" : "bn"; store.set("settings", settings); applyLang(); $("#f-grid").dataset.lang = ""; if (tabs.public === "detail" && mode === "public") { const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id) return openDetail(id); } return showView(); }
+  // catalogue
+  if ((x = el("[data-cat]"))) { catFilter = x.dataset.cat; return renderCatalog(); }
+  if ((x = el("[data-open]"))) return openDetail(x.dataset.open);
+  if (el("[data-back], [data-go-catalog]")) { try { history.replaceState(null, "", location.pathname + location.search); } catch (err) { /* ignore */ } return go("public", "catalog"); }
+  if ((x = el("[data-ask-about]"))) { const s = SERVICES.find(v => v.id === x.dataset.askAbout); return ask(t("ask_scheme", s[settings.lang].n)); }
+  if ((x = el("[data-ask-app]"))) { const s = SERVICES.find(v => v.id === x.dataset.askApp); return ask(t("ask_app", s[settings.lang].n)); }
+  // drafting desk
+  if (el("#d-toggle")) { draftPreview = !draftPreview; return renderDraftForm(); }
+  if (el("#d-docx") || el("#d-pdf")) { if (!draft.text.trim()) return toast(t("d_empty")); return save(el("#d-docx") ? "docx" : "pdf", draft.text, e.target.closest("button"), draft.type); }
+  if (el("#d-copy")) return navigator.clipboard.writeText(draft.text).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+  if (el("#d-undo")) { if (draft.prev) { const cur = draft.text; draft.text = draft.prev; draft.prev = cur; saveDraft(); renderDraftForm(); } return; }
+  if (el("#d-clear")) { if (draft.text) draft.prev = draft.text; draft.text = ""; ["to", "sub", "ref", "facts"].forEach(k => { draft[k] = ""; }); draftFiles = []; saveDraft(); renderDraftForm(); return toast(t("d_cleared")); }
+  if ((x = el("[data-dunpend]"))) { draftFiles.splice(+x.dataset.dunpend, 1); return renderDraftForm(); }
+  if (el("#d-fmt-btn")) return $("#open-settings").click();
+  // table maker
+  if (el("#t-addrow")) { grid.push(grid[0].map(() => "")); saveGrid(); return renderGrid(); }
+  if (el("#t-addcol")) { grid.forEach(r => r.push("")); saveGrid(); return renderGrid(); }
+  if (el("#t-delrow")) { if (grid.length > 1) grid.pop(); saveGrid(); return renderGrid(); }
+  if (el("#t-delcol")) { if (grid[0].length > 1) grid.forEach(r => r.pop()); saveGrid(); return renderGrid(); }
+  if (el("#t-clear")) { grid = [grid[0].map(() => ""), grid[0].map(() => "")]; saveGrid(); return renderGrid(); }
+  if (el("#t-open")) return $("#t-file").click();
+  if (el("#t-copy")) return navigator.clipboard.writeText(grid.map(r => r.join("\t")).join("\n")).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+  if ((x = el("#t-xlsx"))) { const b = x; b.disabled = true; return load("xlsx").then(() => offer(`table-${stamp()}.xlsx`, gridToXlsx())).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
+  if ((x = el("#t-pdf"))) { const b = x; b.disabled = true; return htmlToPdf(gridHtml(), grid[0].length > 5).then(d => offer(`table-${stamp()}.pdf`, d)).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
+  // file tools
+  if ((x = el("[data-pick]"))) return $("#tf-" + x.dataset.pick).click();
+  if ((x = el("[data-run]"))) return runTool(x.dataset.run, x);
+  if (el("#tp-copy")) return navigator.clipboard.writeText($("#tp-out").value).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+  if (el("#tp-draft")) { draft.facts = $("#tp-out").value.slice(0, 20000); saveDraft(); go("office", "draft"); return toast(t("f_sent")); }
+  if ((x = el("#tp-docx"))) return save("docx", $("#tp-out").value, x, "text");
+  // chat
+  if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
+  if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
+  if ((x = el("[data-act]"))) {
+    const k = +x.closest(".msg").dataset.k; const m = messages[k]; const act = x.dataset.act;
     if (act === "copy") navigator.clipboard.writeText(m.content).then(() => toast(t("copied")), () => toast(t("copy_fail")));
     else if (act === "edit") { m.editing = true; updateAt(k); const ta = $(`#edit-${k}`); if (ta) ta.focus(); }
     else if (act === "edit-save") { m.content = $(`#edit-${k}`).value; m.editing = false; updateAt(k); persist(); toast(t("saved_edit")); }
-    else save(act, m.content, a);
+    else if (act === "todraft") { draft.prev = draft.text; draft.text = m.content; saveDraft(); go("office", "draft"); }
+    else save(act, m.content, x);
     return;
   }
-  if (e.target.closest("#mode-office")) { mode = "office"; store.set("mode", mode); render(); }
-  if (e.target.closest("#mode-public")) { mode = "public"; store.set("mode", mode); render(); }
-  if (e.target.closest("#lang-bn, #lang-en")) { settings.lang = e.target.closest("#lang-en") ? "en" : "bn"; store.set("settings", settings); applyLang(); render(); }
-  if (e.target.closest("#new-chat")) { if (ctl) ctl.abort(); messages = []; pendingFiles = []; persist(); render(); }
-  if (e.target.closest("#open-settings, #open-settings2")) {
-    closeMenu();
+  if (el("#new-chat")) { if (ctl) ctl.abort(); messages.length = 0; pendingFiles = []; persist(); return renderChat(); }
+  if (el("#open-status")) return openStatus();
+  if (el("#status-close")) return $("#status").close();
+  if (el("#open-settings")) {
     const f = $("#settings-form"); Object.keys(DEFAULTS).forEach(k => { f.elements[k].value = settings[k]; }); showSample(); $("#settings").showModal();
   }
-  if (e.target.closest("#sample-clear")) { delete settings.sampleName; delete settings.sampleText; store.set("settings", settings); showSample(); render(); toast(t("sample_removed")); }
+  if (el("#sample-clear")) { delete settings.sampleName; delete settings.sampleText; store.set("settings", settings); showSample(); renderDraftForm(); toast(t("sample_removed")); }
 });
 function showSample() {
   $("#sample-status").textContent = settings.sampleText ? t("format_on") + settings.sampleName : t("none_sample");
@@ -1074,7 +1655,7 @@ $("#sample-in").addEventListener("change", async e => {
     const r = await readFile(f);
     if (!r.text || !r.text.trim()) throw new Error(t("sample_bad"));
     settings.sampleName = f.name; settings.sampleText = r.text.replace(/\[Page \d+\]\n?/g, "").trim().slice(0, 6000);
-    store.set("settings", settings); showSample(); render(); toast(t("sample_saved"));
+    store.set("settings", settings); showSample(); renderDraftForm(); toast(t("sample_saved"));
   } catch (err) { toast(err.message || t("sample_bad")); }
 });
 $("#settings").addEventListener("close", () => {
@@ -1084,23 +1665,24 @@ $("#settings").addEventListener("close", () => {
 });
 
 /* ---------------- start ---------------- */
-messages.forEach(m => { m.done = true; m.editing = false; });
+Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
 if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
-applyLang(); render(); scrollDown();
+applyLang();
+{ const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id && SERVICES.some(s => s.id === id)) { mode = "public"; messages = chats.public; openDetail(id); } else showView(); }
 (async () => {
   if (!window.claude || !window.claude.use) {
-    // website build: AI runs through our own server
     engine = "server"; imageLimits = { maxCount: 4 };
     $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
     try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(errText("server_unconfigured")); }
     catch (e) { showBanner(t("unreachable")); }
-    render(); scrollDown(); return;
+    if (tabs[mode] === "chat") renderChat();
+    return;
   }
   const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
   sample = s; downloads = d;
   if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
   else showBanner(t("no_ai_claude"));
-  render(); scrollDown();
+  if (tabs[mode] === "chat") renderChat();
 })();
 </script>
 </body>
