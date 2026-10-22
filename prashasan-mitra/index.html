@@ -114,6 +114,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .thinking { color: var(--muted); font-style: italic; }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .err { font-size: .85rem; color: var(--bad); }
+.via { font-size: .72rem; color: var(--muted); }
 .edit-area { width: 100%; min-height: 240px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--sheet); font: 14px/1.55 var(--f-mono); }
 
 .welcome { display: grid; gap: 14px; padding-top: 12px; }
@@ -327,6 +328,20 @@ E. EMPLOYEES
 
 F. SOURCES TO NAME: wb.gov.in, finance.wb.gov.in, wbxpress.com (copies of WB orders), anagrasarkalyan.gov.in (Backward Classes Welfare), adibasikalyan.gov.in (Tribal Development), castcertificatewb.gov.in, edistrict.wb.gov.in, banglarbhumi.gov.in, jaibangla.wb.gov.in, the Kolkata Gazette.`;
 
+/* send only the parts of the knowledge base this conversation needs (saves free-tier tokens) */
+function knowledge() {
+  const parts = UPDATES.split(/\n(?=[A-F]\. )/);
+  const said = messages.filter(m => m.role === "user").map(m => m.shown || m.content).join(" ") + " " + ($("#q") ? $("#q").value : "");
+  const schemes = /প্রকল্প|প্রকল্পা|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|শ্রী|রত্ন|সাথী|scheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|scholar|স্কলার|আবাস|রেশন|শিবির|বাস/i.test(said);
+  const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|leave|salary|pay|contractual|চুক্তি|কর্মচারী|employee|WFTS|e-?office/i.test(said);
+  return parts.filter(t => {
+    const sec = t.trim().charAt(0);
+    if (sec === "D") return mode === "public" || schemes;
+    if (sec === "E") return mode === "office" || staff;
+    return true;
+  }).join("\n");
+}
+
 function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
   const lang = settings.lang === "bn" ? "Always reply in Bengali (Bangla script)." : settings.lang === "en" ? "Always reply in English unless asked for a Bengali draft." :
@@ -357,7 +372,7 @@ Accuracy rules, most important:
 - Explain rules; do not decide individual cases. The competent authority decides.
 - If the user shares Aadhaar numbers, bank details or similar, do not repeat them and suggest removing them.
 Format: Markdown. In OFFICE mode notes and drafts are paragraphs (see above). In PUBLIC mode numbered steps are fine where order matters. Tables only when they help. Keep it focused.
-${UPDATES}`;
+${knowledge()}`;
 }
 
 /* ---------------- tiny markdown engine (shared by screen, Word, PDF, Excel) ---------------- */
@@ -596,6 +611,7 @@ function msgHtml(m, k) {
   return `<div class="msg ai" data-k="${k}">
     ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="উত্তর সম্পাদনা">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : `<span class="thinking">ভাবছে…</span>`}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
+    ${m.via && m.done ? `<div class="via">উত্তর দিয়েছে: ${esc({ gemini: "Google Gemini", mistral: "Mistral", groq: "Groq", openrouter: "OpenRouter", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI" }[m.via] || m.via)}</div>` : ""}
     ${m.done ? `<div class="actions">
       ${m.editing ? `<button class="btn small primary" data-act="edit-save">সংরক্ষণ</button>` : `<button class="btn small" data-act="copy">কপি</button><button class="btn small" data-act="edit">সম্পাদনা</button>`}
       ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
@@ -623,7 +639,7 @@ function updateLast() {
 }
 const scrollDown = () => { const s = $("#scroll"); s.scrollTop = s.scrollHeight; };
 const persist = () => {
-  const keep = messages.filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error }));
+  const keep = messages.filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
   store.set("chat", keep.slice(-40));
 };
 function setBusy(b) {
@@ -636,12 +652,12 @@ function setBusy(b) {
 const ERR = {
   not_granted: "AI ব্যবহারের অনুমতি দেওয়া হয়নি। পাতাটি আবার খুলে অনুমতি দিন।",
   sampling_disabled: "এই অ্যাকাউন্টে AI চালু নেই।",
-  rate_limited: "অনেক বেশি প্রশ্ন হয়েছে বা ব্যবহারের সীমা শেষ। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+  rate_limited: "আজকের ফ্রি AI-এর সীমা শেষ বা খুব বেশি প্রশ্ন একসঙ্গে এসেছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
   session_expired: "আবার সাইন ইন করুন।",
   prompt_too_large: "লেখা বা ফাইল খুব বড়। ছোট অংশ দিন বা নতুন চ্যাট শুরু করুন।",
   refused: "এই প্রশ্নের উত্তর দেওয়া গেল না। অন্যভাবে জিজ্ঞাসা করুন।",
   image_rejected: "ছবিটি নেওয়া গেল না। অন্য ছবি দিন।",
-  images_unavailable: "এই ভিউতে ছবি পাঠানো যাচ্ছে না।",
+  images_unavailable: "এখন ছবি পড়তে পারে এমন AI পাওয়া যাচ্ছে না। লেখা-সহ PDF বা Word দিন।",
   empty_completion: "কোনও উত্তর আসেনি। প্রশ্নটি সহজ করে আবার লিখুন।",
   server_unconfigured: "সার্ভারে AI এখনও চালু করা হয়নি (API key দেওয়া হয়নি)।"
 };
@@ -656,7 +672,7 @@ async function serverAsk(system, turns, imgs, { signal, onText }) {
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
-    throw { code: res.status === 429 ? "rate_limited" : res.status === 413 ? "prompt_too_large" : j.error === "not_configured" ? "server_unconfigured" : "upstream_error" };
+    throw { code: res.status === 429 ? "rate_limited" : res.status === 413 ? "prompt_too_large" : j.error === "not_configured" ? "server_unconfigured" : j.error === "no_vision" ? "images_unavailable" : "upstream_error" };
   }
   const reader = res.body.getReader(); const dec = new TextDecoder(); let text = "";
   try {
@@ -670,7 +686,7 @@ async function serverAsk(system, turns, imgs, { signal, onText }) {
   text = text.replace(/\u0000[A-Z_]+\s*$/, "");
   if (flag === "BLOCKED" && !text.trim()) throw { code: "refused" };
   if (!text.trim()) throw { code: "empty_completion" };
-  return { text, truncated: flag === "MAX_TOKENS" };
+  return { text, truncated: flag === "MAX_TOKENS", via: (res.headers.get("x-ai-provider") || "").split("/")[0] };
 }
 async function ask(text) {
   if (!engine) return toast("AI এখন চালু নেই।");
@@ -696,7 +712,7 @@ async function ask(text) {
     const opts = { cache: false, signal: ctl.signal, onText: ({ text }) => { ai.content = text; updateLast(); } };
     if (imgs.length) opts.images = imgs.slice(0, (imageLimits && imageLimits.maxCount) || 4);
     const r = engine === "claude" ? await sample(input, opts) : await serverAsk(rules(), turns, imgs, opts);
-    ai.content = r.text;
+    ai.content = r.text; if (r.via) ai.via = r.via;
     if (r.truncated) ai.error = "উত্তর মাঝপথে কেটে গেছে। ছোট অংশে জিজ্ঞাসা করুন।";
   } catch (e) {
     ai.content = e && e.code === "refused" ? "" : ((e && e.text) || ai.content);
@@ -784,7 +800,7 @@ render(); scrollDown();
   if (!window.claude || !window.claude.use) {
     // public website build: AI runs through our serverless function
     engine = "server"; imageLimits = { maxCount: 4 };
-    $("#engine-note").textContent = " · AI: Google Gemini (ফ্রি) · গোপন বা ব্যক্তিগত তথ্য দেবেন না";
+    $("#engine-note").textContent = " · ফ্রি AI (Gemini, Mistral, Groq…) · গোপন বা ব্যক্তিগত তথ্য দেবেন না";
     try { const h = await (await fetch("api/chat")).json(); if (!h.configured) showBanner(ERR.server_unconfigured); }
     catch (e) { showBanner("AI সার্ভারের সঙ্গে যোগাযোগ হচ্ছে না। পাতাটি ওয়েবসাইট থেকে খুলুন।"); }
     render(); scrollDown(); return;
