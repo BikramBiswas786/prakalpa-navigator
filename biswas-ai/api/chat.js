@@ -1,17 +1,20 @@
-// Prashasan Mitra: chat endpoint for the public website.
+// Biswas AI for Office: chat endpoint (used by server.js).
 // Tries free AI providers one after another. When one is out of quota or
 // fails before answering, the next is used, so the free limits add up.
 // Every provider is optional: set the API keys you have in Vercel.
 //
 //   GEMINI_API_KEY       Google AI Studio (free, no card)
+//   NVIDIA_API_KEY       NVIDIA build.nvidia.com developer API (free): Llama and Kimi models
+//   GROQ_API_KEY         Groq (free, no card; each model has its own daily quota): Llama, gpt-oss
 //   MISTRAL_API_KEY      Mistral "Experiment" plan (free, phone verification)
-//   GROQ_API_KEY         Groq (free, no card; each model has its own daily quota)
-//   OPENROUTER_API_KEY   OpenRouter ":free" models
+//   OPENROUTER_API_KEY   OpenRouter ":free" models: Kimi, Llama
+//   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI (free daily allowance): Llama
 //   GITHUB_MODELS_TOKEN  GitHub Models (free with a GitHub account)
 //   CEREBRAS_API_KEY     Cerebras (trial credit)
 //   SARVAM_API_KEY       Sarvam AI (Indian; strong Bengali; signup credit)
+//   KIMI_API_KEY         Moonshot Kimi API, official Kimi K3 (paid: $1 minimum top-up)
 //
-// Optional: PROVIDER_ORDER="gemini,mistral,groq,..." and <NAME>_MODELS
+// Optional: PROVIDER_ORDER="gemini,nvidia,groq,..." and <NAME>_MODELS
 // (comma-separated) to change models without touching code.
 
 const env = name => (process.env[name] || "").trim();
@@ -19,21 +22,24 @@ const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.t
 
 const PROVIDERS = {
   gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-latest,gemini-flash-lite-latest") },
+  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "meta/llama-4-maverick-17b-128e-instruct,moonshotai/kimi-k2-instruct,meta/llama-3.3-70b-instruct") },
   mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-medium-latest,mistral-small-latest") },
   groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-120b,llama-3.3-70b-versatile,openai/gpt-oss-20b") },
-  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
+  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "moonshotai/kimi-k2:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
+  cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
   github: { key: "GITHUB_MODELS_TOKEN", kind: "openai", vision: true, url: "https://models.github.ai/inference/chat/completions", models: list("GITHUB_MODELS", "openai/gpt-4.1-mini,openai/gpt-4o-mini") },
   cerebras: { key: "CEREBRAS_API_KEY", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", models: list("CEREBRAS_MODELS", "gpt-oss-120b") },
-  sarvam: { key: "SARVAM_API_KEY", kind: "openai", url: "https://api.sarvam.ai/v1/chat/completions", auth: "api-subscription-key", models: list("SARVAM_MODELS", "sarvam-105b") }
+  sarvam: { key: "SARVAM_API_KEY", kind: "openai", url: "https://api.sarvam.ai/v1/chat/completions", auth: "api-subscription-key", models: list("SARVAM_MODELS", "sarvam-105b") },
+  kimi: { key: "KIMI_API_KEY", kind: "openai", url: "https://api.moonshot.ai/v1/chat/completions", models: list("KIMI_MODELS", "kimi-k3") }
 };
-const ORDER = list("PROVIDER_ORDER", "gemini,mistral,groq,openrouter,github,cerebras,sarvam").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "gemini,nvidia,groq,mistral,openrouter,cloudflare,github,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_OUT = 8192;
 
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
-const configured = () => ORDER.filter(id => env(PROVIDERS[id].key));
+const configured = () => ORDER.filter(id => env(PROVIDERS[id].key) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
 
 export function GET() {
   const ids = configured();
@@ -93,8 +99,8 @@ function openaiRequest(p, model, key, body, signal) {
   if (/gpt-oss/.test(model) && p !== PROVIDERS.openrouter) payload.reasoning_effort = "low";
   const headers = { "content-type": "application/json" };
   if (p.auth) headers[p.auth] = key; else headers.authorization = `Bearer ${key}`;
-  if (p === PROVIDERS.openrouter) { headers["x-title"] = "Prashasan Mitra"; }
-  return fetch(p.url, { method: "POST", headers, body: JSON.stringify(payload), signal });
+  if (p === PROVIDERS.openrouter) { headers["x-title"] = "Biswas AI for Office"; }
+  return fetch(typeof p.url === "function" ? p.url() : p.url, { method: "POST", headers, body: JSON.stringify(payload), signal });
 }
 
 /* ---------- stream parsers: SSE line -> {text, finish} ---------- */

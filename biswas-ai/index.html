@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Prashasan Mitra</title>
+<title>Biswas AI for Office</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -163,7 +163,7 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1>প্রশাসন মিত্র</h1><span>Prashasan Mitra</span></div>
+    <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span></div>
     <div class="seg" role="group" aria-label="Who is using">
       <button type="button" id="mode-office" aria-pressed="true">অফিস</button>
       <button type="button" id="mode-public" aria-pressed="false">জনসাধারণ</button>
@@ -185,14 +185,7 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
         <h2>ফাইল দিন</h2>
         GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (📎)। AI সেটা পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।
       </section>
-      <section class="railnote">
-        <h2>সতর্কতা</h2>
-        <ul>
-          <li>AI ভুল করতে পারে। GO নম্বর, তারিখ ও সীমা আসল আদেশের সঙ্গে মিলিয়ে নিন।</li>
-          <li>গোপন সরকারি ফাইল, আধার নম্বর বা ব্যাঙ্কের তথ্য দেবেন না।</li>
-          <li>এটি সরকারি অ্যাপ নয়। সিদ্ধান্ত নেবেন উপযুক্ত কর্তৃপক্ষ।</li>
-        </ul>
-      </section>
+      <section class="railnote" id="owner-notice" hidden></section>
     </aside>
 
     <section class="chat">
@@ -258,6 +251,9 @@ function toast(m) { const t = document.createElement("div"); t.className = "toas
 const pad = n => String(n).padStart(2, "0");
 const today = () => { const d = new Date(); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear(); };
 
+/* Owner's message shown in the side panel (for example a privacy message). Leave empty to hide. */
+const OWNER_NOTICE = "";
+
 /* ---------------- ready tasks ---------------- */
 const TASKS = {
   office: [
@@ -269,7 +265,8 @@ const TASKS = {
     ["রিপোর্ট টেবিল (Excel)", "মাসিক রিপোর্ট, তালিকা, হিসাব", "নিচের তথ্য দিয়ে একটি পরিষ্কার টেবিল বানিয়ে দিন যাতে Excel-এ নামানো যায়:\n"],
     ["অনুবাদ বাংলা ↔ English", "সরকারি পরিভাষা বজায় রেখে", "নিচের লেখাটি সরকারি ভাষায় অনুবাদ করুন (বাংলা থেকে ইংরেজি / ইংরেজি থেকে বাংলা):\n"],
     ["জাতি শংসাপত্রের নোট", "এনকোয়ারি রিপোর্ট, পুনর্যাচাই, বাতিল", "জাতি শংসাপত্রের (SC / ST / OBC) কাজের জন্য সাহায্য করুন।\nকী দরকার (নোটশিট / এনকোয়ারি রিপোর্ট / পুনর্যাচাই রিপোর্ট / হিয়ারিং নোটিশ): \nবিবরণ: "],
-    ["নিয়ম জানতে চাই", "সার্ভিস রুল, ছুটি, HRMS, প্রক্রিয়া", "প্রশ্ন: "]
+    ["নিয়ম জানতে চাই", "সার্ভিস রুল, ছুটি, HRMS, প্রক্রিয়া", "প্রশ্ন: "],
+    ["যেকোনো প্রশ্ন", "সাধারণ জ্ঞান, লেখা, হিসাব, কোডিং", ""]
   ],
   public: [
     ["জাতি শংসাপত্র (SC/ST/OBC)", "কীভাবে আবেদন, কী নথি, ২০২৬-এর নতুন নিয়ম", "জাতি শংসাপত্রের (SC / ST / OBC) জন্য কীভাবে আবেদন করব, কী কী নথি লাগবে, এবং ২০২৬-এ কী নতুন নিয়ম হয়েছে? আমার শ্রেণি: "],
@@ -359,7 +356,7 @@ How this office works (follow it):
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
   const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.`;
-  return `You are "Prashasan Mitra" (প্রশাসন মিত্র), a free helper for West Bengal Government administration. It is not an official Government application.
+  return `You are "Biswas AI for Office" (বিশ্বাস AI), an AI assistant created by Bikram Biswas. You can help with anything a capable AI assistant can: general questions, writing, translation, maths, coding for developers, explaining documents. Your special expertise is West Bengal Government office administration and public services. If asked who you are or who made you, say you are Biswas AI for Office, made by Bikram Biswas, and that it runs on several AI models. If asked whether this is a Government app, say it is an independent tool.
 Today is ${today()}. ${off}
 ${mode === "office" ? office : pub}
 Language: ${lang}
@@ -370,7 +367,6 @@ Accuracy rules, most important:
 - For caste certificate questions follow section B, including the 2026 re-verification and the new OBC list.
 - If the user attached a document, answer from it and quote the relevant paragraph or clause number.
 - Explain rules; do not decide individual cases. The competent authority decides.
-- If the user shares Aadhaar numbers, bank details or similar, do not repeat them and suggest removing them.
 Format: Markdown. In OFFICE mode notes and drafts are paragraphs (see above). In PUBLIC mode numbered steps are fine where order matters. Tables only when they help. Keep it focused.
 ${knowledge()}`;
 }
@@ -611,7 +607,7 @@ function msgHtml(m, k) {
   return `<div class="msg ai" data-k="${k}">
     ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="উত্তর সম্পাদনা">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : `<span class="thinking">ভাবছে…</span>`}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
-    ${m.via && m.done ? `<div class="via">উত্তর দিয়েছে: ${esc({ gemini: "Google Gemini", mistral: "Mistral", groq: "Groq", openrouter: "OpenRouter", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI" }[m.via] || m.via)}</div>` : ""}
+    ${m.via && m.done ? `<div class="via">উত্তর দিয়েছে: ${esc({ gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" }[m.via] || m.via)}</div>` : ""}
     ${m.done ? `<div class="actions">
       ${m.editing ? `<button class="btn small primary" data-act="edit-save">সংরক্ষণ</button>` : `<button class="btn small" data-act="copy">কপি</button><button class="btn small" data-act="edit">সম্পাদনা</button>`}
       ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
@@ -795,12 +791,13 @@ $("#settings").addEventListener("close", () => {
 
 /* ---------------- start ---------------- */
 messages.forEach(m => { m.done = true; m.editing = false; });
+if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
 render(); scrollDown();
 (async () => {
   if (!window.claude || !window.claude.use) {
     // public website build: AI runs through our serverless function
     engine = "server"; imageLimits = { maxCount: 4 };
-    $("#engine-note").textContent = " · ফ্রি AI (Gemini, Mistral, Groq…) · গোপন বা ব্যক্তিগত তথ্য দেবেন না";
+    $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral ও আরও AI";
     try { const h = await (await fetch("api/chat")).json(); if (!h.configured) showBanner(ERR.server_unconfigured); }
     catch (e) { showBanner("AI সার্ভারের সঙ্গে যোগাযোগ হচ্ছে না। পাতাটি ওয়েবসাইট থেকে খুলুন।"); }
     render(); scrollDown(); return;
