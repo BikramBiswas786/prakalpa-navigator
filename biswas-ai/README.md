@@ -2,20 +2,25 @@
 
 An AI assistant made by **Bikram Biswas**. It answers anything a general AI assistant can (questions, writing, translation, maths, coding), with special expertise in West Bengal Government office administration and public services. Bengali and English.
 
-**Office mode** (for SDO office staff)
-- Follows how an SDO office works: the dealing employee writes the notesheet and puts it up directly to the SDO; the employee prepares the draft (DFA) for the SDO's signature; only the SDO approves or rejects
-- Notes and drafts are written in paragraphs, not in points
-- **Office format sample:** upload one old letter of the office (Word or PDF) under অফিসের তথ্য, and every draft copies its letterhead, memo style and signature block
-- Attach GOs and circulars (PDF, Word, Excel, photos) for summaries, action points and draft notes
-- Edit any answer, then save it as **Word (.docx)**, **PDF** or **Excel (.xlsx)**
+The app has two separate sections, switched in the header (অফিস / জনসাধারণ), and a বাংলা / EN switch for the whole screen and the AI's answers.
 
-**Language:** the বাংলা / EN switch in the header changes the whole screen and the answer language.
+### অফিস — Office (for SDO office staff)
+| Tab | What it does |
+|---|---|
+| **লেখার টেবিল / Drafting desk** | Choose the document (notesheet put up to the SDO, DFA for the SDO's signature, office order, hearing or show-cause notice, RTI reply, enquiry report, caste certificate re-verification report, general letter), fill To / Subject / PUC / facts, attach a GO or letter, and the AI writes it on a paper-style page in paragraphs. Edit it yourself or give an "AI revise" instruction; undo; print view; save as **Word** or **PDF**. Uses the office's own letterhead when a sample letter is set in Settings. |
+| **টেবিল / Excel** | Editable grid; "make a table from this text" with AI; open an Excel / CSV file; save as **Excel** or **PDF**; copy to paste into Excel. |
+| **ফাইল টুল / File tools** | Word → PDF, Excel → PDF, photos → PDF, merge PDFs, take text out of a PDF or Word file (copy it or send it to the drafting desk). Runs inside the browser; files are not uploaded. |
+| **AI চ্যাট / AI chat** | Ask anything; attach PDFs, Word, Excel or photos; send any answer to the drafting desk or save it as Word / PDF / Excel. |
 
-**Schemes page:** the "প্রকল্প / Schemes" button opens every scheme and service with benefit, eligibility, how to apply and a status label (confirmed / reported / unconfirmed), with an "Ask the AI" button on each.
+Office rules built into the AI: the dealing employee writes the note and the draft, puts them up directly to the SDO, and only the SDO approves or rejects; notes and drafts are in paragraphs, not points.
 
-**Public mode** (for citizens)
-- Caste certificates (SC/ST/OBC, 2026 rules), other certificates, and every major prakalpa under its current name, with the old name in brackets
-- Writes applications and explains Government letters
+### জনসাধারণ — Public
+| Tab | What it does |
+|---|---|
+| **প্রকল্প ও পরিষেবা / Schemes and services** | 32 schemes and services of the BJP-led State government and the Centre, in 8 categories with search. Each has its own page: what you get, eligibility, documents, step-by-step application, **buttons to the official application portals**, helpline, and a confirmed / reported / unconfirmed label. A page can be linked directly as `…/#s-annapurna`. |
+| **AI সহায়ক / AI helper** | Questions in Bengali or English; "ask about this scheme" and "write my application" buttons on every scheme page. |
+
+The AI reads the same catalogue (`SERVICES` in `index.html`), so the pages and the AI answers always agree.
 
 ## Run it anywhere (independent, no platform lock-in)
 
@@ -69,6 +74,7 @@ Open the app → **Menu** (on phones) → **AI status / AI অবস্থা �
 ## Owner settings
 
 - **Side-panel message** (for example your privacy message): set `OWNER_NOTICE` near the top of the script in `index.html`.
+- **Schemes and services:** edit the `SERVICES` list in `index.html` (both `bn` and `en` text, `links` for application portals, `st` for the status label). The AI picks up the changes automatically.
 - **Knowledge base** (October 2026): the `UPDATES` text in `index.html` covers the May 2026 change of government, caste certificates (14.05.2026 re-verification order, 18.05.2026 OBC list), all major prakalpa under the BJP-led government, DA, contractual pay and HRMS. Items from news reports are marked "reported" and schemes whose status is unconfirmed are marked "status?". Edit it when new orders come out.
 
 ## Files
