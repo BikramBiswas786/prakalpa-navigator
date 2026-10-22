@@ -1,0 +1,10 @@
+{
+  "name": "SDO Sahayak",
+  "short_name": "SDO Sahayak",
+  "description": "Desk helper for SDO office staff: certificate checklists, drafting, pending register and tools.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f8",
+  "theme_color": "#3f3297",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
