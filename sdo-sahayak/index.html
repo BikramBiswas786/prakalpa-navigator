@@ -1,0 +1,1028 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SDO Sahayak</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Free desk helper for SDO office staff in West Bengal: certificate checklists, letter drafting, pendency register and quick tools.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3f3297">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;600;700&family=Noto+Sans:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Serif:wght@400;700&family=Noto+Serif+Bengali:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a desk tool. Sticky header + tab strip, one working column (max 1080px),
+   letter previews set like a typed government memo on a paper sheet. */
+:root {
+  --paper: #f3f4f8;
+  --surface: #ffffff;
+  --sheet: #fffefb;
+  --ink: #1c2233;
+  --muted: #5a6276;
+  --line: #d8dbe5;
+  --accent: #3f3297;      /* stamp-pad violet */
+  --accent-ink: #ffffff;
+  --accent-soft: #ebe9f8;
+  --ok: #1d7448;
+  --ok-soft: #e3f3ea;
+  --warn: #965400;
+  --warn-soft: #fbefdc;
+  --bad: #ad261d;
+  --bad-soft: #fbe5e3;
+  --f-display: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-body: "Noto Sans", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-letter: "Noto Serif", "Noto Serif Bengali", Georgia, serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12141b; --surface: #1a1d27; --sheet: #1f2230; --ink: #e5e7ef; --muted: #9ba2b5;
+    --line: #2d3242; --accent: #a99df2; --accent-ink: #15122b; --accent-soft: #29254a;
+    --ok: #6fcf9b; --ok-soft: #173126; --warn: #e6ac57; --warn-soft: #362812; --bad: #f2948b; --bad-soft: #3a1c1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12141b; --surface: #1a1d27; --sheet: #1f2230; --ink: #e5e7ef; --muted: #9ba2b5;
+  --line: #2d3242; --accent: #a99df2; --accent-ink: #15122b; --accent-soft: #29254a;
+  --ok: #6fcf9b; --ok-soft: #173126; --warn: #e6ac57; --warn-soft: #362812; --bad: #f2948b; --bad-soft: #3a1c1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 15px/1.55 var(--f-body);
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.25; margin: 0; }
+h2 { font-size: 1.35rem; font-weight: 700; }
+h3 { font-size: 1.08rem; font-weight: 600; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* header */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px 6px; }
+.brand-name { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.brand h1 { font-size: 1.4rem; color: var(--accent); }
+.brand .en { font-family: var(--f-display); font-weight: 600; font-size: .95rem; color: var(--muted); }
+.office-line { font-size: .8rem; color: var(--muted); }
+.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 0; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { border: 0; background: none; padding: 10px 12px; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-display); font-size: .98rem; }
+.tab small { font-weight: 500; font-size: .78rem; margin-left: 4px; }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+main { padding-block: 20px 60px; }
+.view { display: grid; gap: 18px; }
+.lede { color: var(--muted); max-width: 68ch; margin: 4px 0 0; }
+.note { font-size: .84rem; color: var(--warn); background: var(--warn-soft); border-radius: var(--r); padding: 8px 12px; }
+
+/* buttons */
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 7px 12px; cursor: pointer; font-weight: 600; font-size: .88rem; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { border-color: transparent; background: none; color: var(--accent); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* certificates */
+.cert-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: .88rem; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cert { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: grid; gap: 16px; }
+.cert-head .bn { font-family: var(--f-display); color: var(--muted); font-size: 1rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 20px; margin: 0; }
+.facts div { min-width: 0; }
+.facts dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.facts dd { margin: 2px 0 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px 28px; }
+.cols > section { min-width: 0; }
+.cols h3 { margin-bottom: 6px; }
+ul.plain { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+.checks { display: grid; gap: 6px; }
+.checks label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.checks input { margin-top: 4px; accent-color: var(--accent); }
+.src { font-size: .82rem; color: var(--muted); }
+
+/* drafting */
+.draft { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 820px) { .draft { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.field { display: grid; gap: 4px; }
+.field label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 7px 9px; }
+.field textarea { min-height: 84px; resize: vertical; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: .85rem; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: clamp(18px, 4vw, 44px); font: 15px/1.7 var(--f-letter); min-width: 0; overflow-wrap: anywhere; box-shadow: 0 1px 0 var(--line), 0 10px 30px -18px rgba(20, 20, 50, .35); }
+.sheet .c { text-align: center; }
+.sheet .gov { font-weight: 700; letter-spacing: .02em; }
+.sheet .memo { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 18px 0 14px; font-family: var(--f-mono); font-size: .86rem; }
+.sheet .title { text-align: center; font-weight: 700; text-decoration: underline; margin: 14px 0; }
+.sheet p { margin: 0 0 10px; }
+.sheet .sub { font-weight: 700; }
+.sheet ol { margin: 0 0 10px; padding-left: 1.6rem; }
+.sheet .sign { margin-top: 36px; margin-left: auto; width: max-content; max-width: 100%; text-align: center; }
+.sheet .copy { margin-top: 24px; font-size: .9rem; }
+.sheet.bn { font-family: "Noto Serif Bengali", var(--f-letter); }
+.sheet.bn ol { list-style-type: bengali; }
+
+/* register */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; }
+.stat b { display: block; font-family: var(--f-display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .8rem; color: var(--muted); }
+.stat.bad b { color: var(--bad); } .stat.warn b { color: var(--warn); }
+.tablebox { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; white-space: nowrap; }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: .84rem; white-space: nowrap; }
+td select { border: 1px solid var(--line); background: var(--paper); border-radius: 4px; padding: 3px 4px; font-size: .85rem; }
+.pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.mute { background: var(--paper); color: var(--muted); }
+.addform { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+.example-tag { font-size: .72rem; font-weight: 600; color: var(--muted); border: 1px dashed var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
+
+/* tools + links */
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.out { font-family: var(--f-display); font-size: 1.05rem; background: var(--accent-soft); border-radius: 6px; padding: 8px 12px; min-height: 2.4em; overflow-wrap: anywhere; }
+.links { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.link { display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; text-decoration: none; color: var(--ink); }
+.link:hover { border-color: var(--accent); }
+.link b { font-family: var(--f-display); color: var(--accent); }
+.link span { font-size: .84rem; color: var(--muted); }
+.link code { font-family: var(--f-mono); font-size: .75rem; color: var(--muted); overflow-wrap: anywhere; }
+
+dialog { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--ink); width: min(520px, calc(100vw - 32px)); padding: 20px; }
+dialog::backdrop { background: rgba(10, 10, 30, .45); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 16px; border-radius: 999px; font-size: .88rem; z-index: 20; }
+footer { color: var(--muted); font-size: .8rem; padding-block: 0 40px; }
+
+@media print {
+  header.top, .no-print, footer, .draft > .panel { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0; }
+  .draft { display: block; }
+  .sheet { border: 0; box-shadow: none; padding: 0; background: #fff; color: #000; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="brand-name">
+        <h1>এসডিও সহায়ক</h1><span class="en">SDO Sahayak</span>
+      </div>
+      <button class="btn" id="open-settings" type="button">Office details</button>
+    </div>
+    <div class="office-line" id="office-line"></div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-view="certs">Certificates<small>শংসাপত্র</small></button>
+      <button class="tab" role="tab" data-view="draft">Drafting<small>খসড়া</small></button>
+      <button class="tab" role="tab" data-view="register">Pending register<small>রেজিস্টার</small></button>
+      <button class="tab" role="tab" data-view="tools">Tools<small>হিসাব</small></button>
+      <button class="tab" role="tab" data-view="links">Portals &amp; schemes<small>প্রকল্প</small></button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<footer class="wrap">
+  SDO Sahayak is a free helper made by office staff. It is not an official Government of West Bengal application.
+  Rules, income limits and formats change. Check the latest notification or circular before acting on anything here.
+  Data you type stays in this browser only.
+</footer>
+
+<dialog id="settings">
+  <form method="dialog" class="view" id="settings-form">
+    <h2>Office details</h2>
+    <p class="lede">These fill in automatically on every letter. They are saved in this browser only.</p>
+    <div class="field"><label for="s-subdiv">Sub-division</label><input id="s-subdiv" name="subdiv"></div>
+    <div class="field"><label for="s-district">District</label><input id="s-district" name="district"></div>
+    <div class="field"><label for="s-officer">Signing officer (designation)</label><input id="s-officer" name="officer"></div>
+    <div class="field"><label for="s-officerbn">Signing officer in Bengali</label><input id="s-officerbn" name="officerbn"></div>
+    <div class="field"><label for="s-memo">Memo number prefix</label><input id="s-memo" name="memo"></div>
+    <div class="field"><label for="s-contact">Phone / e-mail line on letterhead</label><input id="s-contact" name="contact"></div>
+    <div class="field"><label for="s-alert">Mark applications overdue after (days)</label><input id="s-alert" name="alert" type="number" min="1"></div>
+    <div class="row"><button class="btn primary" value="save">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+/* ---------- storage (always guarded) ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("sdo-sahayak:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("sdo-sahayak:" + k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+};
+const DEFAULT_SETTINGS = { subdiv: "Sadar", district: "Your District", officer: "Sub-Divisional Officer", officerbn: "মহকুমা শাসক", memo: "SDO", contact: "", alert: 15 };
+let settings = Object.assign({}, DEFAULT_SETTINGS, store.get("settings", {}));
+
+/* ---------- helpers ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
+const toBn = s => String(s).replace(/[0-9]/g, d => BN_DIGITS[d]);
+const pad = n => String(n).padStart(2, "0");
+const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const todayIso = () => iso(new Date());
+const parseIso = s => { const [y, m, d] = String(s).split("-").map(Number); return y ? new Date(y, m - 1, d) : null; };
+const dmy = s => { const d = parseIso(s); return d ? pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear() : "__.__.____"; };
+const daysBetween = (a, b) => Math.round((b - a) / 86400000);
+const lines = s => String(s || "").split("\n").map(x => x.trim()).filter(Boolean);
+function toast(msg) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; t.setAttribute("role", "status");
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+function copyText(text, fallbackEl) {
+  const done = () => toast("Copied");
+  const fallback = () => {
+    if (fallbackEl) { const r = document.createRange(); r.selectNodeContents(fallbackEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+    toast("Text selected. Press Ctrl+C to copy.");
+  };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}
+const canPrint = (() => { try { return window.self === window.top; } catch (e) { return false; } })();
+
+/* ---------- certificate knowledge base ---------- */
+const CERTS = [
+  {
+    id: "scst", en: "SC / ST Certificate", bn: "তফসিলি জাতি / উপজাতি শংসাপত্র",
+    facts: [
+      ["Issued by", "Sub-Divisional Officer (in Kolkata, the officer notified by the State)"],
+      ["Apply at", "castcertificatewb.gov.in, Duare Sarkar camp, BDO office (rural) or SDO office (municipal area)"],
+      ["Law", "W.B. SC & ST (Identification) Act, 1994 and Rules, 1995"],
+      ["Fee", "None"]
+    ],
+    eligibility: [
+      "Caste or tribe is in the Scheduled list for West Bengal.",
+      "Applicant or ancestors were ordinarily resident in West Bengal on the date of the Presidential Order (10.08.1950 for SC, 06.09.1950 for ST).",
+      "People who migrated from another State are SC/ST of their State of origin. Check the guidelines before recommending."
+    ],
+    docs: [
+      "Recent passport-size photograph",
+      "Identity proof (EPIC or Aadhaar)",
+      "Proof of present address (EPIC, ration card, Aadhaar, electricity bill)",
+      "Caste certificate of father or a blood relative on the father's side",
+      "Proof of relationship with that relative (if not the father)",
+      "Proof of date of birth (birth certificate or school certificate)",
+      "Self-declaration of applicant / guardian"
+    ],
+    enquiry: [
+      "Check the father's or relative's certificate on the portal (Check Certificate) before relying on a photocopy.",
+      "Confirm residence and community by local enquiry. Record statements of neighbours or the local Panchayat / Ward member.",
+      "For a married woman, caste is decided by her father's caste. Ask for the father's side proof.",
+      "Do not insist on pre-1950 land deeds. The Backward Classes Welfare Department told offices to stop this in 2008."
+    ],
+    returns: ["Name or father's name spelt differently across documents", "Relative's certificate uploaded without relationship proof", "Wrong block / ward / municipality chosen in the form", "Blurred or cropped uploads"],
+    src: [["Updated SC/ST guidelines (wbxpress)", "https://wbxpress.com/guidelines-issuance-sc-st-certificates/"], ["Tribal Development Dept.", "https://adibasikalyan.gov.in/issuance_of_caste_certificates"]]
+  },
+  {
+    id: "obc", en: "OBC Certificate (see 2026 change)", bn: "অনগ্রসর শ্রেণি (ওবিসি) শংসাপত্র",
+    facts: [
+      ["Issued by", "Sub-Divisional Officer"],
+      ["Recommended by", "BDO in block areas; a Deputy Magistrate of the SDO office in municipal areas"],
+      ["Apply at", "castcertificatewb.gov.in or Duare Sarkar camp"],
+      ["Fee", "None"]
+    ],
+    eligibility: [
+      "2026 CHANGE (reported): BCW notifications 944 & 945-BCW dated 18.05.2026 notify a State OBC list of 66 classes with 7% reservation and withdraw the OBC-A / OBC-B split. Certificates issued since 2010-11 are under re-verification. Follow the latest BCW order, not the points below, where they differ.",
+      "Is a citizen of India.",
+      "Permanently resident in West Bengal since 15.03.1993 (date of the State OBC order).",
+      "Ordinarily resident at the address given.",
+      "Belongs to a community in the State OBC list (Category A or B).",
+      "Identity is established.",
+      "Is not in the creamy layer. The State guideline mentions a family income limit of Rs. 6 lakh \"subject to revision\". Check the latest order for the current limit."
+    ],
+    docs: [
+      "Recent passport-size photograph",
+      "Proof of citizenship (EPIC, passport or birth certificate)",
+      "Proof of residence in West Bengal since 15.03.1993 (old voter list entry, land record, school record of that period)",
+      "Proof of present address",
+      "OBC certificate of father / blood relative, if any",
+      "Family income proof (income certificate, salary certificate, ITR)",
+      "Self-declaration of not belonging to creamy layer"
+    ],
+    enquiry: [
+      "Any one document against each eligibility point is enough. Do not ask for more.",
+      "Check the community name against the current State OBC list and note the category (A or B).",
+      "Verify income of parents, not of the applicant alone, for the creamy-layer test."
+    ],
+    returns: ["No proof of residence since 15.03.1993", "Community name not matching the State list", "Income proof missing or older than the financial year asked"],
+    src: [["Updated OBC guidelines (wbxpress)", "https://wbxpress.com/guidelines-issuance-obc-certificates/"], ["Backward Classes Welfare Dept.", "https://anagrasarkalyan.gov.in"]]
+  },
+  {
+    id: "ncl", en: "OBC Non-Creamy Layer (Central format)", bn: "নন-ক্রিমি লেয়ার শংসাপত্র (কেন্দ্রীয় ফর্ম্যাট)",
+    facts: [
+      ["Issued by", "Sub-Divisional Officer"],
+      ["Used for", "Central Government jobs and admissions (UPSC, SSC, NEET, JEE, central universities)"],
+      ["Income limit", "Rs. 8 lakh a year (Central norm). Salary and agricultural income of parents are not counted for this test."],
+      ["Validity", "Usually asked for the current financial year. The recruiting body's notice decides."]
+    ],
+    eligibility: [
+      "Community must be in the Central OBC list for West Bengal, not only the State list.",
+      "Creamy-layer test is on the parents' status and income, not the applicant's.",
+      "Children of Group A / Class I officers and certain constitutional posts fall in the creamy layer regardless of income."
+    ],
+    docs: [
+      "Existing OBC certificate of the applicant",
+      "Parents' income proof for the last three financial years",
+      "Parents' service details if employed (post, group, date of appointment)",
+      "Proof of present address",
+      "Self-declaration in Central format"
+    ],
+    enquiry: [
+      "Confirm the community appears in the Central list (NCBC). A State-only OBC community cannot get a Central NCL.",
+      "Check the parents' posts: Group A, or Group B appointed before 40, puts the family in the creamy layer.",
+      "Use the format the applicant's recruitment notice asks for."
+    ],
+    returns: ["Community not in Central list", "Parents' service details missing", "Wrong format (State format given for a Central post)"],
+    src: [["NCBC Central list search", "http://www.ncbc.nic.in/user_panel/centralistofobcs.aspx"]]
+  },
+  {
+    id: "res", en: "Residential Certificate", bn: "বাসস্থান শংসাপত্র",
+    facts: [
+      ["Issued by", "Sub-Divisional Officer (check your district's notification for delegated officers)"],
+      ["Apply at", "e-District portal or the SDO office"],
+      ["Enquiry by", "BDO / Inspector / municipal authority, as the SDO directs"],
+      ["Fee", "As notified on e-District (usually nil)"]
+    ],
+    eligibility: [
+      "Applicant ordinarily lives at the address in the sub-division.",
+      "Purpose decides the period of stay that needs proof (for example, admission or recruitment notices may ask for 10 years)."
+    ],
+    docs: [
+      "Recent passport-size photograph",
+      "EPIC (voter card) or Aadhaar",
+      "Ration card / digital ration card",
+      "Land record (khatian / porcha), rent receipt or tenancy proof",
+      "School leaving or school certificate showing address",
+      "Electricity bill or other utility bill",
+      "Certificate from Panchayat Pradhan or Ward Councillor (where asked)"
+    ],
+    enquiry: [
+      "Note how long the applicant has stayed and whether the family owns or rents.",
+      "Record the purpose for which the certificate is wanted.",
+      "If the applicant recently shifted from another district, ask for proof of the earlier address too."
+    ],
+    returns: ["Address on documents does not match the application", "Purpose not stated", "Period of stay not supported by documents"],
+    src: [["e-District West Bengal", "https://edistrict.wb.gov.in"]]
+  },
+  {
+    id: "inc", en: "Income Certificate", bn: "আয়ের শংসাপত্র",
+    facts: [
+      ["Issued by", "BDO for rural areas; SDO for municipal areas"],
+      ["Apply at", "e-District portal or the office"],
+      ["Fee", "None"],
+      ["Validity", "Depends on the purpose. Many schemes ask for one issued within the current financial year."]
+    ],
+    eligibility: ["Any resident who needs proof of family income for a scheme, scholarship, admission or court."],
+    docs: [
+      "Recent passport-size photograph",
+      "Identity proof (EPIC, Aadhaar, PAN or ration card)",
+      "Residential proof / Residential Certificate",
+      "Salary certificate, ITR acknowledgement, or income statement from Pradhan / Councillor",
+      "Self-declaration of income of all earning members"
+    ],
+    enquiry: [
+      "Add up income of all earning family members from all sources for the year.",
+      "Cross-check land holding (Banglar Bhumi) where agricultural income is claimed as nil.",
+      "Record the purpose and the year the income relates to."
+    ],
+    returns: ["Income of one member left out", "Income figure not supported by any document", "Wrong office: rural applicant applied to SDO"],
+    src: [["e-District West Bengal", "https://edistrict.wb.gov.in"], ["Banglar Bhumi (land records)", "https://banglarbhumi.gov.in"]]
+  },
+  {
+    id: "ews", en: "EWS Certificate", bn: "আর্থিকভাবে দুর্বল শ্রেণি (EWS) শংসাপত্র",
+    facts: [
+      ["Issued by", "BDO for rural areas; SDO for municipal areas; DWO in Kolkata"],
+      ["For", "General category only. Not for SC, ST or OBC."],
+      ["Income limit", "Gross family income below Rs. 8 lakh in the financial year before applying (Central norm)"],
+      ["Format", "Central \"Income & Asset Certificate\" or the State format. Use the one the notice asks for."]
+    ],
+    eligibility: [
+      "Family income from all sources (salary, agriculture, business, profession) below the limit.",
+      "Family does not own: 5 acres or more of agricultural land; a residential flat of 1000 sq ft or more; a residential plot of 100 sq yards or more in a notified municipality; or 200 sq yards or more elsewhere (Central norms).",
+      "Family means the applicant, parents, siblings under 18, spouse and children under 18."
+    ],
+    docs: [
+      "Recent passport-size photograph",
+      "Identity and residence proof",
+      "Income proof of all family members for the previous financial year",
+      "Land records (khatian / porcha) of family land",
+      "Self-declaration of income and assets",
+      "Proof of being in General category (no caste certificate)"
+    ],
+    enquiry: [
+      "Add land across all places owned by the family, not only in this sub-division.",
+      "Include agricultural income, which is excluded in the OBC-NCL test but counted here.",
+      "Check the property size in sq ft / sq yards, not in kathas, and convert if needed (1 katha = 720 sq ft in West Bengal)."
+    ],
+    returns: ["Land outside the sub-division not declared", "Income of a sibling or parent left out", "Wrong format for the purpose"],
+    src: [["EWS procedure (WikiProcedure)", "https://wikiprocedure.com/index.php/West_Bengal_-_Obtain_Economically_Weaker_Section_Certificate_(EWS_or_GEN-EWS)"]]
+  }
+];
+
+/* ---------- letter templates ---------- */
+const SERVICES = CERTS.map(c => c.en);
+const F = {
+  memo: { k: "memo", label: "Memo no.", def: () => settings.memo + "/____/" + new Date().getFullYear() },
+  date: { k: "date", label: "Date", type: "date", def: todayIso },
+  service: { k: "service", label: "Certificate / service", type: "select", options: SERVICES },
+  appno: { k: "appno", label: "Application no.", def: () => "WBSC/2026/000123" },
+  appdate: { k: "appdate", label: "Application date", type: "date", def: todayIso },
+  applicant: { k: "applicant", label: "Applicant name", def: () => "Sri Ramesh Mondal" },
+  father: { k: "father", label: "Father's name", def: () => "Late Haripada Mondal" },
+  address: { k: "address", label: "Applicant address", type: "textarea", def: () => "Vill. Dakshinpara, P.O. Nischintapur\nP.S. Sadar, Dist. Your District" }
+};
+
+function head(lang) {
+  if (lang === "bn") return { gov: "পশ্চিমবঙ্গ সরকার", off: settings.officerbn + "-এর কার্যালয়", place: settings.subdiv + " মহকুমা, " + settings.district };
+  return { gov: "Government of West Bengal", off: "Office of the " + settings.officer, place: settings.subdiv + " Sub-Division, " + settings.district };
+}
+function sign(lang) { return lang === "bn" ? [settings.officerbn, settings.subdiv] : [settings.officer, settings.subdiv]; }
+
+const TEMPLATES = [
+  {
+    id: "shortfall", en: "Shortfall / missing documents letter", langs: ["en", "bn"],
+    fields: [F.memo, F.date, F.applicant, F.address, F.service, F.appno, F.appdate,
+      { k: "missing", label: "Missing documents (one per line)", type: "textarea", def: () => "Caste certificate of father\nProof of date of birth" },
+      { k: "days", label: "Days given to submit", def: () => "15" }],
+    render(v, lang) {
+      if (lang === "bn") return {
+        to: ["প্রতি,", v.applicant, ...lines(v.address)],
+        sub: `${v.service} -এর আবেদন (আবেদন নং ${v.appno}) — প্রয়োজনীয় নথি জমা প্রসঙ্গে।`,
+        salute: "মহাশয় / মহাশয়া,",
+        body: [`উপরোক্ত বিষয়ে জানানো যাচ্ছে যে, আপনার ${toBn(dmy(v.appdate))} তারিখের আবেদনটি পরীক্ষা করে দেখা গেছে যে নিম্নলিখিত নথিগুলি জমা দেওয়া হয়নি অথবা অস্পষ্ট:`,
+          { list: lines(v.missing) },
+          `অনুগ্রহ করে এই পত্র প্রাপ্তির ${toBn(v.days)} দিনের মধ্যে উক্ত নথিগুলি অনলাইনে আপলোড করুন অথবা এই দপ্তরে জমা দিন। নির্দিষ্ট সময়ের মধ্যে নথি জমা না পড়লে আবেদনটি বিধি মোতাবেক নিষ্পত্তি করা হবে।`]
+      };
+      return {
+        to: ["To", v.applicant, ...lines(v.address)],
+        sub: `Application for ${v.service} (Application No. ${v.appno}) – submission of documents.`,
+        salute: "Sir / Madam,",
+        body: [`With reference to your application dated ${dmy(v.appdate)}, it is found on scrutiny that the following documents have not been submitted or are not legible:`,
+          { list: lines(v.missing) },
+          `You are requested to upload the above documents on the portal or submit them at this office within ${v.days} days of receipt of this letter. If the documents are not received within this time, the application will be disposed of as per rules.`]
+      };
+    }
+  },
+  {
+    id: "hearing", en: "Hearing notice to applicant", langs: ["en", "bn"],
+    fields: [F.memo, F.date, F.applicant, F.address, F.service, F.appno,
+      { k: "hdate", label: "Hearing date", type: "date", def: () => iso(new Date(Date.now() + 7 * 86400000)) },
+      { k: "htime", label: "Hearing time", def: () => "11:30 a.m." },
+      { k: "bring", label: "Bring these originals (one per line)", type: "textarea", def: () => "All documents uploaded with the application\nCaste certificate of father / blood relative\nEPIC and Aadhaar" }],
+    render(v, lang) {
+      if (lang === "bn") return {
+        to: ["প্রতি,", v.applicant, ...lines(v.address)],
+        sub: `শুনানির নোটিশ — ${v.service}, আবেদন নং ${v.appno}`,
+        salute: "মহাশয় / মহাশয়া,",
+        body: [`এতদ্বারা আপনাকে জানানো যাচ্ছে যে, উপরোক্ত আবেদনের বিষয়ে শুনানির জন্য আগামী ${toBn(dmy(v.hdate))} তারিখে ${v.htime} সময়ে নিম্নস্বাক্ষরকারীর দপ্তরে ব্যক্তিগতভাবে উপস্থিত থাকার জন্য অনুরোধ করা হচ্ছে।`,
+          "নিম্নলিখিত মূল নথিগুলি সঙ্গে আনবেন:", { list: lines(v.bring) },
+          "নির্দিষ্ট দিনে উপস্থিত না থাকলে প্রাপ্ত নথির ভিত্তিতে আবেদনটি নিষ্পত্তি করা হবে।"]
+      };
+      return {
+        to: ["To", v.applicant, ...lines(v.address)],
+        sub: `Notice of hearing – ${v.service}, Application No. ${v.appno}.`,
+        salute: "Sir / Madam,",
+        body: [`You are hereby requested to appear in person before the undersigned at this office on ${dmy(v.hdate)} at ${v.htime} for a hearing on the above application.`,
+          "Please bring the following original documents:", { list: lines(v.bring) },
+          "If you do not appear on the date fixed, the application will be decided on the basis of the records available."]
+      };
+    }
+  },
+  {
+    id: "enqfwd", en: "Forward application for enquiry", langs: ["en", "bn"],
+    fields: [F.memo, F.date,
+      { k: "to", label: "To (enquiring officer)", type: "textarea", def: () => "The Block Development Officer\nSadar Block" },
+      F.service, F.applicant, F.father, F.address, F.appno,
+      { k: "points", label: "Points to verify (one per line)", type: "textarea", def: () => "Present residence and period of stay\nCommunity / caste claimed\nGenuineness of father's certificate" },
+      { k: "days", label: "Report within (days)", def: () => "7" }],
+    render(v, lang) {
+      if (lang === "bn") return {
+        to: ["প্রতি,", ...lines(v.to)],
+        sub: `${v.service} -এর আবেদন (আবেদন নং ${v.appno}) — তদন্ত প্রতিবেদন প্রেরণ প্রসঙ্গে।`,
+        salute: "মহাশয় / মহাশয়া,",
+        body: [`উপরোক্ত বিষয়ে ${v.applicant}, পিতা ${v.father}, ঠিকানা ${lines(v.address).join(", ")}-এর আবেদনটি তদন্তের জন্য এতদ্সঙ্গে পাঠানো হল। নিম্নলিখিত বিষয়গুলি সরেজমিনে যাচাই করে ${toBn(v.days)} দিনের মধ্যে সুস্পষ্ট সুপারিশ সহ প্রতিবেদন পাঠানোর জন্য অনুরোধ করা হচ্ছে:`,
+          { list: lines(v.points) }],
+        copy: "সংযুক্তি: আবেদনপত্র ও নথির প্রতিলিপি।"
+      };
+      return {
+        to: ["To", ...lines(v.to)],
+        sub: `Enquiry report on application for ${v.service} (Application No. ${v.appno}).`,
+        salute: "Sir / Madam,",
+        body: [`The application of ${v.applicant}, son / daughter of ${v.father}, of ${lines(v.address).join(", ")} is forwarded herewith for enquiry. You are requested to verify the following points on the spot and send your report with a clear recommendation within ${v.days} days:`,
+          { list: lines(v.points) }],
+        copy: "Enclo: Copy of application with documents."
+      };
+    }
+  },
+  {
+    id: "enqrep", en: "Enquiry report (caste / residence)", langs: ["en"],
+    fields: [F.date, F.service, F.appno, F.applicant, F.father, F.address,
+      { k: "claimed", label: "Caste / community claimed", def: () => "Namasudra (SC)" },
+      { k: "enqdate", label: "Date of spot enquiry", type: "date", def: todayIso },
+      { k: "stay", label: "Period of stay at address", def: () => "Since birth (about 32 years)" },
+      { k: "relcert", label: "Relative's certificate seen (no. / or 'None')", def: () => "Father: SC certificate No. 1234/SDO/1998, verified on portal" },
+      { k: "witness", label: "Persons examined (one per line)", type: "textarea", def: () => "Sri Bimal Sarkar, neighbour\nSmt. Anima Das, Gram Panchayat member" },
+      { k: "rec", label: "Recommendation", type: "select", options: ["Recommended", "Not recommended"] },
+      { k: "reason", label: "Remarks / reason", type: "textarea", def: () => "The applicant and his family are known locally as members of the Namasudra community and have lived at the address since before 1950." },
+      { k: "by", label: "Enquiring officer (name, designation)", def: () => "Inspector, SDO Office" }],
+    render(v) {
+      return {
+        title: "ENQUIRY REPORT",
+        rows: [["Service", v.service], ["Application No.", v.appno], ["Name of applicant", v.applicant], ["Father's name", v.father],
+          ["Address", lines(v.address).join(", ")], ["Caste / community claimed", v.claimed], ["Date of spot enquiry", dmy(v.enqdate)],
+          ["Period of stay", v.stay], ["Relative's certificate", v.relcert]],
+        body: ["Persons examined during enquiry:", { list: lines(v.witness) }, "Remarks: " + v.reason, `Recommendation: ${v.rec.toUpperCase()}.`],
+        signOverride: [v.by, "Date: " + dmy(v.date)]
+      };
+    }
+  },
+  {
+    id: "noting", en: "Note sheet for approval", langs: ["en"],
+    fields: [F.service, F.appno, F.applicant,
+      { k: "facts", label: "Facts (one per line)", type: "textarea", def: () => "Application received online on 02.10.2026.\nDocuments scrutinised; all required documents found in order.\nEnquiry report of BDO, Sadar received on 15.10.2026 recommending issue.\nFather's certificate verified on portal." },
+      { k: "proposal", label: "Proposal", type: "textarea", def: () => "The certificate may be issued, if approved." },
+      { k: "by", label: "Put up by", def: () => "Dealing Assistant" }],
+    render(v) {
+      return {
+        title: `NOTE — ${v.service.toUpperCase()}`,
+        body: [`Application No. ${v.appno} of ${v.applicant}.`, { list: lines(v.facts) }, v.proposal, "Submitted for kind perusal and approval."],
+        signOverride: [v.by, "Date: " + dmy(todayIso())]
+      };
+    }
+  },
+  {
+    id: "reject", en: "Rejection order with reasons", langs: ["en", "bn"],
+    fields: [F.memo, F.date, F.applicant, F.address, F.service, F.appno, F.appdate,
+      { k: "reasons", label: "Reasons (one per line)", type: "textarea", def: () => "Applicant did not appear for hearing on 10.10.2026.\nNo proof of residence in West Bengal since 15.03.1993 was produced." },
+      { k: "appeal", label: "Appeal line", def: () => "The applicant may apply afresh with the required documents or appeal to the appellate authority as per rules." }],
+    render(v, lang) {
+      if (lang === "bn") return {
+        to: ["প্রতি,", v.applicant, ...lines(v.address)],
+        sub: `${v.service} -এর আবেদন (আবেদন নং ${v.appno}, তারিখ ${toBn(dmy(v.appdate))}) বাতিল প্রসঙ্গে।`,
+        salute: "মহাশয় / মহাশয়া,",
+        body: ["উপরোক্ত আবেদনটি নিম্নলিখিত কারণে বাতিল করা হল:", { list: lines(v.reasons) },
+          "প্রয়োজনীয় নথি সহ পুনরায় আবেদন করা যেতে পারে অথবা বিধি মোতাবেক আপিল কর্তৃপক্ষের নিকট আবেদন করা যেতে পারে।"]
+      };
+      return {
+        to: ["To", v.applicant, ...lines(v.address)],
+        sub: `Rejection of application for ${v.service} (Application No. ${v.appno} dated ${dmy(v.appdate)}).`,
+        salute: "Sir / Madam,",
+        body: ["After examination of the records, your application above is rejected for the following reasons:", { list: lines(v.reasons) }, v.appeal]
+      };
+    }
+  },
+  {
+    id: "reminder", en: "Reminder for pending report", langs: ["en", "bn"],
+    fields: [F.memo, F.date,
+      { k: "to", label: "To", type: "textarea", def: () => "The Block Development Officer\nSadar Block" },
+      { k: "refmemo", label: "Earlier memo no. and date", def: () => "SDO/412/2026 dated 02.10.2026" },
+      { k: "subject", label: "Subject of earlier letter", def: () => "Enquiry report on caste certificate applications" },
+      { k: "count", label: "Number of cases pending", def: () => "6" },
+      { k: "days", label: "Send within (days)", def: () => "3" }],
+    render(v, lang) {
+      if (lang === "bn") return {
+        to: ["প্রতি,", ...lines(v.to)],
+        sub: `অনুস্মারক — ${v.subject}।`, ref: `এই দপ্তরের স্মারক নং ${v.refmemo}`,
+        salute: "মহাশয় / মহাশয়া,",
+        body: [`উপরোক্ত সূত্রের প্রতি আপনার দৃষ্টি আকর্ষণ করা হচ্ছে। উক্ত পত্রে চাওয়া ${toBn(v.count)}টি মামলার প্রতিবেদন এখনও এই দপ্তরে পৌঁছায়নি। আবেদনকারীদের পরিষেবা নির্দিষ্ট সময়ের মধ্যে দেওয়ার জন্য ${toBn(v.days)} দিনের মধ্যে প্রতিবেদন পাঠানোর জন্য অনুরোধ করা হচ্ছে।`,
+          "বিষয়টি অতি জরুরি হিসাবে গণ্য করবেন।"]
+      };
+      return {
+        to: ["To", ...lines(v.to)],
+        sub: `Reminder – ${v.subject}.`, ref: `This office Memo No. ${v.refmemo}`,
+        salute: "Sir / Madam,",
+        body: [`Your attention is drawn to the letter referred to above. Reports in ${v.count} cases asked for in that letter have not yet been received. You are requested to send the reports within ${v.days} days so that the services can be delivered within the stipulated time.`,
+          "This may be treated as MOST URGENT."]
+      };
+    }
+  },
+  {
+    id: "general", en: "General office letter (blank memo)", langs: ["en", "bn"],
+    fields: [F.memo, F.date,
+      { k: "to", label: "To", type: "textarea", def: () => "The District Magistrate\nYour District" },
+      { k: "subject", label: "Subject", def: () => "Submission of monthly report on certificates issued" },
+      { k: "ref", label: "Reference (optional)", def: () => "" },
+      { k: "body", label: "Body (blank line = new paragraph)", type: "textarea", def: () => "With reference to the subject cited above, the monthly report for September 2026 on caste, residential and income certificates issued from this office is enclosed for kind perusal." },
+      { k: "copyto", label: "Copy forwarded to (one per line, optional)", type: "textarea", def: () => "" }],
+    render(v, lang) {
+      const paras = String(v.body || "").split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+      return {
+        to: [lang === "bn" ? "প্রতি," : "To", ...lines(v.to)],
+        sub: v.subject, ref: v.ref,
+        salute: lang === "bn" ? "মহাশয় / মহাশয়া," : "Sir / Madam,",
+        body: paras, copyList: lines(v.copyto)
+      };
+    }
+  }
+];
+
+/* ---------- letter renderer: returns {html, text} ---------- */
+function buildLetter(t, v, lang) {
+  const L = t.render(v, lang);
+  const bn = lang === "bn";
+  const h = head(lang);
+  const H = [], T = [];
+  const memoLabel = bn ? "স্মারক নং" : "Memo No.", dateLabel = bn ? "তারিখ" : "Date";
+  const dateStr = bn ? toBn(dmy(v.date)) : dmy(v.date);
+  const p = (html, text) => { H.push(html); T.push(text); };
+  if (!L.signOverride) {
+    p(`<div class="c gov">${esc(h.gov)}</div><div class="c">${esc(h.off)}</div><div class="c">${esc(h.place)}</div>` + (settings.contact ? `<div class="c" style="font-size:.85em">${esc(settings.contact)}</div>` : ""),
+      [h.gov, h.off, h.place, settings.contact].filter(Boolean).join("\n"));
+    p(`<div class="memo"><span>${memoLabel} ${esc(bn ? toBn(v.memo) : v.memo)}</span><span>${dateLabel}: ${esc(dateStr)}</span></div>`, `\n${memoLabel} ${v.memo}\t\t${dateLabel}: ${dateStr}\n`);
+  }
+  if (L.title) p(`<div class="title">${esc(L.title)}</div>`, `\n${L.title}\n`);
+  if (L.rows) {
+    p(`<table style="font:inherit;margin-bottom:12px"><tbody>${L.rows.map(r => `<tr><td style="padding:2px 12px 2px 0;border:0;white-space:nowrap">${esc(r[0])}</td><td style="padding:2px 0;border:0">: ${esc(r[1])}</td></tr>`).join("")}</tbody></table>`,
+      L.rows.map(r => `${r[0]}: ${r[1]}`).join("\n") + "\n");
+  }
+  if (L.to) p(`<p>${L.to.map(esc).join("<br>")}</p>`, L.to.join("\n") + "\n");
+  if (L.sub) p(`<p><span class="sub">${bn ? "বিষয়" : "Sub"}:</span> ${esc(L.sub)}</p>`, `${bn ? "বিষয়" : "Sub"}: ${L.sub}`);
+  if (L.ref) p(`<p><span class="sub">${bn ? "সূত্র" : "Ref"}:</span> ${esc(L.ref)}</p>`, `${bn ? "সূত্র" : "Ref"}: ${L.ref}`);
+  if (L.salute) p(`<p>${esc(L.salute)}</p>`, `\n${L.salute}\n`);
+  (L.body || []).forEach(b => {
+    if (b && b.list) {
+      p(`<ol>${b.list.map(i => `<li>${esc(i)}</li>`).join("")}</ol>`, b.list.map((i, n) => `   ${bn ? toBn(n + 1) : n + 1}. ${i}`).join("\n") + "\n");
+    } else if (b) p(`<p>${esc(b)}</p>`, b + "\n");
+  });
+  const s = L.signOverride || sign(lang);
+  const yours = L.signOverride ? "" : (bn ? "ভবদীয়," : "Yours faithfully,");
+  p(`<div class="sign">${yours ? esc(yours) + "<br><br><br>" : "<br><br>"}${s.map(esc).join("<br>")}</div>`, `\n${yours}\n\n\n${s.join("\n")}`);
+  if (L.copy) p(`<div class="copy">${esc(L.copy)}</div>`, `\n${L.copy}`);
+  if (L.copyList && L.copyList.length) {
+    const lbl = bn ? `স্মারক নং ${toBn(v.memo)}/১(${toBn(L.copyList.length)})` : `Memo No. ${v.memo}/1(${L.copyList.length})`;
+    const cf = bn ? "প্রতিলিপি অবগতি ও প্রয়োজনীয় ব্যবস্থা গ্রহণের জন্য প্রেরিত হল:" : "Copy forwarded for information and necessary action to:";
+    p(`<div class="copy"><div class="memo" style="margin:0 0 6px"><span>${esc(lbl)}</span><span>${dateLabel}: ${esc(dateStr)}</span></div>${esc(cf)}<ol>${L.copyList.map(i => `<li>${esc(i)}</li>`).join("")}</ol><div class="sign">${s.map(esc).join("<br>")}</div></div>`,
+      `\n${lbl}\t\t${dateLabel}: ${dateStr}\n${cf}\n` + L.copyList.map((i, n) => `   ${n + 1}. ${i}`).join("\n") + `\n\n${s.join("\n")}`);
+  }
+  return { html: H.join(""), text: T.join("\n").replace(/\n{3,}/g, "\n\n") };
+}
+
+/* ---------- register ---------- */
+const STAGES = ["Received", "Shortfall sent", "Sent for enquiry", "Report received", "Hearing fixed", "Issued", "Rejected"];
+const CLOSED = new Set(["Issued", "Rejected"]);
+function sampleRows() {
+  const d = n => iso(new Date(Date.now() - n * 86400000));
+  return [
+    { id: 1, no: "WBSC/2026/004512", service: "SC / ST Certificate", recd: d(22), stage: "Sent for enquiry", note: "BDO Sadar", example: true },
+    { id: 2, no: "WBOBC/2026/001877", service: "OBC Certificate (OBC-A / OBC-B)", recd: d(11), stage: "Shortfall sent", note: "Residence proof since 1993", example: true },
+    { id: 3, no: "ED/RES/2026/30981", service: "Residential Certificate", recd: d(4), stage: "Received", note: "", example: true },
+    { id: 4, no: "ED/INC/2026/22013", service: "Income Certificate", recd: d(9), stage: "Issued", note: "", example: true }
+  ];
+}
+let reg = store.get("register", null);
+if (!Array.isArray(reg)) reg = sampleRows();
+const saveReg = () => store.set("register", reg);
+
+/* ---------- views ---------- */
+const state = { view: "certs", cert: store.get("cert", "scst"), tpl: "shortfall", lang: "en", values: {}, ticks: {} };
+
+function renderOffice() {
+  $("#office-line").textContent = `${settings.officer}, ${settings.subdiv} Sub-Division, ${settings.district}`;
+}
+
+function viewCerts() {
+  const c = CERTS.find(x => x.id === state.cert) || CERTS[0];
+  const ticks = state.ticks[c.id] || {};
+  return `<div class="view">
+    <div><h2>Certificate desk guide</h2><p class="lede">Who issues it, what to ask for, and what to check before you put it up. Tick the documents the applicant gave, then draft a shortfall letter for the rest.</p></div>
+    <div class="cert-pick" role="group" aria-label="Certificate">${CERTS.map(x => `<button class="chip" data-cert="${x.id}" aria-pressed="${x.id === c.id}">${esc(x.en)}</button>`).join("")}</div>
+    <article class="cert">
+      <div class="cert-head"><h2>${esc(c.en)}</h2><div class="bn">${esc(c.bn)}</div></div>
+      <dl class="facts">${c.facts.map(f => `<div><dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd></div>`).join("")}</dl>
+      <div class="cols">
+        <section><h3>Who is eligible</h3><ul class="plain">${c.eligibility.map(e => `<li>${esc(e)}</li>`).join("")}</ul></section>
+        <section><h3>Documents checklist</h3>
+          <div class="checks">${c.docs.map((d, i) => `<label><input type="checkbox" id="doc-${c.id}-${i}" data-doc="${i}" ${ticks[i] ? "checked" : ""}><span>${esc(d)}</span></label>`).join("")}</div>
+          <div class="row" style="margin-top:10px"><button class="btn primary" id="make-shortfall" type="button">Draft shortfall letter for unticked</button></div>
+        </section>
+        <section><h3>Enquiry points</h3><ul class="plain">${c.enquiry.map(e => `<li>${esc(e)}</li>`).join("")}</ul></section>
+        <section><h3>Common reasons cases come back</h3><ul class="plain">${c.returns.map(e => `<li>${esc(e)}</li>`).join("")}</ul></section>
+      </div>
+      <div class="src">Read more: ${c.src.map(s => `<a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join(" · ")}</div>
+    </article>
+    <div class="note">Income limits and procedures are revised from time to time. Confirm against the latest order of the Backward Classes Welfare / Tribal Development / Home Department before deciding a case.</div>
+  </div>`;
+}
+
+function tplValues(t) {
+  const saved = state.values[t.id] || {};
+  const v = {};
+  t.fields.forEach(f => { v[f.k] = saved[f.k] ?? (f.def ? f.def() : (f.options ? f.options[0] : "")); });
+  return v;
+}
+
+function viewDraft() {
+  const t = TEMPLATES.find(x => x.id === state.tpl);
+  if (!t.langs.includes(state.lang)) state.lang = t.langs[0];
+  const v = tplValues(t);
+  const fieldHtml = t.fields.map(f => {
+    const id = `f-${t.id}-${f.k}`;
+    let ctl;
+    if (f.type === "textarea") ctl = `<textarea id="${id}" data-k="${f.k}">${esc(v[f.k])}</textarea>`;
+    else if (f.type === "select") ctl = `<select id="${id}" data-k="${f.k}">${f.options.map(o => `<option ${o === v[f.k] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+    else ctl = `<input id="${id}" data-k="${f.k}" type="${f.type || "text"}" value="${esc(v[f.k])}">`;
+    return `<div class="field"><label for="${id}">${esc(f.label)}</label>${ctl}</div>`;
+  }).join("");
+  return `<div class="view">
+    <div><h2>Drafting</h2><p class="lede">Pick a letter, fill the blanks on the left and copy the finished draft. Office name, memo prefix and signing officer come from <b>Office details</b>.</p></div>
+    <div class="draft">
+      <div class="panel no-print">
+        <div class="field"><label for="tpl-pick">Letter</label><select id="tpl-pick">${TEMPLATES.map(x => `<option value="${x.id}" ${x.id === t.id ? "selected" : ""}>${esc(x.en)}</option>`).join("")}</select></div>
+        ${t.langs.length > 1 ? `<div class="seg" role="group" aria-label="Language"><button type="button" data-lang="en" aria-pressed="${state.lang === "en"}">English</button><button type="button" data-lang="bn" aria-pressed="${state.lang === "bn"}">বাংলা</button></div>` : ""}
+        <form id="tpl-form" class="view" style="gap:10px">${fieldHtml}</form>
+        <div class="row"><button class="btn ghost" id="tpl-reset" type="button">Reset to sample</button></div>
+      </div>
+      <div class="view" style="gap:10px;min-width:0">
+        <div class="row no-print"><button class="btn primary" id="copy-letter" type="button">Copy letter text</button>${canPrint ? `<button class="btn" id="print-letter" type="button">Print</button>` : ""}</div>
+        <div class="sheet ${state.lang}" id="sheet" lang="${state.lang === "bn" ? "bn" : "en"}"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function refreshSheet() {
+  const t = TEMPLATES.find(x => x.id === state.tpl);
+  const out = buildLetter(t, tplValues(t), state.lang);
+  $("#sheet").innerHTML = out.html;
+  return out;
+}
+
+function viewRegister() {
+  const alertDays = Number(settings.alert) || 15;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const rows = reg.slice().sort((a, b) => (CLOSED.has(a.stage) - CLOSED.has(b.stage)) || (a.recd < b.recd ? -1 : 1));
+  let open = 0, over = 0, near = 0, closed = 0;
+  const body = rows.map(r => {
+    const age = daysBetween(parseIso(r.recd) || today, today);
+    const isClosed = CLOSED.has(r.stage);
+    let pill;
+    if (isClosed) { closed++; pill = `<span class="pill ${r.stage === "Issued" ? "ok" : "mute"}">${esc(r.stage)}</span>`; }
+    else {
+      open++;
+      if (age > alertDays) { over++; pill = `<span class="pill bad">Overdue ${age - alertDays}d</span>`; }
+      else if (age > alertDays - 4) { near++; pill = `<span class="pill warn">Due in ${alertDays - age}d</span>`; }
+      else pill = `<span class="pill ok">On time</span>`;
+    }
+    return `<tr>
+      <td class="num">${esc(r.no)}${r.example ? `<span class="example-tag">example</span>` : ""}</td>
+      <td>${esc(r.service)}</td>
+      <td class="num">${esc(dmy(r.recd))}</td>
+      <td class="num">${isClosed ? "–" : age + " d"}</td>
+      <td><select data-stage="${r.id}" id="stage-${r.id}" aria-label="Stage">${STAGES.map(s => `<option ${s === r.stage ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+      <td>${pill}</td>
+      <td>${esc(r.note)}</td>
+      <td><button class="btn ghost" data-del="${r.id}" type="button" aria-label="Remove ${esc(r.no)}">Remove</button></td>
+    </tr>`;
+  }).join("");
+  const hasExample = reg.some(r => r.example);
+  return `<div class="view">
+    <div><h2>Pending register</h2><p class="lede">Track where each application stands and spot the ones going past time. Applications are marked overdue after <b>${alertDays} days</b> (change it in Office details to match your RTPS time limit). Keep only the application number here. Do not type applicants' personal details.</p></div>
+    <div class="summary">
+      <div class="stat"><b>${open}</b><span>Open</span></div>
+      <div class="stat bad"><b>${over}</b><span>Overdue</span></div>
+      <div class="stat warn"><b>${near}</b><span>Due within 4 days</span></div>
+      <div class="stat"><b>${closed}</b><span>Disposed</span></div>
+    </div>
+    <form class="panel addform no-print" id="add-form">
+      <div class="field"><label for="a-no">Application no.</label><input id="a-no" required></div>
+      <div class="field"><label for="a-svc">Service</label><select id="a-svc">${SERVICES.map(s => `<option>${esc(s)}</option>`).join("")}<option>Other</option></select></div>
+      <div class="field"><label for="a-recd">Received on</label><input id="a-recd" type="date" value="${todayIso()}" required></div>
+      <div class="field"><label for="a-note">Note (where it is)</label><input id="a-note" placeholder="e.g. with BDO Sadar"></div>
+      <button class="btn primary" type="submit">Add</button>
+    </form>
+    <div class="tablebox"><table>
+      <thead><tr><th>Application no.</th><th>Service</th><th>Received</th><th>Age</th><th>Stage</th><th>Status</th><th>Note</th><th></th></tr></thead>
+      <tbody>${body || `<tr><td colspan="8">No applications yet. Add the first one above.</td></tr>`}</tbody>
+    </table></div>
+    <div class="row no-print">
+      <button class="btn" id="copy-csv" type="button">Copy as CSV (paste into Excel)</button>
+      ${hasExample ? `<button class="btn ghost" id="clear-examples" type="button">Remove example rows</button>` : ""}
+    </div>
+  </div>`;
+}
+
+function numWordsIndian(n) {
+  const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const two = x => x < 20 ? a[x] : b[Math.floor(x / 10)] + (x % 10 ? " " + a[x % 10] : "");
+  const three = x => (x >= 100 ? a[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " : "") : "") + (x % 100 ? two(x % 100) : "");
+  if (n === 0) return "Zero";
+  const parts = [];
+  const crore = Math.floor(n / 1e7); n %= 1e7;
+  const lakh = Math.floor(n / 1e5); n %= 1e5;
+  const th = Math.floor(n / 1000); n %= 1000;
+  if (crore) parts.push((crore > 99 ? numWordsIndian(crore) : two(crore)) + " Crore");
+  if (lakh) parts.push(two(lakh) + " Lakh");
+  if (th) parts.push(two(th) + " Thousand");
+  if (n) parts.push(three(n));
+  return parts.join(" ");
+}
+
+function viewTools() {
+  return `<div class="view">
+    <div><h2>Quick tools</h2><p class="lede">Small calculations that come up at the counter every day.</p></div>
+    <div class="grid2">
+      <section class="panel"><h3>Family income check</h3>
+        <p class="src">Enter yearly income of each earning member. Compare with the limit for the certificate.</p>
+        <div class="field"><label for="t-inc">Yearly income of each member (one per line, in Rs.)</label><textarea id="t-inc">240000
+96000
+60000</textarea></div>
+        <div class="field"><label for="t-lim">Compare with</label><select id="t-lim">
+          <option value="800000">EWS / Central NCL: Rs. 8,00,000</option>
+          <option value="600000">State OBC guideline figure: Rs. 6,00,000</option>
+          <option value="150000">Rupashree family limit: Rs. 1,50,000</option>
+        </select></div>
+        <div class="out" id="t-inc-out"></div>
+      </section>
+      <section class="panel"><h3>Deadline &amp; days pending</h3>
+        <div class="field"><label for="t-from">Application received on</label><input id="t-from" type="date" value="${iso(new Date(Date.now() - 12 * 86400000))}"></div>
+        <div class="field"><label for="t-n">Time limit (days)</label><input id="t-n" type="number" value="${settings.alert}" min="1"></div>
+        <div class="out" id="t-days-out"></div>
+      </section>
+      <section class="panel"><h3>Age on a date</h3>
+        <div class="field"><label for="t-dob">Date of birth</label><input id="t-dob" type="date" value="1964-08-15"></div>
+        <div class="field"><label for="t-on">Age as on</label><input id="t-on" type="date" value="${todayIso()}"></div>
+        <div class="out" id="t-age-out"></div>
+      </section>
+      <section class="panel"><h3>Amount in words</h3>
+        <div class="field"><label for="t-amt">Amount (Rs.)</label><input id="t-amt" type="number" value="125000" min="0"></div>
+        <div class="out" id="t-amt-out"></div>
+      </section>
+      <section class="panel"><h3>Land area converter</h3>
+        <p class="src">West Bengal units: 1 bigha = 20 katha; 1 katha = 720 sq ft; 1 acre = 100 decimal = 43,560 sq ft.</p>
+        <div class="row"><div class="field" style="flex:1"><label for="t-land">Area</label><input id="t-land" type="number" value="3" min="0" step="any"></div>
+        <div class="field" style="flex:1"><label for="t-unit">Unit</label><select id="t-unit"><option value="720">Katha</option><option value="14400">Bigha</option><option value="435.6">Decimal</option><option value="43560">Acre</option><option value="1">Sq ft</option><option value="9">Sq yard</option></select></div></div>
+        <div class="out" id="t-land-out"></div>
+      </section>
+      <section class="panel"><h3>English digits to Bengali</h3>
+        <div class="field"><label for="t-bn">Text or number</label><input id="t-bn" value="Memo No. 412/SDO dated 22.10.2026"></div>
+        <div class="out" id="t-bn-out" lang="bn"></div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function runTools() {
+  const fmt = n => n.toLocaleString("en-IN");
+  const inc = lines($("#t-inc").value).map(x => Number(x.replace(/[,\s]/g, "")) || 0).reduce((a, b) => a + b, 0);
+  const lim = Number($("#t-lim").value);
+  $("#t-inc-out").innerHTML = `Total Rs. ${fmt(inc)} — ${inc < lim ? `<span class="pill ok">within limit</span>` : `<span class="pill bad">above limit</span>`}`;
+  const from = parseIso($("#t-from").value), n = Number($("#t-n").value) || 0;
+  if (from) {
+    const due = new Date(from.getTime() + n * 86400000); const t = new Date(); t.setHours(0, 0, 0, 0);
+    const age = daysBetween(from, t), left = daysBetween(t, due);
+    $("#t-days-out").innerHTML = `Pending ${age} days. Due on ${dmy(iso(due))} ${left < 0 ? `<span class="pill bad">${-left} days late</span>` : `<span class="pill ok">${left} days left</span>`}`;
+  }
+  const dob = parseIso($("#t-dob").value), on = parseIso($("#t-on").value);
+  if (dob && on) {
+    let y = on.getFullYear() - dob.getFullYear(), m = on.getMonth() - dob.getMonth(), d = on.getDate() - dob.getDate();
+    if (d < 0) { m--; d += new Date(on.getFullYear(), on.getMonth(), 0).getDate(); }
+    if (m < 0) { y--; m += 12; }
+    $("#t-age-out").textContent = `${y} years, ${m} months, ${d} days`;
+  }
+  const amt = Math.floor(Number($("#t-amt").value) || 0);
+  $("#t-amt-out").textContent = `Rupees ${numWordsIndian(amt)} only (Rs. ${fmt(amt)}/-)`;
+  const sqft = (Number($("#t-land").value) || 0) * Number($("#t-unit").value);
+  const r = x => (Math.round(x * 100) / 100).toLocaleString("en-IN");
+  $("#t-land-out").textContent = `${r(sqft)} sq ft · ${r(sqft / 9)} sq yd · ${r(sqft / 720)} katha · ${r(sqft / 435.6)} decimal · ${r(sqft / 43560)} acre`;
+  $("#t-bn-out").textContent = toBn($("#t-bn").value);
+}
+
+const PORTALS = [
+  ["e-District", "Residential, income and other certificates", "https://edistrict.wb.gov.in"],
+  ["Caste Certificate portal", "SC / ST / OBC apply, track and verify", "https://castcertificatewb.gov.in"],
+  ["Backward Classes Welfare Dept.", "OBC orders, lists and circulars", "https://anagrasarkalyan.gov.in"],
+  ["Tribal Development Dept.", "ST certificate guidelines", "https://adibasikalyan.gov.in"],
+  ["Banglar Bhumi", "Khatian, plot and mutation records", "https://banglarbhumi.gov.in"],
+  ["Duare Sarkar", "Camp schedules and scheme services", "https://ds.wb.gov.in"],
+  ["Jai Bangla", "Old age, widow, disability, SC / ST pensions", "https://jaibangla.wb.gov.in"],
+  ["WBIFMS / HRMS", "Pay slip, leave, GPF for staff", "https://www.wbifms.gov.in"],
+  ["Finance Department", "Pay, DA and service circulars", "https://finance.wb.gov.in"],
+  ["wbxpress", "Searchable copies of WB government orders", "https://wbxpress.com"]
+];
+const SCHEMES = [
+  ["Lakshmir Bhandar", "Monthly support to women of eligible age", "Duare Sarkar camp / BDO / Municipality"],
+  ["Kanyashree", "Girls in education (K1 annual, K2 one-time)", "Through school / college"],
+  ["Rupashree", "One-time marriage grant; family income limit applies", "BDO (rural) / SDO (urban)"],
+  ["Swasthya Sathi", "Health cover for the family", "Duare Sarkar camp"],
+  ["Krishak Bandhu", "Assistance to farmers", "Block agriculture office / Duare Sarkar"],
+  ["Jai Bangla pensions", "Old age, widow, Manabik (disability), Taposili Bandhu, Jai Johar", "BDO / Municipality / Duare Sarkar"],
+  ["Sikshashree", "Scholarship for SC / ST day scholars, Class V–VIII", "Through school"],
+  ["Aikyashree", "Scholarships for minority students", "Online, WBMDFC"],
+  ["Student Credit Card", "Education loan with State guarantee", "Online portal"],
+  ["Taruner Swapna", "Support for buying a tablet / phone for Class XI–XII", "Through school"]
+];
+
+function viewLinks() {
+  return `<div class="view">
+    <div><h2>Portals</h2><p class="lede">Links open in a new tab. If a link has moved, search the portal name.</p></div>
+    <div class="links">${PORTALS.map(p => `<a class="link" href="${p[2]}" target="_blank" rel="noopener"><b>${esc(p[0])}</b><span>${esc(p[1])}</span><code>${esc(p[2].replace("https://", ""))}</code></a>`).join("")}</div>
+    <div><h2>Common schemes at the counter</h2><p class="lede">Where to send people who ask. Amounts and age limits change; check the scheme portal for current figures.</p></div>
+    <div class="tablebox"><table><thead><tr><th>Scheme</th><th>For whom</th><th>Where to apply</th></tr></thead>
+      <tbody>${SCHEMES.map(s => `<tr><td><b>${esc(s[0])}</b></td><td>${esc(s[1])}</td><td>${esc(s[2])}</td></tr>`).join("")}</tbody></table></div>
+  </div>`;
+}
+
+/* ---------- wiring ---------- */
+const VIEWS = { certs: viewCerts, draft: viewDraft, register: viewRegister, tools: viewTools, links: viewLinks };
+function go(view) {
+  if (!VIEWS[view]) view = "certs";
+  state.view = view; store.set("view", view);
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === view));
+  $("#main").innerHTML = VIEWS[view]();
+  if (view === "draft") refreshSheet();
+  if (view === "tools") runTools();
+}
+
+document.addEventListener("click", e => {
+  const tab = e.target.closest(".tab"); if (tab) return go(tab.dataset.view);
+  const chip = e.target.closest("[data-cert]"); if (chip) { state.cert = chip.dataset.cert; store.set("cert", state.cert); return go("certs"); }
+  if (e.target.closest("#make-shortfall")) {
+    const c = CERTS.find(x => x.id === state.cert); const ticks = state.ticks[c.id] || {};
+    const missing = c.docs.filter((d, i) => !ticks[i]);
+    if (!missing.length) return toast("All documents ticked. Nothing is missing.");
+    const t = TEMPLATES.find(x => x.id === "shortfall");
+    state.values.shortfall = Object.assign(tplValues(t), { service: c.en, missing: missing.join("\n") });
+    state.tpl = "shortfall"; return go("draft");
+  }
+  const lb = e.target.closest("[data-lang]"); if (lb) { state.lang = lb.dataset.lang; return go("draft"); }
+  if (e.target.closest("#tpl-reset")) { delete state.values[state.tpl]; return go("draft"); }
+  if (e.target.closest("#copy-letter")) { const out = refreshSheet(); return copyText(out.text, $("#sheet")); }
+  if (e.target.closest("#print-letter")) return window.print();
+  const del = e.target.closest("[data-del]"); if (del) { reg = reg.filter(r => String(r.id) !== del.dataset.del); saveReg(); return go("register"); }
+  if (e.target.closest("#clear-examples")) { reg = reg.filter(r => !r.example); saveReg(); return go("register"); }
+  if (e.target.closest("#copy-csv")) {
+    const q = s => `"${String(s).replace(/"/g, '""')}"`;
+    const csv = ["Application no,Service,Received,Stage,Note", ...reg.map(r => [r.no, r.service, dmy(r.recd), r.stage, r.note].map(q).join(","))].join("\n");
+    return copyText(csv, $(".tablebox"));
+  }
+  if (e.target.closest("#open-settings")) {
+    const f = $("#settings-form"); Object.keys(DEFAULT_SETTINGS).forEach(k => { f.elements[k].value = settings[k]; });
+    $("#settings").showModal();
+  }
+});
+
+document.addEventListener("input", e => {
+  if (e.target.closest("#tpl-form")) {
+    const k = e.target.dataset.k; if (!k) return;
+    const t = TEMPLATES.find(x => x.id === state.tpl);
+    state.values[t.id] = Object.assign(tplValues(t), { [k]: e.target.value });
+    refreshSheet();
+  }
+  if (e.target.closest(".checks")) {
+    const i = e.target.dataset.doc; state.ticks[state.cert] = state.ticks[state.cert] || {};
+    state.ticks[state.cert][i] = e.target.checked;
+  }
+  if (state.view === "tools") runTools();
+});
+
+document.addEventListener("change", e => {
+  if (e.target.id === "tpl-pick") { state.tpl = e.target.value; return go("draft"); }
+  const st = e.target.dataset && e.target.dataset.stage;
+  if (st) { const r = reg.find(x => String(x.id) === st); if (r) { r.stage = e.target.value; saveReg(); go("register"); } }
+});
+
+document.addEventListener("submit", e => {
+  if (e.target.id === "add-form") {
+    e.preventDefault();
+    const no = $("#a-no").value.trim(); if (!no) return;
+    reg.push({ id: Date.now(), no, service: $("#a-svc").value, recd: $("#a-recd").value || todayIso(), stage: "Received", note: $("#a-note").value.trim() });
+    saveReg(); go("register"); toast("Added " + no);
+  }
+});
+
+$("#settings").addEventListener("close", () => {
+  if ($("#settings").returnValue !== "save") return;
+  const f = $("#settings-form");
+  Object.keys(DEFAULT_SETTINGS).forEach(k => { settings[k] = f.elements[k].value.trim() || DEFAULT_SETTINGS[k]; });
+  settings.alert = Number(settings.alert) || 15;
+  store.set("settings", settings); renderOffice(); go(state.view); toast("Office details saved");
+});
+
+renderOffice();
+go(store.get("view", "certs"));
+
+/* offline support when hosted (GitHub Pages etc.) */
+if ("serviceWorker" in navigator && location.protocol === "https:" && canPrint) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>

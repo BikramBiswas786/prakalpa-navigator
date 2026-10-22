@@ -1,0 +1,11 @@
+{
+  "name": "biswas-ai-for-office",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -1,0 +1,35 @@
+# Render Blueprint: one-click free hosting for Biswas AI for Office.
+# Render asks for the API keys (sync: false) when you create the service.
+services:
+  - type: web
+    name: biswas-ai-for-office
+    runtime: node
+    plan: free
+    rootDir: biswas-ai
+    buildCommand: echo "no build needed"
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: GITHUB_MODELS_TOKEN
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: KIMI_API_KEY
+        sync: false

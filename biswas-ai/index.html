@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Biswas AI for Office</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;600;700&family=Noto+Sans:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Serif:wght@400;700&family=Noto+Serif+Bengali:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen chat tool. Header with mode switch; desktop gets a left rail of
+   ready tasks; the conversation column holds answers set like office paper. */
+:root {
+  --paper: #f3f4f8;
+  --surface: #ffffff;
+  --sheet: #fffefb;
+  --ink: #1c2233;
+  --muted: #5a6276;
+  --line: #d8dbe5;
+  --accent: #3f3297;       /* stamp-pad violet */
+  --accent-ink: #ffffff;
+  --accent-soft: #ebe9f8;
+  --user: #e7e5f7;
+  --ok: #1d7448; --ok-soft: #e3f3ea;
+  --warn: #965400; --warn-soft: #fbefdc;
+  --bad: #ad261d; --bad-soft: #fbe5e3;
+  --f-display: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-body: "Noto Sans", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-doc: "Noto Serif", "Noto Serif Bengali", Georgia, serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12141b; --surface: #1a1d27; --sheet: #1f2230; --ink: #e5e7ef; --muted: #9ba2b5; --line: #2d3242;
+    --accent: #a99df2; --accent-ink: #15122b; --accent-soft: #29254a; --user: #2a2650;
+    --ok: #6fcf9b; --ok-soft: #173126; --warn: #e6ac57; --warn-soft: #362812; --bad: #f2948b; --bad-soft: #3a1c1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12141b; --surface: #1a1d27; --sheet: #1f2230; --ink: #e5e7ef; --muted: #9ba2b5; --line: #2d3242;
+  --accent: #a99df2; --accent-ink: #15122b; --accent-soft: #29254a; --user: #2a2650;
+  --ok: #6fcf9b; --ok-soft: #173126; --warn: #e6ac57; --warn-soft: #362812; --bad: #f2948b; --bad-soft: #3a1c1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.25; margin: 0; text-wrap: balance; }
+a { color: var(--accent); }
+
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 8px; margin-right: auto; min-width: 0; }
+.brand h1 { font-size: 1.35rem; color: var(--accent); }
+.brand span { font-family: var(--f-display); font-weight: 600; color: var(--muted); font-size: .92rem; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-weight: 600; font-family: var(--f-display); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: .88rem; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.small { padding: 3px 9px; font-size: .8rem; font-weight: 600; }
+.btn[disabled] { opacity: .5; cursor: default; }
+
+.body { min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
+@media (max-width: 900px) { .body { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
+.rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 18px; }
+.rail h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-family: var(--f-body); font-weight: 600; margin-bottom: 6px; }
+.tasks { display: grid; gap: 4px; }
+.task { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; cursor: pointer; display: grid; gap: 0; }
+.task:hover { background: var(--accent-soft); }
+.task b { font-family: var(--f-display); font-weight: 600; font-size: .98rem; }
+.task small { color: var(--muted); font-size: .78rem; line-height: 1.35; }
+.railnote { font-size: .8rem; color: var(--muted); line-height: 1.45; }
+.railnote ul { margin: 4px 0 0; padding-left: 1rem; display: grid; gap: 3px; }
+@media (max-width: 900px) { .rail { display: none; } }
+.sample-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: .82rem; font-family: var(--f-display); }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+.chat { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; }
+.banner { margin: 10px auto 0; width: min(820px, 100%); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.banner div { font-size: .85rem; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; }
+.banner { grid-row: 1; }
+.scroll { grid-row: 2; overflow-y: auto; min-height: 0; }
+.composer { grid-row: 3; }
+.thread { width: min(820px, 100%); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 24px; display: grid; gap: 18px; }
+.msg { display: grid; gap: 6px; min-width: 0; }
+.msg.user { justify-items: end; }
+.msg.user .bubble { background: var(--user); border-radius: 14px 14px 4px 14px; padding: 9px 14px; max-width: 88%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.files { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.file { font-size: .78rem; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 2px 8px; }
+.msg.ai .doc { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; min-width: 0; overflow-wrap: anywhere; }
+.doc > :first-child { margin-top: 0; } .doc > :last-child { margin-bottom: 0; }
+.doc p { margin: 0 0 10px; }
+.doc h1, .doc h2, .doc h3, .doc h4 { margin: 14px 0 8px; font-size: 1.08rem; }
+.doc h1 { font-size: 1.2rem; }
+.doc ul, .doc ol { margin: 0 0 10px; padding-left: 1.5rem; }
+.doc li { margin: 2px 0; }
+.doc hr { border: 0; border-top: 1px dashed var(--line); margin: 14px 0; }
+.doc code { font-family: var(--f-mono); font-size: .85em; background: var(--paper); padding: 0 4px; border-radius: 4px; }
+.doc pre { background: var(--paper); padding: 10px; border-radius: 6px; overflow-x: auto; }
+.doc .tbl { overflow-x: auto; margin: 0 0 10px; }
+.doc table { border-collapse: collapse; font-size: .9rem; min-width: 60%; }
+.doc th, .doc td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.doc th { background: var(--accent-soft); }
+.thinking { color: var(--muted); font-style: italic; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.err { font-size: .85rem; color: var(--bad); }
+.via { font-size: .72rem; color: var(--muted); }
+.edit-area { width: 100%; min-height: 240px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--sheet); font: 14px/1.55 var(--f-mono); }
+
+.welcome { display: grid; gap: 14px; padding-top: 12px; }
+.welcome h2 { font-size: 1.6rem; }
+.welcome p { color: var(--muted); margin: 0; max-width: 62ch; }
+.starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.starter { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; }
+.starter:hover { border-color: var(--accent); }
+.starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
+.starter span { font-size: .85rem; color: var(--muted); }
+.mobile-tasks { display: none; }
+@media (max-width: 900px) { .mobile-tasks { display: block; } }
+
+.composer { background: var(--surface); border-top: 1px solid var(--line); padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px)); }
+.composer .inner { width: min(820px, 100%); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 8px; }
+.pending { display: flex; gap: 6px; flex-wrap: wrap; }
+.pending .file { display: inline-flex; gap: 6px; align-items: center; }
+.pending .file button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0; }
+.box { display: flex; gap: 8px; align-items: flex-end; border: 1px solid var(--line); border-radius: 12px; padding: 6px; background: var(--paper); }
+.box textarea { flex: 1; min-width: 0; border: 0; background: none; resize: none; max-height: 200px; min-height: 40px; padding: 8px; outline: none; }
+.iconbtn { border: 0; background: none; cursor: pointer; width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); flex: none; }
+.iconbtn:hover { background: var(--accent-soft); color: var(--accent); }
+.send { background: var(--accent); color: var(--accent-ink); }
+.send:hover { background: var(--accent); color: var(--accent-ink); opacity: .9; }
+.hint { font-size: .74rem; color: var(--muted); text-align: center; }
+
+dialog { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--ink); width: min(500px, calc(100vw - 32px)); padding: 20px; }
+dialog::backdrop { background: rgba(10, 10, 30, .45); }
+.form { display: grid; gap: 10px; }
+.field { display: grid; gap: 3px; }
+.field label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.field input, .field select { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 7px 9px; width: 100%; }
+.toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 16px; border-radius: 999px; font-size: .88rem; z-index: 20; max-width: calc(100vw - 32px); }
+
+/* A4 sheet handed to the PDF renderer */
+.pdf-doc { width: 180mm; background: #fff; color: #000; font: 12pt/1.6 "Noto Serif", "Noto Serif Bengali", serif; padding: 0; }
+.pdf-doc table { border-collapse: collapse; width: 100%; font-size: 10.5pt; }
+.pdf-doc th, .pdf-doc td { border: 1px solid #555; padding: 4px 6px; text-align: left; vertical-align: top; }
+.pdf-doc p { margin: 0 0 8pt; } .pdf-doc ul, .pdf-doc ol { margin: 0 0 8pt; padding-left: 18pt; }
+.pdf-doc h1, .pdf-doc h2, .pdf-doc h3 { font-size: 13pt; margin: 8pt 0 6pt; }
+.pdf-doc hr { border: 0; border-top: 1px solid #999; }
+.pdf-doc .tbl { overflow: visible; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>বিশ্বাস AI</h1><span>Biswas AI for Office</span></div>
+    <div class="seg" role="group" aria-label="Who is using">
+      <button type="button" id="mode-office" aria-pressed="true">অফিস</button>
+      <button type="button" id="mode-public" aria-pressed="false">জনসাধারণ</button>
+    </div>
+    <button class="btn" id="new-chat" type="button">নতুন চ্যাট</button>
+    <button class="btn" id="open-settings" type="button">অফিসের তথ্য</button>
+  </header>
+
+  <div class="body">
+    <aside class="rail" aria-label="Ready tasks">
+      <section><h2 id="rail-title">অফিসের কাজ</h2><div class="tasks" id="rail-tasks"></div></section>
+      <section><h2>প্রকল্প</h2><div class="chips" id="scheme-chips"></div></section>
+      <section class="railnote" id="rail-format">
+        <h2>অফিসের ফরম্যাট</h2>
+        <span id="rail-sample"></span>
+        <div style="margin-top:6px"><button class="btn small" type="button" id="open-settings2">নমুনা চিঠি দিন</button></div>
+      </section>
+      <section class="railnote">
+        <h2>ফাইল দিন</h2>
+        GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (📎)। AI সেটা পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।
+      </section>
+      <section class="railnote" id="owner-notice" hidden></section>
+    </aside>
+
+    <section class="chat">
+      <div class="banner" id="banner" hidden><div id="banner-text"></div></div>
+      <div class="scroll" id="scroll"><div class="thread" id="thread"></div></div>
+      <div class="composer">
+        <div class="inner">
+          <div class="pending" id="pending"></div>
+          <form class="box" id="ask">
+            <input type="file" id="file-in" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,image/*">
+            <button class="iconbtn" type="button" id="attach" aria-label="ফাইল সংযুক্ত করুন" title="ফাইল সংযুক্ত করুন (PDF, Word, Excel, ছবি)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+            </button>
+            <textarea id="q" rows="1" placeholder="বাংলা বা ইংরেজিতে প্রশ্ন লিখুন… যেমন: হিয়ারিং নোটিশের নোটশিট লিখে দিন"></textarea>
+            <button class="iconbtn send" type="submit" id="send" aria-label="পাঠান">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </form>
+          <div class="hint">Enter = পাঠান · Shift+Enter = নতুন লাইন · উত্তর Word, PDF, Excel-এ নামানো যায় <span id="engine-note"></span></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="settings">
+  <form method="dialog" class="form" id="settings-form">
+    <h2>অফিসের তথ্য</h2>
+    <p style="margin:0;color:var(--muted);font-size:.88rem">খসড়ার লেটারহেড ও স্বাক্ষরে বসবে। শুধু এই ব্রাউজারে থাকে।</p>
+    <div class="field"><label for="s-officer">Signing officer</label><input id="s-officer" name="officer"></div>
+    <div class="field"><label for="s-subdiv">Sub-division</label><input id="s-subdiv" name="subdiv"></div>
+    <div class="field"><label for="s-district">District</label><input id="s-district" name="district"></div>
+    <div class="field"><label for="s-memo">Memo prefix</label><input id="s-memo" name="memo"></div>
+    <div class="field"><label for="s-lang">Answer language</label>
+      <select id="s-lang" name="lang"><option value="auto">Same as my question</option><option value="bn">Always Bengali</option><option value="en">Always English</option></select></div>
+    <div class="field"><label for="sample-in">অফিসের নমুনা চিঠি (লেটারহেড ও ফরম্যাট)</label>
+      <p style="margin:0;color:var(--muted);font-size:.82rem">অফিস থেকে যাওয়া একটি পুরনো চিঠি (Word বা PDF) দিন। সব খসড়া সেই লেটারহেড, মেমো নম্বর ও স্বাক্ষরের ধরনে লেখা হবে।</p>
+      <div class="sample-row"><span id="sample-status"></span><button class="btn small" type="button" id="sample-clear" hidden>সরান</button></div>
+      <input type="file" id="sample-in" accept=".docx,.pdf,.txt"></div>
+    <div style="display:flex;gap:8px"><button class="btn primary" value="save">Save</button><button class="btn" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+/* ---------------- storage ---------------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
+};
+const DEFAULTS = { officer: "Sub-Divisional Officer", subdiv: "Sadar", district: "", memo: "SDO", lang: "auto" };
+let settings = Object.assign({}, DEFAULTS, store.get("settings", {}));
+let mode = store.get("mode", "office");
+let messages = store.get("chat", []);   // {role, content, shown, files}
+let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
+let sample = null, downloads = null, imageLimits = null;
+let engine = null;   // "claude" inside claude.ai, "server" on the public website
+let ctl = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+const pad = n => String(n).padStart(2, "0");
+const today = () => { const d = new Date(); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear(); };
+
+/* Owner's message shown in the side panel (for example a privacy message). Leave empty to hide. */
+const OWNER_NOTICE = "";
+
+/* ---------------- ready tasks ---------------- */
+const TASKS = {
+  office: [
+    ["নোটশিট লিখুন", "PUC, ফ্ল্যাগ, প্রস্তাব সহ নোট", "নিচের বিষয়ে SDO-র কাছে পেশ করার জন্য একটি নোটশিট লিখে দিন:\nবিষয়: \nPUC: \nপ্রস্তাব: "],
+    ["চিঠি / মেমোর খসড়া", "মেমো নং, বিষয়, সূত্র, প্রতিলিপি", "একটি সরকারি চিঠির খসড়া লিখুন।\nপ্রাপক: \nবিষয়: \nমূল কথা: \nভাষা: বাংলা / English"],
+    ["GO সহজ ভাষায় বোঝান", "সংযুক্ত আদেশের মূল কথা ও করণীয়", "সংযুক্ত GO / সার্কুলারটি সহজ বাংলায় বুঝিয়ে দিন: মূল বিষয়, কাদের জন্য, কবে থেকে, আমাদের অফিসের করণীয় কী। শেষে একটি ছোট নোটশিট দিন।"],
+    ["হিয়ারিং / শো-কজ নোটিশ", "আবেদনকারী বা কর্মচারীকে নোটিশ", "একটি হিয়ারিং নোটিশ লিখুন।\nকার জন্য: \nকোন বিষয়ে: \nতারিখ ও সময়: \nকী নথি আনতে হবে: "],
+    ["RTI উত্তরের খসড়া", "RTI Act 2005 অনুযায়ী উত্তর", "নিচের RTI আবেদনের উত্তরের খসড়া লিখুন (PIO হিসেবে)। আবেদনের প্রশ্নগুলি:\n"],
+    ["রিপোর্ট টেবিল (Excel)", "মাসিক রিপোর্ট, তালিকা, হিসাব", "নিচের তথ্য দিয়ে একটি পরিষ্কার টেবিল বানিয়ে দিন যাতে Excel-এ নামানো যায়:\n"],
+    ["অনুবাদ বাংলা ↔ English", "সরকারি পরিভাষা বজায় রেখে", "নিচের লেখাটি সরকারি ভাষায় অনুবাদ করুন (বাংলা থেকে ইংরেজি / ইংরেজি থেকে বাংলা):\n"],
+    ["জাতি শংসাপত্রের নোট", "এনকোয়ারি রিপোর্ট, পুনর্যাচাই, বাতিল", "জাতি শংসাপত্রের (SC / ST / OBC) কাজের জন্য সাহায্য করুন।\nকী দরকার (নোটশিট / এনকোয়ারি রিপোর্ট / পুনর্যাচাই রিপোর্ট / হিয়ারিং নোটিশ): \nবিবরণ: "],
+    ["নিয়ম জানতে চাই", "সার্ভিস রুল, ছুটি, HRMS, প্রক্রিয়া", "প্রশ্ন: "],
+    ["যেকোনো প্রশ্ন", "সাধারণ জ্ঞান, লেখা, হিসাব, কোডিং", ""]
+  ],
+  public: [
+    ["জাতি শংসাপত্র (SC/ST/OBC)", "কীভাবে আবেদন, কী নথি, ২০২৬-এর নতুন নিয়ম", "জাতি শংসাপত্রের (SC / ST / OBC) জন্য কীভাবে আবেদন করব, কী কী নথি লাগবে, এবং ২০২৬-এ কী নতুন নিয়ম হয়েছে? আমার শ্রেণি: "],
+    ["কোন সার্টিফিকেট লাগবে?", "বাসস্থান, আয়, EWS, NCL", "আমার এই কাজের জন্য কোন সার্টিফিকেট লাগবে এবং কোথায় আবেদন করব? কাজটি হল: "],
+    ["আবেদনের নিয়ম ও নথি", "কোন পোর্টাল, কী কাগজ, কত দিন", "নিচের পরিষেবার জন্য কীভাবে আবেদন করব, কী কী নথি লাগবে, কোন অফিসে যাব — ধাপে ধাপে বলুন:\n"],
+    ["প্রকল্পে যোগ্য কিনা", "অন্নপূর্ণা, কন্যারত্ন, পেনশন…", "আমি কোন সরকারি প্রকল্পে যোগ্য হতে পারি? আমার তথ্য:\nবয়স: \nলিঙ্গ: \nপরিবারের আয়: \nশ্রেণি (SC/ST/OBC/General): \nগ্রাম না শহর: "],
+    ["আবেদনপত্র লিখে দিন", "SDO/BDO-র কাছে দরখাস্ত", "মহকুমা শাসকের কাছে একটি দরখাস্ত লিখে দিন। বিষয়: \nআমার নাম ও ঠিকানা: (ফাঁকা রাখুন, আমি পরে লিখব)\nবিস্তারিত: "],
+    ["সরকারি চিঠি বুঝিয়ে দিন", "যে নোটিশ বা চিঠি পেয়েছেন", "সংযুক্ত সরকারি চিঠি / নোটিশটি সহজ বাংলায় বুঝিয়ে দিন। আমাকে কী করতে হবে এবং কত দিনের মধ্যে?"],
+    ["অভিযোগ জানাতে চাই", "কোথায় ও কীভাবে অভিযোগ করব", "আমার একটি সমস্যার অভিযোগ কোথায় এবং কীভাবে জানাব? সমস্যা: "]
+  ]
+};
+
+const SCHEMES = ["অন্নপূর্ণা যোজনা (আগে লক্ষ্মীর ভাণ্ডার)", "আয়ুষ্মান ভারত (আগে স্বাস্থ্যসাথী)", "বার্ধক্য / বিধবা / প্রতিবন্ধী পেনশন", "কন্যারত্ন (আগে কন্যাশ্রী)", "রূপশ্রী", "উচ্চশিক্ষায় ছাত্রীদের ৫০,০০০ টাকা", "সারথি (আগে সবুজসাথী)", "মহিলাদের বিনামূল্যে বাস", "কৃষক সহায়তা ও PM-KISAN", "ভরসা কর্মসাথী (যুব ভাতা)", "জন কল্যাণ শিবির", "স্কলারশিপ (OASIS, SVMCM)", "আবাস / রেশন কার্ড"];
+
+/* ---------------- the standing instructions sent with every question ---------------- */
+const UPDATES = `KNOWLEDGE BASE, compiled October 2026 from official orders and news reports. (reported) = from news or secondary sites, not yet checked against the order; always tell the user to verify those. (status?) = continuation under the new government not confirmed.
+
+A. GOVERNMENT CONTEXT 2026
+- The BJP won the 2026 Assembly election (about 207-208 of 294 seats). Suvendu Adhikari was sworn in as Chief Minister on 09.05.2026; first Cabinet meeting 11.05.2026. The TMC government of Mamata Banerjee is no longer in office.
+- The new government has renamed several schemes, merged some with Central schemes (Ayushman Bharat, PM-KISAN, Beti Bachao Beti Padhao) and presented its first full budget for 2026-27 on 22.06.2026. Treat any scheme name or amount from before May 2026 as possibly out of date.
+
+B. CASTE CERTIFICATES (SDO office work)
+- Law: W.B. Scheduled Castes and Scheduled Tribes (Identification) Act, 1994 and Rules, 1995. Issuing authority: Sub-Divisional Officer (in Kolkata, the officer notified by the State). Apply online at castcertificatewb.gov.in (also at camps). In block areas the BDO enquires and recommends; in municipal areas a Deputy Magistrate of the SDO office does.
+- SC/ST eligibility: caste/tribe in the West Bengal Scheduled list; applicant or ancestors ordinarily resident in West Bengal on the date of the Presidential Order (10.08.1950 SC, 06.09.1950 ST). Migrants from other States are SC/ST of their State of origin. Married women take the father's caste. Key evidence: caste certificate of father or paternal blood relative (verify on the portal), plus local enquiry. A 2008 BCW memo told offices not to demand pre-1950 land deeds.
+- Usual documents: photo; EPIC/Aadhaar; present address proof; father's or paternal relative's certificate with relationship proof; birth/school certificate; self-declaration.
+- Cancellation: certificate obtained by misrepresentation -> SDO starts cancellation proceedings under the 1994 Act/1995 Rules; forged certificates -> criminal law. State Scrutiny Committee and district Vigilance Cells handle such cases.
+- 2026 RE-VERIFICATION: order of the Backward Classes Welfare Department Secretary dated 14.05.2026 to all District Magistrates to re-verify SC, ST and OBC certificates issued since 2011 (about 1.69 crore certificates) (reported). Reported that genuine certificates are not cancelled merely because of re-verification. July 2026: statewide re-verification of SC/ST certificates with a warning of prosecution for fraud (reported).
+- OBC 2026: Calcutta High Court (May 2024) quashed OBC status of 77 classes added from 2010. State notified a revised 140-class list in June 2025; High Court stayed it on 17.06.2025; Supreme Court stayed that order on 28.07.2025. BCW notifications No. 944-BCW and 945-BCW dated 18.05.2026 notify a State OBC list of 66 classes with 7% reservation in State services and posts, withdrawing the earlier OBC-A 10% / OBC-B 7% split (reported). Election Commission does not accept WB OBC certificates issued after 2010 as supporting documents in SIR hearings (reported, Jan 2026). OBC eligibility under State guidelines: citizen; permanent resident of WB since 15.03.1993; ordinarily resident; community in State list; identity; not creamy layer (State guideline figure Rs. 6 lakh "subject to revision"). Community status is permanent; non-creamy-layer status needs renewal every year.
+- OBC-NCL (Central format, for Central jobs/admissions): community must be in the Central list; parents' income limit Rs. 8 lakh excluding salary and agricultural income; parents in Group A posts are creamy layer; issued by SDO.
+- EWS: General category only; gross family income below Rs. 8 lakh in the previous financial year; asset exclusions (5 acres agricultural land; flat of 1000 sq ft; residential plot 100 sq yd in notified municipality, 200 sq yd elsewhere). Issued by BDO (rural), SDO (municipal), DWO (Kolkata). In West Bengal 1 katha = 720 sq ft.
+
+C. OTHER CERTIFICATES
+- Residential, income and similar certificates: through e-District (edistrict.wb.gov.in) or the office. Income: BDO for rural, SDO for municipal areas; no fee. Residential: SDO, after enquiry by BDO/Inspector/municipality.
+
+D. SCHEMES (PRAKALPA) UNDER THE BJP-LED STATE GOVERNMENT - status October 2026. The previous (TMC) government's scheme names and amounts are OUT OF DATE unless stated here; always give the current name first, and the old name in brackets so people recognise it.
+1. Annapurna Yojana / Annapurna Bhandar (old: Lakshmir Bhandar): Rs. 3,000 per month by DBT to eligible women, from June 2026 (01.06 or 03.06.2026). Budget 22.06.2026 allotted Rs. 36,000 crore; women aged 25-60 (some sources say 21). Existing Lakshmir Bhandar beneficiaries were moved over without a fresh application. A beneficiary cannot draw Annapurna and the widow pension together and must choose one (Women & Child Development & Social Welfare Dept. directive, reported by ThePrint). Other conditions (income limit, ration card category) and the window for fresh applications vary between sources (reported); official portals named: socialsecurity.wb.gov.in / socialregistry.wb.gov.in. Warn people against look-alike private websites.
+2. Ayushman Bharat PM-JAY (old: Swasthya Sathi): West Bengal joined in 2026; cashless treatment up to Rs. 5 lakh per family per year; Swasthya Sathi cards were honoured during the changeover (reported). Check eligibility at beneficiary.nha.gov.in.
+3. Social welfare pensions - Old Age, Widow, Disability (Manabik), and NSAP pensions: raised from Rs. 1,000 to Rs. 1,500 per month by DBT from 01.08.2026 (Cabinet decision reported by AIR/newsonair and The Statesman). The previous government's waiting list was scrapped; a fresh list of eligible beneficiaries is being prepared. (The old umbrella name was "Jai Bangla"; Taposili Bandhu (SC) and Jai Johar (ST) pensions: status?)
+4. Kanyaratna (old: Kanyashree): renamed by the CM on 14.08.2026. Schoolgirls get a one-time Rs. 1,000 in 2026; Rs. 2,000 a year from the 2027 academic year; about 20.13 lakh girls this year; Education Department to issue detailed guidelines. Beti Bachao Beti Padhao also launched in the State. Applications go through the school/college.
+5. Higher-education grant for girls: Rs. 50,000 one-time to unmarried female students pursuing higher education (Budget 22.06.2026, reported; guidelines not seen).
+6. Rupashree: reported to continue under the new government with some changes: one-time Rs. 25,000 for the first marriage of a woman aged 18+ with family income up to Rs. 1.5 lakh a year (status of changes?). wbrupashree.gov.in.
+7. Sarathi (old: Sabooj Sathi): bicycles for school students, renamed (reported).
+8. Free bus travel for women in State transport buses (from June 2026, reported).
+9. Farmers: Krishak Bandhu (Natun) - no official change found; still Rs. 10,000 per acre per year in two instalments (minimum Rs. 4,000), Rs. 2 lakh death benefit (status?). Budget 22.06.2026 announced an extra Rs. 3,000 a year to farmer families on top of PM-KISAN (Rs. 6,000 a year), a Rs. 2 per unit electricity subsidy for irrigation pumps, and a waiver of irrigation fees for government tube-wells/RLI (reported).
+10. Youth: Bhorsa Karmasathi (also reported as "Yuva Shakti Bharosa") - Rs. 3,000 per month to unemployed youth (Budget 22.06.2026; reported criteria age 21-45, low family income; notification and portal not seen). The previous government's Banglar Yuva Sathi (February 2026) is superseded (status?).
+11. Jobs: 33% reservation for women in recruitment for one lakh government posts (Budget 22.06.2026, reported).
+12. Government camps: Duare Sarkar is reported to be continued as "Jan Kalyan Shivir" (first camps 15-17.06.2026; portal jks.wb.gov.in, helpline 1800-345-0117 - single source, verify).
+13. Scholarships: OASIS for SC/ST/OBC (oasis.gov.in, verified by the institution); Swami Vivekananda Merit-cum-Means (svmcm.wbhed.gov.in); Aikyashree, Sikshashree, Taruner Swapna, Student Credit Card: status?
+14. Housing: PMAY-Gramin / Banglar Bari through the BDO (status?). Food: ration card and free ration through food.wb.gov.in (PMGKAY).
+
+E. EMPLOYEES
+- DA/DR raised to 38% from 01.10.2026 after a 20-percentage-point hike announced in the 2026-27 budget (reported; one source cites Finance Dept. Memo No. 2834-F(P2) dated 04.08.2026, unconfirmed).
+- Contractual/casual workers: Finance Dept. 2024 order - Group-C initial remuneration Rs. 17,000, Rs. 600 annual enhancement, steps at 5/10/15/20 years; 2016 order - 10 days medical leave plus 30 off days a year. School Education contractual remuneration raised from 01.10.2026 (reported, amounts not confirmed).
+- HRMS: casual leave online from 15.03.2024, other leave from 01.05.2024; paper leave applications not accepted after the cut-off.
+- File movement: WFTS and e-Office.
+
+F. SOURCES TO NAME: wb.gov.in, finance.wb.gov.in, wbxpress.com (copies of WB orders), anagrasarkalyan.gov.in (Backward Classes Welfare), adibasikalyan.gov.in (Tribal Development), castcertificatewb.gov.in, edistrict.wb.gov.in, banglarbhumi.gov.in, jaibangla.wb.gov.in, the Kolkata Gazette.`;
+
+/* send only the parts of the knowledge base this conversation needs (saves free-tier tokens) */
+function knowledge() {
+  const parts = UPDATES.split(/\n(?=[A-F]\. )/);
+  const said = messages.filter(m => m.role === "user").map(m => m.shown || m.content).join(" ") + " " + ($("#q") ? $("#q").value : "");
+  const schemes = /প্রকল্প|প্রকল্পা|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|শ্রী|রত্ন|সাথী|scheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|scholar|স্কলার|আবাস|রেশন|শিবির|বাস/i.test(said);
+  const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|leave|salary|pay|contractual|চুক্তি|কর্মচারী|employee|WFTS|e-?office/i.test(said);
+  return parts.filter(t => {
+    const sec = t.trim().charAt(0);
+    if (sec === "D") return mode === "public" || schemes;
+    if (sec === "E") return mode === "office" || staff;
+    return true;
+  }).join("\n");
+}
+
+function rules() {
+  const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
+  const lang = settings.lang === "bn" ? "Always reply in Bengali (Bangla script)." : settings.lang === "en" ? "Always reply in English unless asked for a Bengali draft." :
+    "Reply in the language of the user's latest message. Bengali, or Bengali typed in English letters, gets a reply in standard Bengali script (চলিত, with usual Government terms).";
+  const fmt = settings.sampleText ? `\nOFFICE FORMAT SAMPLE (a real letter of this office, file "${settings.sampleName}"). Copy its letterhead, memo number style, date style, addressing, signature block and endorsement style exactly for every letter; change only the content:\n<<<\n${settings.sampleText}\n>>>` : "";
+  const office = `MODE: OFFICE. The user is a dealing employee of an SDO office in West Bengal.
+How this office works (follow it):
+- Every application and case is decided only by the Sub-Divisional Officer (SDO). Employees never approve or reject anything; they examine, write the note and prepare the draft.
+- Notesheet: written by the dealing employee and put up directly to the SDO. Write it as continuous paragraphs of prose, the way a file note is written: first the PUC (paper under consideration) and how it was received, then the facts and what was examined, then the rule or GO position, then the proposal for the SDO's orders. End with a line such as "Put up for kind perusal and orders, please." or "Draft for approval (DFA) placed below for kind approval and signature." Then the dealing employee's signature and date line. Leave space below for the SDO's order; do not write the SDO's decision.
+- Draft (DFA): prepared by the employee on behalf of the SDO, to be issued over the SDO's signature. The signature block is the SDO: "${settings.officer}, ${settings.subdiv}" (in Bengali: ${settings.subdiv === "Sadar" ? "মহকুমা শাসক, সদর" : "মহকুমা শাসক, " + settings.subdiv}).
+- Style: drafts and notes are written in PARAGRAPHS, not in points. Do not use bullet points or numbered points inside a note or a letter unless the user asks for a list (for example a list of enclosures or copy recipients, which stay as the usual short lines). Use plain formal Government language.
+- Letterhead and layout: if the user attached a sample letter, or an office format sample is given below, copy that letterhead and layout exactly. If there is no sample, do not invent a letterhead: write one line "[অফিসের লেটারহেড / Office letterhead]" at the top, then "Memo No. ______  Date: __.__.____", and after the draft suggest attaching one old letter of the office so the format can be matched.
+- Usual parts: Memo No. and Date, To, Sub, Ref, Sir/Madam, body paragraphs, "Yours faithfully", signature of the SDO, and when needed "Memo No. ____/1(n) Date: ____ — Copy forwarded for information and necessary action to:" with the recipients as short lines. Bengali drafts use স্মারক নং, তারিখ, প্রতি, বিষয়, সূত্র, মহাশয়/মহাশয়া, ভবদীয়, মহকুমা শাসক, প্রতিলিপি.
+- Put ______ for any fact you were not given. Never make up names, numbers or dates.
+- When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
+- Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.`;
+  return `You are "Biswas AI for Office" (বিশ্বাস AI), an AI assistant created by Bikram Biswas. You can help with anything a capable AI assistant can: general questions, writing, translation, maths, coding for developers, explaining documents. Your special expertise is West Bengal Government office administration and public services. If asked who you are or who made you, say you are Biswas AI for Office, made by Bikram Biswas, and that it runs on several AI models. If asked whether this is a Government app, say it is an independent tool.
+Today is ${today()}. ${off}
+${mode === "office" ? office : pub}
+Language: ${lang}
+Accuracy rules, most important:
+- Never invent GO, memo or notification numbers, dates, section numbers, amounts or limits. If you do not know the exact figure, say so and name where to check (the department website, wbxpress.com, the gazette, e-District).
+- Your own knowledge may be old, and West Bengal changed government in May 2026. The knowledge base below is newer: prefer it. Say "reported — please verify" for items marked (reported), and say the status is not confirmed for items marked (status?).
+- For a scheme (prakalpa) question give: what it gives, who is eligible, how and where to apply, documents, and its current status, then the official portal.
+- For caste certificate questions follow section B, including the 2026 re-verification and the new OBC list.
+- If the user attached a document, answer from it and quote the relevant paragraph or clause number.
+- Explain rules; do not decide individual cases. The competent authority decides.
+Format: Markdown. In OFFICE mode notes and drafts are paragraphs (see above). In PUBLIC mode numbered steps are fine where order matters. Tables only when they help. Keep it focused.
+${knowledge()}`;
+}
+
+/* ---------------- tiny markdown engine (shared by screen, Word, PDF, Excel) ---------------- */
+function parseMd(src) {
+  const L = String(src || "").replace(/\r/g, "").split("\n");
+  const out = []; let para = [];
+  const flush = () => { if (para.length) { out.push({ t: "p", text: para.join("\n") }); para = []; } };
+  const isRow = s => /^\s*\|.*\|\s*$/.test(s);
+  const isSep = s => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(s);
+  const cells = s => s.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+  for (let i = 0; i < L.length; i++) {
+    const line = L[i];
+    if (/^\s*```/.test(line)) { flush(); const buf = []; i++; while (i < L.length && !/^\s*```/.test(L[i])) buf.push(L[i++]); out.push({ t: "code", text: buf.join("\n") }); continue; }
+    if (!line.trim()) { flush(); continue; }
+    let m;
+    if ((m = line.match(/^\s*(#{1,6})\s+(.*)$/))) { flush(); out.push({ t: "h", level: m[1].length, text: m[2].replace(/\s*#+\s*$/, "") }); continue; }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { flush(); out.push({ t: "hr" }); continue; }
+    if (isRow(line) && i + 1 < L.length && isSep(L[i + 1])) {
+      flush(); const rows = [cells(line)]; i += 2;
+      while (i < L.length && isRow(L[i])) rows.push(cells(L[i++]));
+      i--; out.push({ t: "table", rows }); continue;
+    }
+    if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) {
+      flush(); const items = [m[1]];
+      while (i + 1 < L.length && (m = L[i + 1].match(/^\s*[-*•]\s+(.*)$/))) { items.push(m[1]); i++; }
+      out.push({ t: "ul", items }); continue;
+    }
+    if ((m = line.match(/^\s*(\d+|[০-৯]+)[.)]\s+(.*)$/))) {
+      flush(); const start = parseInt(m[1].replace(/[০-৯]/g, d => "০১২৩৪৫৬৭৮৯".indexOf(d)), 10) || 1; const items = [m[2]];
+      while (i + 1 < L.length && (m = L[i + 1].match(/^\s*(\d+|[০-৯]+)[.)]\s+(.*)$/))) { items.push(m[2]); i++; }
+      out.push({ t: "ol", start, items }); continue;
+    }
+    para.push(line.replace(/\s{2,}$/, ""));
+  }
+  flush();
+  return out;
+}
+/* inline: returns runs [{text, b, i, code}] */
+function runs(s) {
+  const out = []; const re = /(\*\*[^*]+\*\*|__[^_]+__|`[^`]+`|\*[^*\s][^*]*\*)/g; let last = 0, m;
+  s = String(s);
+  while ((m = re.exec(s))) {
+    if (m.index > last) out.push({ text: s.slice(last, m.index) });
+    const tok = m[0];
+    if (tok.startsWith("**") || tok.startsWith("__")) out.push({ text: tok.slice(2, -2), b: true });
+    else if (tok.startsWith("`")) out.push({ text: tok.slice(1, -1), code: true });
+    else out.push({ text: tok.slice(1, -1), i: true });
+    last = m.index + tok.length;
+  }
+  if (last < s.length) out.push({ text: s.slice(last) });
+  return out;
+}
+const plain = s => runs(s).map(r => r.text).join("");
+function inlineHtml(s) {
+  return runs(s).map(r => {
+    let t = esc(r.text).replace(/\n/g, "<br>");
+    if (r.code) return `<code>${t}</code>`;
+    if (r.b) t = `<strong>${t}</strong>`;
+    if (r.i) t = `<em>${t}</em>`;
+    return t;
+  }).join("");
+}
+function mdToHtml(src) {
+  return parseMd(src).map(b => {
+    if (b.t === "h") return `<h${Math.min(b.level + 1, 4)}>${inlineHtml(b.text)}</h${Math.min(b.level + 1, 4)}>`;
+    if (b.t === "p") return `<p>${inlineHtml(b.text)}</p>`;
+    if (b.t === "hr") return "<hr>";
+    if (b.t === "code") return `<pre><code>${esc(b.text)}</code></pre>`;
+    if (b.t === "ul") return `<ul>${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ul>`;
+    if (b.t === "ol") return `<ol start="${b.start}">${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ol>`;
+    if (b.t === "table") {
+      const [hd, ...rows] = b.rows;
+      return `<div class="tbl"><table><thead><tr>${hd.map(c => `<th>${inlineHtml(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${inlineHtml(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }
+    return "";
+  }).join("");
+}
+
+/* ---------------- lazy libraries (jsDelivr, pinned) ---------------- */
+const LIBS = {
+  jszip: "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+  xlsx: "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+  html2pdf: "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js",
+  pdfjs: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
+  pdfworker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+  mammoth: "https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"
+};
+const loaded = {};
+function load(name) {
+  if (!loaded[name]) loaded[name] = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = LIBS[name]; s.onload = res;
+    s.onerror = () => { delete loaded[name]; rej(new Error("লাইব্রেরি লোড হয়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।")); };
+    document.head.append(s);
+  });
+  return loaded[name];
+}
+
+/* ---------------- reading attachments ---------------- */
+const MAX_DOC_CHARS = 60000;
+async function readFile(f) {
+  const name = f.name; const ext = (name.split(".").pop() || "").toLowerCase();
+  if (f.type.startsWith("image/")) {
+    if (!imageLimits) throw new Error("এই ভিউতে ছবি পাঠানো যাচ্ছে না। PDF বা Word দিন।");
+    return { name, kind: "image", images: [f] };
+  }
+  if (ext === "pdf") {
+    await load("pdfworker"); await load("pdfjs");
+    const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+    let text = "";
+    for (let p = 1; p <= pdf.numPages && text.length < MAX_DOC_CHARS; p++) {
+      const c = await (await pdf.getPage(p)).getTextContent();
+      text += `\n[Page ${p}]\n` + c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("");
+    }
+    if (text.replace(/\[Page \d+\]|\s/g, "").length > 80) return { name, kind: "pdf", text: text.slice(0, MAX_DOC_CHARS), pages: pdf.numPages };
+    // scanned PDF: send page pictures instead
+    if (!imageLimits) throw new Error("এটি স্ক্যান করা PDF, লেখা পড়া যাচ্ছে না। পাতার ছবি তুলে দিন।");
+    const imgs = [];
+    for (let p = 1; p <= Math.min(pdf.numPages, imageLimits.maxCount || 4); p++) {
+      const page = await pdf.getPage(p); const vp = page.getViewport({ scale: 1.6 });
+      const cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height;
+      await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+      imgs.push(await new Promise(r => cv.toBlob(r, "image/jpeg", 0.85)));
+    }
+    return { name, kind: "scan", images: imgs, pages: pdf.numPages };
+  }
+  if (ext === "docx") {
+    await load("mammoth");
+    const r = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+    return { name, kind: "docx", text: r.value.slice(0, MAX_DOC_CHARS) };
+  }
+  if (["xlsx", "xls", "csv"].includes(ext)) {
+    await load("xlsx");
+    const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
+    const text = wb.SheetNames.map(n => `[Sheet: ${n}]\n` + window.XLSX.utils.sheet_to_csv(wb.Sheets[n])).join("\n\n");
+    return { name, kind: "sheet", text: text.slice(0, MAX_DOC_CHARS) };
+  }
+  if (["txt", "md"].includes(ext) || f.type.startsWith("text/")) return { name, kind: "text", text: (await f.text()).slice(0, MAX_DOC_CHARS) };
+  throw new Error(`${name}: এই ধরনের ফাইল পড়া যায় না। PDF, Word (.docx), Excel বা ছবি দিন।`);
+}
+
+/* ---------------- exports ---------------- */
+const xmlEsc = s => String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function wRuns(s, extra = {}) {
+  return runs(s).map(r => {
+    const pr = `<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Nirmala UI"/>${(r.b || extra.b) ? "<w:b/><w:bCs/>" : ""}${r.i ? "<w:i/><w:iCs/>" : ""}<w:sz w:val="${extra.sz || 24}"/><w:szCs w:val="${extra.sz || 24}"/><w:lang w:bidi="bn-IN"/></w:rPr>`;
+    return String(r.text).split("\n").map((part, k) => `<w:r>${pr}${k ? "<w:br/>" : ""}<w:t xml:space="preserve">${xmlEsc(part)}</w:t></w:r>`).join("");
+  }).join("");
+}
+const wP = (inner, ppr = "") => `<w:p><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/>${ppr}</w:pPr>${inner}</w:p>`;
+async function toDocx(md) {
+  await load("jszip");
+  const body = parseMd(md).map(b => {
+    if (b.t === "h") return wP(wRuns(b.text, { b: true, sz: b.level === 1 ? 28 : 26 }), b.level === 1 ? '<w:jc w:val="center"/>' : "");
+    if (b.t === "p") return wP(wRuns(b.text));
+    if (b.t === "hr") return wP("", '<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="999999"/></w:pBdr>');
+    if (b.t === "code") return wP(wRuns(b.text));
+    if (b.t === "ul" || b.t === "ol") return b.items.map((it, k) => wP(wRuns((b.t === "ol" ? (b.start + k) + ". " : "• ") + it), '<w:ind w:left="567" w:hanging="340"/>')).join("");
+    if (b.t === "table") {
+      const n = Math.max(...b.rows.map(r => r.length)); const w = Math.floor(9000 / n);
+      const bd = ["top", "left", "bottom", "right", "insideH", "insideV"].map(s => `<w:${s} w:val="single" w:sz="4" w:space="0" w:color="666666"/>`).join("");
+      return `<w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders></w:tblPr><w:tblGrid>${`<w:gridCol w:w="${w}"/>`.repeat(n)}</w:tblGrid>` +
+        b.rows.map((r, ri) => `<w:tr>${Array.from({ length: n }, (_, ci) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr><w:p>${wRuns(r[ci] || "", { b: ri === 0, sz: 22 })}</w:p></w:tc>`).join("")}</w:tr>`).join("") + `</w:tbl>` + wP("");
+    }
+    return "";
+  }).join("");
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const zip = new window.JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  zip.file("word/document.xml", doc);
+  return zip.generateAsync({ type: "blob" });
+}
+async function toPdf(md) {
+  await load("html2pdf");
+  const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = mdToHtml(md);
+  await document.fonts.ready;
+  return window.html2pdf().set({
+      margin: [15, 15, 15, 15], image: { type: "jpeg", quality: 0.95 },
+      html2canvas: { scale: 2, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+  }).from(sheet).outputPdf("blob");
+}
+async function toXlsx(md) {
+  await load("xlsx");
+  const X = window.XLSX; const wb = X.utils.book_new();
+  parseMd(md).filter(b => b.t === "table").forEach((b, k) => {
+    const rows = b.rows.map(r => r.map(c => { const t = plain(c); const n = Number(t.replace(/,/g, "")); return t !== "" && /^-?[\d,]+(\.\d+)?$/.test(t) && !isNaN(n) ? n : t; }));
+    const ws = X.utils.aoa_to_sheet(rows);
+    ws["!cols"] = rows[0].map((_, ci) => ({ wch: Math.min(50, Math.max(8, ...rows.map(r => String(r[ci] ?? "").length + 2))) }));
+    X.utils.book_append_sheet(wb, ws, "Table " + (k + 1));
+  });
+  return new Uint8Array(X.write(wb, { bookType: "xlsx", type: "array" }));
+}
+function fileBase(md) {
+  const first = parseMd(md).find(b => b.t === "h" || b.t === "p");
+  const t = first ? plain(first.text).split("\n")[0] : "draft";
+  return (t.replace(/[\\/:*?"<>|#]/g, " ").replace(/\s+/g, " ").trim().slice(0, 50) || "draft");
+}
+const canSave = () => !!downloads || engine === "server";
+async function saveFile(filename, data) {
+  if (downloads) return downloads.save({ filename, data });
+  const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+async function save(kind, md, btn) {
+  if (!canSave()) return toast("এই ভিউতে ফাইল নামানো যাচ্ছে না।");
+  const label = btn.textContent; btn.disabled = true; btn.textContent = "তৈরি হচ্ছে…";
+  try {
+    const data = kind === "docx" ? await toDocx(md) : kind === "pdf" ? await toPdf(md) : await toXlsx(md);
+    await saveFile(`${fileBase(md)}.${kind}`, data);
+    toast("ফাইল দেওয়া হয়েছে");
+  } catch (e) {
+    if (e && e.code === "declined") toast("ফাইল নামানো বাতিল হয়েছে");
+    else if (e && e.code === "rate_limited") toast("একটু অপেক্ষা করে আবার চেষ্টা করুন");
+    else toast((e && e.message) || "ফাইল তৈরি করা গেল না");
+  } finally { btn.disabled = false; btn.textContent = label; }
+}
+
+/* ---------------- rendering ---------------- */
+function welcomeHtml() {
+  const list = TASKS[mode];
+  const office = mode === "office";
+  return `<div class="welcome">
+    <h2>${office ? "অফিসের কাজে সাহায্য" : "সরকারি পরিষেবা নিয়ে প্রশ্ন করুন"}</h2>
+    <p>${office ? "নোটশিট, চিঠি, নোটিশ, রিপোর্ট লিখিয়ে নিন; GO বা সার্কুলার সংযুক্ত করে মূল কথা জেনে নিন। উত্তর Word, PDF বা Excel-এ নামান।" : "কোন সার্টিফিকেট লাগবে, কোথায় আবেদন করবেন, কোন প্রকল্পে যোগ্য — বাংলায় জিজ্ঞাসা করুন। সরকারি পরিষেবা বিনামূল্যে, দালালকে টাকা দেবেন না।"}</p>
+    <div class="mobile-tasks"></div>
+    <div class="starters">${list.map((t, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></button>`).join("")}</div>
+  </div>`;
+}
+function msgHtml(m, k) {
+  if (m.role === "user") {
+    return `<div class="msg user">${m.files && m.files.length ? `<div class="files">${m.files.map(f => `<span class="file">📄 ${esc(f)}</span>`).join("")}</div>` : ""}<div class="bubble">${esc(m.shown ?? m.content)}</div></div>`;
+  }
+  const hasTable = parseMd(m.content).some(b => b.t === "table");
+  return `<div class="msg ai" data-k="${k}">
+    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="উত্তর সম্পাদনা">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : `<span class="thinking">ভাবছে…</span>`}</div>`}
+    ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
+    ${m.via && m.done ? `<div class="via">উত্তর দিয়েছে: ${esc({ gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" }[m.via] || m.via)}</div>` : ""}
+    ${m.done ? `<div class="actions">
+      ${m.editing ? `<button class="btn small primary" data-act="edit-save">সংরক্ষণ</button>` : `<button class="btn small" data-act="copy">কপি</button><button class="btn small" data-act="edit">সম্পাদনা</button>`}
+      ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
+    </div>` : ""}
+  </div>`;
+}
+function render() {
+  $("#mode-office").setAttribute("aria-pressed", mode === "office");
+  $("#mode-public").setAttribute("aria-pressed", mode === "public");
+  $("#rail-title").textContent = mode === "office" ? "অফিসের কাজ" : "জনসাধারণের জন্য";
+  $("#rail-tasks").innerHTML = TASKS[mode].map((t, k) => `<button class="task" type="button" data-task="${k}"><b>${esc(t[0])}</b><small>${esc(t[1])}</small></button>`).join("");
+  $("#rail-format").hidden = mode !== "office";
+  $("#rail-sample").textContent = settings.sampleText ? `চালু: ${settings.sampleName}` : "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।";
+  $("#scheme-chips").innerHTML = SCHEMES.map((n, k) => `<button class="chip" type="button" data-scheme="${k}">${esc(n)}</button>`).join("");
+  $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
+  $("#q").placeholder = mode === "office" ? "বাংলা বা ইংরেজিতে লিখুন… যেমন: শো-কজ নোটিশের নোটশিট লিখে দিন" : "আপনার প্রশ্ন লিখুন… যেমন: আয়ের সার্টিফিকেট কোথায় পাব?";
+  renderPending();
+}
+function renderPending() {
+  $("#pending").innerHTML = pendingFiles.map((f, k) => `<span class="file">📄 ${esc(f.name)}${f.kind === "scan" ? " (স্ক্যান)" : ""}<button type="button" data-unpend="${k}" aria-label="সরান">✕</button></span>`).join("");
+}
+function updateLast() {
+  const k = messages.length - 1; const el = document.querySelector(`.msg.ai[data-k="${k}"]`);
+  if (el) el.outerHTML = msgHtml(messages[k], k); else render();
+}
+const scrollDown = () => { const s = $("#scroll"); s.scrollTop = s.scrollHeight; };
+const persist = () => {
+  const keep = messages.filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
+  store.set("chat", keep.slice(-40));
+};
+function setBusy(b) {
+  const s = $("#send");
+  s.innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+  s.setAttribute("aria-label", b ? "থামান" : "পাঠান");
+}
+
+/* ---------------- asking ---------------- */
+const ERR = {
+  not_granted: "AI ব্যবহারের অনুমতি দেওয়া হয়নি। পাতাটি আবার খুলে অনুমতি দিন।",
+  sampling_disabled: "এই অ্যাকাউন্টে AI চালু নেই।",
+  rate_limited: "আজকের ফ্রি AI-এর সীমা শেষ বা খুব বেশি প্রশ্ন একসঙ্গে এসেছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।",
+  session_expired: "আবার সাইন ইন করুন।",
+  prompt_too_large: "লেখা বা ফাইল খুব বড়। ছোট অংশ দিন বা নতুন চ্যাট শুরু করুন।",
+  refused: "এই প্রশ্নের উত্তর দেওয়া গেল না। অন্যভাবে জিজ্ঞাসা করুন।",
+  image_rejected: "ছবিটি নেওয়া গেল না। অন্য ছবি দিন।",
+  images_unavailable: "এখন ছবি পড়তে পারে এমন AI পাওয়া যাচ্ছে না। লেখা-সহ PDF বা Word দিন।",
+  empty_completion: "কোনও উত্তর আসেনি। প্রশ্নটি সহজ করে আবার লিখুন।",
+  server_unconfigured: "সার্ভারে AI এখনও চালু করা হয়নি (API key দেওয়া হয়নি)।"
+};
+const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
+/* public website: our own /api/chat function, which calls the free Gemini API */
+async function serverAsk(system, turns, imgs, { signal, onText }) {
+  const images = [];
+  for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
+  let res;
+  try {
+    res = await fetch("api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images }), signal });
+  } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw { code: res.status === 429 ? "rate_limited" : res.status === 413 ? "prompt_too_large" : j.error === "not_configured" ? "server_unconfigured" : j.error === "no_vision" ? "images_unavailable" : "upstream_error" };
+  }
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let text = "";
+  try {
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      text += dec.decode(value, { stream: true });
+      onText({ text: text.replace(/\u0000[A-Z_]+\s*$/, "") });
+    }
+  } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error", text }; }
+  const flag = (text.match(/\u0000([A-Z_]+)\s*$/) || [])[1];
+  text = text.replace(/\u0000[A-Z_]+\s*$/, "");
+  if (flag === "BLOCKED" && !text.trim()) throw { code: "refused" };
+  if (!text.trim()) throw { code: "empty_completion" };
+  return { text, truncated: flag === "MAX_TOKENS", via: (res.headers.get("x-ai-provider") || "").split("/")[0] };
+}
+async function ask(text) {
+  if (!engine) return toast("AI এখন চালু নেই।");
+  const files = pendingFiles; pendingFiles = [];
+  let content = text;
+  const docs = files.filter(f => f.text);
+  if (docs.length) content += "\n\n" + docs.map(f => `--- Attached file: ${f.name} ---\n${f.text}\n--- End of ${f.name} ---`).join("\n\n");
+  const imgs = files.flatMap(f => f.images || []);
+  if (imgs.length) content += `\n\n(${imgs.length} image(s) attached: ${files.filter(f => f.images).map(f => f.name + (f.kind === "scan" ? " — scanned PDF pages" : "")).join(", ")}. Read them carefully, including Bengali text.)`;
+  messages.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
+  const ai = { role: "assistant", content: "", done: false };
+  messages.push(ai);
+  render(); scrollDown(); setBusy(true);
+
+  // history: standing rules + last turns, trimmed to stay well under the input cap
+  let turns = messages.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
+  while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
+  while (turns.length && turns[0].role !== "user") turns.shift();
+  const input = [{ role: "user", content: rules() }, ...turns];
+
+  ctl = new AbortController();
+  try {
+    const opts = { cache: false, signal: ctl.signal, onText: ({ text }) => { ai.content = text; updateLast(); } };
+    if (imgs.length) opts.images = imgs.slice(0, (imageLimits && imageLimits.maxCount) || 4);
+    const r = engine === "claude" ? await sample(input, opts) : await serverAsk(rules(), turns, imgs, opts);
+    ai.content = r.text; if (r.via) ai.via = r.via;
+    if (r.truncated) ai.error = "উত্তর মাঝপথে কেটে গেছে। ছোট অংশে জিজ্ঞাসা করুন।";
+  } catch (e) {
+    ai.content = e && e.code === "refused" ? "" : ((e && e.text) || ai.content);
+    if (e && e.code !== "cancelled") ai.error = ERR[e.code] || "সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।";
+    if (e && e.code === "server_unconfigured") showBanner(ERR.server_unconfigured);
+    if (e && ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"].includes(e.code)) showBanner(ERR[e.code] || ERR.sampling_disabled);
+    if (!ai.content && e && e.code === "cancelled") ai.content = "_(থামানো হয়েছে)_";
+  } finally {
+    ai.done = true; ctl = null; setBusy(false); updateLast(); persist();
+  }
+}
+function showBanner(t) { $("#banner-text").textContent = t; $("#banner").hidden = false; }
+
+/* ---------------- events ---------------- */
+const q = $("#q");
+const autosize = () => { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 200) + "px"; };
+q.addEventListener("input", autosize);
+q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#ask").requestSubmit(); } });
+$("#ask").addEventListener("submit", e => {
+  e.preventDefault();
+  if (ctl) { ctl.abort(); return; }
+  const t = q.value.trim();
+  if (!t && !pendingFiles.length) return;
+  q.value = ""; autosize();
+  ask(t || "সংযুক্ত ফাইলটি পড়ে মূল কথাগুলি বলুন।");
+});
+$("#attach").addEventListener("click", () => $("#file-in").click());
+$("#file-in").addEventListener("change", async e => {
+  const list = Array.from(e.target.files || []); e.target.value = "";
+  for (const f of list) {
+    toast(`${f.name} পড়া হচ্ছে…`);
+    try { pendingFiles.push(await readFile(f)); renderPending(); }
+    catch (err) { toast(err.message || "ফাইল পড়া গেল না"); }
+  }
+});
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-task]");
+  if (t) { q.value = TASKS[mode][+t.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
+  const sc = e.target.closest("[data-scheme]");
+  if (sc) { q.value = `${SCHEMES[+sc.dataset.scheme]} প্রকল্প সম্পর্কে বলুন: কী পাওয়া যায়, কারা যোগ্য, কোথায় ও কীভাবে আবেদন, কী নথি লাগে, এবং ২০২৬-এ বর্তমান অবস্থা কী।`; autosize(); q.focus(); return; }
+  const un = e.target.closest("[data-unpend]"); if (un) { pendingFiles.splice(+un.dataset.unpend, 1); renderPending(); return; }
+  const a = e.target.closest("[data-act]");
+  if (a) {
+    const k = +a.closest(".msg").dataset.k; const m = messages[k]; const act = a.dataset.act;
+    if (act === "copy") {
+      navigator.clipboard.writeText(m.content).then(() => toast("কপি হয়েছে"), () => toast("কপি করা গেল না। লেখাটি সিলেক্ট করে Ctrl+C চাপুন।"));
+    } else if (act === "edit") { m.editing = true; updateAt(k); const ta = $(`#edit-${k}`); if (ta) ta.focus(); }
+    else if (act === "edit-save") { m.content = $(`#edit-${k}`).value; m.editing = false; updateAt(k); persist(); toast("সংরক্ষিত"); }
+    else save(act, m.content, a);
+    return;
+  }
+  if (e.target.closest("#mode-office")) { mode = "office"; store.set("mode", mode); render(); }
+  if (e.target.closest("#mode-public")) { mode = "public"; store.set("mode", mode); render(); }
+  if (e.target.closest("#new-chat")) { if (ctl) ctl.abort(); messages = []; pendingFiles = []; persist(); render(); }
+  if (e.target.closest("#open-settings, #open-settings2")) {
+    const f = $("#settings-form"); Object.keys(DEFAULTS).forEach(k => { f.elements[k].value = settings[k]; }); showSample(); $("#settings").showModal();
+  }
+  if (e.target.closest("#sample-clear")) { delete settings.sampleName; delete settings.sampleText; store.set("settings", settings); showSample(); render(); toast("নমুনা চিঠি সরানো হয়েছে"); }
+});
+function showSample() {
+  $("#sample-status").textContent = settings.sampleText ? `চালু: ${settings.sampleName}` : "কোনও নমুনা দেওয়া নেই";
+  $("#sample-clear").hidden = !settings.sampleText;
+}
+$("#sample-in").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try {
+    const r = await readFile(f);
+    if (!r.text || !r.text.trim()) throw new Error("এই ফাইল থেকে লেখা পড়া গেল না। Word (.docx) বা লেখা-সহ PDF দিন।");
+    settings.sampleName = f.name; settings.sampleText = r.text.replace(/\[Page \d+\]\n?/g, "").trim().slice(0, 6000);
+    store.set("settings", settings); showSample(); render(); toast("নমুনা চিঠি সংরক্ষিত। এখন থেকে খসড়া এই ফরম্যাটে হবে।");
+  } catch (err) { toast(err.message || "ফাইল পড়া গেল না"); }
+});
+function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]`); if (el) el.outerHTML = msgHtml(messages[k], k); }
+$("#settings").addEventListener("close", () => {
+  if ($("#settings").returnValue !== "save") return;
+  const f = $("#settings-form"); Object.keys(DEFAULTS).forEach(k => { settings[k] = f.elements[k].value.trim() || DEFAULTS[k]; });
+  store.set("settings", settings); toast("অফিসের তথ্য সংরক্ষিত");
+});
+
+/* ---------------- start ---------------- */
+messages.forEach(m => { m.done = true; m.editing = false; });
+if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
+render(); scrollDown();
+(async () => {
+  if (!window.claude || !window.claude.use) {
+    // public website build: AI runs through our serverless function
+    engine = "server"; imageLimits = { maxCount: 4 };
+    $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral ও আরও AI";
+    try { const h = await (await fetch("api/chat")).json(); if (!h.configured) showBanner(ERR.server_unconfigured); }
+    catch (e) { showBanner("AI সার্ভারের সঙ্গে যোগাযোগ হচ্ছে না। পাতাটি ওয়েবসাইট থেকে খুলুন।"); }
+    render(); scrollDown(); return;
+  }
+  const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
+  sample = s; downloads = d;
+  if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
+  else showBanner("AI এখন চালু নেই। claude.ai-তে সাইন ইন করে পাতাটি খুলুন।");
+  render(); scrollDown();
+})();
+</script>
+
+</body>
+</html>
