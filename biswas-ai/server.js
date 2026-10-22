@@ -36,7 +36,7 @@ const server = http.createServer(async (req, res) => {
         method: req.method, headers: req.headers, signal: ctl.signal,
         body: req.method === "POST" ? Buffer.concat(chunks) : undefined
       });
-      const out = req.method === "POST" ? await chat.POST(request) : chat.GET(request);
+      const out = req.method === "POST" ? await chat.POST(request) : await chat.GET(request);
       res.writeHead(out.status, Object.fromEntries(out.headers));
       if (out.body) for await (const c of out.body) res.write(c);
       res.end();
@@ -58,7 +58,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, async () => {
-  const { providers } = await chat.GET().json();
+  const { providers } = await (await chat.GET()).json();
   console.log(`Biswas AI for Office is running: http://localhost:${PORT}`);
   console.log(providers.length ? `AI providers: ${providers.join(", ")}` : "No AI keys found. Add them to .env (see .env.example).");
 });

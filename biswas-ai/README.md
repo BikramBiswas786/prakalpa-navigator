@@ -9,6 +9,10 @@ An AI assistant made by **Bikram Biswas**. It answers anything a general AI assi
 - Attach GOs and circulars (PDF, Word, Excel, photos) for summaries, action points and draft notes
 - Edit any answer, then save it as **Word (.docx)**, **PDF** or **Excel (.xlsx)**
 
+**Language:** the বাংলা / EN switch in the header changes the whole screen and the answer language.
+
+**Schemes page:** the "প্রকল্প / Schemes" button opens every scheme and service with benefit, eligibility, how to apply and a status label (confirmed / reported / unconfirmed), with an "Ask the AI" button on each.
+
 **Public mode** (for citizens)
 - Caste certificates (SC/ST/OBC, 2026 rules), other certificates, and every major prakalpa under its current name, with the old name in brackets
 - Writes applications and explains Government letters
@@ -57,6 +61,10 @@ The same `index.html` (without the `<html>/<head>/<body>` wrapper lines) runs as
 | 10 | Kimi (Moonshot) | **Kimi K3** | Paid, $1 minimum top-up | https://platform.kimi.ai |
 
 Model lists and order can be changed without editing code: `GEMINI_MODELS`, `NVIDIA_MODELS`, `GROQ_MODELS`, `MISTRAL_MODELS`, `OPENROUTER_MODELS`, `CLOUDFLARE_MODELS`, `GITHUB_MODELS`, `CEREBRAS_MODELS`, `SARVAM_MODELS`, `KIMI_MODELS` (comma-separated) and `PROVIDER_ORDER`. To save tokens, the page sends only the parts of the knowledge base a conversation needs.
+
+## Checking the AI keys
+
+Open the app → **Menu** (on phones) → **AI status / AI অবস্থা পরীক্ষা**. It asks every configured model a one-word question and shows which keys work and why the others fail. A provider that sends nothing for 25 seconds (`FIRST_TEXT_MS`) is skipped automatically, and the screen shows a seconds counter while waiting.
 
 ## Owner settings
 
