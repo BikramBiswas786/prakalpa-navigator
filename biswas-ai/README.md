@@ -1,13 +1,13 @@
-# বিশ্বাস AI · Biswas AI for Office
+# বিশ্বাস AI · Biswas AI
 
-An AI assistant made by **Bikram Biswas**. It answers anything a general AI assistant can (questions, writing, translation, maths, coding), with special expertise in West Bengal Government office administration and public services. Bengali and English.
+An office assistant for West Bengal Government work. It answers questions, writes drafts, and handles tables and files, in Bengali and English. It is an independent tool, not a Government app.
 
 The app has two separate sections, switched in the header (অফিস / জনসাধারণ), and a বাংলা / EN switch for the whole screen and the AI's answers.
 
 ### অফিস — Office (for SDO office staff)
 | Tab | What it does |
 |---|---|
-| **বিক্রম AI / Bikram AI** (first tab) | A chat that works like a drafting partner: it asks what to create (notesheet, DFA, order, notice, report, Excel, Word, PDF), asks only for the missing details, then writes the document in paragraphs. Each document appears as a printable page in the chat with **Print, Word, PDF, Excel** (tables), Edit, "open in drafting desk" and **Keep as approved**. **Memory:** Bikram AI saves lasting facts it learns (names, designations, office, preferred formats, corrections) and the drafts you approve, and uses them in every later conversation; see, add, delete, export or import them in the **Memory / স্মৃতি** panel. The model does not retrain; it improves through this memory and your approved examples. |
+| **বিশ্বাস AI / Biswas AI** (first tab) | A chat that works like a drafting partner: it asks what to create (notesheet, DFA, order, notice, report, Excel, Word, PDF), asks only for the missing details, then writes the document in paragraphs. Each document appears as a printable page in the chat with **Print, Word, PDF, Excel** (tables), Edit, "open in drafting desk" and **Keep as approved**. **Memory:** Biswas AI saves lasting facts it learns (names, designations, office, preferred formats, corrections) and the drafts you approve, and uses them in every later conversation; see, add, delete, export or import them in the **Memory / স্মৃতি** panel. The model does not retrain; it improves through this memory and your approved examples. |
 | **লেখার টেবিল / Drafting desk** | Choose the document (notesheet put up to the SDO, DFA for the SDO's signature, office order, hearing or show-cause notice, RTI reply, enquiry report, caste certificate re-verification report, general letter), fill To / Subject / PUC / facts, attach a GO or letter, and the AI writes it on a paper-style page in paragraphs. Edit it yourself or give an "AI revise" instruction; undo; print view; save as **Word** or **PDF**. Uses the office's own letterhead when a sample letter is set in Settings. |
 | **টেবিল / Excel** | Editable grid; "make a table from this text" with AI; open an Excel / CSV file; save as **Excel** or **PDF**; copy to paste into Excel. |
 | **ফাইল টুল / File tools** | Word → PDF, Excel → PDF, photos → PDF, merge PDFs, take text out of a PDF or Word file (copy it or send it to the drafting desk). Runs inside the browser; files are not uploaded. |
