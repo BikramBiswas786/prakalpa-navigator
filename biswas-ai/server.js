@@ -48,7 +48,7 @@ const server = http.createServer(async (req, res) => {
       fs.createReadStream(PAGE).pipe(res);
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v11"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v12"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);

@@ -290,7 +290,7 @@ textarea.paper { white-space: pre-wrap; }
 <div class="app">
   <header class="top">
     <button class="btn nav-toggle" id="nav-open" type="button" data-t="menu">মেনু</button>
-    <button class="brand" id="go-home" type="button"><svg class="mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">আলাদা চ্যাট</span><small class="ver" title="App version">v11</small></button>
+    <button class="brand" id="go-home" type="button"><svg class="mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">আলাদা চ্যাট</span><small class="ver" title="App version">v12</small></button>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-ai" aria-pressed="true" data-t="nav_simple">চ্যাট</button>
       <button type="button" id="sec-office" aria-pressed="false" data-t="office">অফিস</button>
@@ -501,6 +501,19 @@ textarea.paper { white-space: pre-wrap; }
       <div class="page-inner"><div class="detail" id="detail"></div></div>
     </section>
 
+    <!-- Grammar check -->
+    <section class="view page" id="v-grammar" hidden>
+      <div class="page-inner">
+        <h2 data-t="g_title"></h2>
+        <p class="lead" data-t="g_note"></p>
+        <form class="panel" id="g-form">
+          <textarea id="g-src" rows="10" data-t-ph="g_ph"></textarea>
+          <div class="tools"><button class="btn primary" type="submit" id="g-go" data-t="g_go"></button><span class="status-line" id="g-status"></span></div>
+        </form>
+        <pre class="desk-out" id="g-out"></pre>
+      </div>
+    </section>
+
     <!-- BOTH: AI chat -->
     <section class="view chat" id="v-chat" hidden>
       <div class="banner" id="banner" hidden><div id="banner-text"></div></div>
@@ -661,9 +674,10 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "সাধারণ চ্যাট। যা জানতে চান লিখুন — উত্তর সোজা চলিত বাংলায় আসবে। এই কথা শুধু এই ফোনে থাকে। লিঙ্ক খুললে অন্যজন নতুন ফাঁকা পাতা দেখবে।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
+    g_title: "বানান ও ব্যাকরণ", g_note: "বাংলা বা ইংরেজি লেখা বসান। শুধু বানান, ব্যাকরণ ও বাক্য ঠিক হবে। মানে বদলাবে না।", g_go: "যাচাই করুন", g_ph: "এখানে লেখা বসান", g_wait: "দেখা হচ্ছে…", g_empty: "আগে লেখা বসান।", g_fail: "এখন যাচাই করা গেল না। আবার চেষ্টা করুন।",
     new_person: "নতুন ব্যবহারকারী", new_person_done: "এই ফোনে নতুন ফাঁকা চ্যাট খোলা হয়েছে।",
     priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।",
-    home: "হোম", nav_chat: "অফিসের চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা",
+    home: "হোম", nav_chat: "অফিসের চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
     lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
@@ -718,8 +732,9 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "A normal chat. Ask anything. The reply follows your language. This conversation stays on this phone. Someone who opens the link gets their own blank page.", ph_ai: "Message Biswas AI…",
+    g_title: "Spelling and grammar", g_note: "Paste Bengali or English. Only spelling, grammar and the sentence are corrected. The meaning stays the same.", g_go: "Check", g_ph: "Paste the text here", g_wait: "Checking…", g_empty: "Paste some text first.", g_fail: "Could not check just now. Try again.",
     new_person: "New person", new_person_done: "A new blank chat is open on this phone.",
-    home: "Home", nav_chat: "Office chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services",
+    home: "Home", nav_chat: "Office chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
     priv_note: "Each phone has its own chat. Nothing is stored in the link, so another person who opens it cannot read yours. On a shared phone, tap New person.",
     lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
@@ -988,7 +1003,7 @@ const SERVICES = [
     bn: { n: "EWS শংসাপত্র", old: "", b: "সাধারণ শ্রেণির আর্থিকভাবে দুর্বলদের ১০% সংরক্ষণের জন্য। গ্রামে BDO, শহরে SDO, কলকাতায় DWO দেন।", c: ["সাধারণ শ্রেণি (SC / ST / OBC নন)", "আগের আর্থিক বছরে পারিবারিক মোট আয় ৮ লক্ষ টাকার কম", "৫ একর বা বেশি কৃষিজমি নেই; ১,০০০ বর্গফুট বা বড় ফ্ল্যাট নেই; নির্দিষ্ট মাপের বেশি বসতজমি নেই"], d: ["পরিচয় ও ঠিকানার প্রমাণ", "পরিবারের সবার আয়ের প্রমাণ", "জমির নথি", "আয় ও সম্পদের স্ব-ঘোষণা"], s: ["ই-ডিস্ট্রিক্ট বা অফিসে আবেদন", "তদন্তের পর শংসাপত্র"], x: "পশ্চিমবঙ্গে ১ কাঠা = ৭২০ বর্গফুট।" },
     en: { n: "EWS certificate", old: "", b: "For the 10% reservation for economically weaker General-category people. Issued by the BDO (rural), SDO (urban), DWO (Kolkata).", c: ["General category (not SC / ST / OBC)", "Total family income below Rs 8 lakh in the previous financial year", "No 5+ acres of farm land; no flat of 1,000 sq ft or more; no house plot above the notified size"], d: ["Identity and address proof", "Income proof of all family members", "Land records", "Self-declaration of income and assets"], s: ["Apply on e-District or at the office", "Certificate after enquiry"], x: "In West Bengal 1 katha = 720 sq ft." } },
   { id: "residential", cat: "certs", st: "ok", by: "state", help: "", links: [["ই-ডিস্ট্রিক্ট", "e-District", "https://edistrict.wb.gov.in"]],
-    bn: { n: "বাসস্থান শংসাপত্র", old: "", b: "পশ্চিমবঙ্গে বসবাসের প্রমাণ, দেন SDO (তদন্তের পর)।", c: ["আবেদনকারী ঠিকানায় সাধারণভাবে বসবাস করেন", "উদ্দেশ্য অনুযায়ী কত বছরের বসবাস দরকার তা বিজ্ঞপ্তিতে দেখুন"], d: ["ছবি", "ভোটার কার্ড / আধার", "রেশন কার্ড", "জমির নথি / ভাড়ার রসিদ", "স্কুল শংসাপত্র", "বিদ্যুৎ বিল", "প্রয়োজনে প্রধান / কাউন্সিলরের শংসাপত্র"], s: ["ই-ডিস্ট্রিক্ট বা SDO অফিসে আবেদন", "BDO / পরিদর্শক / পুরসভা তদন্ত করে", "SDO শংসাপত্র দেন"], x: "" },
+    bn: { n: "বাসস্থান শংসাপত্র", old: "", b: "পশ্চিমবঙ্গে বসবাসের প্রমাণ। তদন্তের পর মহকুমা শাসক দেন।", c: ["আবেদনকারী ঠিকানায় সাধারণভাবে বসবাস করেন", "উদ্দেশ্য অনুযায়ী কত বছরের বসবাস দরকার তা বিজ্ঞপ্তিতে দেখুন"], d: ["ছবি", "ভোটার কার্ড / আধার", "রেশন কার্ড", "জমির নথি / ভাড়ার রসিদ", "স্কুল শংসাপত্র", "বিদ্যুৎ বিল", "প্রয়োজনে প্রধান / কাউন্সিলরের শংসাপত্র"], s: ["ই-ডিস্ট্রিক্ট বা SDO অফিসে আবেদন", "BDO / পরিদর্শক / পুরসভা তদন্ত করে", "SDO শংসাপত্র দেন"], x: "" },
     en: { n: "Residential certificate", old: "", b: "Proof of residence in West Bengal, issued by the SDO after enquiry.", c: ["Applicant ordinarily lives at the address", "Years of residence needed depend on the purpose; see the notice"], d: ["Photo", "Voter card / Aadhaar", "Ration card", "Land record / rent receipt", "School certificate", "Electricity bill", "Pradhan / councillor certificate if asked"], s: ["Apply on e-District or at the SDO office", "BDO / inspector / municipality enquires", "The SDO issues the certificate"], x: "" } },
   { id: "income", cat: "certs", st: "ok", by: "state", help: "", links: [["ই-ডিস্ট্রিক্ট", "e-District", "https://edistrict.wb.gov.in"]],
     bn: { n: "আয়ের শংসাপত্র", old: "", b: "পারিবারিক আয়ের প্রমাণ। গ্রামে BDO, শহরে SDO দেন। কোনও ফি নেই।", c: ["প্রকল্প, বৃত্তি, ভর্তি বা আদালতের প্রয়োজনে যে কেউ"], d: ["ছবি", "পরিচয়পত্র", "বাসস্থানের প্রমাণ", "বেতনের শংসাপত্র / ITR / প্রধান বা কাউন্সিলরের আয়ের শংসাপত্র", "পরিবারের সব উপার্জনকারীর আয়ের স্ব-ঘোষণা"], s: ["ই-ডিস্ট্রিক্টে আবেদন", "তদন্তের পর শংসাপত্র ডাউনলোড"], x: "" },
@@ -996,7 +1011,31 @@ const SERVICES = [
   { id: "camps", cat: "certs", st: "unc", by: "state", help: "1800-345-0117",
     links: [["জন কল্যাণ শিবির", "Jan Kalyan Shivir", "https://jks.wb.gov.in"], ["বাংলা সহায়তা কেন্দ্র", "Bangla Sahayata Kendra", "https://bsk.wb.gov.in"], ["অভিযোগ: আমাদের পাড়া আমাদের সমাধান", "Grievance: Amader Para Amader Samadhan", "https://apas.wb.gov.in"]],
     bn: { n: "সরকারি শিবির, সহায়তা কেন্দ্র ও অভিযোগ", old: "দুয়ারে সরকার", b: "এক জায়গায় সরকারি পরিষেবা ও প্রকল্পের আবেদন; বিনামূল্যে অনলাইন আবেদনে সাহায্য; অভিযোগ জানানোর পোর্টাল।", c: ["সকল নাগরিক"], d: ["যে পরিষেবার জন্য যাচ্ছেন তার নথি"], s: ["জন কল্যাণ শিবিরের তারিখ ও স্থান: jks.wb.gov.in", "বাংলা সহায়তা কেন্দ্রে বিনামূল্যে অনলাইন আবেদন করানো যায়", "অভিযোগ: apas.wb.gov.in বা হেল্পলাইন"], x: "জন কল্যাণ শিবিরের নাম ও পোর্টাল একটি সূত্র থেকে পাওয়া (প্রথম শিবির ১৫–১৭ জুন ২০২৬); যাচাই করুন।" },
-    en: { n: "Government camps, help centres and grievances", old: "Duare Sarkar", b: "Government services and scheme applications in one place; free help with online applications; grievance portal.", c: ["All citizens"], d: ["Documents for the service you need"], s: ["Camp dates and places: jks.wb.gov.in", "Bangla Sahayata Kendra helps with online applications free of cost", "Grievances: apas.wb.gov.in or helpline"], x: "The Jan Kalyan Shivir name and portal come from a single source (first camps 15–17 June 2026); verify." } }
+    en: { n: "Government camps, help centres and grievances", old: "Duare Sarkar", b: "Government services and scheme applications in one place; free help with online applications; grievance portal.", c: ["All citizens"], d: ["Documents for the service you need"], s: ["Camp dates and places: jks.wb.gov.in", "Bangla Sahayata Kendra helps with online applications free of cost", "Grievances: apas.wb.gov.in or helpline"], x: "The Jan Kalyan Shivir name and portal come from a single source (first camps 15–17 June 2026); verify." } },
+  { id: "deed", cat: "certs", st: "ok", by: "state", help: "",
+    links: [["নিবন্ধন দপ্তর", "WB Registration", "https://wbregistration.gov.in/"], ["বাংলারভূমি", "Banglarbhumi", "https://banglarbhumi.gov.in/"]],
+    bn: { n: "জমির দলিল নিবন্ধন", old: "", b: "জমি বা ফ্ল্যাট কেনাবেচার দলিল সাব-রেজিস্ট্রার অফিসে নিবন্ধন। দলিল হলেই খতিয়ানে নাম বদলায় না — তার জন্য আলাদা মিউটেশন লাগে।",
+      c: ["ক্রেতা ও বিক্রেতা দুজনেই থাকবেন", "একজন সাক্ষী", "সম্পত্তির বিবরণ ও দাম দলিলে স্পষ্ট থাকবে"],
+      d: ["তৈরি দলিল", "ক্রেতা, বিক্রেতা ও সাক্ষীর পরিচয়পত্র ও ঠিকানার প্রমাণ (আধার, ভোটার কার্ড, পাসপোর্ট)", "প্যান, না থাকলে ফর্ম ৬০", "পাসপোর্ট সাইজ ছবি", "আগের দলিল ও খতিয়ান", "পৌর বা পঞ্চায়েত করের রসিদ, যেখানে লাগে"],
+      s: ["wbregistration.gov.in-এ e-Requisition পূরণ করুন", "পোর্টালের হিসাবের পাতা থেকে স্ট্যাম্প শুল্ক ও নিবন্ধন ফি বের করে অনলাইনে জমা দিন। ব্যক্তিগত ওয়েবসাইটের অঙ্ক ব্যবহার করবেন না", "e-Appointment নিয়ে নির্ধারিত দিনে সাব-রেজিস্ট্রার অফিসে যান", "নিবন্ধনের পর banglarbhumi.gov.in-এ মিউটেশন আবেদন করুন, যাতে রেকর্ডে আপনার নাম ওঠে"],
+      x: "স্ট্যাম্প শুল্ক ও ফি সম্পত্তি অনুযায়ী বদলায়। অঙ্ক শুধু সরকারি পোর্টালের হিসাব থেকে নিন।" },
+    en: { n: "Land deed registration", old: "", b: "Registration of a sale deed for land or a flat at the Sub-Registrar. Registration does not by itself change the khatian. Mutation is a separate step.",
+      c: ["Buyer and seller both attend", "One witness", "The deed states the property and the price"],
+      d: ["The drafted deed", "Identity and address proof of buyer, seller and witness", "PAN, or Form 60 if there is no PAN", "Passport-size photographs", "Earlier deeds and the khatian", "Municipal or panchayat tax receipt, where it applies"],
+      s: ["Fill the e-Requisition on wbregistration.gov.in", "Use the portal's own calculator for stamp duty and the registration fee, then pay online. Do not use a figure from a private website", "Book an e-Appointment and attend the Sub-Registrar", "After registration, apply for mutation on banglarbhumi.gov.in so the record of rights shows your name"],
+      x: "Stamp duty and the fee depend on the property. Take the figures only from the official calculator." } },
+  { id: "dl", cat: "certs", st: "ok", by: "central", help: "",
+    links: [["সারথি পরিবহন", "Sarathi Parivahan", "https://sarathi.parivahan.gov.in/"]],
+    bn: { n: "মোটরগাড়ির ড্রাইভিং লাইসেন্স", old: "", b: "পশ্চিমবঙ্গে আগে লার্নার লাইসেন্স, তারপর স্থায়ী ড্রাইভিং লাইসেন্স। আবেদন সারথি পোর্টালে, রাজ্য West Bengal বেছে নিয়ে।",
+      c: ["গিয়ারযুক্ত মোটরসাইকেল ও গাড়ির জন্য সাধারণত ১৮ বছর", "কিছু গিয়ারবিহীন মোটরসাইকেলের জন্য অভিভাবকের সম্মতিতে কম বয়স হতে পারে — ফর্মই চূড়ান্ত", "ঠিকানা পশ্চিমবঙ্গে"],
+      d: ["বয়স ও পরিচয়ের প্রমাণ", "বর্তমান ঠিকানার প্রমাণ", "ছবি", "আধার থাকলে ই-কেওয়াইসিতে ব্যবহার করা যায়", "৪০ বছরের বেশি হলে চিকিৎসকের শংসাপত্র লাগতে পারে"],
+      s: ["sarathi.parivahan.gov.in খুলুন এবং West Bengal বেছে নিন", "আগে লার্নার লাইসেন্সের আবেদন করুন এবং পোর্টালের পরীক্ষা দিন", "পোর্টাল যে দিন বলবে তার আগে স্থায়ী লাইসেন্সের আবেদন হয় না; প্রায়ই ৩০ দিন", "তারপর ড্রাইভিং টেস্ট দিয়ে স্থায়ী লাইসেন্স নিন"],
+      x: "পরিবহন পোর্টালের কেন্দ্রীয় ফি তালিকা (১৬ অক্টোবর ২০২৬): লার্নার লাইসেন্স প্রতি শ্রেণিতে ১৫০ টাকা, লার্নার পরীক্ষা ৫০ টাকা, ড্রাইভিং টেস্ট ৩০০ টাকা, লাইসেন্স ইস্যু ২০০ টাকা, নবায়ন ২০০ টাকা। স্মার্ট কার্ডের অতিরিক্ত চার্জ পোর্টালে দেখুন।" },
+    en: { n: "Motor vehicle driving licence", old: "", b: "Learner's licence, then a permanent driving licence, in West Bengal. Apply on Sarathi and choose West Bengal.",
+      c: ["Usually 18 years for a geared motorcycle and a car", "Some gearless motorcycles allow a lower age with a guardian's consent. The form on Sarathi is the check", "Address in West Bengal"],
+      d: ["Proof of age and identity", "Proof of present address", "Photograph", "Aadhaar can be used where the portal offers e-KYC", "A medical certificate may be asked after the age of 40"],
+      s: ["Open sarathi.parivahan.gov.in and select West Bengal", "Apply for the learner's licence first and take the test on the portal", "Apply for the permanent licence only when the portal allows it, often after 30 days", "Then take the driving test"],
+      x: "Central fee table on Parivahan, updated 16 October 2026: learner's licence Rs 150 per class, learner's test Rs 50, driving test Rs 300, issue of licence Rs 200, renewal Rs 200. Check the portal for any smart-card charge on top." } }
 ];
 
 /* ---------------- the standing instructions sent with every question ---------------- */
@@ -1369,12 +1408,12 @@ const ERR = {
 const errText = code => (ERR[settings.lang] || ERR.bn)[code] || (ERR[settings.lang] || ERR.bn).upstream_error;
 const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
 
-async function serverAsk(system, turns, imgs, { signal, onText }) {
+async function serverAsk(system, turns, imgs, { signal, onText, fast }) {
   const images = [];
   for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
   let res;
   try {
-    res = await fetch("api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images }), signal });
+    res = await fetch("api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: fast ? 1600 : undefined }), signal });
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
@@ -1399,7 +1438,13 @@ async function serverAsk(system, turns, imgs, { signal, onText }) {
 
 /* turns: [{role, content}] ending with the user's request. Resolves {text, via, truncated};
    rejects {code, text?}. A 150 s guard turns a hang into a clear "timeout". */
-async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false } = {}) {
+function shortRules() {
+  const lang = settings.lang === "en"
+    ? "Reply in English unless the user writes in Bengali. Bengali answers use correct colloquial Bengali in Bengali script."
+    : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
+  return `You are Biswas AI (বিশ্বাস AI), a normal assistant. Answer the question directly. Do not turn it into an office letter unless the user asks. Today is ${today()}. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say so.`;
+}
+async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false } = {}) {
   if (!engine) throw { code: "not_ready" };
   const guard = new AbortController();
   let timedOut = false;
@@ -1408,8 +1453,9 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
   try {
     const opts = { cache: false, signal: guard.signal, onText };
     if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
-    const system = rules() + (agent ? bikramRules() : "");
-    const r = engine === "claude" ? await sample([{ role: "user", content: system }, ...turns], opts) : await serverAsk(system, turns, images, opts);
+    const quick = fast || mode === "ai";
+    const sys = system || (quick && !agent ? shortRules() : rules() + (agent ? bikramRules() : ""));
+    const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick });
     return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
   } catch (e) {
     if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
@@ -1426,16 +1472,16 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat"], office: ["chat", "draft", "table", "files"], public: ["catalog", "chat"] };
-const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog" };
+const TABS = { ai: ["chat", "grammar"], office: ["chat", "draft", "table", "files", "grammar"], public: ["catalog", "chat", "grammar"] };
+const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
-  const items = [["home", "", "home"], ["office", "chat", "nav_chat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"]];
+  const items = [["home", "", "home"], ["grammar", "", "nav_grammar"], ["office", "chat", "nav_chat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"]];
   const nav = $("#rail-nav"); if (!nav) return;
   nav.innerHTML = items.map(([sec, id, key]) => {
-    const on = key === "home" ? mode === "ai" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
+    const on = key === "home" ? mode === "ai" && tab === "chat" : key === "nav_grammar" ? tab === "grammar" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
     return `<button class="task" type="button" data-nav="${key === "home" ? "home" : sec + ":" + id}" aria-current="${on ? "page" : "false"}"><b>${esc(t(key))}</b></button>`;
   }).join("");
 }
@@ -1446,9 +1492,9 @@ function showView() {
   $("#sec-office").setAttribute("aria-pressed", mode === "office");
   $("#sec-public").setAttribute("aria-pressed", mode === "public");
   $("#open-settings").hidden = mode !== "office";
-  $("#subnav").hidden = mode === "ai";
+  $("#subnav").hidden = false;
   $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
-  ["draft", "table", "files", "catalog", "detail", "chat"].forEach(id => { $("#v-" + id).hidden = id !== tab; });
+  ["draft", "table", "files", "catalog", "detail", "chat", "grammar"].forEach(id => { $("#v-" + id).hidden = id !== tab; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
   if (tab === "files") renderTools();
@@ -1491,6 +1537,7 @@ function applyLang() {
   const mn = $("#desk-memo-n"); if (mn && !mn.placeholder) mn.placeholder = "123";
   const pin = $("#pin-new"); if (pin) pin.placeholder = t("lock_pin_ph");
   const lp = $("#lock-pin"); if (lp) lp.placeholder = t("lock_pin_ph");
+  const gs = $("#g-src"); if (gs) gs.placeholder = t("g_ph");
   const th = store.get("theme", "auto");
   const tb = $("#theme-btn"); if (tb) tb.textContent = t("theme") + (th === "dark" ? " · ●" : th === "light" ? " · ○" : "");
 }
@@ -2282,6 +2329,24 @@ $("#t-grid").addEventListener("focusin", e => {
 $("#xl-go").addEventListener("click", applyFx);
 $("#xl-fx").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); applyFx(); } });
 $("#xl-filter").addEventListener("input", e => { xlQuery = e.target.value || ""; renderGrid(); });
+function checkGrammar(text) {
+  const system = `You check spelling and grammar only. The text may be Bengali, English, or both.
+Reply in the language of the text. Bengali text gets Bengali notes, in standard colloquial Bengali script.
+Use exactly these two headings:
+Corrected text:
+What was wrong:
+Fix spelling, grammar and agreement. Do not change the meaning. Do not add facts. Keep names, numbers and Government terms. If it is already correct, say so under the second heading and repeat the text under the first.`;
+  return aiRun([{ role: "user", content: text }], { system, fast: true, onText: ({ text: out }) => { $("#g-out").textContent = out; } });
+}
+$("#g-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = $("#g-src").value.trim();
+  if (!text) { $("#g-status").textContent = t("g_empty"); return; }
+  $("#g-go").disabled = true; $("#g-status").textContent = t("g_wait"); $("#g-out").textContent = "";
+  try { await checkGrammar(text); $("#g-status").textContent = ""; }
+  catch (err) { $("#g-status").textContent = t("g_fail"); }
+  finally { $("#g-go").disabled = false; }
+});
 function runDesk(kind) {
   if (kind === "words") {
     const n = Number(String($("#desk-amt").value).replace(/[₹,\s]/g, ""));
@@ -2348,6 +2413,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-nav]"))) {
     closeRail();
     if (x.dataset.nav === "home") return go("ai", "chat");
+    if (x.dataset.nav.startsWith("grammar")) return go(mode === "public" || mode === "office" ? mode : "ai", "grammar");
     const parts = x.dataset.nav.split(":");
     return go(parts[0], parts[1]);
   }

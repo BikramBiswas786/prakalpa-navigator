@@ -56,16 +56,18 @@ const PROVIDERS = {
   together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
   fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
-const ORDER = list("PROVIDER_ORDER", "gemini,nvidia,groq,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_OUT = 8192;
-// A provider that has not produced any text within FIRST_TEXT_MS is skipped and
-// the next one is tried; a stream that goes silent for IDLE_MS is ended.
-const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 25000;
+const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 12000;
 const IDLE_MS = Number(env("IDLE_MS")) || 60000;
 
+const outTokens = body => {
+  const n = Number(body && body.maxOut);
+  return Number.isFinite(n) ? Math.max(256, Math.min(MAX_OUT, Math.floor(n))) : MAX_OUT;
+};
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 const configured = () => ORDER.filter(id => env(PROVIDERS[id].key) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
 
@@ -120,7 +122,7 @@ function geminiRequest(p, model, key, body, signal) {
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key },
-    body: JSON.stringify({ system_instruction: { parts: [{ text: body.system }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: MAX_OUT } }),
+    body: JSON.stringify({ system_instruction: { parts: [{ text: body.system }] }, contents, generationConfig: { temperature: 0.3, maxOutputTokens: outTokens(body) } }),
     signal
   });
 }
@@ -136,7 +138,7 @@ function openaiRequest(p, model, key, body, signal) {
     const last = messages[messages.length - 1];
     last.content = [{ type: "text", text: last.content }, ...body.images.map(im => ({ type: "image_url", image_url: { url: `data:${im.mime};base64,${im.data}` } }))];
   }
-  const payload = { model, messages, stream: true, temperature: 0.3, max_tokens: MAX_OUT };
+  const payload = { model, messages, stream: true, temperature: 0.3, max_tokens: outTokens(body) };
   if (/gpt-oss/.test(model) && p !== PROVIDERS.openrouter) payload.reasoning_effort = "low";
   const headers = { "content-type": "application/json" };
   if (p.auth) headers[p.auth] = key; else headers.authorization = `Bearer ${key}`;
@@ -273,7 +275,7 @@ export async function POST(request) {
     if (wantsVision && !p.vision) continue;
     for (const model of p.models) {
       if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
-      const r = await attempt(p, model, body, request.signal);
+      const r = await attempt(p, model, body, request.signal, body.fast ? Math.min(FIRST_TEXT_MS, 8000) : FIRST_TEXT_MS);
       if (r.ok) {
         console.log(`answered by ${id}/${model}` + (tried.length ? ` after: ${tried.join(" | ")}` : ""));
         return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
