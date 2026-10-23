@@ -113,11 +113,16 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .scroll { grid-column: 2; grid-row: 2; overflow-y: auto; min-height: 0; }
 .composer { grid-column: 2; grid-row: 3; }
 @media (max-width: 900px) {
-  .chat { grid-template-columns: 1fr; grid-template-rows: minmax(0, 36vh) auto 1fr auto; }
-  .hist { grid-column: 1; grid-row: 1; border-right: 0; border-bottom: 1px solid var(--line); }
-  .banner { grid-column: 1; grid-row: 2; }
-  .scroll { grid-column: 1; grid-row: 3; }
-  .composer { grid-column: 1; grid-row: 4; }
+  .chat, .chat.view { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  #v-chat > .hist { display: none !important; }
+  .banner, .scroll, .composer { grid-column: 1; }
+  .banner { grid-row: 1; }
+  .scroll { grid-row: 2; }
+  .composer { grid-row: 3; }
+  #show-convs { display: inline-flex; }
+  .brand span, #lang-label, .hint span { display: none; }
+  header.top { gap: 8px; padding-block: 6px; }
+  #conv-list { max-height: none; }
 }
 .thread { width: min(820px, 100%); margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 24px; display: grid; gap: 18px; }
 .msg { display: grid; gap: 6px; min-width: 0; }
@@ -232,9 +237,7 @@ button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-al
 .tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .status-line { font-size: .82rem; color: var(--muted); }
 .chat.view { display: grid; grid-template-columns: minmax(240px, 300px) minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
-@media (max-width: 900px) {
-  .chat.view { grid-template-columns: 1fr; grid-template-rows: minmax(0, 38vh) auto 1fr auto; }
-}
+@media (min-width: 901px) { #show-convs { display: none; } }
 /* drafting desk */
 .draft-grid { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 900px) { .draft-grid { grid-template-columns: minmax(0, 1fr); } }
@@ -584,7 +587,7 @@ textarea.paper { white-space: pre-wrap; }
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -2753,7 +2756,7 @@ document.addEventListener("click", e => {
   if (el("#conv-new") || el("#hist-new")) { closeRail(); return newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
+  if (el("#show-convs") || el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
     if (!pinSaved()) return toast(t("lock_need"));
