@@ -69,9 +69,14 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .btn.small { padding: 3px 9px; font-size: .8rem; font-weight: 600; }
 .btn[disabled] { opacity: .5; cursor: default; }
 
-.body { min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
-@media (max-width: 900px) { .body { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
-.rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 18px; }
+.body { min-height: 0; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+.rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 16px; }
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .nav-toggle { display: inline-flex; }
+  .rail { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(300px, 88vw); transform: translateX(-105%); transition: transform .18s ease; }
+  .rail.open { transform: none; }
+}
 .rail h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-family: var(--f-body); font-weight: 600; margin-bottom: 6px; }
 .tasks { display: grid; gap: 4px; }
 .task { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; cursor: pointer; display: grid; gap: 0; }
@@ -80,7 +85,6 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .task small { color: var(--muted); font-size: .78rem; line-height: 1.35; }
 .railnote { font-size: .8rem; color: var(--muted); line-height: 1.45; }
 .railnote ul { margin: 4px 0 0; padding-left: 1rem; display: grid; gap: 3px; }
-@media (max-width: 900px) { .rail { display: none; } }
 .sample-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: .82rem; font-family: var(--f-display); }
@@ -159,7 +163,19 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc hr { border: 0; border-top: 1px solid #999; }
 .pdf-doc .tbl { overflow: visible; }
 /* ---- two sections: header, sub-tabs, page views ---- */
-.app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+.stage { min-height: 0; min-width: 0; display: grid; grid-template-rows: auto 1fr; }
+.views { height: 100%; }
+.nav-toggle { display: none; }
+button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.rail-brand { display: grid; gap: 2px; }
+.rail-brand b { font-family: var(--f-display); font-size: 1.15rem; color: var(--accent); }
+.rail-brand small { color: var(--muted); font-size: .78rem; }
+.task[aria-current="page"] { background: var(--accent-soft); }
+#scrim { position: fixed; inset: 0; background: rgba(12, 14, 20, .45); z-index: 25; }
+#lock { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: var(--paper); padding: 24px; }
+#lock .panel { width: min(380px, 100%); }
+#lock h2 { font-size: 1.6rem; color: var(--accent); }
 .langbox { display: flex; align-items: center; gap: 8px; border: 2px solid var(--accent); border-radius: 10px; padding: 3px 4px 3px 10px; background: var(--accent-soft); }
 .langbox > span { font-size: .78rem; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .langbox .seg { border-color: var(--accent); }
@@ -251,15 +267,29 @@ textarea.paper { white-space: pre-wrap; }
 #status .tbl { overflow-x: auto; max-height: 60vh; }
 .sch-note { font-size: .82rem; color: var(--muted); margin: 0; }
 .big { padding: 10px 16px; font-size: .95rem; }
-@media (max-width: 600px) { .brand span { display: none; } header.top { gap: 8px; } }
-@media print { .app > header, .subnav { display: none !important; } }
+.xl-dock { display: grid; gap: 8px; }
+.xl-bar, .xl-filter { display: flex; gap: 8px; align-items: center; }
+.xl-addr { font-family: var(--f-mono); font-size: .78rem; min-width: 3rem; color: var(--muted); }
+#xl-fx, #xl-filter, .desk-grid input, .desk-grid select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+#xl-fx { flex: 1; font-family: var(--f-mono); font-size: .88rem; }
+#xl-filter { flex: 1; }
+.xl-cmds { display: flex; flex-wrap: wrap; gap: 6px; }
+.xl-cmds .btn { font-size: .78rem; padding: 6px 9px; }
+.xl-result { margin: 0; color: var(--muted); font-size: .85rem; min-height: 1.2em; }
+#t-grid td.xl-on { outline: 2px solid var(--accent); outline-offset: -2px; }
+#t-grid tr.xl-letters td { background: var(--paper); color: var(--muted); font-size: .72rem; text-align: center; font-family: var(--f-mono); user-select: none; }
+.desk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.desk-grid .panel { gap: 8px; }
+.desk-out { margin: 0; font-size: .88rem; white-space: pre-wrap; }
+@media print { .app > header, .subnav, .rail, #scrim, #lock { display: none !important; } .body, .stage { display: block; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v6</small></div>
+    <button class="btn nav-toggle" id="nav-open" type="button" data-t="menu">মেনু</button>
+    <button class="brand" id="go-home" type="button"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">অফিস সহায়ক</span><small class="ver" title="App version">v8</small></button>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
@@ -271,8 +301,24 @@ textarea.paper { white-space: pre-wrap; }
         <button type="button" id="lang-en" aria-pressed="false" lang="en">English</button>
       </div>
     </div>
+    <button class="btn" id="theme-btn" type="button" data-t="theme">থিম</button>
+    <button class="btn" id="lock-now" type="button" data-t="lock_now">লক</button>
     <button class="btn" id="open-settings" type="button" data-t="settings">সেটিংস</button>
   </header>
+  <div class="body">
+    <aside class="rail" id="rail">
+      <div class="rail-brand"><b>বিশ্বাস AI</b><small data-t="brand_sub"></small></div>
+      <nav class="tasks" id="rail-nav"></nav>
+      <div class="railnote">
+        <p data-t="priv_note"></p>
+        <input id="pin-new" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" aria-label="PIN">
+        <div class="tools">
+          <button class="btn small" type="button" id="pin-set" data-t="lock_set"></button>
+          <button class="btn small" type="button" id="pin-clear" data-t="lock_clear"></button>
+        </div>
+      </div>
+    </aside>
+    <div class="stage">
   <nav class="subnav" id="subnav" role="tablist"></nav>
 
   <main class="views">
@@ -326,6 +372,38 @@ textarea.paper { white-space: pre-wrap; }
         </div>
         <p class="lead" data-t="t_note"></p>
         <div class="gridwrap"><table id="t-grid"></table></div>
+        <div class="xl-dock">
+          <div class="xl-bar">
+            <span class="xl-addr" id="xl-addr">A1</span>
+            <input id="xl-fx" spellcheck="false" autocomplete="off" aria-label="Formula">
+            <button class="btn small primary" type="button" id="xl-go" data-t="xl_go">করুন</button>
+          </div>
+          <div class="xl-cmds">
+            <button class="btn small" type="button" data-xl="sum" data-t="xl_sum"></button>
+            <button class="btn small" type="button" data-xl="avg" data-t="xl_avg"></button>
+            <button class="btn small" type="button" data-xl="count" data-t="xl_count"></button>
+            <button class="btn small" type="button" data-xl="min" data-t="xl_min"></button>
+            <button class="btn small" type="button" data-xl="max" data-t="xl_max"></button>
+            <button class="btn small" type="button" data-xl="az" data-t="xl_az"></button>
+            <button class="btn small" type="button" data-xl="za" data-t="xl_za"></button>
+            <button class="btn small" type="button" data-xl="serial" data-t="xl_serial"></button>
+            <button class="btn small" type="button" data-xl="pct" data-t="xl_pct"></button>
+            <button class="btn small" type="button" data-xl="run" data-t="xl_run"></button>
+            <button class="btn small" type="button" data-xl="d7" data-t="xl_d7"></button>
+            <button class="btn small" type="button" data-xl="d15" data-t="xl_d15"></button>
+            <button class="btn small" type="button" data-xl="d30" data-t="xl_d30"></button>
+            <button class="btn small" type="button" data-xl="today" data-t="xl_today"></button>
+            <button class="btn small" type="button" data-xl="words" data-t="xl_words"></button>
+            <button class="btn small" type="button" data-xl="pending" data-t="xl_pending"></button>
+            <button class="btn small" type="button" data-xl="hearing" data-t="xl_hearing"></button>
+            <button class="btn small" type="button" data-xl="disposal" data-t="xl_disposal"></button>
+          </div>
+          <div class="xl-filter">
+            <input id="xl-filter" type="search" aria-label="Filter">
+            <button class="btn small" type="button" data-xl="nofilter" data-t="xl_nofilter"></button>
+          </div>
+          <p class="xl-result" id="xl-result"></p>
+        </div>
         <form class="panel" id="t-aiform">
           <h3 data-t="t_ai_h"></h3>
           <div class="field"><textarea id="t-src" aria-label="Source text"></textarea></div>
@@ -340,6 +418,53 @@ textarea.paper { white-space: pre-wrap; }
         <h2 data-t="f_title"></h2>
         <p class="lead" data-t="f_note"></p>
         <div class="toolgrid" id="f-grid"></div>
+        <section class="panel" id="desk">
+          <h2 data-t="desk_h"></h2>
+          <p class="lead" data-t="desk_note"></p>
+          <div class="desk-grid">
+            <div class="panel">
+              <h3 data-t="desk_words"></h3>
+              <input id="desk-amt" inputmode="decimal" autocomplete="off">
+              <button class="btn small primary" type="button" data-desk="words" data-t="desk_go"></button>
+              <p class="desk-out" id="desk-words-out"></p>
+            </div>
+            <div class="panel">
+              <h3 data-t="desk_days"></h3>
+              <input id="desk-from" placeholder="dd.mm.yyyy" autocomplete="off">
+              <input id="desk-to" placeholder="dd.mm.yyyy" autocomplete="off">
+              <button class="btn small primary" type="button" data-desk="days" data-t="desk_go"></button>
+              <p class="desk-out" id="desk-days-out"></p>
+            </div>
+            <div class="panel">
+              <h3 data-t="desk_hear"></h3>
+              <input id="desk-hear" placeholder="dd.mm.yyyy" autocomplete="off">
+              <div class="tools">
+                <button class="btn small" type="button" data-desk="h7" data-t="xl_d7"></button>
+                <button class="btn small" type="button" data-desk="h15" data-t="xl_d15"></button>
+                <button class="btn small" type="button" data-desk="h30" data-t="xl_d30"></button>
+              </div>
+              <p class="desk-out" id="desk-hear-out"></p>
+            </div>
+            <div class="panel">
+              <h3 data-t="desk_land"></h3>
+              <input id="desk-land" inputmode="decimal" autocomplete="off">
+              <select id="desk-unit">
+                <option value="decimal">Decimal</option>
+                <option value="katha">Katha</option>
+                <option value="bigha">Bigha</option>
+                <option value="acre">Acre</option>
+              </select>
+              <button class="btn small primary" type="button" data-desk="land" data-t="desk_go"></button>
+              <p class="desk-out" id="desk-land-out"></p>
+            </div>
+            <div class="panel">
+              <h3 data-t="desk_memo"></h3>
+              <input id="desk-memo-n" inputmode="numeric" autocomplete="off">
+              <button class="btn small primary" type="button" data-desk="memo" data-t="desk_copy"></button>
+              <p class="desk-out" id="desk-memo-out"></p>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
 
@@ -380,7 +505,19 @@ textarea.paper { white-space: pre-wrap; }
       </div>
     </section>
   </main>
-  <div class="railnote" id="owner-notice" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="scrim" hidden></div>
+<div id="lock" hidden>
+  <form class="panel" id="lock-form">
+    <h2>বিশ্বাস AI</h2>
+    <p class="lead" data-t="lock_help"></p>
+    <input id="lock-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" aria-label="PIN">
+    <button class="btn primary" type="submit" data-t="lock_open"></button>
+    <p class="desk-out" id="lock-msg"></p>
+  </form>
 </div>
 
 <dialog id="settings">
@@ -428,12 +565,24 @@ textarea.paper { white-space: pre-wrap; }
 <script>
 "use strict";
 /* ---------------- storage ---------------- */
+const PRIV = new Set(["chat", "chat:office", "chat:public", "bk:memory", "bk:examples", "bk:pending", "draft", "grid", "settings", "mode", "tabs"]);
+try { PRIV.forEach(k => localStorage.removeItem("pmitra:" + k)); } catch (e) { /* ignore */ }
 const store = {
-  get(k, d) { try { const v = localStorage.getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
+  get(k, d) { try { const v = (PRIV.has(k) ? sessionStorage : localStorage).getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { (PRIV.has(k) ? sessionStorage : localStorage).setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
 };
+(() => { const th = store.get("theme", "auto"); if (th === "dark" || th === "light") document.documentElement.dataset.theme = th; })();
+const pinSaved = () => { try { return localStorage.getItem("pmitra:pin") || ""; } catch (e) { return ""; } };
+const sessionOpen = () => { try { return sessionStorage.getItem("pmitra:open") === "1"; } catch (e) { return false; } };
+const isOpen = () => !pinSaved() || sessionOpen();
+function showLock(on) { const l = $("#lock"); if (l) l.hidden = !on; const a = document.querySelector(".app"); if (a) a.hidden = on; }
+async function shaPin(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("biswas-ai:" + s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 const DEFAULTS = { officer: "Sub-Divisional Officer", subdiv: "Sadar", district: "", memo: "SDO" };
 let settings = Object.assign({}, DEFAULTS, store.get("settings", {}));
+try { const savedLang = localStorage.getItem("pmitra:lang"); if (savedLang === "en" || savedLang === "bn") settings.lang = savedLang; } catch (e) { /* ignore */ }
 if (settings.lang !== "en") settings.lang = "bn";   // one switch: screen language = answer language
 let mode = store.get("mode", "office");          // section: "office" or "public"
 let tabs = Object.assign({ office: "chat", public: "catalog" }, store.get("tabs", {}));
@@ -461,22 +610,27 @@ const STR = {
     d_attach: "ফাইল যোগ করুন (GO, চিঠি)", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
     d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
     types: { notesheet: "নোটশিট (SDO-র কাছে পেশ)", dfa: "খসড়া চিঠি (DFA, SDO-র স্বাক্ষরে)", order: "অফিস আদেশ / মেমোরান্ডাম", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "এনকোয়ারি রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই রিপোর্ট", letter: "সাধারণ সরকারি চিঠি" },
-    t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
+    t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
+    xl_go: "করুন", xl_sum: "যোগ", xl_avg: "গড়", xl_count: "গণনা", xl_min: "সবচেয়ে কম", xl_max: "সবচেয়ে বেশি", xl_az: "সাজান ক→খ", xl_za: "সাজান খ→ক", xl_serial: "ক্রমিক", xl_pct: "শতকরা", xl_run: "ক্রমিক যোগ", xl_d7: "+৭ দিন", xl_d15: "+১৫ দিন", xl_d30: "+৩০ দিন", xl_today: "আজকের তারিখ", xl_words: "কথায় টাকা", xl_pending: "বকেয়া রেজিস্টার", xl_hearing: "শুনানির তালিকা", xl_disposal: "নিষ্পত্তির বিবরণী", xl_nofilter: "ফিল্টার সরান", xl_fx_ph: "=SUM(B2:B20) অথবা এই ঘরে লিখুন", xl_filter_ph: "সারি খুঁজুন…", xl_bad: "সূত্র বোঝা যায়নি। যেমন: =SUM(B2:B20)", xl_neednum: "এই ঘরে সংখ্যা নেই।", xl_needdate: "তারিখ দিন, যেমন 15.11.2026", xl_done: "হয়ে গেছে",
+    desk_h: "অফিস ডেস্ক", desk_note: "এগুলো এই ফোনেই হয়, AI লাগে না। পশ্চিমবঙ্গের হিসাব: ১ বিঘা = ২০ কাঠা, ১ কাঠা = ৭২০ বর্গফুট, ১ একর = ১০০ ডেসিমাল।", desk_words: "টাকা কথায়", desk_days: "কত দিন বাকি / পেরিয়েছে", desk_hear: "শুনানির তারিখ", desk_land: "জমির পরিমাপ", desk_memo: "মেমো লাইন", desk_go: "হিসাব করুন", desk_copy: "কপি করুন", desk_amt_ph: "যেমন 25000", desk_over: "দিন পেরিয়ে গেছে", desk_left: "দিন বাকি", desk_same: "আজই",
     f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
     f_w2p: "Word → PDF", f_w2p_d: "একটি .docx ফাইল PDF করুন।", f_x2p: "Excel → PDF", f_x2p_d: "একটি Excel / CSV ফাইলের টেবিল PDF করুন।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
     f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
     dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
     ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
-    tab_bikram: "বিক্রম AI", ph_bikram: "বিক্রম AI-কে লিখুন… যেমন: শো-কজ নোটিশের একটা নোটশিট লাগবে",
-    bk_hello_h: "নমস্কার, আমি বিক্রম AI", bk_hello_p: "কী তৈরি করবেন বলুন — নোটশিট, খসড়া চিঠি, আদেশ, নোটিশ, রিপোর্ট, Excel, Word বা PDF। দরকারি তথ্য আমি জিজ্ঞাসা করে নেব, তারপর অনুচ্ছেদে লিখে দেব। প্রিন্ট, Word, PDF, Excel বোতাম লেখার নিচেই থাকবে। যত কাজ করবেন, তত আপনার অফিসের নাম, ফরম্যাট ও পছন্দ মনে রাখব।",
+    tab_bikram: "বিশ্বাস AI", ph_bikram: "বিশ্বাস AI-কে লিখুন… যেমন: শো-কজ নোটিশের একটা নোটশিট লাগবে",
+    bk_hello_h: "নমস্কার, আমি বিশ্বাস AI", bk_hello_p: "কী তৈরি করবেন বলুন — নোটশিট, খসড়া চিঠি, আদেশ, নোটিশ, রিপোর্ট, Excel, Word বা PDF। দরকারি তথ্য আমি জিজ্ঞাসা করে নেব, তারপর অনুচ্ছেদে লিখে দেব। প্রিন্ট, Word, PDF, Excel বোতাম লেখার নিচেই থাকবে। যত কাজ করবেন, তত আপনার অফিসের নাম, ফরম্যাট ও পছন্দ মনে রাখব।",
     bk_choices: [["নোটশিট", "SDO-র কাছে পেশ", "আমি একটি নোটশিট তৈরি করতে চাই।"], ["খসড়া চিঠি (DFA)", "SDO-র স্বাক্ষরের জন্য", "আমি SDO-র স্বাক্ষরের জন্য একটি খসড়া চিঠি তৈরি করতে চাই।"], ["অফিস আদেশ", "মেমোরান্ডাম / আদেশ", "আমি একটি অফিস আদেশ তৈরি করতে চাই।"], ["নোটিশ", "শুনানি / শো-কজ", "আমি একটি নোটিশ (শুনানি / শো-কজ) তৈরি করতে চাই।"], ["রিপোর্ট", "এনকোয়ারি / মাসিক / পুনর্যাচাই", "আমি একটি রিপোর্ট তৈরি করতে চাই।"], ["Excel টেবিল", "তালিকা, হিসাব, বিবরণী", "আমি একটি Excel টেবিল তৈরি করতে চাই।"], ["Word / PDF ফাইল", "যেকোনো চিঠি বা নথি", "আমি একটি Word / PDF ফাইল তৈরি করতে চাই।"], ["অন্য কিছু", "যা দরকার বলুন", "নমস্কার, আমার একটা কাজে সাহায্য দরকার।"]],
-    doc_print: "প্রিন্ট", doc_approve: "অনুমোদিত হিসেবে রাখুন", doc_approved: "রাখা হয়েছে। পরের খসড়ায় বিক্রম AI এই ধরন মেনে চলবে।", doc_saved: "নথি সংশোধিত",
-    mem_btn: "স্মৃতি", mem_title: "বিক্রম AI-এর স্মৃতি", mem_help: "বিক্রম AI কথাবার্তা থেকে স্থায়ী তথ্য (নাম, পদ, অফিস, পছন্দের ফরম্যাট, সংশোধন) মনে রাখে এবং অনুমোদিত খসড়ার ধরন মেনে চলে। স্মৃতি এই ব্রাউজারে থাকে; অন্য কম্পিউটারে নিতে ফাইলে রাখুন।", mem_facts: "মনে রাখা তথ্য", mem_examples: "অনুমোদিত খসড়ার নমুনা", mem_add: "যোগ করুন", mem_add_ph: "নতুন তথ্য, যেমন: স্বাক্ষরকারী — শ্রী অমুক, মহকুমা শাসক, কালনা",
+    doc_print: "প্রিন্ট", doc_approve: "অনুমোদিত হিসেবে রাখুন", doc_approved: "রাখা হয়েছে। পরের খসড়ায় বিশ্বাস AI এই ধরন মেনে চলবে।", doc_saved: "নথি সংশোধিত",
+    mem_btn: "স্মৃতি", mem_title: "বিশ্বাস AI-এর স্মৃতি", mem_help: "বিশ্বাস AI কথাবার্তা থেকে স্থায়ী তথ্য (নাম, পদ, অফিস, পছন্দের ফরম্যাট, সংশোধন) মনে রাখে এবং অনুমোদিত খসড়ার ধরন মেনে চলে। স্মৃতি এই ব্রাউজারে থাকে; অন্য কম্পিউটারে নিতে ফাইলে রাখুন।", mem_facts: "মনে রাখা তথ্য", mem_examples: "অনুমোদিত খসড়ার নমুনা", mem_add: "যোগ করুন", mem_add_ph: "নতুন তথ্য, যেমন: স্বাক্ষরকারী — শ্রী অমুক, মহকুমা শাসক, কালনা",
     mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
-    brand: "বিশ্বাস AI", brand_sub: "Biswas AI for Office",
-    menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ",
+    brand: "বিশ্বাস AI", brand_sub: "অফিস সহায়ক · এই ট্যাবেই গোপন",
+    home: "হোম", nav_chat: "বিশ্বাস AI", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা",
+    priv_note: "চ্যাট, খসড়া ও স্মৃতি শুধু এই ট্যাবে থাকে। ট্যাব বন্ধ করলে মুছে যায়। লিঙ্ক খুললে অন্য কেউ আপনার চ্যাট দেখতে পায় না। ফোন রেখে গেলে লক দিন।",
+    lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
+    menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
     rail_files: "ফাইল দিন", files_help: "GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (ক্লিপ বোতাম)। AI পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।",
@@ -511,22 +665,27 @@ const STR = {
     d_attach: "Add file (GO, letter)", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
     d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
     types: { notesheet: "Notesheet (put up to the SDO)", dfa: "Draft letter (DFA, for the SDO's signature)", order: "Office order / memorandum", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste certificate re-verification report", letter: "General official letter" },
-    t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
+    t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
+    xl_go: "Run", xl_sum: "Sum", xl_avg: "Average", xl_count: "Count", xl_min: "Min", xl_max: "Max", xl_az: "Sort A–Z", xl_za: "Sort Z–A", xl_serial: "Serial no.", xl_pct: "Percent", xl_run: "Running total", xl_d7: "+7 days", xl_d15: "+15 days", xl_d30: "+30 days", xl_today: "Today", xl_words: "Amount in words", xl_pending: "Pending register", xl_hearing: "Hearing list", xl_disposal: "Disposal sheet", xl_nofilter: "Clear filter", xl_fx_ph: "=SUM(B2:B20) or type into this cell", xl_filter_ph: "Find rows…", xl_bad: "Formula not understood. Example: =SUM(B2:B20)", xl_neednum: "This cell is not a number.", xl_needdate: "Enter a date, e.g. 15.11.2026", xl_done: "Done",
+    desk_h: "Office desk", desk_note: "These run on this phone. No AI is used. West Bengal measures: 1 bigha = 20 katha, 1 katha = 720 sq ft, 1 acre = 100 decimal.", desk_words: "Amount in words", desk_days: "Days pending or left", desk_hear: "Hearing date", desk_land: "Land measure", desk_memo: "Memo line", desk_go: "Calculate", desk_copy: "Copy", desk_amt_ph: "e.g. 25000", desk_over: "days overdue", desk_left: "days left", desk_same: "Today",
     f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", f_choose: "Choose file", f_run: "Convert",
     f_w2p: "Word → PDF", f_w2p_d: "Turn a .docx file into PDF.", f_x2p: "Excel → PDF", f_x2p_d: "Turn the tables of an Excel / CSV file into PDF.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
     f_pick: "Choose a file first.", f_done: "Done", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
     dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
     ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
-    tab_bikram: "Bikram AI", ph_bikram: "Write to Bikram AI… e.g. I need a notesheet for a show-cause notice",
-    bk_hello_h: "Hello, I am Bikram AI", bk_hello_p: "Tell me what to create — notesheet, draft letter, order, notice, report, Excel, Word or PDF. I will ask for the details I need, then write it in paragraphs. Print, Word, PDF and Excel buttons appear under every document. The more we work, the more I remember your office's names, formats and preferences.",
+    tab_bikram: "Biswas AI", ph_bikram: "Write to Biswas AI… e.g. I need a notesheet for a show-cause notice",
+    bk_hello_h: "Hello, I am Biswas AI", bk_hello_p: "Tell me what to create — notesheet, draft letter, order, notice, report, Excel, Word or PDF. I will ask for the details I need, then write it in paragraphs. Print, Word, PDF and Excel buttons appear under every document. The more we work, the more I remember your office's names, formats and preferences.",
     bk_choices: [["Notesheet", "Put up to the SDO", "I want to create a notesheet."], ["Draft letter (DFA)", "For the SDO's signature", "I want to create a draft letter for the SDO's signature."], ["Office order", "Memorandum / order", "I want to create an office order."], ["Notice", "Hearing / show-cause", "I want to create a notice (hearing / show-cause)."], ["Report", "Enquiry / monthly / re-verification", "I want to create a report."], ["Excel table", "List, account, statement", "I want to create an Excel table."], ["Word / PDF file", "Any letter or document", "I want to create a Word / PDF file."], ["Something else", "Tell me what you need", "Hello, I need help with a task."]],
-    doc_print: "Print", doc_approve: "Keep as approved", doc_approved: "Kept. Bikram AI will follow this style in later drafts.", doc_saved: "Document updated",
-    mem_btn: "Memory", mem_title: "Bikram AI's memory", mem_help: "Bikram AI remembers lasting facts from your chats (names, designations, office, preferred formats, corrections) and follows the style of drafts you approve. Memory stays in this browser; save it to a file to move it to another computer.", mem_facts: "Remembered facts", mem_examples: "Approved draft examples", mem_add: "Add", mem_add_ph: "New fact, e.g. Signing officer — Sri X, SDO, Kalna",
+    doc_print: "Print", doc_approve: "Keep as approved", doc_approved: "Kept. Biswas AI will follow this style in later drafts.", doc_saved: "Document updated",
+    mem_btn: "Memory", mem_title: "Biswas AI memory", mem_help: "Biswas AI remembers lasting facts from your chats (names, designations, office, preferred formats, corrections) and follows the style of drafts you approve. Memory stays in this browser; save it to a file to move it to another computer.", mem_facts: "Remembered facts", mem_examples: "Approved draft examples", mem_add: "Add", mem_add_ph: "New fact, e.g. Signing officer — Sri X, SDO, Kalna",
     mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
-    brand: "Biswas AI", brand_sub: "for Office",
-    menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close",
+    brand: "Biswas AI", brand_sub: "Office desk · private in this tab",
+    home: "Home", nav_chat: "Biswas AI", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services",
+    priv_note: "Chat, drafts and memory stay in this tab only. Closing the tab erases them. Someone who opens the link cannot read your chat. Set a lock if you leave the phone.",
+    lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
+    menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
     rail_files: "Attach files", files_help: "Attach a GO, letter or form as PDF, Word, Excel or a photo (clip button). The AI reads it, summarises it or writes a note.",
@@ -882,7 +1041,7 @@ How this office works (follow it):
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
   const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.`;
-  return `You are "Biswas AI for Office" (বিশ্বাস AI), an AI assistant created by Bikram Biswas. You can help with anything a capable AI assistant can: general questions, writing, translation, maths, coding for developers, explaining documents. Your special expertise is West Bengal Government office administration and public services. If asked who you are or who made you, say you are Biswas AI for Office, made by Bikram Biswas, and that it runs on several AI models. If asked whether this is a Government app, say it is an independent tool.
+  return `You are "Biswas AI" (বিশ্বাস AI), an assistant for West Bengal Government office work and public services. You can help with questions, writing, translation, maths and explaining documents. If asked who you are, say you are Biswas AI, an independent tool, not a Government app. Do not name a person as your maker.
 Today is ${today()}. ${off}
 ${mode === "office" ? office : pub}
 Language: ${lang}
@@ -1147,7 +1306,7 @@ async function offer(name, data) {
 }
 
 /* ---------------- one way to ask the AI, used by every tab ---------------- */
-const PROVIDER_NAMES = { bikram: "বিক্রম AI", claude: "Claude", gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3" };
+const PROVIDER_NAMES = { bikram: "বিশ্বাস AI", claude: "Claude", gemini: "Google Gemini", nvidia: "NVIDIA (Llama / Kimi)", groq: "Groq (Llama)", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare (Llama)", sambanova: "SambaNova (Llama)", zai: "Z.ai GLM Flash", cohere: "Cohere", github: "GitHub Models", cerebras: "Cerebras", sarvam: "Sarvam AI", kimi: "Kimi K3", deepseek: "DeepSeek", qwen: "Qwen (Alibaba)", openai: "OpenAI", xai: "xAI Grok", together: "Together", fireworks: "Fireworks" };
 const CLIENT_TIMEOUT_MS = 150000;
 const ERR = {
   bn: {
@@ -1231,6 +1390,17 @@ const attachImages = files => files.flatMap(f => f.images || []);
 /* ---------------- sections and tabs ---------------- */
 const TABS = { office: ["chat", "draft", "table", "files"], public: ["catalog", "chat"] };
 const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog" };
+function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
+function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
+function renderRail() {
+  const tab = tabs[mode];
+  const items = [["home", "", "home"], ["office", "chat", "nav_chat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"]];
+  const nav = $("#rail-nav"); if (!nav) return;
+  nav.innerHTML = items.map(([sec, id, key]) => {
+    const on = key === "home" ? mode === "office" && tab === "chat" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
+    return `<button class="task" type="button" data-nav="${key === "home" ? "home" : sec + ":" + id}" aria-current="${on ? "page" : "false"}"><b>${esc(t(key))}</b></button>`;
+  }).join("");
+}
 function showView() {
   let tab = tabs[mode];
   if (!TABS[mode].includes(tab) && !(mode === "public" && tab === "detail")) tab = tabs[mode] = TABS[mode][0];
@@ -1244,8 +1414,10 @@ function showView() {
   if (tab === "files") renderTools();
   if (tab === "catalog") renderCatalog();
   if (tab === "chat") { renderChat(); scrollDown(); }
+  renderRail();
 }
 function go(section, tab) {
+  clearAddress();
   if (section && section !== mode) { mode = section; store.set("mode", mode); messages = chats[mode]; }
   if (tab) tabs[mode] = tab;
   store.set("tabs", tabs);
@@ -1254,12 +1426,12 @@ function go(section, tab) {
 function setLang(lang) {
   settings.lang = lang === "en" ? "en" : "bn";
   store.set("settings", settings); store.set("langChosen", true);
+  try { localStorage.setItem("pmitra:lang", settings.lang); } catch (e) { /* ignore */ }
   if (gridIsDefault()) { grid = GRID_DEFAULT[settings.lang].map(r => r.slice()); saveGrid(); }
   if (draft.text === "" ) { draft.lang = settings.lang; saveDraft(); }
   applyLang();
   $("#f-grid").dataset.lang = "";
-  const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1];
-  if (mode === "public" && tabs.public === "detail" && id) openDetail(id); else showView();
+  showView();
 }
 function applyLang() {
   document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
@@ -1274,6 +1446,14 @@ function applyLang() {
   $("#d-rev").placeholder = t("d_rev_ph");
   $("#t-src").placeholder = t("t_src_ph");
   $("#mem-new").placeholder = t("mem_add_ph");
+  const fx = $("#xl-fx"); if (fx && !fx.value) fx.placeholder = t("xl_fx_ph");
+  const fl = $("#xl-filter"); if (fl) fl.placeholder = t("xl_filter_ph");
+  const amt = $("#desk-amt"); if (amt) amt.placeholder = t("desk_amt_ph");
+  const mn = $("#desk-memo-n"); if (mn && !mn.placeholder) mn.placeholder = "123";
+  const pin = $("#pin-new"); if (pin) pin.placeholder = t("lock_pin_ph");
+  const lp = $("#lock-pin"); if (lp) lp.placeholder = t("lock_pin_ph");
+  const th = store.get("theme", "auto");
+  const tb = $("#theme-btn"); if (tb) tb.textContent = t("theme") + (th === "dark" ? " · ●" : th === "light" ? " · ○" : "");
 }
 
 /* ---------------- OFFICE: drafting desk ---------------- */
@@ -1346,7 +1526,17 @@ const saveGrid = () => store.set("grid", grid);
 function renderGrid() {
   const w = Math.max(1, ...grid.map(r => r.length));
   grid = grid.map(r => Array.from({ length: w }, (_, i) => r[i] ?? ""));
-  $("#t-grid").innerHTML = grid.map((r, ri) => `<tr><td class="rh">${ri ? ri : ""}</td>${r.map((c, ci) => `<td contenteditable="true" data-r="${ri}" data-c="${ci}">${esc(c)}</td>`).join("")}</tr>`).join("");
+  if (xlCell.r >= grid.length) xlCell.r = grid.length - 1;
+  if (xlCell.c >= w) xlCell.c = w - 1;
+  const q = xlQuery.trim().toLowerCase();
+  const letters = `<tr class="xl-letters"><td class="rh"></td>${Array.from({ length: w }, (_, i) => `<td>${colName(i)}</td>`).join("")}</tr>`;
+  const body = grid.map((r, ri) => {
+    const hide = ri && q && !r.some(c => String(c).toLowerCase().includes(q));
+    return `<tr ${hide ? "hidden" : ""}><td class="rh">${ri + 1}</td>${r.map((c, ci) => `<td contenteditable="true" data-r="${ri}" data-c="${ci}"${ri === xlCell.r && ci === xlCell.c ? ` class="xl-on"` : ""}>${esc(c)}</td>`).join("")}</tr>`;
+  }).join("");
+  $("#t-grid").innerHTML = letters + body;
+  const addr = $("#xl-addr");
+  if (addr) addr.textContent = colName(xlCell.c) + (xlCell.r + 1);
 }
 const gridHtml = () => `<table><thead><tr>${grid[0].map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${grid.slice(1).map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 function gridToXlsx() {
@@ -1358,6 +1548,161 @@ function gridToXlsx() {
   return new Uint8Array(X.write(wb, { bookType: "xlsx", type: "array" }));
 }
 let tableBusy = false;
+let xlCell = { r: 1, c: 0 };
+let xlQuery = "";
+const colName = i => { let s = "", n = i + 1; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+const colIndex = name => { let n = 0; for (const ch of String(name).toUpperCase()) { if (ch < "A" || ch > "Z") return -1; n = n * 26 + (ch.charCodeAt(0) - 64); } return n - 1; };
+const cellNum = (r, c) => { const v = grid[r] && grid[r][c]; if (v == null || String(v).trim() === "") return null; const raw = String(v).replace(/[₹,\s]/g, ""); if (!/^-?\d+(\.\d+)?$/.test(raw)) return null; const n = Number(raw); return Number.isFinite(n) ? n : null; };
+const xlSay = m => { const el = $("#xl-result"); if (el) el.textContent = m || ""; };
+function setCell(r, c, value) {
+  while (grid.length <= r) grid.push(grid[0].map(() => ""));
+  while (grid[r].length <= c) grid.forEach(row => row.push(""));
+  grid[r][c] = value;
+  xlCell = { r, c }; saveGrid(); renderGrid();
+}
+function parseDate(s) {
+  const t = String(s || "").trim();
+  let m = t.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (m) { const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getFullYear() === +m[3] && d.getMonth() === +m[2] - 1 ? d : null; }
+  m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) { const d = new Date(+m[1], +m[2] - 1, +m[3]); return d.getMonth() === +m[2] - 1 ? d : null; }
+  return null;
+}
+const fmtDate = d => pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear();
+const BN_99 = ["", "এক", "দুই", "তিন", "চার", "পাঁচ", "ছয়", "সাত", "আট", "নয়", "দশ", "এগারো", "বারো", "তেরো", "চৌদ্দ", "পনেরো", "ষোল", "সতেরো", "আঠারো", "উনিশ", "বিশ", "একুশ", "বাইশ", "তেইশ", "চব্বিশ", "পঁচিশ", "ছাব্বিশ", "সাতাশ", "আঠাশ", "উনত্রিশ", "ত্রিশ", "একত্রিশ", "বত্রিশ", "তেত্রিশ", "চৌত্রিশ", "পঁয়ত্রিশ", "ছত্রিশ", "সাঁইত্রিশ", "আটত্রিশ", "উনচল্লিশ", "চল্লিশ", "একচল্লিশ", "বিয়াল্লিশ", "তেতাল্লিশ", "চুয়াল্লিশ", "পঁয়তাল্লিশ", "ছেচল্লিশ", "সাতচল্লিশ", "আটচল্লিশ", "উনপঞ্চাশ", "পঞ্চাশ", "একান্ন", "বায়ান্ন", "তিপ্পান্ন", "চুয়ান্ন", "পঞ্চান্ন", "ছাপ্পান্ন", "সাতান্ন", "আটান্ন", "উনষাট", "ষাট", "একষট্টি", "বাষট্টি", "তেষট্টি", "চৌষট্টি", "পঁয়ষট্টি", "ছেষট্টি", "সাতষট্টি", "আটষট্টি", "উনসত্তর", "সত্তর", "একাত্তর", "বাহাত্তর", "তিয়াত্তর", "চুয়াত্তর", "পঁচাত্তর", "ছিয়াত্তর", "সাতাত্তর", "আটাত্তর", "উনআশি", "আশি", "একাশি", "বিরাশি", "তিরাশি", "চুরাশি", "পঁচাশি", "ছিয়াশি", "সাতাশি", "আটাশি", "উননব্বই", "নব্বই", "একানব্বই", "বিরানব্বই", "তিরানব্বই", "চুরানব্বই", "পঁচানব্বই", "ছিয়ানব্বই", "সাতানব্বই", "আটানব্বই", "নিরানব্বই"];
+function wordsBelow1000(n, lang) {
+  if (lang !== "en") {
+    if (n < 100) return BN_99[n] || "";
+    const h = Math.floor(n / 100), r = n % 100;
+    return (h === 1 ? "একশত" : (BN_99[h] || "") + "শত") + (r ? " " + BN_99[r] : "");
+  }
+  const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const two = x => x < 20 ? a[x] : b[Math.floor(x / 10)] + (x % 10 ? " " + a[x % 10] : "");
+  if (n < 100) return two(n);
+  return a[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " " + two(n % 100) : "");
+}
+function inWords(num, lang) {
+  num = Math.floor(Math.abs(Number(num)) || 0);
+  if (!num) return lang === "en" ? "Zero rupees only" : "শূন্য টাকা মাত্র";
+  const parts = [];
+  const crore = Math.floor(num / 10000000), lakh = Math.floor((num % 10000000) / 100000), thousand = Math.floor((num % 100000) / 1000), rest = num % 1000;
+  const unit = lang === "en" ? [" Crore", " Lakh", " Thousand"] : [" কোটি", " লাখ", " হাজার"];
+  [[crore, 0], [lakh, 1], [thousand, 2]].forEach(([v, i]) => { if (v) parts.push(wordsBelow1000(v, lang) + unit[i]); });
+  if (rest) parts.push(wordsBelow1000(rest, lang));
+  return parts.join(" ") + (lang === "en" ? " rupees only" : " টাকা মাত্র");
+}
+function evalFormula(src) {
+  const s = String(src).trim().replace(/^=/, "").replace(/\s+/g, "");
+  const fn = /^(SUM|AVERAGE|AVG|COUNT|COUNTA|MIN|MAX)\(([A-Z]+)(\d+):([A-Z]+)(\d+)\)$/i.exec(s);
+  if (!fn) return null;
+  const name = fn[1].toUpperCase() === "AVG" ? "AVERAGE" : fn[1].toUpperCase();
+  const c1 = colIndex(fn[2]), r1 = +fn[3] - 1, c2 = colIndex(fn[4]), r2 = +fn[5] - 1;
+  if (c1 < 0 || c2 < 0) return null;
+  const nums = [], filled = [];
+  for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
+    const raw = (grid[r] && grid[r][c]) || "";
+    if (String(raw).trim() !== "") filled.push(raw);
+    const n = cellNum(r, c); if (n != null) nums.push(n);
+  }
+  if (name === "COUNTA") return filled.length;
+  if (name === "COUNT") return nums.length;
+  if (!nums.length) return 0;
+  if (name === "SUM") return Math.round(nums.reduce((a, b) => a + b, 0) * 100) / 100;
+  if (name === "AVERAGE") return Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
+  if (name === "MIN") return Math.min(...nums);
+  if (name === "MAX") return Math.max(...nums);
+  return null;
+}
+function colStats(c) {
+  const nums = [];
+  for (let r = 1; r < grid.length; r++) { const n = cellNum(r, c); if (n != null) nums.push(n); }
+  return nums;
+}
+function statRow(label) {
+  const last = grid[grid.length - 1];
+  const marks = new Set(["মোট", "গড়", "Total", "Average", "Count", "গণনা"]);
+  if (last && marks.has(String(last[0]).trim())) return grid.length - 1;
+  grid.push(grid[0].map((_, i) => i === 0 ? label : ""));
+  return grid.length - 1;
+}
+function addDays(days) {
+  const d = parseDate(grid[xlCell.r] && grid[xlCell.r][xlCell.c]);
+  if (!d) return xlSay(t("xl_needdate"));
+  d.setDate(d.getDate() + days);
+  setCell(xlCell.r, xlCell.c + 1, fmtDate(d));
+  xlSay(fmtDate(d));
+}
+function useTemplate(rows) { grid = rows; xlCell = { r: 1, c: 0 }; xlQuery = ""; const f = $("#xl-filter"); if (f) f.value = ""; saveGrid(); renderGrid(); xlSay(t("xl_done")); }
+function runXl(cmd) {
+  const c = Math.max(0, xlCell.c);
+  const label = settings.lang === "en";
+  if (cmd === "sum" || cmd === "avg" || cmd === "count" || cmd === "min" || cmd === "max") {
+    const nums = colStats(c);
+    if (!nums.length) return xlSay(t("xl_neednum"));
+    const value = cmd === "sum" ? nums.reduce((a, b) => a + b, 0) : cmd === "avg" ? nums.reduce((a, b) => a + b, 0) / nums.length : cmd === "count" ? nums.length : cmd === "min" ? Math.min(...nums) : Math.max(...nums);
+    const shown = cmd === "count" ? String(value) : String(Math.round(value * 100) / 100);
+    const name = cmd === "avg" ? (label ? "Average" : "গড়") : cmd === "count" ? (label ? "Count" : "গণনা") : (label ? "Total" : "মোট");
+    const row = statRow(name); grid[row][0] = name; grid[row][c] = shown; saveGrid(); renderGrid(); return xlSay(colName(c) + ": " + name + " = " + shown);
+  }
+  if (cmd === "az" || cmd === "za") {
+    const head = grid[0], body = grid.slice(1);
+    body.sort((a, b) => {
+      const x = String(a[c] ?? ""), y = String(b[c] ?? "");
+      const nx = x.replace(/[₹,\s]/g, ""), ny = y.replace(/[₹,\s]/g, "");
+      const both = nx !== "" && ny !== "" && /^-?\d+(\.\d+)?$/.test(nx) && /^-?\d+(\.\d+)?$/.test(ny);
+      const cmp = both ? Number(nx) - Number(ny) : x.localeCompare(y, settings.lang === "en" ? "en" : "bn");
+      return cmd === "az" ? cmp : -cmp;
+    });
+    grid = [head, ...body]; saveGrid(); renderGrid(); return xlSay(t("xl_done"));
+  }
+  if (cmd === "serial") { for (let r = 1; r < grid.length; r++) grid[r][0] = String(r); saveGrid(); renderGrid(); return xlSay(t("xl_done")); }
+  if (cmd === "pct") {
+    const nums = []; let total = 0;
+    for (let r = 1; r < grid.length; r++) { const n = cellNum(r, c); nums[r] = n; if (n != null) total += n; }
+    if (!total) return xlSay(t("xl_neednum"));
+    const nc = grid[0].length;
+    grid[0][nc] = (label ? "% of " : "শতকরা ") + (grid[0][c] || colName(c));
+    for (let r = 1; r < grid.length; r++) grid[r][nc] = nums[r] == null ? "" : String(Math.round(nums[r] / total * 1000) / 10);
+    saveGrid(); renderGrid(); return xlSay(t("xl_done"));
+  }
+  if (cmd === "run") {
+    const nc = grid[0].length; let run = 0; let any = false;
+    grid[0][nc] = label ? "Running total" : "ক্রমিক যোগ";
+    for (let r = 1; r < grid.length; r++) { const n = cellNum(r, c); if (n != null) { run += n; any = true; } grid[r][nc] = any ? String(Math.round(run * 100) / 100) : ""; }
+    if (!any) { grid.forEach(row => row.pop()); return xlSay(t("xl_neednum")); }
+    saveGrid(); renderGrid(); return xlSay(t("xl_done"));
+  }
+  if (cmd === "d7" || cmd === "d15" || cmd === "d30") return addDays(cmd === "d7" ? 7 : cmd === "d15" ? 15 : 30);
+  if (cmd === "today") { setCell(xlCell.r, xlCell.c, today()); return xlSay(today()); }
+  if (cmd === "words") {
+    const n = cellNum(xlCell.r, xlCell.c); if (n == null) return xlSay(t("xl_neednum"));
+    const w = inWords(n, settings.lang); setCell(xlCell.r, xlCell.c + 1, w); return xlSay(w);
+  }
+  if (cmd === "nofilter") { xlQuery = ""; const f = $("#xl-filter"); if (f) f.value = ""; renderGrid(); return xlSay(""); }
+  if (cmd === "pending") return useTemplate(label
+    ? [["Sl", "Application no.", "Name", "Subject", "Received", "Due", "Stage", "Remarks"], ["1", "", "", "", "", "", "", ""]]
+    : [["ক্রম", "আবেদন নং", "নাম", "বিষয়", "প্রাপ্তি", "শেষ তারিখ", "পর্যায়", "মন্তব্য"], ["1", "", "", "", "", "", "", ""]]);
+  if (cmd === "hearing") return useTemplate(label
+    ? [["Sl", "Name", "Case", "Date", "Time", "Notice sent", "Appeared"], ["1", "", "", "", "", "", ""]]
+    : [["ক্রম", "নাম", "মামলা", "তারিখ", "সময়", "নোটিশ গেছে", "হাজির"], ["1", "", "", "", "", "", ""]]);
+  if (cmd === "disposal") return useTemplate(label
+    ? [["Sl", "Subject", "Opening", "Received", "Disposed", "Pending"], ["1", "", "", "", "", ""]]
+    : [["ক্রম", "বিষয়", "প্রারম্ভিক", "প্রাপ্তি", "নিষ্পত্তি", "বকেয়া"], ["1", "", "", "", "", ""]]);
+}
+function applyFx() {
+  const raw = $("#xl-fx").value.trim();
+  if (!raw) return;
+  if (raw.startsWith("=")) {
+    const n = evalFormula(raw);
+    if (n == null) return xlSay(t("xl_bad"));
+    setCell(xlCell.r, xlCell.c, String(n));
+    $("#xl-fx").value = raw;
+    return xlSay(colName(xlCell.c) + (xlCell.r + 1) + " = " + n);
+  }
+  setCell(xlCell.r, xlCell.c, raw);
+  xlSay(t("xl_done"));
+}
 
 /* ---------------- OFFICE: file tools ---------------- */
 const TOOLS = [
@@ -1467,10 +1812,9 @@ function openDetail(id) {
     <div class="tools"><button class="btn primary" type="button" data-ask-about="${s.id}">${esc(t("dt_ask"))}</button><button class="btn" type="button" data-ask-app="${s.id}">${esc(t("dt_app"))}</button></div>`;
   tabs.public = "detail"; showView();
   $("#v-detail").scrollTop = 0;
-  try { history.replaceState(null, "", "#s-" + id); } catch (e) { /* ignore */ }
 }
 
-/* ---------------- Bikram AI: office chat that asks, writes documents and remembers ---------------- */
+/* ---------------- Biswas AI: office chat that asks, writes documents and remembers ---------------- */
 // Memory lives in this browser (and can be exported / imported as a file). The model itself does not
 // retrain; it gets better here by reading these remembered facts and the drafts the user approved.
 let memory = store.get("bk:memory", []);        // [{text, at}]
@@ -1520,7 +1864,7 @@ function replaceDoc(text, j, md) {
   let n = -1;
   return text.replace(/(<<<DOC[^>\n]*>>>)([\s\S]*?)(<<<END DOC>>>)/g, (all, a, body, b) => (++n === j ? `${a}\n${md}\n${b}` : all));
 }
-/* What Bikram asks right after a choice, before any AI call. [docType, Bengali, English] */
+/* What the chat asks right after a choice, before any AI call. [docType, Bengali, English] */
 const BK_FLOW = [
   ["notesheet", "ঠিক আছে, নোটশিট লিখব। নিচের তথ্য একসঙ্গে লিখে পাঠান (যা জানা নেই বাদ দিন, আমি ফাঁকা রাখব):\n\n১. **বিষয়**\n২. **PUC** — কোন আবেদন / চিঠি, কার কাছ থেকে, কবে পাওয়া\n৩. **মূল তথ্য** — কী যাচাই হয়েছে, কোন রিপোর্ট এসেছে\n৪. **প্রস্তাব** — SDO-র কাছে কী আদেশ চাইছেন\n৫. **ভাষা** — বাংলা না ইংরেজি\n\nচিঠি বা GO থাকলে ক্লিপ বোতামে সংযুক্ত করুন।", "Sure, I will write the notesheet. Send these details together (skip what you don't know; I will leave blanks):\n\n1. **Subject**\n2. **PUC** — which application / letter, from whom, received when\n3. **Main facts** — what was checked, which report came\n4. **Proposal** — what order you want from the SDO\n5. **Language** — Bengali or English\n\nAttach the letter or GO with the clip button if you have it."],
   ["letter", "ঠিক আছে, SDO-র স্বাক্ষরের জন্য খসড়া চিঠি (DFA) লিখব। জানান:\n\n১. **প্রাপক** — পদ ও অফিস\n২. **বিষয়**\n৩. **সূত্র** — আগের চিঠি / আবেদনের নম্বর ও তারিখ (থাকলে)\n৪. **চিঠিতে কী জানাতে বা চাইতে হবে**\n৫. **প্রতিলিপি** কাকে কাকে (থাকলে)\n৬. **ভাষা** — বাংলা না ইংরেজি", "Sure, I will write the draft letter (DFA) for the SDO's signature. Tell me:\n\n1. **To** — designation and office\n2. **Subject**\n3. **Reference** — earlier letter / application number and date (if any)\n4. **What the letter must say or ask**\n5. **Copy to** whom (if any)\n6. **Language** — Bengali or English"],
@@ -1532,7 +1876,7 @@ const BK_FLOW = [
   null
 ];
 const BK_DESC = { notesheet: "notesheet put up by the dealing employee to the SDO", letter: "draft letter (DFA) for the SDO's signature", order: "office order issued over the SDO's signature", notice: "notice (hearing or show-cause) issued over the SDO's signature", report: "report", table: "table for Excel (a Markdown table with a header row; put the title above the table as a bold line)", other: "official document" };
-let bkPending = store.get("bk:pending", null);   // docType Bikram asked questions for
+let bkPending = store.get("bk:pending", null);   // docType the chat asked questions for
 const setPending = v => { bkPending = v; store.set("bk:pending", v); };
 const BUILTIN_EXAMPLES = `--- Model notesheet (Bengali) ---
 **নোট**
@@ -1582,8 +1926,8 @@ function bikramRules() {
   const mem = memory.length ? memory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
   const ex = examples.slice(-3).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 2500)}`).join("\n\n") || BUILTIN_EXAMPLES;
   return `
-These Bikram AI rules override any earlier output-format rule.
-YOU ARE "BIKRAM AI" (বিক্রম AI), the office-work chat inside Biswas AI for Office, made by Bikram Biswas. Work like an experienced dealing assistant and drafting partner, in a natural chat.
+These office rules override any earlier output-format rule.
+YOU ARE "BISWAS AI" (বিশ্বাস AI), the office-work chat. Work like an experienced dealing assistant and drafting partner, in a natural chat. Do not call yourself by any person's name.
 How to work:
 - If the user has not said what they need, greet in one line and ask what to create: notesheet, draft letter (DFA), office order, notice (hearing / show-cause), report, RTI reply, Excel table, Word file, PDF, or anything else.
 - Then ask only for what is missing, at most two or three short questions at a time (subject, PUC / reference, addressee, key facts and dates, language). Use what you already remember instead of asking again. If the user says "you decide" or has given enough, write it.
@@ -1730,7 +2074,7 @@ async function ask(text) {
   if (imgs.length) content += `\n\n(${imgs.length} image(s) attached: ${files.filter(f => f.images).map(f => f.name + (f.kind === "scan" ? " — scanned PDF pages" : "")).join(", ")}. Read them carefully, including Bengali text.)`;
   const box = messages;
   const wantDoc = box === chats.office ? bkPending : null;
-  if (wantDoc) { content += `\n\n[Bikram AI task: using the details above, earlier messages and any attached file, write the ${BK_DESC[wantDoc] || "document"} now, complete and ready to print. Put it in one <<<DOC type="${wantDoc}" title="short English title">>> ... <<<END DOC>>> block. Paragraphs, not points. Leave ______ for anything not given. Do not ask more questions now.]`; setPending(null); }
+  if (wantDoc) { content += `\n\n[Office task: using the details above, earlier messages and any attached file, write the ${BK_DESC[wantDoc] || "document"} now, complete and ready to print. Put it in one <<<DOC type="${wantDoc}" title="short English title">>> ... <<<END DOC>>> block. Paragraphs, not points. Leave ______ for anything not given. Do not ask more questions now.]`; setPending(null); }
   box.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
@@ -1847,6 +2191,45 @@ $("#t-file").addEventListener("change", async e => {
     saveGrid(); renderGrid(); toast(t("t_loaded"));
   } catch (err) { toast(t("dl_fail")); }
 });
+$("#t-grid").addEventListener("focusin", e => {
+  const td = e.target.closest("td[data-r]"); if (!td) return;
+  xlCell = { r: +td.dataset.r, c: +td.dataset.c };
+  document.querySelectorAll("#t-grid td.xl-on").forEach(el => el.classList.remove("xl-on"));
+  td.classList.add("xl-on");
+  $("#xl-addr").textContent = colName(xlCell.c) + (xlCell.r + 1);
+  if (document.activeElement !== $("#xl-fx")) $("#xl-fx").value = td.innerText.replace(/\n+$/, "");
+});
+$("#xl-go").addEventListener("click", applyFx);
+$("#xl-fx").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); applyFx(); } });
+$("#xl-filter").addEventListener("input", e => { xlQuery = e.target.value || ""; renderGrid(); });
+function runDesk(kind) {
+  if (kind === "words") {
+    const n = Number(String($("#desk-amt").value).replace(/[₹,\s]/g, ""));
+    if (!Number.isFinite(n)) return;
+    $("#desk-words-out").textContent = inWords(n, "bn") + "\n" + inWords(n, "en");
+  } else if (kind === "days") {
+    const a = parseDate($("#desk-from").value), b = parseDate($("#desk-to").value) || parseDate(today());
+    if (!a || !b) return ($("#desk-days-out").textContent = t("xl_needdate"));
+    const days = Math.round((b - a) / 86400000);
+    $("#desk-days-out").textContent = days === 0 ? t("desk_same") : Math.abs(days) + " " + t(days > 0 ? "desk_over" : "desk_left");
+  } else if (kind === "h7" || kind === "h15" || kind === "h30") {
+    const a = parseDate($("#desk-hear").value) || parseDate(today());
+    if (!a) return ($("#desk-hear-out").textContent = t("xl_needdate"));
+    a.setDate(a.getDate() + (kind === "h7" ? 7 : kind === "h15" ? 15 : 30));
+    $("#desk-hear-out").textContent = fmtDate(a);
+  } else if (kind === "land") {
+    const n = Number($("#desk-land").value);
+    if (!Number.isFinite(n)) return;
+    const unit = $("#desk-unit").value;
+    const sqft = unit === "katha" ? n * 720 : unit === "bigha" ? n * 20 * 720 : unit === "acre" ? n * 100 * 435.6 : n * 435.6;
+    const katha = sqft / 720, dec = sqft / 435.6;
+    $("#desk-land-out").textContent = `${Math.round(dec * 1000) / 1000} decimal\n${Math.round(katha * 1000) / 1000} katha\n${Math.round(katha / 20 * 1000) / 1000} bigha\n${Math.round(dec / 100 * 1000) / 1000} acre`;
+  } else if (kind === "memo") {
+    const line = `Memo No. ${settings.memo || "SDO"}/${($("#desk-memo-n").value || "______").trim()}    Date: ${today()}`;
+    $("#desk-memo-out").textContent = line;
+    navigator.clipboard.writeText(line).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+  }
+}
 
 // file tools
 document.addEventListener("change", e => {
@@ -1870,6 +2253,36 @@ $("#mem-file").addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
+  if ((x = el("[data-nav]"))) {
+    closeRail();
+    if (x.dataset.nav === "home") return go("office", "chat");
+    const parts = x.dataset.nav.split(":");
+    return go(parts[0], parts[1]);
+  }
+  if (el("#go-home")) { closeRail(); return go("office", "chat"); }
+  if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
+  if (el("#scrim")) return closeRail();
+  if (el("#lock-now")) {
+    if (!pinSaved()) return toast(t("lock_need"));
+    try { sessionStorage.removeItem("pmitra:open"); } catch (err) { /* ignore */ }
+    closeRail(); showLock(true); return;
+  }
+  if (el("#pin-set")) {
+    const pin = $("#pin-new").value.trim();
+    if (!/^\d{4,8}$/.test(pin)) return toast(t("lock_short"));
+    shaPin(pin).then(h => { localStorage.setItem("pmitra:pin", h); try { sessionStorage.setItem("pmitra:open", "1"); } catch (err) { /* ignore */ } $("#pin-new").value = ""; toast(t("lock_saved")); });
+    return;
+  }
+  if (el("#pin-clear")) {
+    const pin = $("#pin-new").value.trim();
+    shaPin(pin).then(h => {
+      if (!pinSaved() || h !== pinSaved()) return toast(t("lock_bad"));
+      localStorage.removeItem("pmitra:pin");
+      try { sessionStorage.removeItem("pmitra:open"); } catch (err) { /* ignore */ }
+      $("#pin-new").value = ""; toast(t("lock_cleared"));
+    });
+    return;
+  }
   if ((x = el("[data-tab]"))) return go(mode, x.dataset.tab);
   if (el("#sec-office")) return go("office");
   if (el("#sec-public")) return go("public");
@@ -1896,6 +2309,14 @@ document.addEventListener("click", e => {
   if (el("#t-delcol")) { if (grid[0].length > 1) grid.forEach(r => r.pop()); saveGrid(); return renderGrid(); }
   if (el("#t-clear")) { grid = [grid[0].map(() => ""), grid[0].map(() => "")]; saveGrid(); return renderGrid(); }
   if (el("#t-open")) return $("#t-file").click();
+  if ((x = el("[data-xl]"))) return runXl(x.dataset.xl);
+  if ((x = el("[data-desk]"))) return runDesk(x.dataset.desk);
+  if (el("#theme-btn")) {
+    const cur = store.get("theme", "auto");
+    const next = cur === "auto" ? "dark" : cur === "dark" ? "light" : "auto";
+    if (next === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+    store.set("theme", next); applyLang(); return;
+  }
   if (el("#t-copy")) return navigator.clipboard.writeText(grid.map(r => r.join("\t")).join("\n")).then(() => toast(t("copied")), () => toast(t("copy_fail")));
   if ((x = el("#t-xlsx"))) { const b = x; b.disabled = true; return load("xlsx").then(() => offer(`table-${stamp()}.xlsx`, gridToXlsx())).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
   if ((x = el("#t-pdf"))) { const b = x; b.disabled = true; return htmlToPdf(gridHtml(), grid[0].length > 5).then(d => offer(`table-${stamp()}.pdf`, d)).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
@@ -1908,7 +2329,7 @@ document.addEventListener("click", e => {
   // chat
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
-  // Bikram AI
+  // Biswas AI
   if ((x = el("[data-bk]"))) {
     const i = +x.dataset.bk, flow = BK_FLOW[i];
     if (!flow) return ask(t("bk_choices")[i][2]);
@@ -1932,7 +2353,7 @@ document.addEventListener("click", e => {
   if (el("#memory-close")) return $("#memory").close();
   if ((x = el("[data-mem-del]"))) { memory.splice(+x.dataset.memDel, 1); saveMemory(); return renderMemory(); }
   if ((x = el("[data-ex-del]"))) { examples.splice(+x.dataset.exDel, 1); saveMemory(); return renderMemory(); }
-  if (el("#mem-export")) return offer(`bikram-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI for Office", memory, examples }, null, 2)], { type: "application/json" }));
+  if (el("#mem-export")) return offer(`biswas-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI", memory, examples }, null, 2)], { type: "application/json" }));
   if (el("#mem-import")) return $("#mem-file").click();
   if (el("#mem-clear")) { memory = []; examples = []; saveMemory(); renderMemory(); return toast(t("mem_cleared")); }
   if ((x = el("[data-act]"))) {
@@ -1974,26 +2395,41 @@ $("#settings").addEventListener("close", () => {
 });
 
 /* ---------------- start ---------------- */
-Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
-if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
-applyLang();
-{ const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id && SERVICES.some(s => s.id === id)) { mode = "public"; messages = chats.public; openDetail(id); } else showView(); }
-if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
-(async () => {
-  if (!window.claude || !window.claude.use) {
-    engine = "server"; imageLimits = { maxCount: 4 };
-    $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
-    try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
-    catch (e) { showBanner(() => t("unreachable")); }
+let booted = false;
+function startApp() {
+  if (booted) return;
+  booted = true;
+  Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
+  clearAddress();
+  mode = "office"; messages = chats.office; tabs.office = "chat";
+  showView();
+  if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
+  (async () => {
+    if (!window.claude || !window.claude.use) {
+      engine = "server"; imageLimits = { maxCount: 4 };
+      $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
+      try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
+      catch (e) { showBanner(() => t("unreachable")); }
+      if (tabs[mode] === "chat") renderChat();
+      return;
+    }
+    const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
+    sample = s; downloads = d;
+    if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
+    else showBanner(() => t("no_ai_claude"));
     if (tabs[mode] === "chat") renderChat();
-    return;
-  }
-  const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
-  sample = s; downloads = d;
-  if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
-  else showBanner(() => t("no_ai_claude"));
-  if (tabs[mode] === "chat") renderChat();
-})();
+  })();
+}
+$("#lock-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pin = $("#lock-pin").value.trim();
+  if (await shaPin(pin) !== pinSaved()) { $("#lock-msg").textContent = t("lock_bad"); return; }
+  try { sessionStorage.setItem("pmitra:open", "1"); } catch (err) { /* ignore */ }
+  $("#lock-pin").value = ""; $("#lock-msg").textContent = "";
+  showLock(false); startApp();
+});
+applyLang();
+if (!isOpen()) showLock(true); else startApp();
 </script>
 </body>
 </html>

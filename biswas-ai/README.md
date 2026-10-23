@@ -1,13 +1,13 @@
-# বিশ্বাস AI · Biswas AI for Office
+# বিশ্বাস AI · Biswas AI
 
-An AI assistant made by **Bikram Biswas**. It answers anything a general AI assistant can (questions, writing, translation, maths, coding), with special expertise in West Bengal Government office administration and public services. Bengali and English.
+An office assistant for West Bengal Government work. It answers questions, writes drafts, and handles tables and files, in Bengali and English. It is an independent tool, not a Government app.
 
 The app has two separate sections, switched in the header (অফিস / জনসাধারণ), and a বাংলা / EN switch for the whole screen and the AI's answers.
 
 ### অফিস — Office (for SDO office staff)
 | Tab | What it does |
 |---|---|
-| **বিক্রম AI / Bikram AI** (first tab) | A chat that works like a drafting partner: it asks what to create (notesheet, DFA, order, notice, report, Excel, Word, PDF), asks only for the missing details, then writes the document in paragraphs. Each document appears as a printable page in the chat with **Print, Word, PDF, Excel** (tables), Edit, "open in drafting desk" and **Keep as approved**. **Memory:** Bikram AI saves lasting facts it learns (names, designations, office, preferred formats, corrections) and the drafts you approve, and uses them in every later conversation; see, add, delete, export or import them in the **Memory / স্মৃতি** panel. The model does not retrain; it improves through this memory and your approved examples. |
+| **বিশ্বাস AI / Biswas AI** (first tab) | A chat that works like a drafting partner: it asks what to create (notesheet, DFA, order, notice, report, Excel, Word, PDF), asks only for the missing details, then writes the document in paragraphs. Each document appears as a printable page in the chat with **Print, Word, PDF, Excel** (tables), Edit, "open in drafting desk" and **Keep as approved**. **Memory:** Biswas AI saves lasting facts it learns (names, designations, office, preferred formats, corrections) and the drafts you approve, and uses them in every later conversation; see, add, delete, export or import them in the **Memory / স্মৃতি** panel. The model does not retrain; it improves through this memory and your approved examples. |
 | **লেখার টেবিল / Drafting desk** | Choose the document (notesheet put up to the SDO, DFA for the SDO's signature, office order, hearing or show-cause notice, RTI reply, enquiry report, caste certificate re-verification report, general letter), fill To / Subject / PUC / facts, attach a GO or letter, and the AI writes it on a paper-style page in paragraphs. Edit it yourself or give an "AI revise" instruction; undo; print view; save as **Word** or **PDF**. Uses the office's own letterhead when a sample letter is set in Settings. |
 | **টেবিল / Excel** | Editable grid; "make a table from this text" with AI; open an Excel / CSV file; save as **Excel** or **PDF**; copy to paste into Excel. |
 | **ফাইল টুল / File tools** | Word → PDF, Excel → PDF, photos → PDF, merge PDFs, take text out of a PDF or Word file (copy it or send it to the drafting desk). Runs inside the browser; files are not uploaded. |
@@ -48,24 +48,48 @@ docker run -p 7860:7860 --env-file biswas-ai/.env biswas-ai
 ### D. claude.ai Artifact
 The same `index.html` (without the `<html>/<head>/<body>` wrapper lines) runs as a claude.ai Artifact, where it uses Claude on each viewer's own claude.ai account and needs no keys.
 
-## AI providers (free tokens add up)
+## AI providers
 
-`api/chat.js` tries each provider whose key is set, in order. When one is out of free quota or fails before answering, the next answers. The page shows which one answered.
+`api/chat.js` tries each provider whose key is set, in `PROVIDER_ORDER`. When one is out of quota or fails before answering, the next answers. The page shows which one answered.
 
-| Order | Provider | Models | Free? | Get a key |
-|---|---|---|---|---|
-| 1 | Google Gemini | Gemini Flash, Flash-Lite | Free | https://aistudio.google.com/apikey |
-| 2 | NVIDIA developer API | **Llama 4 Maverick, Kimi K2, Llama 3.3 70B** | Free for developers | https://build.nvidia.com/settings/api-keys |
-| 3 | Groq | **Llama 3.3 70B**, gpt-oss | Free, daily quota per model | https://console.groq.com/keys |
-| 4 | Mistral | Mistral Medium / Small | Free "Experiment" plan | https://console.mistral.ai |
-| 5 | OpenRouter | **Kimi K2**, Llama 3.3 70B, gpt-oss (`:free`) | Free, 50 requests/day | https://openrouter.ai/keys |
-| 6 | Cloudflare Workers AI | **Llama 3.3 70B, Llama 4 Scout** | Free daily allowance | Cloudflare dashboard → AI → Workers AI (`CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`) |
-| 7 | GitHub Models | GPT-4.1 mini, GPT-4o mini | Free | GitHub fine-grained token with "Models: read" |
-| 8 | Cerebras | gpt-oss-120b | Trial credit | https://cloud.cerebras.ai |
-| 9 | Sarvam AI | Sarvam 105B (strong Bengali) | ₹100 signup credit | https://dashboard.sarvam.ai |
-| 10 | Kimi (Moonshot) | **Kimi K3** | Paid, $1 minimum top-up | https://platform.kimi.ai |
+These limits do not add up to millions of tokens a day. One account of every free provider is still a few thousand chats. A paid key is the only way to buy more, and it is spent by every visitor because the site has no login.
 
-Model lists and order can be changed without editing code: `GEMINI_MODELS`, `NVIDIA_MODELS`, `GROQ_MODELS`, `MISTRAL_MODELS`, `OPENROUTER_MODELS`, `CLOUDFLARE_MODELS`, `GITHUB_MODELS`, `CEREBRAS_MODELS`, `SARVAM_MODELS`, `KIMI_MODELS` (comma-separated) and `PROVIDER_ORDER`. To save tokens, the page sends only the parts of the knowledge base a conversation needs.
+| Order | Provider | What you get | Get a key |
+|---|---|---|---|
+| 1 | Google Gemini | Free tier on Flash. Limits are in AI Studio. | https://aistudio.google.com/apikey |
+| 2 | NVIDIA | Prototyping only. Not for a public site. | https://build.nvidia.com/settings/api-keys |
+| 3 | Groq | About 1,000 requests and 200,000 tokens/day per model | https://console.groq.com/keys |
+| 4 | Mistral | Free plan, limits shown after login | https://console.mistral.ai |
+| 5 | OpenRouter | `:free` models, about 50 requests/day | https://openrouter.ai/keys |
+| 6 | Cloudflare Workers AI | 10,000 Neurons/day | https://dash.cloudflare.com |
+| 7 | SambaNova | Llama and others, about 20 requests and 200,000 tokens/day per model | https://cloud.sambanova.ai |
+| 8 | Z.ai | GLM-4.7-Flash priced at $0, tight concurrency | https://z.ai |
+| 9 | Cerebras | About $5 after a card, expires in 30 days | https://cloud.cerebras.ai |
+| 10 | Sarvam | Signup credit, strong Bengali | https://dashboard.sarvam.ai |
+| 11 | Kimi K3 | Paid | https://platform.kimi.ai |
+
+GitHub Models was removed from the default order. The service shut down on 30 July 2026.
+
+### Paid, or a grant that then bills
+
+Not used until you add the name to `PROVIDER_ORDER`. Example: `PROVIDER_ORDER=gemini,groq,deepseek`.
+
+| Name in `PROVIDER_ORDER` | Env var | Get a key | Note |
+|---|---|---|---|
+| `cohere` | `COHERE_API_KEY` | https://dashboard.cohere.com/api-keys | Trial, about 1,000 calls/month. Not for production. |
+| `deepseek` | `DEEPSEEK_API_KEY` | https://platform.deepseek.com/api_keys | No free tier. Cheapest way to buy a large number of tokens. Model `deepseek-flash`. |
+| `qwen` | `DASHSCOPE_API_KEY` | https://www.alibabacloud.com/help/en/model-studio/new-free-quota | Singapore only. About 1,000,000 tokens per model, once, for 90 days. Turn on Free Quota Only or it bills after that. |
+| `openai` | `OPENAI_API_KEY` | https://platform.openai.com/api-keys | Prepaid. |
+| `xai` | `XAI_API_KEY` | https://console.x.ai | Prepaid. Default model `grok-4.7`. |
+| `together` | `TOGETHER_API_KEY` | https://api.together.ai/settings/api-keys | Prepaid. |
+| `fireworks` | `FIREWORKS_API_KEY` | https://fireworks.ai/account/api-keys | About $1 starter credit, then paid. |
+| `kimi` | `KIMI_API_KEY` | https://platform.kimi.ai | Already last in the default order, so a key here is spent when the free ones fail. |
+
+Anthropic has no OpenAI-compatible chat route in this app: https://console.anthropic.com
+
+Llama with no host and no per-token fee is a model you run yourself: https://ollama.com (`http://localhost:11434/v1`). That still needs a computer with a GPU. It is not an API key.
+
+Model lists can be changed without editing code: `GEMINI_MODELS`, `NVIDIA_MODELS`, `GROQ_MODELS`, `MISTRAL_MODELS`, `OPENROUTER_MODELS`, `CLOUDFLARE_MODELS`, `SAMBANOVA_MODELS`, `ZAI_MODELS`, `COHERE_MODELS`, `CEREBRAS_MODELS`, `SARVAM_MODELS`, `KIMI_MODELS`, `DEEPSEEK_MODELS`, `QWEN_MODELS`, `OPENAI_MODELS`, `XAI_MODELS`, `TOGETHER_MODELS`, `FIREWORKS_MODELS`, and `PROVIDER_ORDER`. To save tokens, the page sends only the parts of the knowledge base a conversation needs.
 
 ## Checking the AI keys
 
