@@ -290,7 +290,7 @@ textarea.paper { white-space: pre-wrap; }
 <div class="app">
   <header class="top">
     <button class="btn nav-toggle" id="nav-open" type="button" data-t="menu">মেনু</button>
-    <button class="brand" id="go-home" type="button"><svg class="mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">আলাদা চ্যাট</span><small class="ver" title="App version">v12</small></button>
+    <button class="brand" id="go-home" type="button"><svg class="mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">আলাদা চ্যাট</span><small class="ver" title="App version">v13</small></button>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-ai" aria-pressed="true" data-t="nav_simple">চ্যাট</button>
       <button type="button" id="sec-office" aria-pressed="false" data-t="office">অফিস</button>
@@ -1583,7 +1583,7 @@ async function runDraft(turns, images) {
   try {
     const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { $("#d-paper").value = text; } });
     draft.prev = before; draft.text = r.text; saveDraft();
-    draftStatus(`${t("answered_by")}${PROVIDER_NAMES[r.via] || r.via || ""}${r.truncated ? " · " + errText("cut") : ""}`);
+    draftStatus(`${t("answered_by")}${t("brand")}${r.truncated ? " · " + errText("cut") : ""}`);
   } catch (e) {
     if (e && e.text) { draft.prev = before; draft.text = e.text; saveDraft(); }
     else $("#d-paper").value = draft.text;
@@ -2100,7 +2100,7 @@ function bikramMsgHtml(m, k) {
     ${plainLong ? `<div class="actions">${CAN_PRINT ? `<button class="btn small" data-act="print">${esc(t("doc_print"))}</button>` : ""}<button class="btn small" data-act="copy">${esc(t("copy"))}</button>${canSave() ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button></div>` : ""}
     ${m.learned && m.learned.length ? `<div class="learned">${esc(t("mem_learned"))}${m.learned.map(esc).join(" · ")}</div>` : ""}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
-    ${m.via && m.via !== "bikram" && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
+    ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
   </div>`;
 }
 function bikramWelcome() {
@@ -2148,7 +2148,7 @@ function msgHtml(m, k) {
   return `<div class="msg ai" data-k="${k}">
     ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
-    ${m.via && m.done ? `<div class="via">${esc(t("answered_by"))}${esc(PROVIDER_NAMES[m.via] || m.via)}</div>` : ""}
+    ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
     ${m.done && m.content ? `<div class="actions">
       ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
       ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
@@ -2304,7 +2304,7 @@ $("#t-aiform").addEventListener("submit", async e => {
     const tb = parseMd(r.text).find(b => b.t === "table");
     if (!tb) throw { code: "no_table" };
     grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); renderGrid();
-    $("#t-status").textContent = `${t("t_loaded")} · ${t("answered_by")}${PROVIDER_NAMES[r.via] || r.via || ""}`;
+    $("#t-status").textContent = `${t("t_loaded")} · ${t("answered_by")}${t("brand")}`;
   } catch (err) { $("#t-status").textContent = err && err.code === "no_table" ? t("t_bad") : aiFailed(err); }
   finally { tableBusy = false; }
 });
