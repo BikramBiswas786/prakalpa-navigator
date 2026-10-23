@@ -27,9 +27,29 @@ services:
         sync: false
       - key: CLOUDFLARE_API_TOKEN
         sync: false
-      - key: GITHUB_MODELS_TOKEN
+      - key: SAMBANOVA_API_KEY
+        sync: false
+      - key: ZAI_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
         sync: false
       - key: SARVAM_API_KEY
         sync: false
       - key: KIMI_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: DASHSCOPE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: TOGETHER_API_KEY
+        sync: false
+      - key: FIREWORKS_API_KEY
+        sync: false
+      - key: GITHUB_MODELS_TOKEN
         sync: false

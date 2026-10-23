@@ -10,9 +10,24 @@
 //   OPENROUTER_API_KEY   OpenRouter ":free" models: Kimi, Llama
 //   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI (free daily allowance): Llama
 //   GITHUB_MODELS_TOKEN  GitHub Models (free with a GitHub account)
-//   CEREBRAS_API_KEY     Cerebras (trial credit)
+//   SAMBANOVA_API_KEY    SambaNova free tier: Llama (about 20 requests/day per model)
+//   ZAI_API_KEY          Z.ai GLM Flash models priced at $0 (tight concurrency)
+//   COHERE_API_KEY       Cohere trial (about 1,000 calls/month; not for production)
+//   CEREBRAS_API_KEY     Cerebras (trial credit; card)
 //   SARVAM_API_KEY       Sarvam AI (Indian; strong Bengali; signup credit)
-//   KIMI_API_KEY         Moonshot Kimi API, official Kimi K3 (paid: $1 minimum top-up)
+//   KIMI_API_KEY         Moonshot Kimi API, official Kimi K3 (paid)
+//
+// Paid, off unless named in PROVIDER_ORDER (a key alone does not spend money):
+//   DEEPSEEK_API_KEY     DeepSeek (no free tier; cheapest volume)
+//   DASHSCOPE_API_KEY    Alibaba Model Studio, Singapore (1M-token grant, then it bills)
+//   OPENAI_API_KEY       OpenAI (prepaid)
+//   XAI_API_KEY          xAI Grok (prepaid)
+//   TOGETHER_API_KEY     Together (prepaid)
+//   FIREWORKS_API_KEY    Fireworks (small starter credit, then paid)
+//
+// GitHub Models (GITHUB_MODELS_TOKEN) was shut down on 30 July 2026. The
+// provider remains so an old PROVIDER_ORDER can still name it; it is not tried
+// unless you put "github" in PROVIDER_ORDER.
 //
 // Optional: PROVIDER_ORDER="gemini,nvidia,groq,..." and <NAME>_MODELS
 // (comma-separated) to change models without touching code.
@@ -27,12 +42,21 @@ const PROVIDERS = {
   groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-120b,llama-3.3-70b-versatile,openai/gpt-oss-20b") },
   openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "moonshotai/kimi-k2:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
   cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
+  sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
+  zai: { key: "ZAI_API_KEY", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
+  cohere: { key: "COHERE_API_KEY", kind: "openai", url: "https://api.cohere.ai/compatibility/v1/chat/completions", models: list("COHERE_MODELS", "command-a-plus-05-2026") },
   github: { key: "GITHUB_MODELS_TOKEN", kind: "openai", vision: true, url: "https://models.github.ai/inference/chat/completions", models: list("GITHUB_MODELS", "openai/gpt-4.1-mini,openai/gpt-4o-mini") },
   cerebras: { key: "CEREBRAS_API_KEY", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", models: list("CEREBRAS_MODELS", "gpt-oss-120b") },
   sarvam: { key: "SARVAM_API_KEY", kind: "openai", url: "https://api.sarvam.ai/v1/chat/completions", auth: "api-subscription-key", models: list("SARVAM_MODELS", "sarvam-105b") },
-  kimi: { key: "KIMI_API_KEY", kind: "openai", url: "https://api.moonshot.ai/v1/chat/completions", models: list("KIMI_MODELS", "kimi-k3") }
+  kimi: { key: "KIMI_API_KEY", kind: "openai", url: "https://api.moonshot.ai/v1/chat/completions", models: list("KIMI_MODELS", "kimi-k3") },
+  deepseek: { key: "DEEPSEEK_API_KEY", kind: "openai", url: "https://api.deepseek.com/chat/completions", models: list("DEEPSEEK_MODELS", "deepseek-flash") },
+  qwen: { key: "DASHSCOPE_API_KEY", kind: "openai", url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", models: list("QWEN_MODELS", "qwen-flash") },
+  openai: { key: "OPENAI_API_KEY", kind: "openai", vision: true, url: "https://api.openai.com/v1/chat/completions", models: list("OPENAI_MODELS", "gpt-4.1-mini") },
+  xai: { key: "XAI_API_KEY", kind: "openai", url: "https://api.x.ai/v1/chat/completions", models: list("XAI_MODELS", "grok-4.7") },
+  together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
+  fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
-const ORDER = list("PROVIDER_ORDER", "gemini,nvidia,groq,mistral,openrouter,cloudflare,github,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "gemini,nvidia,groq,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
