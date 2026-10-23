@@ -36,10 +36,10 @@ const env = name => (process.env[name] || "").trim();
 const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.trim()).filter(Boolean);
 
 const PROVIDERS = {
-  gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-latest,gemini-flash-lite-latest") },
-  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "moonshotai/kimi-k2-instruct,deepseek-ai/deepseek-v3.1,meta/llama-4-maverick-17b-128e-instruct,meta/llama-3.3-70b-instruct") },
-  mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-medium-latest,mistral-small-latest") },
-  groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-120b,llama-3.3-70b-versatile,openai/gpt-oss-20b") },
+  gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-lite-latest,gemini-flash-latest") },
+  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-30b-a3b") },
+  mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-small-latest,mistral-medium-latest") },
+  groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-20b,openai/gpt-oss-120b") },
   openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "moonshotai/kimi-k2:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
   cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
   sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
@@ -70,6 +70,10 @@ const outTokens = body => {
 };
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 const configured = () => ORDER.filter(id => env(PROVIDERS[id].key) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
+const coolUntil = new Map();
+const cooled = id => (coolUntil.get(id) || 0) > Date.now();
+const cool = (id, ms) => coolUntil.set(id, Date.now() + ms);
+const quotaError = (status, error) => status === 429 || /rate limit|quota|resource exhausted|too many requests/i.test(String(error || ""));
 
 export async function GET(request) {
   const ids = configured();
@@ -270,19 +274,24 @@ export async function POST(request) {
   const wantsVision = Boolean(body.images && body.images.length);
   let sawLimit = false;
   const tried = [];
-  for (const id of ids) {
+  const live = ids.filter(id => !cooled(id));
+  const later = ids.filter(id => cooled(id));
+  for (const id of [...live, ...later]) {
     const p = PROVIDERS[id];
     if (wantsVision && !p.vision) continue;
+    let asked = 0, limited = 0;
     for (const model of p.models) {
       if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
       const r = await attempt(p, model, body, request.signal, body.fast ? Math.min(FIRST_TEXT_MS, 8000) : FIRST_TEXT_MS);
+      asked += 1;
       if (r.ok) {
         console.log(`answered by ${id}/${model}` + (tried.length ? ` after: ${tried.join(" | ")}` : ""));
         return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
       }
-      if (r.status === 429) sawLimit = true;
+      if (quotaError(r.status, r.error)) { sawLimit = true; limited += 1; }
       tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
     }
+    if (asked && limited === asked) cool(id, 15 * 60 * 1000);
   }
   if (wantsVision && !tried.length) return json({ error: "no_vision" }, 422);
   console.warn("all providers failed:\n  " + tried.join("\n  "));
