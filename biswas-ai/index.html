@@ -97,6 +97,16 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 #conv-list { max-height: 42vh; overflow: auto; }
 .hist { min-height: 0; overflow: auto; padding: 12px; display: grid; align-content: start; gap: 8px; background: var(--surface); border-right: 1px solid var(--line); }
 .word-folder { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+#hist-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
+#hist-sheet[hidden] { display: none !important; }
+.sheet-top { display: flex; align-items: center; gap: 8px; }
+.sheet-top b { margin-right: auto; font-family: var(--f-display); font-size: 1.25rem; }
+#sheet-q { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+#sheet-list { overflow: auto; display: grid; align-content: start; gap: 8px; }
+.welcome.home { justify-items: center; text-align: center; padding-top: 10vh; }
+.welcome.home .mark { width: 48px; height: 48px; }
+.box { border-radius: 22px; }
+.msg.ai .doc { border-radius: 16px 16px 16px 6px; }
 #gate { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--bg); padding: 20px; }
 #gate[hidden] { display: none; }
 #gate form { width: min(420px, 100%); display: grid; gap: 10px; }
@@ -339,11 +349,6 @@ textarea.paper { white-space: pre-wrap; }
     <aside class="rail" id="rail">
       <div class="rail-brand"><b>বিশ্বাস AI</b><small data-t="brand_sub"></small></div>
       <div class="who"><b id="who-name"></b><button class="btn small" type="button" id="switch-user" data-t="switch_user"></button></div>
-      <div class="convs">
-        <div class="conv-head"><b data-t="conv_h"></b><button class="btn small" type="button" id="conv-new" data-t="newchat"></button></div>
-        <input id="conv-q" type="search" data-t-ph="conv_search">
-        <div id="conv-list"></div>
-      </div>
       <nav class="tasks" id="rail-nav"></nav>
       <div class="railnote">
         <p data-t="priv_note"></p>
@@ -607,6 +612,15 @@ textarea.paper { white-space: pre-wrap; }
   </form>
 </div>
 
+<aside id="hist-sheet" hidden>
+  <div class="sheet-top">
+    <b data-t="conv_h">কথোপকথন</b>
+    <button class="btn small" type="button" id="sheet-new" data-t="newchat"></button>
+    <button class="btn small" type="button" id="sheet-close" data-t="cancel"></button>
+  </div>
+  <input id="sheet-q" type="search" data-t-ph="conv_search">
+  <div id="sheet-list"></div>
+</aside>
 <div id="scrim" hidden></div>
 <div id="lock" hidden>
   <form class="panel" id="lock-form">
@@ -736,7 +750,7 @@ const STR = {
     mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
-    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "সাধারণ চ্যাট। যা জানতে চান লিখুন — উত্তর সোজা চলিত বাংলায় আসবে। এই কথা শুধু এই ফোনে থাকে। লিঙ্ক খুললে অন্যজন নতুন ফাঁকা পাতা দেখবে।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
+    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "যা জানতে চান, নিচে লিখুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
     g_title: "বানান ও ব্যাকরণ", g_note: "বাংলা বা ইংরেজি লেখা বসান। শুধু বানান, ব্যাকরণ ও বাক্য ঠিক হবে। মানে বদলাবে না।", g_go: "যাচাই করুন", g_ph: "এখানে লেখা বসান", g_wait: "দেখা হচ্ছে…", g_empty: "আগে লেখা বসান।", g_fail: "এখন যাচাই করা গেল না। আবার চেষ্টা করুন।",
     gate_p: "আপনার নাম লিখুন। এই ফোনে প্রত্যেক নামের চ্যাট আলাদা থাকে। লিঙ্কে কারও কথা থাকে না।", gate_ph: "আপনার নাম", gate_go: "ঢুকুন", gate_need: "নাম অন্তত দুই অক্ষরের দিন।", switch_user: "নাম বদলান",
     conv_h: "কথোপকথন", conv_search: "কথোপকথন খুঁজুন", conv_empty: "নতুন কথা",
@@ -797,7 +811,7 @@ const STR = {
     mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
-    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "A normal chat. Ask anything. The reply follows your language. This conversation stays on this phone. Someone who opens the link gets their own blank page.", ph_ai: "Message Biswas AI…",
+    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Ask anything below.", ph_ai: "Message Biswas AI…",
     g_title: "Spelling and grammar", g_note: "Paste Bengali or English. Only spelling, grammar and the sentence are corrected. The meaning stays the same.", g_go: "Check", g_ph: "Paste the text here", g_wait: "Checking…", g_empty: "Paste some text first.", g_fail: "Could not check just now. Try again.",
     gate_p: "Type your name. On this phone each name has its own chat. Nothing is stored in the link.", gate_ph: "Your name", gate_go: "Enter", gate_need: "Type at least two letters.", switch_user: "Change name",
     conv_h: "Conversations", conv_search: "Search conversations", conv_empty: "New chat",
@@ -1744,7 +1758,7 @@ function applyLang() {
   const pin = $("#pin-new"); if (pin) pin.placeholder = t("lock_pin_ph");
   const lp = $("#lock-pin"); if (lp) lp.placeholder = t("lock_pin_ph");
   const gs = $("#g-src"); if (gs) gs.placeholder = t("g_ph");
-  const cq = $("#conv-q"); if (cq) cq.placeholder = t("conv_search");
+  const cq = $("#sheet-q"); if (cq) cq.placeholder = t("conv_search");
   const gn = $("#gate-name"); if (gn) gn.placeholder = t("gate_ph");
   const wt = $("#word-title"); if (wt) wt.placeholder = t("word_title_ph");
   const wb = $("#word-body"); if (wb) wb.placeholder = t("word_body_ph");
@@ -2331,8 +2345,8 @@ function openMemory() { renderMemory(); $("#memory").showModal(); }
 /* ---------------- AI chat (both sections) ---------------- */
 const tasks = () => TASKS[mode][settings.lang] || TASKS[mode].bn;
 function welcomeHtml() {
-  if (mode === "ai") return `<div class="welcome">
-    <svg class="mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg>
+  if (mode === "ai") return `<div class="welcome home">
+    <svg class="mark" viewBox="0 0 32 32" width="48" height="48" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1c3d32"/><path d="M8 22.5V9.5h3.2l4.8 8.2 4.8-8.2H24v13h-2.7v-8.1l-4.1 6.8h-2.4l-4.1-6.8v8.1H8z" fill="#f3efe6"/></svg>
     <h2>${esc(t("ai_h"))}</h2>
     <p>${esc(t("ai_p"))}</p>
   </div>`;
@@ -2399,11 +2413,11 @@ function whenLabel(ts) {
   return d.toLocaleDateString(loc, { day: "numeric", month: "short" });
 }
 function renderConv() {
-  const name = $("#who-name"); if (name) name.textContent = userName || "বিশ্বাস AI";
-  const q = ($("#conv-q") && $("#conv-q").value || "").trim().toLowerCase();
+  const name = $("#who-name"); if (name) name.textContent = userName || "";
+  const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = threads.filter(t => (t.messages || []).length && (!q || String(t.title || "").toLowerCase().includes(q)));
   const html = rows.length ? rows.map(t => `<button class="conv${t.id === threadId ? " on" : ""}" type="button" data-thread="${t.id}"><b>${esc(t.title || t("conv_empty"))}</b><small>${esc(whenLabel(t.at))}</small></button>`).join("") : `<p class="lead">${esc(t("conv_empty"))}</p>`;
-  ["#conv-list", "#chat-conv"].forEach(sel => { const box = $(sel); if (box) box.innerHTML = html; });
+  ["#sheet-list", "#chat-conv"].forEach(sel => { const box = $(sel); if (box) box.innerHTML = html; });
 }
 function loadVault() {
   threads = vaultGet("threads", []);
@@ -2464,7 +2478,7 @@ function openThread(id) {
   const t = threads.find(x => x.id === id); if (!t) return;
   threadId = t.id; chats.ai = t.messages; messages = chats.ai;
   mode = "ai"; tabs.ai = "chat"; pendingFiles = [];
-  closeRail(); showView();
+  closeRail(); const sheet = $("#hist-sheet"); if (sheet) sheet.hidden = true; showView();
 }
 function newThread() {
   if (ctl) ctl.abort();
@@ -2756,7 +2770,10 @@ document.addEventListener("click", e => {
   if (el("#conv-new") || el("#hist-new")) { closeRail(); return newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#show-convs") || el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
+  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; renderConv(); } return; }
+  if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
+  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return newThread(); }
+  if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
     if (!pinSaved()) return toast(t("lock_need"));
@@ -2935,7 +2952,7 @@ $("#gate-form").addEventListener("submit", e => {
 });
 $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFile(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
-$("#conv-q").addEventListener("input", () => renderConv());
+const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => renderConv());
 function resume() {
   let saved = "";
   try { saved = localStorage.getItem("pmitra:uname") || ""; } catch (e) { /* ignore */ }
