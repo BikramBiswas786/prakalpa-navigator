@@ -289,7 +289,7 @@ textarea.paper { white-space: pre-wrap; }
 <div class="app">
   <header class="top">
     <button class="btn nav-toggle" id="nav-open" type="button" data-t="menu">মেনু</button>
-    <button class="brand" id="go-home" type="button"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">অফিস সহায়ক</span><small class="ver" title="App version">v8</small></button>
+    <button class="brand" id="go-home" type="button"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">অফিস সহায়ক</span><small class="ver" title="App version">v9</small></button>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
@@ -463,6 +463,23 @@ textarea.paper { white-space: pre-wrap; }
               <button class="btn small primary" type="button" data-desk="memo" data-t="desk_copy"></button>
               <p class="desk-out" id="desk-memo-out"></p>
             </div>
+            <div class="panel">
+              <h3 data-t="desk_span"></h3>
+              <input id="desk-join" placeholder="dd.mm.yyyy" autocomplete="off">
+              <button class="btn small primary" type="button" data-desk="span" data-t="desk_go"></button>
+              <p class="desk-out" id="desk-span-out"></p>
+            </div>
+            <div class="panel">
+              <h3 data-t="desk_bill"></h3>
+              <input id="desk-base" inputmode="decimal" autocomplete="off">
+              <input id="desk-pct" inputmode="decimal" autocomplete="off" placeholder="%">
+              <button class="btn small primary" type="button" data-desk="bill" data-t="desk_go"></button>
+              <p class="desk-out" id="desk-bill-out"></p>
+            </div>
+            <div class="panel" style="grid-column: 1 / -1">
+              <h3 data-t="desk_limits"></h3>
+              <p class="desk-out" data-t="desk_limits_body"></p>
+            </div>
           </div>
         </section>
       </div>
@@ -566,7 +583,10 @@ textarea.paper { white-space: pre-wrap; }
 "use strict";
 /* ---------------- storage ---------------- */
 const PRIV = new Set(["chat", "chat:office", "chat:public", "bk:memory", "bk:examples", "bk:pending", "draft", "grid", "settings", "mode", "tabs"]);
-try { PRIV.forEach(k => localStorage.removeItem("pmitra:" + k)); } catch (e) { /* ignore */ }
+try {
+  PRIV.forEach(k => localStorage.removeItem("pmitra:" + k));
+  ["chat", "chat:office", "chat:public", "bk:memory", "bk:examples", "bk:pending"].forEach(k => sessionStorage.removeItem("pmitra:" + k));
+} catch (e) { /* ignore */ }
 const store = {
   get(k, d) { try { const v = (PRIV.has(k) ? sessionStorage : localStorage).getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { (PRIV.has(k) ? sessionStorage : localStorage).setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
@@ -586,7 +606,7 @@ try { const savedLang = localStorage.getItem("pmitra:lang"); if (savedLang === "
 if (settings.lang !== "en") settings.lang = "bn";   // one switch: screen language = answer language
 let mode = store.get("mode", "office");          // section: "office" or "public"
 let tabs = Object.assign({ office: "chat", public: "catalog" }, store.get("tabs", {}));
-const chats = { office: store.get("chat:office", store.get("chat", [])), public: store.get("chat:public", []) };
+const chats = { office: [], public: [] };
 let messages = chats[mode];   // {role, content, shown, files, via}
 let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
 let sample = null, downloads = null, imageLimits = null;
@@ -612,7 +632,7 @@ const STR = {
     types: { notesheet: "নোটশিট (SDO-র কাছে পেশ)", dfa: "খসড়া চিঠি (DFA, SDO-র স্বাক্ষরে)", order: "অফিস আদেশ / মেমোরান্ডাম", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "এনকোয়ারি রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই রিপোর্ট", letter: "সাধারণ সরকারি চিঠি" },
     t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
     xl_go: "করুন", xl_sum: "যোগ", xl_avg: "গড়", xl_count: "গণনা", xl_min: "সবচেয়ে কম", xl_max: "সবচেয়ে বেশি", xl_az: "সাজান ক→খ", xl_za: "সাজান খ→ক", xl_serial: "ক্রমিক", xl_pct: "শতকরা", xl_run: "ক্রমিক যোগ", xl_d7: "+৭ দিন", xl_d15: "+১৫ দিন", xl_d30: "+৩০ দিন", xl_today: "আজকের তারিখ", xl_words: "কথায় টাকা", xl_pending: "বকেয়া রেজিস্টার", xl_hearing: "শুনানির তালিকা", xl_disposal: "নিষ্পত্তির বিবরণী", xl_nofilter: "ফিল্টার সরান", xl_fx_ph: "=SUM(B2:B20) অথবা এই ঘরে লিখুন", xl_filter_ph: "সারি খুঁজুন…", xl_bad: "সূত্র বোঝা যায়নি। যেমন: =SUM(B2:B20)", xl_neednum: "এই ঘরে সংখ্যা নেই।", xl_needdate: "তারিখ দিন, যেমন 15.11.2026", xl_done: "হয়ে গেছে",
-    desk_h: "অফিস ডেস্ক", desk_note: "এগুলো এই ফোনেই হয়, AI লাগে না। পশ্চিমবঙ্গের হিসাব: ১ বিঘা = ২০ কাঠা, ১ কাঠা = ৭২০ বর্গফুট, ১ একর = ১০০ ডেসিমাল।", desk_words: "টাকা কথায়", desk_days: "কত দিন বাকি / পেরিয়েছে", desk_hear: "শুনানির তারিখ", desk_land: "জমির পরিমাপ", desk_memo: "মেমো লাইন", desk_go: "হিসাব করুন", desk_copy: "কপি করুন", desk_amt_ph: "যেমন 25000", desk_over: "দিন পেরিয়ে গেছে", desk_left: "দিন বাকি", desk_same: "আজই",
+    desk_h: "অফিস ডেস্ক", desk_note: "এগুলো এই ফোনেই হয়, AI লাগে না। পশ্চিমবঙ্গের হিসাব: ১ বিঘা = ২০ কাঠা, ১ কাঠা = ৭২০ বর্গফুট, ১ একর = ১০০ ডেসিমাল।", desk_words: "টাকা কথায়", desk_days: "কত দিন বাকি / পেরিয়েছে", desk_hear: "শুনানির তারিখ", desk_land: "জমির পরিমাপ", desk_memo: "মেমো লাইন", desk_go: "হিসাব করুন", desk_copy: "কপি করুন", desk_amt_ph: "যেমন 25000", desk_over: "দিন পেরিয়ে গেছে", desk_left: "দিন বাকি", desk_same: "আজই", desk_span: "চাকরির মেয়াদ", desk_bill: "শতকরা হিসাব", desk_limits: "দৈনিক ফ্রি সীমা", desk_limits_body: "যা এখন চালু: Groq-এ প্রকাশিত সীমা প্রতি মডেলে দিনে ২,০০,০০০ টোকেন, দিনে ১,০০০ অনুরোধ, মিনিটে ৮,০০০ টোকেন (২৩ অক্টোবর ২০২৬)। Gemini ও NVIDIA কোনো একটি দৈনিক টোকেন সংখ্যা প্রকাশ করে না। Mistral-এর সংখ্যা শুধু তাদের লগইন করা পাতায়। এই চারটি মিলিয়ে লাখ লাখ নয় — প্রকাশিত টোকেন হিসাব শুধু Groq-এর ২ লক্ষ প্রতি মডেল। OpenRouter দিনে ৫০টি ফ্রি অনুরোধ, Cloudflare দিনে ১০,০০০ নিউরন, SambaNova দিনে প্রায় ২০ অনুরোধ, Cohere মাসে ১,০০০ কল — এগুলো এই অ্যাকাউন্টে যুক্ত নেই।",
     f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
     f_w2p: "Word → PDF", f_w2p_d: "একটি .docx ফাইল PDF করুন।", f_x2p: "Excel → PDF", f_x2p_d: "একটি Excel / CSV ফাইলের টেবিল PDF করুন।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
     f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
@@ -628,7 +648,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "অফিস সহায়ক · এই ট্যাবেই গোপন",
     home: "হোম", nav_chat: "বিশ্বাস AI", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা",
-    priv_note: "চ্যাট, খসড়া ও স্মৃতি শুধু এই ট্যাবে থাকে। ট্যাব বন্ধ করলে মুছে যায়। লিঙ্ক খুললে অন্য কেউ আপনার চ্যাট দেখতে পায় না। ফোন রেখে গেলে লক দিন।",
+    priv_note: "চ্যাট সেভ হয় না। এই লিঙ্ক যিনিই খুলবেন, নতুন ফাঁকা চ্যাট পাবেন। আগের কথা আর দেখা যায় না।",
     lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
@@ -667,7 +687,7 @@ const STR = {
     types: { notesheet: "Notesheet (put up to the SDO)", dfa: "Draft letter (DFA, for the SDO's signature)", order: "Office order / memorandum", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste certificate re-verification report", letter: "General official letter" },
     t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
     xl_go: "Run", xl_sum: "Sum", xl_avg: "Average", xl_count: "Count", xl_min: "Min", xl_max: "Max", xl_az: "Sort A–Z", xl_za: "Sort Z–A", xl_serial: "Serial no.", xl_pct: "Percent", xl_run: "Running total", xl_d7: "+7 days", xl_d15: "+15 days", xl_d30: "+30 days", xl_today: "Today", xl_words: "Amount in words", xl_pending: "Pending register", xl_hearing: "Hearing list", xl_disposal: "Disposal sheet", xl_nofilter: "Clear filter", xl_fx_ph: "=SUM(B2:B20) or type into this cell", xl_filter_ph: "Find rows…", xl_bad: "Formula not understood. Example: =SUM(B2:B20)", xl_neednum: "This cell is not a number.", xl_needdate: "Enter a date, e.g. 15.11.2026", xl_done: "Done",
-    desk_h: "Office desk", desk_note: "These run on this phone. No AI is used. West Bengal measures: 1 bigha = 20 katha, 1 katha = 720 sq ft, 1 acre = 100 decimal.", desk_words: "Amount in words", desk_days: "Days pending or left", desk_hear: "Hearing date", desk_land: "Land measure", desk_memo: "Memo line", desk_go: "Calculate", desk_copy: "Copy", desk_amt_ph: "e.g. 25000", desk_over: "days overdue", desk_left: "days left", desk_same: "Today",
+    desk_h: "Office desk", desk_note: "These run on this phone. No AI is used. West Bengal measures: 1 bigha = 20 katha, 1 katha = 720 sq ft, 1 acre = 100 decimal.", desk_words: "Amount in words", desk_days: "Days pending or left", desk_hear: "Hearing date", desk_land: "Land measure", desk_memo: "Memo line", desk_go: "Calculate", desk_copy: "Copy", desk_amt_ph: "e.g. 25000", desk_over: "days overdue", desk_left: "days left", desk_same: "Today", desk_span: "Length of service", desk_bill: "Percent of an amount", desk_limits: "Free daily limits", desk_limits_body: "Connected now. Groq publishes 200,000 tokens per day per model, 1,000 requests per day and 8,000 tokens per minute (23 Oct 2026). Gemini and NVIDIA do not publish one daily token number. Mistral shows its cap only on the logged-in limits page. The only published token total on this app is Groq's 200,000 per model per day, not millions. Not connected, so they add nothing here: OpenRouter 50 free requests a day, Cloudflare 10,000 neurons a day, SambaNova about 20 requests a day, Cohere 1,000 calls a month.",
     f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", f_choose: "Choose file", f_run: "Convert",
     f_w2p: "Word → PDF", f_w2p_d: "Turn a .docx file into PDF.", f_x2p: "Excel → PDF", f_x2p_d: "Turn the tables of an Excel / CSV file into PDF.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
     f_pick: "Choose a file first.", f_done: "Done", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
@@ -683,7 +703,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Office desk · private in this tab",
     home: "Home", nav_chat: "Biswas AI", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services",
-    priv_note: "Chat, drafts and memory stay in this tab only. Closing the tab erases them. Someone who opens the link cannot read your chat. Set a lock if you leave the phone.",
+    priv_note: "Chat is not saved. Whoever opens this link gets a blank chat. Earlier messages cannot be read.",
     lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
@@ -1817,9 +1837,9 @@ function openDetail(id) {
 /* ---------------- Biswas AI: office chat that asks, writes documents and remembers ---------------- */
 // Memory lives in this browser (and can be exported / imported as a file). The model itself does not
 // retrain; it gets better here by reading these remembered facts and the drafts the user approved.
-let memory = store.get("bk:memory", []);        // [{text, at}]
-let examples = store.get("bk:examples", []);    // [{type, title, md, at}]
-const saveMemory = () => { store.set("bk:memory", memory); store.set("bk:examples", examples); };
+let memory = [];        // not saved; a new visit cannot read it
+let examples = [];
+const saveMemory = () => {};
 const MEM_MAX = 80, EX_MAX = 10;
 function learn(lines) {
   const added = [];
@@ -2046,10 +2066,12 @@ function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]
 const updateLast = () => updateAt(messages.length - 1);
 const scrollDown = () => { const s = $("#scroll"); s.scrollTop = messages.length ? s.scrollHeight : 0; };
 const persist = () => {
-  for (const sec of ["office", "public"]) {
-    const keep = chats[sec].filter(m => m.done || m.role === "user").map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
-    store.set("chat:" + sec, keep.slice(-40));
-  }
+  try {
+    ["chat", "chat:office", "chat:public", "bk:memory", "bk:examples", "bk:pending"].forEach(k => {
+      localStorage.removeItem("pmitra:" + k);
+      sessionStorage.removeItem("pmitra:" + k);
+    });
+  } catch (e) { /* ignore */ }
 };
 function setBusy(b) {
   $("#send").innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
@@ -2228,6 +2250,18 @@ function runDesk(kind) {
     const line = `Memo No. ${settings.memo || "SDO"}/${($("#desk-memo-n").value || "______").trim()}    Date: ${today()}`;
     $("#desk-memo-out").textContent = line;
     navigator.clipboard.writeText(line).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+  } else if (kind === "span") {
+    const a = parseDate($("#desk-join").value), b = parseDate(today());
+    if (!a || !b || b < a) return ($("#desk-span-out").textContent = t("xl_needdate"));
+    let y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth(), d = b.getDate() - a.getDate();
+    if (d < 0) { m -= 1; d += new Date(b.getFullYear(), b.getMonth(), 0).getDate(); }
+    if (m < 0) { y -= 1; m += 12; }
+    $("#desk-span-out").textContent = y + " y  " + m + " m  " + d + " d";
+  } else if (kind === "bill") {
+    const base = Number($("#desk-base").value), pct = Number($("#desk-pct").value);
+    if (!Number.isFinite(base) || !Number.isFinite(pct)) return;
+    const part = Math.round(base * pct) / 100;
+    $("#desk-bill-out").textContent = String(Math.round(part * 100) / 100);
   }
 }
 
