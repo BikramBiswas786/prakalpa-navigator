@@ -455,65 +455,10 @@ textarea.paper { white-space: pre-wrap; }
         <h2 data-t="f_title"></h2>
         <p class="lead" data-t="f_note"></p>
         <div class="toolgrid" id="f-grid"></div>
-        <section class="panel" id="desk">
-          <h2 data-t="desk_h"></h2>
-          <p class="lead" data-t="desk_note"></p>
-          <div class="desk-grid">
-            <div class="panel">
-              <h3 data-t="desk_words"></h3>
-              <input id="desk-amt" inputmode="decimal" autocomplete="off">
-              <button class="btn small primary" type="button" data-desk="words" data-t="desk_go"></button>
-              <p class="desk-out" id="desk-words-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_days"></h3>
-              <input id="desk-from" placeholder="dd.mm.yyyy" autocomplete="off">
-              <input id="desk-to" placeholder="dd.mm.yyyy" autocomplete="off">
-              <button class="btn small primary" type="button" data-desk="days" data-t="desk_go"></button>
-              <p class="desk-out" id="desk-days-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_hear"></h3>
-              <input id="desk-hear" placeholder="dd.mm.yyyy" autocomplete="off">
-              <div class="tools">
-                <button class="btn small" type="button" data-desk="h7" data-t="xl_d7"></button>
-                <button class="btn small" type="button" data-desk="h15" data-t="xl_d15"></button>
-                <button class="btn small" type="button" data-desk="h30" data-t="xl_d30"></button>
-              </div>
-              <p class="desk-out" id="desk-hear-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_land"></h3>
-              <input id="desk-land" inputmode="decimal" autocomplete="off">
-              <select id="desk-unit">
-                <option value="decimal">Decimal</option>
-                <option value="katha">Katha</option>
-                <option value="bigha">Bigha</option>
-                <option value="acre">Acre</option>
-              </select>
-              <button class="btn small primary" type="button" data-desk="land" data-t="desk_go"></button>
-              <p class="desk-out" id="desk-land-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_memo"></h3>
-              <input id="desk-memo-n" inputmode="numeric" autocomplete="off">
-              <button class="btn small primary" type="button" data-desk="memo" data-t="desk_copy"></button>
-              <p class="desk-out" id="desk-memo-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_span"></h3>
-              <input id="desk-join" placeholder="dd.mm.yyyy" autocomplete="off">
-              <button class="btn small primary" type="button" data-desk="span" data-t="desk_go"></button>
-              <p class="desk-out" id="desk-span-out"></p>
-            </div>
-            <div class="panel">
-              <h3 data-t="desk_bill"></h3>
-              <input id="desk-base" inputmode="decimal" autocomplete="off">
-              <input id="desk-pct" inputmode="decimal" autocomplete="off" placeholder="%">
-              <button class="btn small primary" type="button" data-desk="bill" data-t="desk_go"></button>
-              <p class="desk-out" id="desk-bill-out"></p>
-            </div>
-          </div>
+        <section class="panel">
+          <h2 data-t="sdo_h"></h2>
+          <p class="lead" data-t="sdo_note"></p>
+          <div class="starters" id="sdo-grid"></div>
         </section>
       </div>
     </section>
@@ -724,11 +669,11 @@ const STR = {
     d_title: "খসড়া তৈরি", d_type: "কী লিখবেন", d_lang: "ভাষা", d_to: "প্রাপক (যাকে পাঠানো হবে)", d_sub: "বিষয়", d_ref: "সূত্র / PUC", d_facts: "মূল তথ্য ও নির্দেশ", d_facts_ph: "যেমন: আবেদনকারী শ্রী … জাতি শংসাপত্রের আবেদন করেছেন; BDO-র রিপোর্ট পাওয়া গেছে; শুনানি ১৫.১১.২০২৬ তারিখে …",
     d_attach: "ফাইল যোগ করুন (GO, চিঠি)", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
     d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
-    types: { notesheet: "নোটশিট (SDO-র কাছে পেশ)", dfa: "খসড়া চিঠি (DFA, SDO-র স্বাক্ষরে)", order: "অফিস আদেশ / মেমোরান্ডাম", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "এনকোয়ারি রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই রিপোর্ট", letter: "সাধারণ সরকারি চিঠি" },
+    types: { resolution: "রেজোলিউশন (প্রশাসনিক সিদ্ধান্ত)", admin: "প্রশাসনিক অনুমোদন", order: "অফিস আদেশ", corrigendum: "সংশোধনী (corrigendum)", speaking: "কারণযুক্ত আদেশ (শুনানির পর)", reminder: "তাগিদ", minutes: "সভার কার্যবিবরণী", allotment: "বরাদ্দ / টাকা ছাড়", notesheet: "নোটশিট", dfa: "খসড়া চিঠি (DFA)", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "তদন্ত রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই", letter: "সাধারণ সরকারি চিঠি" },
     t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
     xl_go: "করুন", xl_sum: "যোগ", xl_avg: "গড়", xl_count: "গণনা", xl_min: "সবচেয়ে কম", xl_max: "সবচেয়ে বেশি", xl_az: "অ→হ সাজান", xl_za: "হ→অ সাজান", xl_serial: "ক্রমিক নম্বর", xl_pct: "শতকরা", xl_run: "ক্রমিক যোগ", xl_d7: "+৭ দিন", xl_d15: "+১৫ দিন", xl_d30: "+৩০ দিন", xl_today: "আজকের তারিখ", xl_words: "কথায় টাকা", xl_round: "দশমিকে গোল", xl_rows: "+১০ সারি", xl_pending: "বকেয়া তালিকা", xl_hearing: "শুনানির তালিকা", xl_disposal: "নিষ্পত্তির হিসাব", xl_nofilter: "খোঁজ মুছুন", xl_fx_ph: "=SUM(E2:E25) অথবা এই ঘরে লিখুন", xl_filter_ph: "সারি খুঁজুন…", xl_bad: "সূত্র বোঝা যায়নি। যেমন: =SUM(E2:E25)", xl_neednum: "এই ঘরে সংখ্যা নেই।", xl_needdate: "তারিখ দিন, যেমন 15.11.2026", xl_done: "হয়ে গেছে",
     desk_h: "অফিস ডেস্ক", desk_note: "এগুলো এই ফোনেই হয়, AI লাগে না। পশ্চিমবঙ্গের হিসাব: ১ বিঘা = ২০ কাঠা, ১ কাঠা = ৭২০ বর্গফুট, ১ একর = ১০০ ডেসিমাল।", desk_words: "টাকা কথায়", desk_days: "কত দিন বাকি / পেরিয়েছে", desk_hear: "শুনানির তারিখ", desk_land: "জমির পরিমাপ", desk_memo: "মেমো লাইন", desk_go: "হিসাব করুন", desk_copy: "কপি করুন", desk_amt_ph: "যেমন 25000", desk_over: "দিন পেরিয়ে গেছে", desk_left: "দিন বাকি", desk_same: "আজই", desk_span: "চাকরির মেয়াদ", desk_bill: "শতকরা হিসাব",
-    f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
+    f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", sdo_h: "মহকুমা শাসকের কাগজ", sdo_note: "একটা বাছুন। লেখার টেবিলে খুলবে। নোটশিট নয় — আদেশ, রেজোলিউশন, সংশোধনী, অনুমোদন।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
     f_w2p: "Word → PDF", f_w2p_d: "একটি .docx ফাইল PDF করুন।", f_x2p: "Excel → PDF", f_x2p_d: "একটি Excel / CSV ফাইলের টেবিল PDF করুন।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
     f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
@@ -749,7 +694,7 @@ const STR = {
     word_h: "Word", word_note: "লেখা সেভ করুন। সেভ হওয়া ফাইল উপরে ফোল্ডারে থাকবে, Excel-এর উপরেও।", word_title_ph: "ফাইলের নাম", word_body_ph: "এখানে লিখুন", word_save: "সেভ", word_new: "নতুন পাতা", word_saved: "সেভ হয়েছে", word_empty: "আগে কিছু লিখুন।", word_untitled: "নামহীন", word_none: "এখনও কোনো ফাইল সেভ হয়নি।",
     new_person: "নতুন ব্যবহারকারী", new_person_done: "এই ফোনে নতুন ফাঁকা চ্যাট খোলা হয়েছে।",
     priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।",
-    home: "হোম", nav_chat: "অফিসের চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
+    home: "হোম", nav_chat: "অফিসের চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "এসডিওর কাগজ", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
     lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
@@ -785,11 +730,11 @@ const STR = {
     d_title: "Create a draft", d_type: "What to write", d_lang: "Language", d_to: "To (addressee)", d_sub: "Subject", d_ref: "Reference / PUC", d_facts: "Main facts and instructions", d_facts_ph: "e.g. Sri … applied for a caste certificate; BDO's report received; hearing on 15.11.2026 …",
     d_attach: "Add file (GO, letter)", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
     d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
-    types: { notesheet: "Notesheet (put up to the SDO)", dfa: "Draft letter (DFA, for the SDO's signature)", order: "Office order / memorandum", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste certificate re-verification report", letter: "General official letter" },
+    types: { resolution: "Resolution", admin: "Administrative approval", order: "Office order", corrigendum: "Corrigendum", speaking: "Speaking order (after hearing)", reminder: "Reminder", minutes: "Minutes of a meeting", allotment: "Allotment or release of fund", notesheet: "Notesheet", dfa: "Draft letter (DFA)", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste-certificate re-verification", letter: "General official letter" },
     t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
     xl_go: "Run", xl_sum: "Sum", xl_avg: "Average", xl_count: "Count", xl_min: "Min", xl_max: "Max", xl_az: "Sort A–Z", xl_za: "Sort Z–A", xl_serial: "Serial no.", xl_pct: "Percent", xl_run: "Running total", xl_d7: "+7 days", xl_d15: "+15 days", xl_d30: "+30 days", xl_today: "Today", xl_words: "Amount in words", xl_round: "Round", xl_rows: "+10 rows", xl_pending: "Pending register", xl_hearing: "Hearing list", xl_disposal: "Disposal sheet", xl_nofilter: "Clear filter", xl_fx_ph: "=SUM(E2:E25) or type into this cell", xl_filter_ph: "Find rows…", xl_bad: "Formula not understood. Example: =SUM(E2:E25)", xl_neednum: "This cell is not a number.", xl_needdate: "Enter a date, e.g. 15.11.2026", xl_done: "Done",
     desk_h: "Office desk", desk_note: "These run on this phone. No AI is used. West Bengal measures: 1 bigha = 20 katha, 1 katha = 720 sq ft, 1 acre = 100 decimal.", desk_words: "Amount in words", desk_days: "Days pending or left", desk_hear: "Hearing date", desk_land: "Land measure", desk_memo: "Memo line", desk_go: "Calculate", desk_copy: "Copy", desk_amt_ph: "e.g. 25000", desk_over: "days overdue", desk_left: "days left", desk_same: "Today", desk_span: "Length of service", desk_bill: "Percent of an amount",
-    f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", f_choose: "Choose file", f_run: "Convert",
+    f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", sdo_h: "Papers of the Sub-Divisional Officer", sdo_note: "Pick one. It opens on the drafting desk. These are orders, resolutions, corrigenda and approvals, not a notesheet.", f_choose: "Choose file", f_run: "Convert",
     f_w2p: "Word → PDF", f_w2p_d: "Turn a .docx file into PDF.", f_x2p: "Excel → PDF", f_x2p_d: "Turn the tables of an Excel / CSV file into PDF.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
     f_pick: "Choose a file first.", f_done: "Done", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
@@ -809,7 +754,7 @@ const STR = {
     conv_h: "Conversations", conv_search: "Search conversations", conv_empty: "New chat",
     word_h: "Word", word_note: "Save the writing. Saved files sit in the folder above, and above Excel too.", word_title_ph: "File name", word_body_ph: "Write here", word_save: "Save", word_new: "New page", word_saved: "Saved", word_empty: "Write something first.", word_untitled: "Untitled", word_none: "No file saved yet.",
     new_person: "New person", new_person_done: "A new blank chat is open on this phone.",
-    home: "Home", nav_chat: "Office chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
+    home: "Home", nav_chat: "Office chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "SDO papers", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
     priv_note: "Each phone has its own chat. Nothing is stored in the link, so another person who opens it cannot read yours. On a shared phone, tap New person.",
     lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
@@ -1707,7 +1652,7 @@ function showView() {
   ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== tab; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
-  if (tab === "files") renderTools();
+  if (tab === "files") { renderTools(); renderSdo(); }
   if (tab === "catalog") renderCatalog();
   if (tab === "chat") { renderChat(); scrollDown(); }
   if (tab === "word" || tab === "table") renderWord();
@@ -1760,9 +1705,16 @@ function applyLang() {
 
 /* ---------------- OFFICE: drafting desk ---------------- */
 const DOC_TYPES = {
+  resolution: "Administrative resolution issued by the Sub-Divisional Officer, West Bengal. Heading 'Resolution', memo number and date, subject, the facts in paragraphs, then the decision beginning 'Now, therefore, it is resolved that...'. Signature block of the Sub-Divisional Officer and copy-forwarded lines. This is not a notesheet and does not ask the SDO for orders.",
+  admin: "Administrative approval issued over the signature of the Sub-Divisional Officer: reference, what is approved, the amount or the action, the conditions, and the head of account as a blank if it was not given.",
+  order: "Office order of the Sub-Divisional Officer: memo number and date, the operative direction in paragraphs, who will comply, and the SDO's signature with copy-forwarded lines. Not a notesheet.",
+  corrigendum: "Corrigendum to an earlier memo of the Sub-Divisional Officer. Quote the earlier memo number and date, state the words that stood, state the words now substituted, and say that the rest of that order stands. SDO's signature.",
+  speaking: "Speaking order of the Sub-Divisional Officer after a hearing: the parties, the date of hearing, what each side said, the rule, the reasons, and the operative order. SDO's signature.",
+  reminder: "Reminder issued over the SDO's signature. Refer to the earlier memo number and date and ask for the report or the compliance by a stated date.",
+  minutes: "Minutes of a meeting chaired by the Sub-Divisional Officer: date, time, place, who attended, numbered decisions, and the officer responsible for each.",
+  allotment: "Allotment or release of fund over the SDO's signature: the scheme, the amount, to whom, the purpose, and that the expenditure is subject to the financial rules.",
   notesheet: "Notesheet (office note) written by the dealing employee and put up directly to the SDO: continuous paragraphs (PUC and how it was received, facts and what was examined, rule or GO position, proposal), ending with a line asking for orders, the dealing employee's signature and date line, and blank space for the SDO's order. Do not write the SDO's decision.",
   dfa: "Draft letter (DFA) prepared by the employee to be issued over the SDO's signature: memo number and date, To, Sub, Ref, Sir/Madam, body in paragraphs, Yours faithfully, the SDO's signature block, and 'copy forwarded' lines if relevant.",
-  order: "Office order / memorandum issued over the SDO's signature.",
   hearing: "Notice of hearing to an applicant, issued over the SDO's signature, stating date, time, place and the original documents to bring.",
   showcause: "Show-cause notice issued over the SDO's signature, stating the allegation, the rule involved and the time allowed to reply.",
   rti: "Reply by the Public Information Officer under the RTI Act, 2005: application details, point-wise replies, and the first appellate authority's name and address as blanks with the 30-day appeal period.",
@@ -2048,6 +2000,11 @@ const TOOLS = [
   { id: "p2t", accept: ".pdf,.docx", multi: false }
 ];
 const toolFiles = {};
+const SDO_KINDS = ["resolution", "admin", "order", "corrigendum", "speaking", "reminder", "minutes", "allotment", "hearing", "showcause", "enquiry", "dfa"];
+function renderSdo() {
+  const box = $("#sdo-grid"); if (!box) return;
+  box.innerHTML = SDO_KINDS.map(k => `<button class="starter" type="button" data-kind="${k}"><b>${esc(tt("types", k))}</b></button>`).join("");
+}
 function renderTools() {
   if ($("#f-grid").dataset.lang === settings.lang) return;
   $("#f-grid").dataset.lang = settings.lang;
@@ -2748,6 +2705,10 @@ $("#mem-file").addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
+  if ((x = el("[data-kind]"))) {
+    draft.type = x.dataset.kind; draft.lang = settings.lang; saveDraft();
+    return go("office", "draft");
+  }
   if ((x = el("[data-nav]"))) {
     closeRail();
     if (x.dataset.nav === "home") return go("ai", "chat");
