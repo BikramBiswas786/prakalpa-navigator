@@ -69,9 +69,14 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .btn.small { padding: 3px 9px; font-size: .8rem; font-weight: 600; }
 .btn[disabled] { opacity: .5; cursor: default; }
 
-.body { min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
-@media (max-width: 900px) { .body { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
-.rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 18px; }
+.body { min-height: 0; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+.rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 16px; }
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .nav-toggle { display: inline-flex; }
+  .rail { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(300px, 88vw); transform: translateX(-105%); transition: transform .18s ease; }
+  .rail.open { transform: none; }
+}
 .rail h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-family: var(--f-body); font-weight: 600; margin-bottom: 6px; }
 .tasks { display: grid; gap: 4px; }
 .task { text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 8px; cursor: pointer; display: grid; gap: 0; }
@@ -80,7 +85,6 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .task small { color: var(--muted); font-size: .78rem; line-height: 1.35; }
 .railnote { font-size: .8rem; color: var(--muted); line-height: 1.45; }
 .railnote ul { margin: 4px 0 0; padding-left: 1rem; display: grid; gap: 3px; }
-@media (max-width: 900px) { .rail { display: none; } }
 .sample-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: .82rem; font-family: var(--f-display); }
@@ -159,7 +163,19 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc hr { border: 0; border-top: 1px solid #999; }
 .pdf-doc .tbl { overflow: visible; }
 /* ---- two sections: header, sub-tabs, page views ---- */
-.app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; }
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
+.stage { min-height: 0; min-width: 0; display: grid; grid-template-rows: auto 1fr; }
+.views { height: 100%; }
+.nav-toggle { display: none; }
+button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.rail-brand { display: grid; gap: 2px; }
+.rail-brand b { font-family: var(--f-display); font-size: 1.15rem; color: var(--accent); }
+.rail-brand small { color: var(--muted); font-size: .78rem; }
+.task[aria-current="page"] { background: var(--accent-soft); }
+#scrim { position: fixed; inset: 0; background: rgba(12, 14, 20, .45); z-index: 25; }
+#lock { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: var(--paper); padding: 24px; }
+#lock .panel { width: min(380px, 100%); }
+#lock h2 { font-size: 1.6rem; color: var(--accent); }
 .langbox { display: flex; align-items: center; gap: 8px; border: 2px solid var(--accent); border-radius: 10px; padding: 3px 4px 3px 10px; background: var(--accent-soft); }
 .langbox > span { font-size: .78rem; font-weight: 600; color: var(--accent); white-space: nowrap; }
 .langbox .seg { border-color: var(--accent); }
@@ -265,14 +281,15 @@ textarea.paper { white-space: pre-wrap; }
 .desk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .desk-grid .panel { gap: 8px; }
 .desk-out { margin: 0; font-size: .88rem; white-space: pre-wrap; }
-@media print { .app > header, .subnav { display: none !important; } }
+@media print { .app > header, .subnav, .rail, #scrim, #lock { display: none !important; } .body, .stage { display: block; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">Biswas AI for Office</span><small class="ver" title="App version">v7</small></div>
+    <button class="btn nav-toggle" id="nav-open" type="button" data-t="menu">মেনু</button>
+    <button class="brand" id="go-home" type="button"><h1 data-t="brand">বিশ্বাস AI</h1><span data-t="brand_sub">অফিস সহায়ক</span><small class="ver" title="App version">v8</small></button>
     <div class="seg" role="group" aria-label="Section">
       <button type="button" id="sec-office" aria-pressed="true" data-t="office">অফিস</button>
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
@@ -285,8 +302,23 @@ textarea.paper { white-space: pre-wrap; }
       </div>
     </div>
     <button class="btn" id="theme-btn" type="button" data-t="theme">থিম</button>
+    <button class="btn" id="lock-now" type="button" data-t="lock_now">লক</button>
     <button class="btn" id="open-settings" type="button" data-t="settings">সেটিংস</button>
   </header>
+  <div class="body">
+    <aside class="rail" id="rail">
+      <div class="rail-brand"><b>বিশ্বাস AI</b><small data-t="brand_sub"></small></div>
+      <nav class="tasks" id="rail-nav"></nav>
+      <div class="railnote">
+        <p data-t="priv_note"></p>
+        <input id="pin-new" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" aria-label="PIN">
+        <div class="tools">
+          <button class="btn small" type="button" id="pin-set" data-t="lock_set"></button>
+          <button class="btn small" type="button" id="pin-clear" data-t="lock_clear"></button>
+        </div>
+      </div>
+    </aside>
+    <div class="stage">
   <nav class="subnav" id="subnav" role="tablist"></nav>
 
   <main class="views">
@@ -473,7 +505,19 @@ textarea.paper { white-space: pre-wrap; }
       </div>
     </section>
   </main>
-  <div class="railnote" id="owner-notice" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="scrim" hidden></div>
+<div id="lock" hidden>
+  <form class="panel" id="lock-form">
+    <h2>বিশ্বাস AI</h2>
+    <p class="lead" data-t="lock_help"></p>
+    <input id="lock-pin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" aria-label="PIN">
+    <button class="btn primary" type="submit" data-t="lock_open"></button>
+    <p class="desk-out" id="lock-msg"></p>
+  </form>
 </div>
 
 <dialog id="settings">
@@ -521,13 +565,24 @@ textarea.paper { white-space: pre-wrap; }
 <script>
 "use strict";
 /* ---------------- storage ---------------- */
+const PRIV = new Set(["chat", "chat:office", "chat:public", "bk:memory", "bk:examples", "bk:pending", "draft", "grid", "settings", "mode", "tabs"]);
+try { PRIV.forEach(k => localStorage.removeItem("pmitra:" + k)); } catch (e) { /* ignore */ }
 const store = {
-  get(k, d) { try { const v = localStorage.getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
+  get(k, d) { try { const v = (PRIV.has(k) ? sessionStorage : localStorage).getItem("pmitra:" + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { (PRIV.has(k) ? sessionStorage : localStorage).setItem("pmitra:" + k, JSON.stringify(v)); } catch (e) { /* full or blocked */ } }
 };
 (() => { const th = store.get("theme", "auto"); if (th === "dark" || th === "light") document.documentElement.dataset.theme = th; })();
+const pinSaved = () => { try { return localStorage.getItem("pmitra:pin") || ""; } catch (e) { return ""; } };
+const sessionOpen = () => { try { return sessionStorage.getItem("pmitra:open") === "1"; } catch (e) { return false; } };
+const isOpen = () => !pinSaved() || sessionOpen();
+function showLock(on) { const l = $("#lock"); if (l) l.hidden = !on; const a = document.querySelector(".app"); if (a) a.hidden = on; }
+async function shaPin(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("biswas-ai:" + s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 const DEFAULTS = { officer: "Sub-Divisional Officer", subdiv: "Sadar", district: "", memo: "SDO" };
 let settings = Object.assign({}, DEFAULTS, store.get("settings", {}));
+try { const savedLang = localStorage.getItem("pmitra:lang"); if (savedLang === "en" || savedLang === "bn") settings.lang = savedLang; } catch (e) { /* ignore */ }
 if (settings.lang !== "en") settings.lang = "bn";   // one switch: screen language = answer language
 let mode = store.get("mode", "office");          // section: "office" or "public"
 let tabs = Object.assign({ office: "chat", public: "catalog" }, store.get("tabs", {}));
@@ -571,7 +626,10 @@ const STR = {
     mem_btn: "স্মৃতি", mem_title: "বিশ্বাস AI-এর স্মৃতি", mem_help: "বিশ্বাস AI কথাবার্তা থেকে স্থায়ী তথ্য (নাম, পদ, অফিস, পছন্দের ফরম্যাট, সংশোধন) মনে রাখে এবং অনুমোদিত খসড়ার ধরন মেনে চলে। স্মৃতি এই ব্রাউজারে থাকে; অন্য কম্পিউটারে নিতে ফাইলে রাখুন।", mem_facts: "মনে রাখা তথ্য", mem_examples: "অনুমোদিত খসড়ার নমুনা", mem_add: "যোগ করুন", mem_add_ph: "নতুন তথ্য, যেমন: স্বাক্ষরকারী — শ্রী অমুক, মহকুমা শাসক, কালনা",
     mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
-    brand: "বিশ্বাস AI", brand_sub: "Biswas AI for Office",
+    brand: "বিশ্বাস AI", brand_sub: "অফিস সহায়ক · এই ট্যাবেই গোপন",
+    home: "হোম", nav_chat: "বিশ্বাস AI", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "ফাইল ও ডেস্ক", nav_schemes: "প্রকল্প ও পরিষেবা",
+    priv_note: "চ্যাট, খসড়া ও স্মৃতি শুধু এই ট্যাবে থাকে। ট্যাব বন্ধ করলে মুছে যায়। লিঙ্ক খুললে অন্য কেউ আপনার চ্যাট দেখতে পায় না। ফোন রেখে গেলে লক দিন।",
+    lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
@@ -623,7 +681,10 @@ const STR = {
     mem_btn: "Memory", mem_title: "Biswas AI memory", mem_help: "Biswas AI remembers lasting facts from your chats (names, designations, office, preferred formats, corrections) and follows the style of drafts you approve. Memory stays in this browser; save it to a file to move it to another computer.", mem_facts: "Remembered facts", mem_examples: "Approved draft examples", mem_add: "Add", mem_add_ph: "New fact, e.g. Signing officer — Sri X, SDO, Kalna",
     mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
-    brand: "Biswas AI", brand_sub: "for Office",
+    brand: "Biswas AI", brand_sub: "Office desk · private in this tab",
+    home: "Home", nav_chat: "Biswas AI", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "Files and desk", nav_schemes: "Schemes and services",
+    priv_note: "Chat, drafts and memory stay in this tab only. Closing the tab erases them. Someone who opens the link cannot read your chat. Set a lock if you leave the phone.",
+    lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
@@ -1329,6 +1390,17 @@ const attachImages = files => files.flatMap(f => f.images || []);
 /* ---------------- sections and tabs ---------------- */
 const TABS = { office: ["chat", "draft", "table", "files"], public: ["catalog", "chat"] };
 const TAB_LABEL = { draft: "tab_draft", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog" };
+function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
+function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
+function renderRail() {
+  const tab = tabs[mode];
+  const items = [["home", "", "home"], ["office", "chat", "nav_chat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"]];
+  const nav = $("#rail-nav"); if (!nav) return;
+  nav.innerHTML = items.map(([sec, id, key]) => {
+    const on = key === "home" ? mode === "office" && tab === "chat" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
+    return `<button class="task" type="button" data-nav="${key === "home" ? "home" : sec + ":" + id}" aria-current="${on ? "page" : "false"}"><b>${esc(t(key))}</b></button>`;
+  }).join("");
+}
 function showView() {
   let tab = tabs[mode];
   if (!TABS[mode].includes(tab) && !(mode === "public" && tab === "detail")) tab = tabs[mode] = TABS[mode][0];
@@ -1342,8 +1414,10 @@ function showView() {
   if (tab === "files") renderTools();
   if (tab === "catalog") renderCatalog();
   if (tab === "chat") { renderChat(); scrollDown(); }
+  renderRail();
 }
 function go(section, tab) {
+  clearAddress();
   if (section && section !== mode) { mode = section; store.set("mode", mode); messages = chats[mode]; }
   if (tab) tabs[mode] = tab;
   store.set("tabs", tabs);
@@ -1352,12 +1426,12 @@ function go(section, tab) {
 function setLang(lang) {
   settings.lang = lang === "en" ? "en" : "bn";
   store.set("settings", settings); store.set("langChosen", true);
+  try { localStorage.setItem("pmitra:lang", settings.lang); } catch (e) { /* ignore */ }
   if (gridIsDefault()) { grid = GRID_DEFAULT[settings.lang].map(r => r.slice()); saveGrid(); }
   if (draft.text === "" ) { draft.lang = settings.lang; saveDraft(); }
   applyLang();
   $("#f-grid").dataset.lang = "";
-  const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1];
-  if (mode === "public" && tabs.public === "detail" && id) openDetail(id); else showView();
+  showView();
 }
 function applyLang() {
   document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
@@ -1376,6 +1450,8 @@ function applyLang() {
   const fl = $("#xl-filter"); if (fl) fl.placeholder = t("xl_filter_ph");
   const amt = $("#desk-amt"); if (amt) amt.placeholder = t("desk_amt_ph");
   const mn = $("#desk-memo-n"); if (mn && !mn.placeholder) mn.placeholder = "123";
+  const pin = $("#pin-new"); if (pin) pin.placeholder = t("lock_pin_ph");
+  const lp = $("#lock-pin"); if (lp) lp.placeholder = t("lock_pin_ph");
   const th = store.get("theme", "auto");
   const tb = $("#theme-btn"); if (tb) tb.textContent = t("theme") + (th === "dark" ? " · ●" : th === "light" ? " · ○" : "");
 }
@@ -1736,7 +1812,6 @@ function openDetail(id) {
     <div class="tools"><button class="btn primary" type="button" data-ask-about="${s.id}">${esc(t("dt_ask"))}</button><button class="btn" type="button" data-ask-app="${s.id}">${esc(t("dt_app"))}</button></div>`;
   tabs.public = "detail"; showView();
   $("#v-detail").scrollTop = 0;
-  try { history.replaceState(null, "", "#s-" + id); } catch (e) { /* ignore */ }
 }
 
 /* ---------------- Biswas AI: office chat that asks, writes documents and remembers ---------------- */
@@ -2178,6 +2253,36 @@ $("#mem-file").addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
+  if ((x = el("[data-nav]"))) {
+    closeRail();
+    if (x.dataset.nav === "home") return go("office", "chat");
+    const parts = x.dataset.nav.split(":");
+    return go(parts[0], parts[1]);
+  }
+  if (el("#go-home")) { closeRail(); return go("office", "chat"); }
+  if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
+  if (el("#scrim")) return closeRail();
+  if (el("#lock-now")) {
+    if (!pinSaved()) return toast(t("lock_need"));
+    try { sessionStorage.removeItem("pmitra:open"); } catch (err) { /* ignore */ }
+    closeRail(); showLock(true); return;
+  }
+  if (el("#pin-set")) {
+    const pin = $("#pin-new").value.trim();
+    if (!/^\d{4,8}$/.test(pin)) return toast(t("lock_short"));
+    shaPin(pin).then(h => { localStorage.setItem("pmitra:pin", h); try { sessionStorage.setItem("pmitra:open", "1"); } catch (err) { /* ignore */ } $("#pin-new").value = ""; toast(t("lock_saved")); });
+    return;
+  }
+  if (el("#pin-clear")) {
+    const pin = $("#pin-new").value.trim();
+    shaPin(pin).then(h => {
+      if (!pinSaved() || h !== pinSaved()) return toast(t("lock_bad"));
+      localStorage.removeItem("pmitra:pin");
+      try { sessionStorage.removeItem("pmitra:open"); } catch (err) { /* ignore */ }
+      $("#pin-new").value = ""; toast(t("lock_cleared"));
+    });
+    return;
+  }
   if ((x = el("[data-tab]"))) return go(mode, x.dataset.tab);
   if (el("#sec-office")) return go("office");
   if (el("#sec-public")) return go("public");
@@ -2290,26 +2395,41 @@ $("#settings").addEventListener("close", () => {
 });
 
 /* ---------------- start ---------------- */
-Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
-if (OWNER_NOTICE) { const n = $("#owner-notice"); n.textContent = OWNER_NOTICE; n.hidden = false; }
-applyLang();
-{ const id = (location.hash.match(/^#s-([\w-]+)/) || [])[1]; if (id && SERVICES.some(s => s.id === id)) { mode = "public"; messages = chats.public; openDetail(id); } else showView(); }
-if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
-(async () => {
-  if (!window.claude || !window.claude.use) {
-    engine = "server"; imageLimits = { maxCount: 4 };
-    $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
-    try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
-    catch (e) { showBanner(() => t("unreachable")); }
+let booted = false;
+function startApp() {
+  if (booted) return;
+  booted = true;
+  Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
+  clearAddress();
+  mode = "office"; messages = chats.office; tabs.office = "chat";
+  showView();
+  if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
+  (async () => {
+    if (!window.claude || !window.claude.use) {
+      engine = "server"; imageLimits = { maxCount: 4 };
+      $("#engine-note").textContent = " · Gemini, Llama, Kimi, Mistral +";
+      try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
+      catch (e) { showBanner(() => t("unreachable")); }
+      if (tabs[mode] === "chat") renderChat();
+      return;
+    }
+    const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
+    sample = s; downloads = d;
+    if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
+    else showBanner(() => t("no_ai_claude"));
     if (tabs[mode] === "chat") renderChat();
-    return;
-  }
-  const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
-  sample = s; downloads = d;
-  if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
-  else showBanner(() => t("no_ai_claude"));
-  if (tabs[mode] === "chat") renderChat();
-})();
+  })();
+}
+$("#lock-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const pin = $("#lock-pin").value.trim();
+  if (await shaPin(pin) !== pinSaved()) { $("#lock-msg").textContent = t("lock_bad"); return; }
+  try { sessionStorage.setItem("pmitra:open", "1"); } catch (err) { /* ignore */ }
+  $("#lock-pin").value = ""; $("#lock-msg").textContent = "";
+  showLock(false); startApp();
+});
+applyLang();
+if (!isOpen()) showLock(true); else startApp();
 </script>
 </body>
 </html>
