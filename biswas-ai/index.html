@@ -551,6 +551,7 @@ textarea.paper { white-space: pre-wrap; }
         <form class="box" id="ag-form">
           <textarea id="ag-job" rows="1" enterkeyhint="send" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <button class="btn small" type="button" id="ag-pause" data-t="pause" hidden></button>
         </form>
         <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <span id="ag-picks"></span></div>
       </div></div>
@@ -577,6 +578,7 @@ textarea.paper { white-space: pre-wrap; }
             <button class="iconbtn send" type="submit" id="send" aria-label="Send">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
+            <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
           <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
@@ -777,7 +779,7 @@ const STR = {
     ph_office: "বাংলা বা ইংরেজিতে লিখুন… যেমন: শো-কজ নোটিশের নোটশিট লিখে দিন", ph_public: "আপনার প্রশ্ন লিখুন… যেমন: অন্নপূর্ণা যোজনায় কীভাবে আবেদন করব?",
     hint: "Enter = পাঠান · Shift+Enter = নতুন লাইন · উত্তর Word, PDF, Excel-এ নামানো যায়",
     copy: "কপি", edit: "সম্পাদনা", save: "সংরক্ষণ", cancel: "বাতিল", remove: "সরান", answered_by: "উত্তর দিয়েছে: ",
-    thinking: "ভাবছে…", secs: "সেকেন্ড", slow: "কোনও ফ্রি AI ব্যস্ত থাকলে পরেরটি চেষ্টা করা হচ্ছে…", stopped: "_(থামানো হয়েছে)_",
+    thinking: "ভাবছে…", secs: "সেকেন্ড", slow: "কোনও ফ্রি AI ব্যস্ত থাকলে পরেরটি চেষ্টা করা হচ্ছে…", stopped: "_(থামানো হয়েছে)_", pause: "থামান",
     br_h: "ব্রাউজার", br_open: "পাতা খুলুন", br_empty: "এই পাতায় পড়ার মতো লেখা পাইনি।",
     copied: "কপি হয়েছে", copy_fail: "কপি করা গেল না। লেখাটি সিলেক্ট করে Ctrl+C চাপুন।", saved_edit: "সংরক্ষিত", reading: "পড়া হচ্ছে…",
     file_ready: "ফাইল দেওয়া হয়েছে", dl_cancel: "ফাইল নামানো বাতিল হয়েছে", dl_wait: "একটু অপেক্ষা করে আবার চেষ্টা করুন", dl_fail: "ফাইল তৈরি করা গেল না", making: "তৈরি হচ্ছে…", no_save: "এখানে ফাইল নামানো যাচ্ছে না।",
@@ -850,7 +852,7 @@ const STR = {
     ph_office: "Type in English or Bengali… e.g. Write a notesheet for a show-cause notice", ph_public: "Type your question… e.g. How do I apply for Annapurna Yojana?",
     hint: "Enter = send · Shift+Enter = new line · Answers can be saved as Word, PDF, Excel",
     copy: "Copy", edit: "Edit", save: "Save", cancel: "Cancel", remove: "Remove", answered_by: "Answered by: ",
-    thinking: "Thinking…", secs: "s", slow: "If a free AI is busy, the next one is being tried…", stopped: "_(stopped)_",
+    thinking: "Thinking…", secs: "s", slow: "If a free AI is busy, the next one is being tried…", stopped: "_(stopped)_", pause: "Pause",
     br_h: "Browser", br_open: "Open page", br_empty: "This page had no readable text.",
     copied: "Copied", copy_fail: "Could not copy. Select the text and press Ctrl+C.", saved_edit: "Saved", reading: "reading…",
     file_ready: "File ready", dl_cancel: "Download cancelled", dl_wait: "Wait a moment and try again", dl_fail: "Could not create the file", making: "Preparing…", no_save: "Files can't be saved here.",
@@ -1534,7 +1536,7 @@ async function askPanel(question, pages) {
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
   const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use the office note and any source pages. After each fact, name where it came from. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "");
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }) });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [{ provider: "panel", text: "", error: settings.lang === "en" ? "The free AIs did not answer." : "ফ্রি AI উত্তর দেয়নি।" }];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [{ provider: "panel", text: "", error: settings.lang === "en" ? "No free AI key is set." : "কোনো ফ্রি AI চাবি নেই।" }];
@@ -2789,6 +2791,11 @@ const persist = () => {
 };
 function setBusy(b) {
   $("#send").innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
+  const p = $("#pause"); if (p) p.hidden = !b;
+}
+function setAgentBusy(b) {
+  const p = $("#ag-pause"); if (p) p.hidden = !b;
+  const go = $("#ag-go"); if (go) go.disabled = !!b;
 }
 setInterval(() => {
   document.querySelectorAll(".thinking .secs").forEach(el => {
@@ -2802,6 +2809,7 @@ let agentKind = "free";
 let googleOn = true;
 try { googleOn = localStorage.getItem("biswas:google") !== "0"; } catch (e) { /* default on */ }
 let agentBusy = false;
+let agentHalt = false;
 let agentThreads = [];
 let agentId = "";
 function cleanAgent(s) {
@@ -2916,7 +2924,9 @@ async function runBiswasAgent(job) {
   if (!engine) return toast(t("no_ai"));
   if (agentBusy || ctl) return toast(errText("busy"));
   agentBusy = true;
-  const go = $("#ag-go"); if (go) go.disabled = true;
+  agentHalt = false;
+  ctl = new AbortController();
+  setAgentBusy(true);
   const lang = settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.";
   let cur = agentThreads.find(t => t.id === agentId);
   if (!cur) { cur = { id: nid(), title: "", at: Date.now(), kind: agentKind, messages: [] }; agentThreads.unshift(cur); agentId = cur.id; }
@@ -2935,11 +2945,13 @@ async function runBiswasAgent(job) {
     ai.done = true;
     ai.think = settings.lang === "en" ? "Answered from the October 2026 note. Asking the free AIs too." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর। ফ্রি AI-কেও জিজ্ঞাসা করছি।";
     renderAgentView();
-    ai.panel = await askPanel(job);
+    try { ai.panel = await askPanel(job); } catch (e) { ai.think = t("stopped"); }
     cur.at = Date.now();
     saveAgent();
     agentBusy = false;
-    if (go) go.disabled = false;
+    agentHalt = false;
+    ctl = null;
+    setAgentBusy(false);
     const box = $("#ag-job"); if (box) box.value = "";
     renderAgentView();
     return;
@@ -2948,7 +2960,7 @@ async function runBiswasAgent(job) {
     let ids = [];
     ai.think = t("ag_search"); renderAgentView();
     try {
-      const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
+      const plan = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
       const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
     } catch (e) { ids = []; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
@@ -2966,7 +2978,7 @@ async function runBiswasAgent(job) {
         mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
         let one = { title: hit.title, url: hit.url, text: "", more: [] };
         try {
-          const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }) });
+          const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
           if (rr.ok) one = await rr.json();
         } catch (e) { /* next page */ }
         const text = String(one.text || "").length > 80 ? String(one.text || "") : String(hit.text || one.text || "");
@@ -2982,7 +2994,7 @@ async function runBiswasAgent(job) {
     let queries = [job];
     if (!writerOff) try {
       mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
-      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for this job: the official rule, the latest government order, and the how-to page. No other text.` });
+      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for this job: the official rule, the latest government order, and the how-to page. No other text.` });
       const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(jq.queries)) {
         const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3);
@@ -2993,7 +3005,7 @@ async function runBiswasAgent(job) {
     for (let i = 0; i < queries.length; i++) {
       mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i] + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
       try {
-        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true, google: useGoogle }) });
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true, google: useGoogle }), signal: ctl ? ctl.signal : undefined });
         const data = rr.ok ? await rr.json() : {};
         const orders = Array.isArray(data.hits) ? data.hits : [];
         const ghits = Array.isArray(data.google) ? data.google : [];
@@ -3033,9 +3045,9 @@ async function runBiswasAgent(job) {
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
-    const draft = await aiRun(prior, { fast: true, system: sys });
+    const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nAudit:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest or mark it unchecked. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
+    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nAudit:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest or mark it unchecked. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
     ai.pages = snap();
     ai.content = auditHead(pages) + "\n\n" + dropCutoff(cleanAgent(checked.text || draft.text), job);
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
@@ -3044,16 +3056,24 @@ async function runBiswasAgent(job) {
     saveAgent();
     }
   } catch (e) {
+    const aborted = agentHalt || (e && (e.name === "AbortError" || e.code === "cancelled"));
+    if (aborted) {
+      ai.content = (String(ai.content || "").trim() ? ai.content + "\n\n" : "") + t("stopped");
+      ai.error = "";
+    } else {
     const found = deepDump(pages);
     ai.pages = snap();
     ai.content = found ? auditHead(pages) + "\n\n" + found : cleanAgent((e && e.text) || "");
     ai.error = found ? "" : aiFailed(e);
+    }
     ai.done = true;
     saveAgent();
   } finally {
     agentBusy = false;
-    if (go) go.disabled = false;
-    const box = $("#ag-job"); if (box) box.value = "";
+    agentHalt = false;
+    ctl = null;
+    setAgentBusy(false);
+    const box = $("#ag-job"); if (box && !String(ai.content || "").includes(t("stopped"))) box.value = "";
     renderAgentView();
   }
 }
@@ -3098,13 +3118,16 @@ async function ask(text) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240), google: true }) });
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240), google: true }), signal: ctl.signal });
       const data = rr.ok ? await rr.json() : { pages: [] };
       const pages = Array.isArray(data.pages) ? data.pages.slice(0, 4) : [];
       ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
       ai.browseAt = 0;
       researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
-    } catch (e) { ai.pages = []; }
+    } catch (e) {
+      if (e && e.name === "AbortError") { ai.content = t("stopped"); ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      ai.pages = [];
+    }
     if (live()) updateAt(box.indexOf(ai));
   }
   try {
@@ -3620,6 +3643,8 @@ if (agBox) {
 }
 const agGo = $("#ag-go"); if (agGo) agGo.addEventListener("mousedown", e => e.preventDefault());
 $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent(); });
+const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (ctl) ctl.abort(); });
+const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
 const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => renderConv());
 function resume() {
