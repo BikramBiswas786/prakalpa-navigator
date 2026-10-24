@@ -13,6 +13,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: LLM7_API_KEY
+        sync: false
       - key: NARA_API_KEY
         sync: false
       - key: GEMINI_API_KEY
