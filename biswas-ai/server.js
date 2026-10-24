@@ -86,9 +86,27 @@ function followLinks(html, base) {
   }
   return out.slice(0, 3);
 }
+async function searchOrders(q, found, add) {
+  for (let page = 1; page <= 2; page++) {
+    if (found.length >= 8) break;
+    try {
+      const url = "https://wbxpress.com/?s=" + encodeURIComponent(q) + (page > 1 ? "&paged=" + page : "");
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0" } });
+      const html = await r.text();
+      const re = /<a[^>]+href="(https:\/\/wbxpress\.com\/[a-z0-9-]{8,}\/)"[^>]*>([\s\S]*?)<\/a>/gi;
+      let m;
+      while ((m = re.exec(html)) && found.length < 8) {
+        const title = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        if (title.length < 12) continue;
+        add(title.slice(0, 140), m[1]);
+      }
+    } catch (e) { /* the next page or source still runs */ }
+  }
+}
 async function searchWeb(q) {
   const found = [];
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
+  await searchOrders(q, found, add);
   const hints = [
     [/birth|death|জন্ম|মৃত্যু/i, [
       ["Janma-Mrityu Tathya", "https://janma-mrityutathya.wb.gov.in/"],
@@ -99,40 +117,19 @@ async function searchWeb(q) {
     [/licen[cs]e|sarathi|driving/i, [["Sarathi", "https://sarathi.parivahan.gov.in/"]]],
     [/land|mutation|khatian|খতিয়ান|banglarbhumi/i, [["Banglarbhumi", "https://banglarbhumi.gov.in/"]]]
   ];
-  try {
-    const r = await fetch("https://wbxpress.com/?s=" + encodeURIComponent(q), { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0" } });
-    const html = await r.text();
-    const re = /<a[^>]+href="(https:\/\/wbxpress\.com\/[a-z0-9-]{8,}\/)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let m;
-    while ((m = re.exec(html)) && found.length < 4) {
-      const title = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      if (title.length < 12) continue;
-      add(title.slice(0, 140), m[1]);
-    }
-  } catch (e) { /* the other sources still run */ }
-  for (const [re, rows] of hints) if (re.test(q)) for (const [title, url] of rows) add(title, url);
-  try {
-    const r = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q), { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0" } });
-    const html = await r.text();
-    const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    let m;
-    while ((m = re.exec(html)) && found.length < 6) {
-      let href = m[1].replace(/&/g, "&");
-      const ud = href.match(/uddg=([^&]+)/);
-      if (ud) href = decodeURIComponent(ud[1]);
-      add(m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 140), href);
-    }
-  } catch (e) { /* search can fail; the order site above still runs */ }
-  try {
-    const u = "https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=2&format=json&srsearch=" + encodeURIComponent(q);
-    const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0" } });
-    const data = await r.json();
-    for (const row of ((data.query && data.query.search) || []).slice(0, 2)) {
-      if (!row.title) continue;
-      add(row.title, "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(row.title).replace(/ /g, "_")));
-    }
-  } catch (e) { /* ignore */ }
-  return found.slice(0, 6);
+  if (found.length < 6) for (const [re, rows] of hints) if (re.test(q)) for (const [title, url] of rows) add(title, url);
+  if (found.length < 3) {
+    try {
+      const u = "https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=2&format=json&srsearch=" + encodeURIComponent(q);
+      const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0" } });
+      const data = await r.json();
+      for (const row of ((data.query && data.query.search) || []).slice(0, 2)) {
+        if (!row.title) continue;
+        add(row.title, "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(row.title).replace(/ /g, "_")));
+      }
+    } catch (e) { /* ignore */ }
+  }
+  return found.slice(0, 8);
 }
 async function wiki(q) {
   try {
@@ -217,7 +214,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v34"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v35"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
