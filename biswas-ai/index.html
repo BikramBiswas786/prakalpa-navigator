@@ -1532,7 +1532,7 @@ function agreeArticle(rows, pages) {
 async function askPanel(question, pages) {
   const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 6)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
-  const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use only the source pages below. After each fact, name the page. Do not invent a fee, a date or an order number. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "\nNo source page was opened. Say that you cannot add a figure.");
+  const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use the office note and any source pages. After each fact, name where it came from. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }) });
     if (!r.ok) return [{ provider: "panel", text: "", error: settings.lang === "en" ? "The free AIs did not answer." : "ফ্রি AI উত্তর দেয়নি।" }];

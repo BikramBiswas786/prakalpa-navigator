@@ -289,11 +289,24 @@ export async function POST(request) {
     };
     const answers = await Promise.all(ids.map(async id => {
       const p = PROVIDERS[id];
-      const model = p.models[0];
-      const r = await attempt(p, model, { ...body, images: [], maxOut: 700 }, request.signal, 12000);
-      if (!r.ok) return { provider: id, model, text: "", error: String(r.error || "failed").slice(0, 180) };
-      const text = await readAll(r.stream);
-      return { provider: id, model, text, error: text ? "" : "empty" };
+      const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
+      const models = p.models.slice();
+      for (const name of extra) if (!models.includes(name)) models.push(name);
+      let last = { provider: id, model: models[0], text: "", error: "no answer" };
+      for (const model of models.slice(0, 3)) {
+        const r = await attempt(p, model, { ...body, images: [], maxOut: 900 }, request.signal, 14000);
+        if (!r.ok) {
+          const raw = String(r.error || "");
+          last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };
+          if (/rate limit|429|1300/i.test(raw)) continue;
+          break;
+        }
+        const text = await readAll(r.stream);
+        if (text && !/^\s*\{"object"\s*:\s*"error"/i.test(text)) return { provider: id, model, text, error: "" };
+        last = { provider: id, model, text: "", error: "empty answer" };
+      }
+      if (last.error === "rate limit") cool(id, 10 * 60 * 1000);
+      return last;
     }));
     return json({ answers });
   }
