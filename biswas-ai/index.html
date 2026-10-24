@@ -844,7 +844,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v65", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v66", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1604,7 +1604,15 @@ How this office works (follow it):
 - Put ______ for any fact you were not given. Never make up names, numbers or dates.
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
-  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.` + (schemeOpen ? " This conversation belongs to one scheme only. Do not mix in other schemes." : "");
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal.
+First answer, and only when they ask how to apply: short steps, the office, the portal named in the catalogue, the documents, any fee that is written down, and the time if it is written down. Use the current scheme name, with the old name in brackets. Government camps and offices do not charge a tout's fee.
+If they ask for more detail, an analysis, a review, features, each point, or any new rule: do not send that application card again. Do not pad it with longer sentences.
+Write four short parts instead.
+1. On record. Only a fact that is in the catalogue note or in a page opened below. Name where it is written.
+2. Not on record. Say plainly what is not known: the amount, how many years of practice, a training course, an exhibition, a new rule, a processing time. Leave it unknown. Do not write "usually" or "may vary" to hide a guess.
+3. Reading. What the scheme name is for, which office is named, and what a person should check next. Compare it with another scheme only when that other scheme is in the knowledge base.
+4. What would confirm a new rule. The real portal or office already named. Do not invent a web address. Do not turn a district page into a state-wide rule.
+Never invent a URL, an amount, a year, a certificate, or a programme. A link is allowed only if it is written in the catalogue or in a page below.` + (schemeOpen ? " This conversation belongs to one scheme only. Do not mix in other schemes. A follow-up still has to add a new point, not repeat the card." : "");
   const simple = `MODE: CHAT. This is an ordinary chat, separate from the office desk. Answer the question directly, the way a normal assistant would. Do not turn the reply into a notesheet, letter or office format unless the user asks for one. No preamble.`;
   const modeText = mode === "office" ? office : mode === "public" ? pub : simple;
   return yearLine() + `\nYou are "Biswas AI" (বিশ্বাস AI), an assistant for West Bengal Government office work and public services. You can help with questions, writing, translation, maths and explaining documents. If asked who you are, say you are Biswas AI, an independent tool, not a Government app. Do not name a person as your maker.
@@ -3210,7 +3218,7 @@ async function ask(text) {
   const agent = box === chats.office;
   const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
   let researchNote = "";
-  if (mode === "ai" && String(text || "").trim().length > 8 && !greet) {
+  if ((mode === "ai" || mode === "public") && String(text || "").trim().length > 8 && !greet) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
@@ -3228,7 +3236,8 @@ async function ask(text) {
   }
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
-    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : undefined;
+    const pagesNote = researchNote ? "\n\nPages opened for this question. A fact in your answer must come from these pages or from the catalogue. If a page does not contain the amount, the new rule, or the years of practice, say it is not on record. Do not invent a link.\n\n" + researchNote : "";
+    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote : undefined;
     const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
     if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
