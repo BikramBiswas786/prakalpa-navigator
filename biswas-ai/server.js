@@ -183,6 +183,25 @@ function parseGoogleBatch(text) {
   }
   return out;
 }
+function safeBatch(text) {
+  try { return parseGoogleBatch(text); } catch (e) { return {}; }
+}
+function titleHit(text, title) {
+  const words = String(title || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3).slice(0, 8);
+  if (!words.length) return false;
+  const hay = String(text || "").toLowerCase();
+  return words.filter(w => hay.includes(w)).length >= Math.min(4, words.length);
+}
+async function openReadable(url) {
+  const safe = safeHttpUrl(url);
+  if (!safe) return { url: "", text: "" };
+  try {
+    const r = await fetch(safe, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { "user-agent": CHROME, accept: "text/html" } });
+    if (!r.ok) return { url: "", text: "" };
+    const text = readableText(await r.text());
+    return { url: r.url || safe, text };
+  } catch (e) { return { url: "", text: "" }; }
+}
 async function decodeGoogleNews(ids, jar) {
   const headers = { ...NAV };
   const cookie = cookieHeader(jar || {});
@@ -204,17 +223,26 @@ async function decodeGoogleNews(ids, jar) {
   if (!ready.length) return { urls: {}, signed: 0 };
   const envelopes = ready.map(s => ["Fbv4je", JSON.stringify(["garturlreq", GART_CTX, s.id, /^\d+$/.test(s.ts) ? Number(s.ts) : s.ts, s.sg]), null, s.req]);
   const body = "f.req=" + encodeURIComponent(JSON.stringify([envelopes]));
-  const postHeaders = { ...headers, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", origin: "https://news.google.com", referer: "https://news.google.com/" };
-  try {
-    const dec = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
-      method: "POST",
-      headers: postHeaders,
-      body,
-      signal: AbortSignal.timeout(15000)
-    });
-    if (!dec.ok) return { urls: {}, signed: ready.length };
-    return { urls: parseGoogleBatch(await dec.text()), signed: ready.length };
-  } catch (e) { return { urls: {}, signed: ready.length }; }
+  const attempts = [
+    { "user-agent": CHROME, "content-type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    { "user-agent": CHROME, "content-type": "application/x-www-form-urlencoded;charset=UTF-8", origin: "https://news.google.com", referer: "https://news.google.com/", ...(cookie ? { cookie } : {}) }
+  ];
+  const notes = [];
+  for (const postHeaders of attempts) {
+    try {
+      const dec = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
+        method: "POST",
+        headers: postHeaders,
+        body,
+        signal: AbortSignal.timeout(12000)
+      });
+      const text = await dec.text();
+      const urls = dec.ok ? safeBatch(text) : {};
+      notes.push(dec.status + (text.includes("garturlres") ? ":yes" : ":no"));
+      if (Object.keys(urls).length) return { urls, signed: ready.length, batch: notes.join(",") };
+    } catch (e) { notes.push("err"); }
+  }
+  return { urls: {}, signed: ready.length, batch: notes.join(",") || "none" };
 }
 async function searchGoogle(q) {
   const found = [];
@@ -236,15 +264,17 @@ async function searchGoogle(q) {
       let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
       title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/\s+/g, " ").trim();
       const link = ((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+      const source = ((block.match(/<source[^>]+url="([^"]+)"/i) || [])[1] || "").trim();
       const id = googleArticleId(link);
       if (title.length < 12 || !id) continue;
-      items.push({ title: title.slice(0, 160), id });
+      items.push({ title: title.slice(0, 160), id, source });
     }
     why.items = items.length;
     const decoded = await decodeGoogleNews(items.map(x => x.id), jar);
     const urls = decoded.urls || {};
     why.signed = decoded.signed || 0;
     why.decoded = Object.keys(urls).length;
+    why.batch = decoded.batch || "";
     const picked = [];
     await Promise.all(items.map(async (item, i) => {
       const pub = urls[String(i)];
@@ -254,6 +284,17 @@ async function searchGoogle(q) {
     }));
     picked.sort((a, b) => a.n - b.n);
     for (const row of picked) add(row.title, row.url);
+    if (!found.length) {
+      for (const item of items) {
+        if (found.length >= 3) break;
+        let origin = "";
+        try { origin = new URL(item.source).origin; } catch (e) { continue; }
+        const q = item.title.split(" - ")[0].slice(0, 90);
+        const page = await openReadable(origin + "/?s=" + encodeURIComponent(q));
+        if (page.text.length > 80 && titleHit(page.text, q)) add(item.title, page.url);
+      }
+      why.fallback = found.length;
+    }
     why.kept = found.length;
   } catch (e) { why.error = "failed"; }
   const out = found.slice(0, 3);
@@ -372,7 +413,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v37"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v38"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
