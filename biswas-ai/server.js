@@ -576,7 +576,7 @@ function dropBangladesh(row) {
   return false;
 }
 async function searchMore(q, opts) {
-  const cap = opts && opts.wide ? 36 : 24;
+  const cap = opts && opts.wide ? 48 : 24;
   const [par, parKey, tavily, exa, fire, serper, keiro, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
     searchParallel(q), searchParallelKey(q), searchTavily(q), searchExa(q), searchFirecrawl(q), searchSerper(q), searchKeiro(q),
     searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
@@ -779,7 +779,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v75"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v76"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
