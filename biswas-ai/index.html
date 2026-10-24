@@ -3065,7 +3065,6 @@ async function runBiswasAgent(job) {
           .map(s => {
             let q = s;
             if (/\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
-            if (!/west bengal|wbxpress/i.test(q)) q += " West Bengal";
             return q.slice(0, 180);
           });
         if (next.length) queries = next;
@@ -3079,20 +3078,10 @@ async function runBiswasAgent(job) {
         const data = rr.ok ? await rr.json() : {};
         const orders = Array.isArray(data.hits) ? data.hits : [];
         const ghits = Array.isArray(data.google) ? data.google : [];
-        if (useGoogle) {
-          await readRound(orders, Math.min(10, pages.length + 2));
-          mark((settings.lang === "en" ? "Google: " : "গুগল: ") + queries[i]);
-          if (!ghits.length) {
-            ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no readable page" : " — পড়ার মতো পাতা নেই";
-            renderAgentView();
-          } else await readRound(ghits, Math.min(10, pages.length + 2));
-          const more = Array.isArray(data.more) ? data.more : [];
-          mark((settings.lang === "en" ? "Google, Bing, MSN, Yahoo, DuckDuckGo, Wikipedia, Parallel: " : "গুগল, বিং, এমএসএন, ইয়াহু, ডাকডাকগো, উইকিপিডিয়া, প্যারালেল: ") + queries[i]);
-          if (!more.length) {
-            ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no page" : " — পাতা নেই";
-            renderAgentView();
-          } else await readRound(more, Math.min(12, pages.length + 8));
-        } else await readRound(orders, 10);
+        const more = Array.isArray(data.more) ? data.more : [];
+        if (more.length) await readRound(more, Math.min(12, pages.length + 8));
+        if (useGoogle && ghits.length) await readRound(ghits, Math.min(10, pages.length + 2));
+        if (orders.length) await readRound(orders, Math.min(8, pages.length + 2));
       } catch (e) { /* the next search still runs */ }
     }
     mark(settings.lang === "en" ? "Asking the free AIs, then keeping only the lines that match" : "ফ্রি AI-কে জিজ্ঞাসা করছি, তারপর যে লাইন মিলেছে শুধু সেটা রাখছি");
