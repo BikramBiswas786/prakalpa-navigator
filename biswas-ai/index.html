@@ -751,7 +751,7 @@ function openSchemeAi(id, kind) {
   tabs.public = "chat";
   bindMessages();
   showView();
-  if (!fresh || agentBusy || ctl) return;
+  if (!fresh || chatCtl) return;
   const name = (s[settings.lang] || s.bn).n;
   ask(kind === "app" ? t("ask_app", name) : t("ask_scheme", name));
 }
@@ -760,6 +760,7 @@ let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
 let sample = null, downloads = null, imageLimits = null;
 let engine = "server";   // website always uses the server; claude.ai can take over after boot
 let ctl = null;
+let chatCtl = null;
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -869,7 +870,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v70", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v71", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1488,11 +1489,12 @@ function knowledge() {
   const keep = parts.filter(t => {
     const sec = t.trim().charAt(0);
     if (sec === "D") return false;            // replaced by the live catalogue below
-    if (sec === "E") return mode === "office" || staff;
-    return true;
+    if (sec === "E") return mode === "office";
+    if (mode === "public" && sec === "E") return false;
+    return mode === "public" || mode === "office";
   });
-  if (schemeOpen && mode === "public") keep.push("This chat is only about one scheme. Do not answer as if it were another scheme. If they ask about a different scheme, tell them to open that scheme's own page.\n" + serviceFacts(schemeOpen));
-  else if (mode === "public" || schemes) keep.push(catalogueText());
+  if (mode === "public" && schemeOpen) keep.push("This chat is only about one scheme. Do not answer as if it were another scheme. If they ask about a different scheme, tell them to open that scheme's own page.\n" + serviceFacts(schemeOpen));
+  else if (mode === "public") keep.push(catalogueText());
   return keep.join("\n");
 }
 
@@ -1638,21 +1640,33 @@ Write four short parts instead.
 3. Reading. What the scheme name is for, which office is named, and what a person should check next. Compare it with another scheme only when that other scheme is in the knowledge base.
 4. What would confirm a new rule. The real portal or office already named. Do not invent a web address. Do not turn a district page into a state-wide rule.
 Never invent a URL, an amount, a year, a certificate, or a programme. A link is allowed only if it is written in the catalogue or in a page below.` + (schemeOpen ? " This conversation belongs to one scheme only. Do not mix in other schemes. A follow-up still has to add a new point, not repeat the card." : "");
-  const simple = `MODE: CHAT. This is an ordinary chat, separate from the office desk. Answer the question directly, the way a normal assistant would. Do not turn the reply into a notesheet, letter or office format unless the user asks for one. No preamble.`;
-  const modeText = mode === "office" ? office : mode === "public" ? pub : simple;
-  return yearLine() + `\nYou are "Biswas AI" (বিশ্বাস AI), an assistant for West Bengal Government office work and public services. You can help with questions, writing, translation, maths and explaining documents. If asked who you are, say you are Biswas AI, an independent tool, not a Government app. Do not name a person as your maker.
-Today is ${today()}. ${off}
-${modeText}
+  const simple = "";
+  if (mode === "public") {
+    return yearLine() + `\nYou are the public helper for a resident of West Bengal, India. You are not Biswas AI chat, not the research agent, and not the office notesheet desk. Do not write a notesheet or an office letter unless the person asks for one.
+Today is ${today()}.
+${pub}
 Language: ${lang}
-Accuracy rules, most important:
-- Never invent GO, memo or notification numbers, dates, section numbers, amounts or limits. If you do not know the exact figure, say so and name where to check (the department website, wbxpress.com, the gazette, e-District).
-- Your own knowledge may be old, and West Bengal changed government in May 2026. The knowledge base below is newer: prefer it. Say "reported — please verify" for items marked (reported), and say the status is not confirmed for items marked (status?).
-- For a first "how do I apply" question, give what it gives, who is eligible, how and where to apply, documents, and its current status, then the official portal. If a reading of the dataset is attached below, follow that reading instead of repeating this list.
-- For caste certificate questions follow section B, including the 2026 re-verification and the new OBC list.
-- If the user attached a document, answer from it and quote the relevant paragraph or clause number.
-- Explain rules; do not decide individual cases. The competent authority decides.
-Format: Markdown. In OFFICE mode notes and drafts are paragraphs (see above). In PUBLIC mode numbered steps are fine where order matters. Tables only when they help. Keep it focused.
+Accuracy rules:
+- Never invent a GO number, a fee, a date, or a URL. A link is allowed only if it is written in the catalogue or in a page below.
+- Prefer the catalogue over your own memory. Say "reported — please verify" for items marked (reported).
+- Bengali here means West Bengal, not Bangladesh.
+- If a reading of the dataset is attached, follow that reading. Do not repeat the application card when they asked for more detail.
 ${knowledge()}`;
+  }
+  if (mode === "office") {
+    return yearLine() + `\nYou are the office assistant for a dealing employee. You are not the public scheme desk and not the research agent. Do not answer with the public application card.
+Today is ${today()}. ${off}
+${office}
+Language: ${lang}
+Accuracy rules:
+- Never invent GO, memo or notification numbers, dates, section numbers, amounts or limits. If you do not know the exact figure, say so.
+- The knowledge base below is newer than your training. Prefer it. Say "reported — please verify" for items marked (reported).
+- For caste certificate questions follow section B.
+- If a document is attached, quote the relevant line. Explain the rule. Do not decide the case. The SDO decides.
+- Notes and drafts are paragraphs. Tables only for a statement.
+${knowledge()}`;
+  }
+  return shortRules();
 }
 
 
@@ -1964,7 +1978,7 @@ function shortRules() {
   const lang = settings.lang === "en"
     ? "Reply in English unless the user writes in Bengali. Bengali answers use correct colloquial Bengali in Bengali script."
     : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
-  return yearLine() + `\nYou are Biswas AI (বিশ্বাস AI), a normal assistant. Answer the question directly. Do not turn it into an office letter unless the user asks. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say what the opened pages do not contain. Do not claim a 2021 cutoff. Write short paragraphs, not a wide table.`;
+  return yearLine() + `\nYou are Biswas AI chat, a normal assistant. You are not the public scheme desk, not the research agent, and not the office notesheet desk. Answer the question that was asked. Do not turn it into a scheme card, a notesheet, or a West Bengal office note unless the user asked for that. Bengali is only the language, not a switch to Bangladesh and not a switch to a government scheme. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say what the opened pages do not contain. Do not claim a 2021 cutoff. Write short paragraphs, not a wide table.`;
 }
 async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false } = {}) {
   if (!engine) throw { code: "not_ready" };
@@ -2852,7 +2866,7 @@ function openThread(id) {
   closeRail(); const sheet = $("#hist-sheet"); if (sheet) sheet.hidden = true; showView();
 }
 function newThread() {
-  if (ctl) ctl.abort();
+  if (chatCtl) chatCtl.abort();
   touchThread();
   const cur = threads.find(t => t.id === threadId);
   if (cur && !(cur.messages || []).length) { messages = cur.messages; chats.ai = messages; pendingFiles = []; mode = "ai"; tabs.ai = "chat"; showView(); return; }
@@ -2877,7 +2891,7 @@ function renderPublicConv() {
   document.querySelectorAll("[data-conv-arch]").forEach(b => { b.textContent = pubArch ? t("show_chats") : t("show_arch"); });
 }
 function newPublicChat() {
-  if (ctl) ctl.abort();
+  if (chatCtl) chatCtl.abort();
   touchPublic();
   const list = schemeOpen ? (schemeThreads[schemeOpen] = schemeThreads[schemeOpen] || []) : publicThreads;
   const cur = list.find(t => t.id === currentPublicId());
@@ -3136,6 +3150,9 @@ function openAgent(id) {
   if (cur && cur.kind) agentKind = cur.kind;
   renderAgentView();
 }
+function officeFile(s) {
+  return /\b(dcrb|pension|gratuity|notesheet|heir)\b|নোটশিট|পেনশন|গ্র্যাচুইটি|উত্তরাধিকার/i.test(String(s || ""));
+}
 async function runBiswasAgent(job) {
   if (!engine) return toast(t("no_ai"));
   if (agentBusy || ctl) return toast(errText("busy"));
@@ -3270,18 +3287,18 @@ async function runBiswasAgent(job) {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
-    let sys = officeTopic(job)
-      ? yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only when the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the private audit lists it under Agreed. If only one engine says it, leave it out. Do not show the audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages)
-      : yearLine() + `\nYou answer every part of the user's question, in order. ${lang} Do not stop after the first fact. Use the pages and the other AI notes. If one page lacks a fact, use another. Do not say a fact is missing unless none of the pages contain it. Do not mention West Bengal schemes, DCRB, pensions, Annapurna, Lakshmir Bhandar, land records, or birth and death registration unless the question asked about them. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
-    if (officeTopic(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
+    let sys = officeFile(job)
+      ? yearLine() + `\nYou are the research agent. You are not the public helper and not the office notesheet writer. ${lang} The job is about a West Bengal office rule. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only because the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. A figure, fee or date is a fact only when two pages agree. Do not show an audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date.\n\n` + auditHead(pages)
+      : yearLine() + `\nYou are the research agent. You are not the public scheme helper and not the office notesheet writer. ${lang} Answer every part of the job, in order. Use the pages and the other AI notes. Do not stop after the first fact. Do not mention a West Bengal scheme, DCRB, a pension, Annapurna, a fire licence, or land records unless the job asked about that. Do not answer from Bangladesh unless the job asked about Bangladesh. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
+    if (officeFile(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
-    if (officeTopic(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
+    if (officeFile(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (notes) sys += "\n\nOther AIs, on the same question:\n" + notes;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
-    const checkSys = officeTopic(job)
+    const checkSys = officeFile(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
       : `You are the editor. ${lang} The note must answer every part of the job. Keep facts that the pages support. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Delete a line that says a fact is missing when another page states it. Do not invent a score. Return only the corrected note.`;
     const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys });
@@ -3316,7 +3333,7 @@ async function runBiswasAgent(job) {
 }
 async function ask(text) {
   if (!engine) return toast(t("no_ai"));
-  if (agentBusy || ctl) return toast(errText("busy"));
+  if (chatCtl) return toast(errText("busy"));
   if (tabs[mode] !== "chat") go(mode, "chat");
   const files = pendingFiles; pendingFiles = [];
   let content = text;
@@ -3346,7 +3363,7 @@ async function ask(text) {
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
   while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
   while (turns.length && turns[0].role !== "user") turns.shift();
-  ctl = new AbortController();
+  chatCtl = new AbortController();
   const live = () => box === messages;
   const agent = box === chats.office;
   const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
@@ -3355,7 +3372,7 @@ async function ask(text) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(text) }), signal: ctl.signal });
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(text) }), signal: chatCtl.signal });
       const data = rr.ok ? await rr.json() : { pages: [] };
       const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
       const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && !foreign(p)).slice(0, 4);
@@ -3363,7 +3380,7 @@ async function ask(text) {
       ai.browseAt = 0;
       researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
     } catch (e) {
-      if (e && e.name === "AbortError") { ai.content = t("stopped"); ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      if (e && e.name === "AbortError") { ai.content = t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
       ai.pages = [];
     }
     if (live()) updateAt(box.indexOf(ai));
@@ -3374,7 +3391,7 @@ async function ask(text) {
     if (live()) updateAt(box.indexOf(ai));
     try {
       const note = await aiRun([{ role: "user", content: "Question:\n" + String(text).slice(0, 2000) }], {
-        fast: true, signal: ctl.signal,
+        fast: true, signal: chatCtl.signal,
         system: `You are the reading step for a West Bengal, India service. Bengali does not mean Bangladesh. Ignore any page about Bangladesh, a .bd site, Dhaka, or the Bangladesh Fire Service. A fire licence is the West Bengal one. Do not write the answer the person will see. Read the dataset and the pages. Write a short analysis in ${settings.lang === "en" ? "English" : "colloquial Bengali"}.
 - Asked: how to apply, or more detail, or a new rule.
 - On record: only a line that is written in the dataset or a page. Name where it is written.
@@ -3388,7 +3405,7 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
       ai.think = thought || ai.think;
       if (live()) updateAt(box.indexOf(ai));
     } catch (e) {
-      if (e && (e.name === "AbortError" || e.code === "cancelled")) { ai.content = t("stopped"); ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      if (e && (e.name === "AbortError" || e.code === "cancelled")) { ai.content = t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
       thought = "";
     }
   }
@@ -3397,7 +3414,7 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
     const pagesNote = researchNote ? "\n\nPages opened for this question. A fact in your answer must come from these pages or from the catalogue. If a page does not contain the amount, the new rule, or the years of practice, say it is not on record. Do not invent a link.\n\n" + researchNote : "";
     const readNote = thought ? "\n\nA reading of the dataset was done first. The person can see it. Write the reply from that reading, in clear paragraphs. Do not paste the reading again. If the reading says they asked for more detail or an analysis, do not send the application card. If the reading says a fact is not on record, do not state it.\n\nREADING:\n" + thought : "";
     const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote + readNote : undefined;
-    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
     if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
       ai.panel = [];
@@ -3416,7 +3433,7 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
     else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
     else ai.error = aiFailed(e);
   } finally {
-    ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();
+    ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();
   }
 }
 let bannerText = null;
@@ -3445,11 +3462,10 @@ q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.
 const sendBtn = $("#send"); if (sendBtn) sendBtn.addEventListener("mousedown", e => e.preventDefault());
 $("#ask").addEventListener("submit", e => {
   e.preventDefault();
-  if (ctl) { ctl.abort(); return; }
+  if (chatCtl) { chatCtl.abort(); return; }
   const text = q.value.trim();
   if (!text && !pendingFiles.length) return;
   if (!engine) return toast(t("no_ai"));
-  if (agentBusy) return toast(errText("busy"));
   q.value = ""; autosize();
   ask(text || t("file_default"));
 });
@@ -3912,7 +3928,7 @@ if (agBox) {
 }
 const agGo = $("#ag-go"); if (agGo) agGo.addEventListener("mousedown", e => e.preventDefault());
 $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent(); });
-const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (ctl) ctl.abort(); });
+const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (chatCtl) chatCtl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
 const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : renderConv(); });
