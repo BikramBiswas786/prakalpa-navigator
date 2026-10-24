@@ -578,23 +578,40 @@ async function searchMore(q) {
   instant.forEach(push);
   return out;
 }
+function officeTopic(s) {
+  return /\b(dcrb|pension|gratuity|heir|annapurna|lakshmir|lakshmi|bhandar|vandar|ration|khadya|banglarbhumi|khatian|mutation|sarathi|prakalpa|birth|death|land)\b|জন্ম|মৃত্যু|প্রকল্প|ভাতা|পেনশন|গ্র্যাচুইটি/i.test(String(s || ""));
+}
 async function searchWeb(q) {
   const found = [];
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
+  if (!officeTopic(q)) {
+    if (found.length < 3) {
+      try {
+        const u = "https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=2&format=json&srsearch=" + encodeURIComponent(q);
+        const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0" } });
+        const data = await r.json();
+        for (const row of ((data.query && data.query.search) || []).slice(0, 2)) {
+          if (!row.title) continue;
+          add(row.title, "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(row.title).replace(/ /g, "_")));
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return found.slice(0, 4);
+  }
   await searchOrders(q, found, add);
   const hints = [
-    [/pension|dcrb|gratuity|death-cum-retirement|legal heir/i, [
+    [/\bpension\b|\bdcrb\b|\bgratuity\b|death-cum-retirement|legal heir/i, [
       ["West Bengal DCRB Rules, 1971", "https://wbxpress.com/west-bengal-service-death-cum-retirement-benefit-rules-1971/"],
       ["Family for death gratuity", "https://wbxpress.com/definition-family-death-gratuity/"]
     ]],
-    [/birth|death|জন্ম|মৃত্যু/i, [
+    [/\bbirth\b|\bdeath\b|জন্ম|মৃত্যু/i, [
       ["Janma-Mrityu Tathya", "https://janma-mrityutathya.wb.gov.in/"],
       ["Civil Registration", "https://crsorgi.gov.in/"]
     ]],
-    [/(^|[^a-z])bsk([^a-z]|$)|sahayata|সহায়তা/i, [["Bangla Sahayata Kendra", "https://bsk.wb.gov.in/about-bsk.html"]]],
-    [/(^|[^a-z])ration([^a-z]|$)|khadya|খাদ্য/i, [["Food and Supplies", "https://food.wb.gov.in/"]]],
-    [/licen[cs]e|sarathi|driving/i, [["Sarathi", "https://sarathi.parivahan.gov.in/"]]],
-    [/land|mutation|khatian|খতিয়ান|banglarbhumi/i, [["Banglarbhumi", "https://banglarbhumi.gov.in/"]]]
+    [/\bbsk\b|sahayata|সহায়তা/i, [["Bangla Sahayata Kendra", "https://bsk.wb.gov.in/about-bsk.html"]]],
+    [/\bration\b|khadya|খাদ্য/i, [["Food and Supplies", "https://food.wb.gov.in/"]]],
+    [/\blicen[cs]e\b|\bsarathi\b|\bdriving\b/i, [["Sarathi", "https://sarathi.parivahan.gov.in/"]]],
+    [/\bland\b|\bmutation\b|khatian|খতিয়ান|banglarbhumi/i, [["Banglarbhumi", "https://banglarbhumi.gov.in/"]]]
   ];
   if (found.length < 6) for (const [re, rows] of hints) if (re.test(q)) for (const [title, url] of rows) add(title, url);
   if (found.length < 3) {
@@ -624,7 +641,7 @@ async function wiki(q) {
   } catch (e) { return []; }
 }
 async function research(q) {
-  const hits = await searchWeb(q);
+  const hits = officeTopic(q) ? await searchWeb(q) : [];
   const more = await searchMore(q);
   const pages = [];
   const seen = new Set();
@@ -690,9 +707,9 @@ const server = http.createServer(async (req, res) => {
       }
       const q = String(body.q || "").slice(0, 240).trim();
       if (body.list) {
-        const hits = q ? await searchWeb(q) : [];
+        const hits = q && officeTopic(q) ? await searchWeb(q) : [];
         const google = body.google && q ? await searchGoogle(q) : [];
-        const more = body.google && q ? await searchMore(q) : [];
+        const more = q ? await searchMore(q) : [];
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ hits, google, more, googleWhy: google.why || "" }));
         return;
@@ -723,7 +740,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v60"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v61"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
