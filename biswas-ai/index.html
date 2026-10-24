@@ -870,7 +870,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v72", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v73", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1486,6 +1486,17 @@ function knowledge() {
   const said = messages.filter(m => m.role === "user").slice(-6).map(m => m.shown || m.content.slice(0, 2000)).join(" ") + " " + ($("#q") ? $("#q").value : "");
   const schemes = /প্রকল্প|যোজনা|ভাণ্ডার|ভান্ডার|ভাতা|পেনশন|কন্যারত্ন|কন্যাশ্রী|রূপশ্রী|অন্নপূর্ণা|আয়ুষ্মান|স্বাস্থ্যসাথী|কৃষকবন্ধু|কিষাণ|স্কলারশিপ|বৃত্তি|আবাস যোজনা|রেশন কার্ড|উজ্জ্বলা|বিশ্বকর্মা|কর্মসাথী|সারথি|\bscheme|prakalpa|yojana|bhandar|pension|allowance|kanya|annapurna|ayushman|krishak|kisan|scholarship|awas|ration card|ujjwala|vishwakarma/i.test(said);
   const staff = /\bDA\b|বেতন|মহার্ঘ|ছুটি|HRMS|\bleave\b|salary|\bpay\b|contractual|চুক্তিভিত্তিক|কর্মচারীর|employee|WFTS|e-?office/i.test(said);
+  if (mode === "office") {
+    const words = said.toLowerCase().split(/[^a-z0-9\u0980-\u09ff]+/).filter(w => w.length > 3);
+    const keep = parts.filter(t => {
+      const sec = t.trim().charAt(0);
+      if (sec === "D") return false;
+      if (sec === "E") return staff;
+      const hay = t.toLowerCase();
+      return words.filter(w => hay.includes(w)).length >= 2;
+    });
+    return keep.join("\n").slice(0, 3500);
+  }
   const keep = parts.filter(t => {
     const sec = t.trim().charAt(0);
     if (sec === "D") return false;            // replaced by the live catalogue below
@@ -1949,7 +1960,7 @@ async function serverAsk(system, turns, imgs, { signal, onText, fast }) {
   for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
   let res;
   try {
-    res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: fast ? 1600 : undefined }), signal });
+    res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: maxOut || (fast ? 1600 : undefined) }), signal });
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
@@ -1980,7 +1991,7 @@ function shortRules() {
     : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
   return yearLine() + `\nYou are Biswas AI chat, a normal assistant. You are not the public scheme desk, not the research agent, and not the office notesheet desk. Answer the question that was asked. Do not turn it into a scheme card, a notesheet, or a West Bengal office note unless the user asked for that. Bengali is only the language, not a switch to Bangladesh and not a switch to a government scheme. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say what the opened pages do not contain. Do not claim a 2021 cutoff. Write short paragraphs, not a wide table.`;
 }
-async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false } = {}) {
+async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false, maxOut } = {}) {
   if (!engine) throw { code: "not_ready" };
   const guard = new AbortController();
   let timedOut = false;
@@ -1991,7 +2002,7 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
     if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
     const quick = fast || mode === "ai";
     const sys = system || (quick && !agent ? shortRules() : rules() + (agent ? bikramRules() : ""));
-    const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick });
+    const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick, maxOut });
     return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
   } catch (e) {
     if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
@@ -2603,7 +2614,7 @@ ______ ব্লক।
 ______ মহকুমা`;
 function bikramRules() {
   const mem = memory.length ? memory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
-  const ex = examples.slice(-3).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 2500)}`).join("\n\n") || BUILTIN_EXAMPLES;
+  const ex = examples.slice(-1).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 900)}`).join("\n\n") || BUILTIN_EXAMPLES;
   return `
 These office rules override any earlier output-format rule.
 YOU ARE "BISWAS AI" (বিশ্বাস AI), the office-work chat. Work like an experienced dealing assistant and drafting partner, in a natural chat. Do not call yourself by any person's name.
@@ -3366,7 +3377,8 @@ async function ask(text) {
   }
   setBusy(true);
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
-  while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
+  while (turns.length > 1 && JSON.stringify(turns).length > (mode === "office" ? 24000 : 180000)) turns.shift();
+  if (mode === "office" && turns.length > 6) turns = turns.slice(-6);
   while (turns.length && turns[0].role !== "user") turns.shift();
   const live = () => box === messages && chatCtl === mine;
   const agent = box === chats.office;
@@ -3417,8 +3429,8 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
     const pagesNote = researchNote ? "\n\nPages opened for this question. A fact in your answer must come from these pages or from the catalogue. If a page does not contain the amount, the new rule, or the years of practice, say it is not on record. Do not invent a link.\n\n" + researchNote : "";
     const readNote = thought ? "\n\nA reading of the dataset was done first. The person can see it. Write the reply from that reading, in clear paragraphs. Do not paste the reading again. If the reading says they asked for more detail or an analysis, do not send the application card. If the reading says a fact is not on record, do not state it.\n\nREADING:\n" + thought : "";
-    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote + readNote : undefined;
-    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote + readNote : rules() + bikramRules();
+    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: mode === "office", maxOut: mode === "office" ? 2400 : undefined, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
     if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
       ai.panel = [];
