@@ -448,11 +448,11 @@ async function searchTavily(q) {
     const r = await fetch("https://api.tavily.com/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), max_results: 6, include_answer: false })
+      body: JSON.stringify({ query: String(q).slice(0, 200), max_results: 8, include_answer: false })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 5).map(row => ({
+    return (j.results || []).slice(0, 8).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "tavily",
@@ -467,11 +467,11 @@ async function searchExa(q) {
     const r = await fetch("https://api.exa.ai/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 6, useAutoprompt: true })
+      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 8, useAutoprompt: true })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 5).map(row => ({
+    return (j.results || []).slice(0, 8).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "exa",
@@ -486,12 +486,12 @@ async function searchFirecrawl(q) {
     const r = await fetch("https://api.firecrawl.dev/v2/search", {
       method: "POST", signal: AbortSignal.timeout(12000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), limit: 6 })
+      body: JSON.stringify({ query: String(q).slice(0, 200), limit: 8 })
     });
     if (!r.ok) return [];
     const j = await r.json();
     const rows = (j.data && j.data.web) || j.data || [];
-    return rows.slice(0, 5).map(row => ({
+    return rows.slice(0, 8).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "firecrawl",
@@ -506,11 +506,11 @@ async function searchSerper(q) {
     const r = await fetch("https://google.serper.dev/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ q: String(q).slice(0, 200), num: 6 })
+      body: JSON.stringify({ q: String(q).slice(0, 200), num: 8 })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.organic || []).slice(0, 5).map(row => ({
+    return (j.organic || []).slice(0, 8).map(row => ({
       title: String(row.title || row.link || "").slice(0, 160),
       url: safeHttpUrl(row.link),
       via: "serper",
@@ -529,7 +529,7 @@ async function searchParallelKey(q) {
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 5).map(row => ({
+    return (j.results || []).slice(0, 8).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "parallel-key",
@@ -544,11 +544,11 @@ async function searchKeiro(q) {
     const r = await fetch("https://api.keirolabs.cloud/api/v2/search/fast", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), maxResults: 6 })
+      body: JSON.stringify({ query: String(q).slice(0, 200), maxResults: 8 })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 5).map(row => ({
+    return (j.results || []).slice(0, 8).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "keiro",
@@ -562,19 +562,21 @@ async function searchMore(q) {
     searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
   ]);
   const out = [];
-  const push = row => { if (row && row.url && out.length < 16 && !out.some(x => x.url === row.url)) out.push(row); };
-  tavily.slice(0, 4).forEach(push);
-  exa.slice(0, 4).forEach(push);
-  serper.slice(0, 4).forEach(push);
-  fire.slice(0, 3).forEach(push);
-  parKey.slice(0, 3).forEach(push);
-  keiro.slice(0, 2).forEach(push);
-  par.slice(0, 2).forEach(push);
-  bing.slice(0, 2).forEach(push);
-  msn.slice(0, 1).forEach(push);
-  yahoo.slice(0, 1).forEach(push);
-  wiki.slice(0, 1).forEach(push);
-  duck.slice(0, 1).forEach(push);
+  const push = row => { if (row && row.url && out.length < 24 && !out.some(x => x.url === row.url)) out.push(row); };
+  const buckets = [tavily, exa, serper, fire, parKey, keiro, bing, par, msn, yahoo, wiki, duck, instant];
+  let n = 0;
+  while (out.length < 24) {
+    let added = false;
+    for (const bucket of buckets) {
+      const row = bucket[n];
+      if (!row) continue;
+      push(row);
+      added = true;
+      if (out.length >= 24) break;
+    }
+    if (!added) break;
+    n++;
+  }
   instant.forEach(push);
   return out;
 }
@@ -737,10 +739,10 @@ const server = http.createServer(async (req, res) => {
         } catch (e) { /* keep what is already open */ }
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
+      res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v62"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v63"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
