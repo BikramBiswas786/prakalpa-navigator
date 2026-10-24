@@ -318,7 +318,8 @@ textarea.paper { white-space: pre-wrap; }
 .pill.ok { background: var(--ok-soft); color: var(--ok); }
 .pill.rep { background: var(--warn-soft); color: var(--warn); }
 .pill.unc { background: var(--bad-soft); color: var(--bad); }
-/* scheme detail */
+.scheme-bar { display: flex; gap: 8px; align-items: center; margin: 0 0 12px; }
+.scheme-bar b { overflow-wrap: anywhere; }
 .detail { max-width: 860px; width: 100%; margin: 0 auto; display: grid; gap: 14px; }
 .detail h2 { font-size: 1.6rem; color: var(--accent); }
 .detail .benefit { font-size: 1.05rem; background: var(--accent-soft); border-radius: var(--r); padding: 12px 16px; }
@@ -708,6 +709,27 @@ let threadId = "";
 let words = [];
 let wordId = "";
 const chats = { ai: [], office: [], public: [] };
+let schemeChats = {};
+let schemeOpen = "";
+function bindMessages() {
+  if (mode === "public" && schemeOpen && Array.isArray(schemeChats[schemeOpen])) messages = schemeChats[schemeOpen];
+  else if (mode === "ai") messages = chats.ai || [];
+  else messages = chats[mode] || chats.ai || [];
+}
+function openSchemeAi(id, kind) {
+  const s = SERVICES.find(v => v.id === id);
+  if (!s) return;
+  if (!Array.isArray(schemeChats[id])) schemeChats[id] = [];
+  schemeOpen = id;
+  const fresh = !schemeChats[id].some(m => m.role === "user");
+  mode = "public";
+  tabs.public = "chat";
+  bindMessages();
+  showView();
+  if (!fresh || agentBusy || ctl) return;
+  const name = (s[settings.lang] || s.bn).n;
+  ask(kind === "app" ? t("ask_app", name) : t("ask_scheme", name));
+}
 let messages = chats[mode];   // {role, content, shown, files, via}
 let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
 let sample = null, downloads = null, imageLimits = null;
@@ -787,7 +809,7 @@ const STR = {
     set_title: "সেটিংস", set_sub: "খসড়ার স্বাক্ষর ও লেটারহেডে বসবে। শুধু এই ব্রাউজারে থাকে।", officer: "স্বাক্ষরকারী আধিকারিক (পদ)", subdiv: "মহকুমা", district: "জেলা", memo: "মেমো নম্বরের শুরু",
     sample_label: "অফিসের নমুনা চিঠি (লেটারহেড ও ফরম্যাট)", sample_help: "অফিস থেকে যাওয়া একটি পুরনো চিঠি (Word বা PDF) দিন। সব খসড়া সেই লেটারহেড, মেমো নম্বর ও স্বাক্ষরের ধরনে লেখা হবে।",
     sch_title: "প্রকল্প ও পরিষেবা", sch_note: "অক্টোবর ২০২৬ পর্যন্ত সংগৃহীত তথ্য। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' বা 'অনিশ্চিত' লেখা তথ্য সরকারি পোর্টাল বা আদেশে মিলিয়ে নিন।",
-    search: "প্রকল্প খুঁজুন…", f_benefit: "সুবিধা", f_who: "কারা পাবেন", f_how: "কীভাবে আবেদন", f_note: "জরুরি তথ্য", ask_ai: "AI-কে বিস্তারিত জিজ্ঞাসা", old: "আগে: ", no_match: "কিছু পাওয়া যায়নি।",
+    search: "প্রকল্প খুঁজুন…", f_benefit: "সুবিধা", f_who: "কারা পাবেন", f_how: "কীভাবে আবেদন", f_note: "জরুরি তথ্য", ask_ai: "AI-কে বিস্তারিত জিজ্ঞাসা", old: "আগে: ", no_match: "কিছু পাওয়া যায়নি।", scheme_only: "এই চ্যাট শুধু এই প্রকল্পের। অন্য প্রকল্পের আলাদা পাতা আছে।",
     st_ok: "নিশ্চিত", st_rep: "খবর অনুযায়ী", st_unc: "অনিশ্চিত",
     ask_scheme: n => `${n} সম্পর্কে বিস্তারিত বলুন: কী পাওয়া যায়, কারা যোগ্য, কোথায় ও কীভাবে আবেদন, কী নথি লাগে, এবং বর্তমান অবস্থা।`,
     stat_title: "AI অবস্থা", stat_checking: "সব AI key পরীক্ষা করা হচ্ছে… (২০ সেকেন্ড পর্যন্ত লাগতে পারে)", stat_ok: "কাজ করছে", stat_fail: "কাজ করছে না",
@@ -860,7 +882,7 @@ const STR = {
     set_title: "Settings", set_sub: "Used in the signature and letterhead of drafts. Kept in this browser only.", officer: "Signing officer (designation)", subdiv: "Sub-division", district: "District", memo: "Memo number prefix",
     sample_label: "Office sample letter (letterhead and format)", sample_help: "Upload one old letter of the office (Word or PDF). Every draft will copy its letterhead, memo number and signature style.",
     sch_title: "Schemes and services", sch_note: "Information collected up to October 2026. Current State Government names, earlier names below. Check items marked 'Reported' or 'Unconfirmed' on the official portal or order.",
-    search: "Search schemes…", f_benefit: "Benefit", f_who: "Who can get it", f_how: "How to apply", f_note: "Note", ask_ai: "Ask the AI for details", old: "Earlier: ", no_match: "Nothing found.",
+    search: "Search schemes…", f_benefit: "Benefit", f_who: "Who can get it", f_how: "How to apply", f_note: "Note", ask_ai: "Ask the AI for details", old: "Earlier: ", no_match: "Nothing found.", scheme_only: "This chat is only for this scheme. Every other scheme has its own page.",
     st_ok: "Confirmed", st_rep: "Reported", st_unc: "Unconfirmed",
     ask_scheme: n => `Tell me about ${n} in detail: what it gives, who is eligible, where and how to apply, documents needed, and its current status.`,
     stat_title: "AI status", stat_checking: "Checking every AI key… (can take up to 20 seconds)", stat_ok: "Working", stat_fail: "Not working",
@@ -1444,7 +1466,8 @@ function knowledge() {
     if (sec === "E") return mode === "office" || staff;
     return true;
   });
-  if (mode === "public" || schemes) keep.push(catalogueText());
+  if (schemeOpen && mode === "public") keep.push("This chat is only about one scheme. Do not answer as if it were another scheme. If they ask about a different scheme, tell them to open that scheme's own page.\n" + serviceFacts(schemeOpen));
+  else if (mode === "public" || schemes) keep.push(catalogueText());
   return keep.join("\n");
 }
 
@@ -1561,7 +1584,7 @@ How this office works (follow it):
 - Put ______ for any fact you were not given. Never make up names, numbers or dates.
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
-  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.`;
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal. Use plain, friendly, simple language and short steps: which office (BDO for rural / SDO or municipality for urban, etc.), which portal, which documents, any fee, and expected time. Use the CURRENT scheme names of the BJP-led government (section D), with the old name in brackets. Every application is decided by the competent authority (for SDO-office services, the SDO). Remind that government services are free at government camps and offices and that nobody should pay touts or look-alike websites. When they want an application written, write it with blanks for personal details.` + (schemeOpen ? " This conversation belongs to one scheme only. Do not mix in other schemes." : "");
   const simple = `MODE: CHAT. This is an ordinary chat, separate from the office desk. Answer the question directly, the way a normal assistant would. Do not turn the reply into a notesheet, letter or office format unless the user asks for one. No preamble.`;
   const modeText = mode === "office" ? office : mode === "public" ? pub : simple;
   return yearLine() + `\nYou are "Biswas AI" (বিশ্বাস AI), an assistant for West Bengal Government office work and public services. You can help with questions, writing, translation, maths and explaining documents. If asked who you are, say you are Biswas AI, an independent tool, not a Government app. Do not name a person as your maker.
@@ -1954,8 +1977,10 @@ function showView() {
 function go(section, tab) {
   clearAddress();
   touchThread();
-  if (section && section !== mode) { mode = section; messages = mode === "ai" ? (chats.ai || []) : (chats[mode] || chats.ai); }
+  if (section && section !== "public") schemeOpen = "";
+  if (section && section !== mode) mode = section;
   if (tab) tabs[mode] = tab;
+  bindMessages();
   showView();
 }
 function setLang(lang) {
@@ -2596,10 +2621,10 @@ function welcomeHtml() {
   const office = mode === "office";
   if (office) return bikramWelcome();
   return `<div class="welcome">
-    <h2>${esc(t(office ? "w_office_h" : "w_public_h"))}</h2>
-    <p>${esc(t(office ? "w_office_p" : "w_public_p"))}</p>
-    ${office ? "" : `<div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>`}
-    <div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>
+    <h2>${esc(schemeOpen ? ((SERVICES.find(x => x.id === schemeOpen) || {})[settings.lang] || {}).n || t("w_public_h") : t("w_public_h"))}</h2>
+    <p>${esc(schemeOpen ? t("scheme_only") : t("w_public_p"))}</p>
+    ${schemeOpen ? "" : `<div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>`}
+    ${schemeOpen ? "" : `<div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>`}
   </div>`;
 }
 function thinkingHtml(m) {
@@ -2631,9 +2656,16 @@ function msgHtml(m, k) {
     </div>` : ""}
   </div>`;
 }
+function schemeBar() {
+  if (mode !== "public" || !schemeOpen) return "";
+  const s = SERVICES.find(x => x.id === schemeOpen);
+  const name = s ? (s[settings.lang] || s.bn).n : "";
+  return `<div class="scheme-bar"><button class="btn small" type="button" data-open="${esc(schemeOpen)}">${esc(t("dt_back"))}</button><b>${esc(name)}</b></div>`;
+}
 function renderChat() {
-  $("#thread").innerHTML = messages.length ? messages.map(msgHtml).join("") : welcomeHtml();
-  $("#q").placeholder = t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
+  const head = schemeBar();
+  $("#thread").innerHTML = messages.length ? head + messages.map(msgHtml).join("") : head + welcomeHtml();
+  $("#q").placeholder = schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
   $("#open-memory").hidden = mode !== "office";
   renderPending();
 }
@@ -2694,6 +2726,8 @@ function loadVault() {
   chats.public = vaultGet("chat:public", []);
   if (!Array.isArray(chats.office)) chats.office = [];
   if (!Array.isArray(chats.public)) chats.public = [];
+  schemeChats = vaultGet("schemeChats", {});
+  if (!schemeChats || typeof schemeChats !== "object" || Array.isArray(schemeChats)) schemeChats = {};
   words = vaultGet("words", []);
   if (!Array.isArray(words)) words = [];
   wordId = words[0] ? words[0].id : "";
@@ -2786,6 +2820,12 @@ const persist = () => {
   vaultSet("threads", packed);
   vaultSet("chat:office", slimMsgs(chats.office));
   vaultSet("chat:public", slimMsgs(chats.public));
+  const schemePacked = {};
+  Object.keys(schemeChats || {}).forEach(id => {
+    const rows = schemeChats[id];
+    if (Array.isArray(rows) && rows.some(m => m.role === "user")) schemePacked[id] = slimMsgs(rows);
+  });
+  vaultSet("schemeChats", schemePacked);
   try { ["chat", "chat:office", "chat:public"].forEach(k => { localStorage.removeItem("pmitra:" + k); sessionStorage.removeItem("pmitra:" + k); }); } catch (e) { /* ignore */ }
   renderConv();
 };
@@ -3457,7 +3497,7 @@ document.addEventListener("click", e => {
     });
     return;
   }
-  if ((x = el("[data-tab]"))) return go(mode, x.dataset.tab);
+  if ((x = el("[data-tab]"))) { if (mode === "public" && x.dataset.tab !== "chat") schemeOpen = ""; if (mode === "public" && x.dataset.tab === "chat") schemeOpen = ""; return go(mode, x.dataset.tab); }
   if (el("#sec-office")) return go("office");
   if (el("#sec-public")) return go("public");
   if (el("#lang-bn, #lang-en")) return setLang(el("#lang-en") ? "en" : "bn");
@@ -3466,8 +3506,8 @@ document.addEventListener("click", e => {
   if ((x = el("[data-cat]"))) { catFilter = x.dataset.cat; return renderCatalog(); }
   if ((x = el("[data-open]"))) return openDetail(x.dataset.open);
   if (el("[data-back], [data-go-catalog]")) { try { history.replaceState(null, "", location.pathname + location.search); } catch (err) { /* ignore */ } return go("public", "catalog"); }
-  if ((x = el("[data-ask-about]"))) { const s = SERVICES.find(v => v.id === x.dataset.askAbout); return ask(t("ask_scheme", s[settings.lang].n)); }
-  if ((x = el("[data-ask-app]"))) { const s = SERVICES.find(v => v.id === x.dataset.askApp); return ask(t("ask_app", s[settings.lang].n)); }
+  if ((x = el("[data-ask-about]"))) return openSchemeAi(x.dataset.askAbout, "about");
+  if ((x = el("[data-ask-app]"))) return openSchemeAi(x.dataset.askApp, "app");
   // drafting desk
   if (el("#d-toggle")) { draftPreview = !draftPreview; return renderDraftForm(); }
   if (el("#d-docx") || el("#d-pdf")) { if (!draft.text.trim()) return toast(t("d_empty")); return save(el("#d-docx") ? "docx" : "pdf", draft.text, e.target.closest("button"), draft.type); }

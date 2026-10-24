@@ -590,7 +590,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v56"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v57"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
