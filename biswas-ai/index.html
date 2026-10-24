@@ -716,6 +716,38 @@ let publicId = "";
 let schemeThreads = {};
 let schemeIds = {};
 let pubArch = false;
+let officeOpen = "";
+let officeThreads = {};
+let officeIds = {};
+let offArch = false;
+const OFFICE_IDS = ["notesheet", "letter", "order", "notice", "report", "table", "other", "ask"];
+function currentOfficeId() { return officeOpen ? officeIds[officeOpen] || "" : ""; }
+function officeList() { return officeOpen ? (officeThreads[officeOpen] || []) : []; }
+function officeWorkName(id) {
+  if (id === "saved") return t("office_saved");
+  const i = OFFICE_IDS.indexOf(id);
+  const row = i >= 0 ? t("bk_choices")[i] : null;
+  return row ? row[0] : (id || "");
+}
+function ensureOfficeThread() {
+  if (!officeOpen) return null;
+  if (!Array.isArray(officeThreads[officeOpen])) officeThreads[officeOpen] = [];
+  const list = officeThreads[officeOpen];
+  if (!list.length) list.push({ id: nid(), title: officeWorkName(officeOpen), at: Date.now(), archived: false, messages: [] });
+  if (!list.some(t => t.id === officeIds[officeOpen])) officeIds[officeOpen] = list[0].id;
+  return list.find(t => t.id === officeIds[officeOpen]);
+}
+function seedOffice(row) {
+  if (!row || (row.messages || []).length) return;
+  const i = OFFICE_IDS.indexOf(officeOpen);
+  const flow = BK_FLOW[i];
+  if (!flow) return;
+  const choice = t("bk_choices")[i];
+  row.title = choice[0];
+  row.pending = flow[0];
+  row.messages.push({ role: "user", content: choice[2], shown: choice[0], done: true, seed: true });
+  row.messages.push({ role: "assistant", content: flow[settings.lang === "en" ? 2 : 1], done: true, via: "bikram" });
+}
 function currentPublicId() { return schemeOpen ? schemeIds[schemeOpen] || "" : publicId; }
 function publicList() { return schemeOpen ? (schemeThreads[schemeOpen] || []) : publicThreads; }
 function ensurePublicThread() {
@@ -736,6 +768,13 @@ function bindMessages() {
     messages = row.messages;
     if (schemeOpen) schemeChats[schemeOpen] = messages;
     else chats.public = messages;
+    return;
+  }
+  if (mode === "office") {
+    if (!officeOpen) { messages = []; return; }
+    const row = ensureOfficeThread();
+    seedOffice(row);
+    messages = row ? row.messages : [];
     return;
   }
   if (mode === "ai") messages = chats.ai || [];
@@ -797,7 +836,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v76", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v77", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -835,7 +874,7 @@ const STR = {
     set_title: "সেটিংস", set_sub: "খসড়ার স্বাক্ষর ও লেটারহেডে বসবে। শুধু এই ব্রাউজারে থাকে।", officer: "স্বাক্ষরকারী আধিকারিক (পদ)", subdiv: "মহকুমা", district: "জেলা", memo: "মেমো নম্বরের শুরু",
     sample_label: "অফিসের নমুনা চিঠি (লেটারহেড ও ফরম্যাট)", sample_help: "অফিস থেকে যাওয়া একটি পুরনো চিঠি (Word বা PDF) দিন। সব খসড়া সেই লেটারহেড, মেমো নম্বর ও স্বাক্ষরের ধরনে লেখা হবে।",
     sch_title: "প্রকল্প ও পরিষেবা", sch_note: "অক্টোবর ২০২৬ পর্যন্ত সংগৃহীত তথ্য। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' বা 'অনিশ্চিত' লেখা তথ্য সরকারি পোর্টাল বা আদেশে মিলিয়ে নিন।",
-    search: "প্রকল্প খুঁজুন…", f_benefit: "সুবিধা", f_who: "কারা পাবেন", f_how: "কীভাবে আবেদন", f_note: "জরুরি তথ্য", ask_ai: "AI-কে বিস্তারিত জিজ্ঞাসা", old: "আগে: ", no_match: "কিছু পাওয়া যায়নি।", scheme_only: "এই চ্যাট শুধু এই প্রকল্পের। অন্য প্রকল্পের আলাদা পাতা আছে।",
+    search: "প্রকল্প খুঁজুন…", f_benefit: "সুবিধা", f_who: "কারা পাবেন", f_how: "কীভাবে আবেদন", f_note: "জরুরি তথ্য", ask_ai: "AI-কে বিস্তারিত জিজ্ঞাসা", old: "আগে: ", no_match: "কিছু পাওয়া যায়নি।", scheme_only: "এই চ্যাট শুধু এই প্রকল্পের। অন্য প্রকল্পের আলাদা পাতা আছে।", office_back: "← সব কাজ", office_only: "এই পাতা শুধু এই কাজের। অন্য কাজের আলাদা পাতা আছে। আগের চ্যাট কথোপকথনে থাকে।", office_saved: "আগের চ্যাট",
     st_ok: "নিশ্চিত", st_rep: "খবর অনুযায়ী", st_unc: "অনিশ্চিত",
     ask_scheme: n => `${n} সম্পর্কে বিস্তারিত বলুন: কী পাওয়া যায়, কারা যোগ্য, কোথায় ও কীভাবে আবেদন, কী নথি লাগে, এবং বর্তমান অবস্থা।`,
     stat_title: "AI অবস্থা", stat_checking: "সব AI key পরীক্ষা করা হচ্ছে… (২০ সেকেন্ড পর্যন্ত লাগতে পারে)", stat_ok: "কাজ করছে", stat_fail: "কাজ করছে না",
@@ -870,7 +909,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v76", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v77", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -908,7 +947,7 @@ const STR = {
     set_title: "Settings", set_sub: "Used in the signature and letterhead of drafts. Kept in this browser only.", officer: "Signing officer (designation)", subdiv: "Sub-division", district: "District", memo: "Memo number prefix",
     sample_label: "Office sample letter (letterhead and format)", sample_help: "Upload one old letter of the office (Word or PDF). Every draft will copy its letterhead, memo number and signature style.",
     sch_title: "Schemes and services", sch_note: "Information collected up to October 2026. Current State Government names, earlier names below. Check items marked 'Reported' or 'Unconfirmed' on the official portal or order.",
-    search: "Search schemes…", f_benefit: "Benefit", f_who: "Who can get it", f_how: "How to apply", f_note: "Note", ask_ai: "Ask the AI for details", old: "Earlier: ", no_match: "Nothing found.", scheme_only: "This chat is only for this scheme. Every other scheme has its own page.",
+    search: "Search schemes…", f_benefit: "Benefit", f_who: "Who can get it", f_how: "How to apply", f_note: "Note", ask_ai: "Ask the AI for details", old: "Earlier: ", no_match: "Nothing found.", scheme_only: "This chat is only for this scheme. Every other scheme has its own page.", office_back: "← All work", office_only: "This page is only for this work. Every other work has its own page. Earlier chats stay in Conversations.", office_saved: "Earlier chat",
     st_ok: "Confirmed", st_rep: "Reported", st_unc: "Unconfirmed",
     ask_scheme: n => `Tell me about ${n} in detail: what it gives, who is eligible, where and how to apply, documents needed, and its current status.`,
     stat_title: "AI status", stat_checking: "Checking every AI key… (can take up to 20 seconds)", stat_ok: "Working", stat_fail: "Not working",
@@ -1675,6 +1714,7 @@ Language: ${lang}
 Accuracy rules:
 - Never invent GO, memo or notification numbers, dates, section numbers, amounts or limits. If you do not know the exact figure, say so.
 - The knowledge base below is newer than your training. Prefer it. Say "reported — please verify" for items marked (reported).
+- This page is only for ${officeOpen ? officeWorkName(officeOpen) : "one office task"}. Do not start a different paper here. If they ask for another kind of work, tell them to open that work's own page.
 - For caste certificate questions follow section B.
 - If a document is attached, quote the relevant line. Explain the rule. Do not decide the case. The SDO decides.
 - Notes and drafts are paragraphs. Tables only for a statement.
@@ -2035,6 +2075,8 @@ function renderRail() {
     return `<button class="task" type="button" data-nav="${key === "home" ? "home" : key === "word_h" ? "office:word" : sec + ":" + id}" aria-current="${on ? "page" : "false"}"><b>${esc(t(key))}</b></button>`;
   }).join("");
   renderConv();
+  if (mode === "public") renderPublicConv();
+  if (mode === "office") renderOfficeConv();
 }
 function showView() {
   let tab = tabs[mode];
@@ -2701,7 +2743,8 @@ function welcomeHtml() {
     <p>${esc(t("ai_p"))}</p>
   </div>`;
   const office = mode === "office";
-  if (office) return bikramWelcome();
+  if (office && !officeOpen) return bikramWelcome();
+  if (office) return `<div class="welcome"><h2>${esc(officeWorkName(officeOpen))}</h2><p>${esc(t("office_only"))}</p></div>`;
   return `<div class="welcome">
     <h2>${esc(schemeOpen ? ((SERVICES.find(x => x.id === schemeOpen) || {})[settings.lang] || {}).n || t("w_public_h") : t("w_public_h"))}</h2>
     <p>${esc(schemeOpen ? t("scheme_only") : t("w_public_p"))}</p>
@@ -2739,6 +2782,7 @@ function msgHtml(m, k) {
   </div>`;
 }
 function schemeBar() {
+  if (mode === "office" && officeOpen) return `<div class="scheme-bar"><button class="btn small" type="button" data-office-home>${esc(t("office_back"))}</button><b>${esc(officeWorkName(officeOpen))}</b><span class="sch-note">${esc(t("office_only"))}</span></div>`;
   if (mode !== "public" || !schemeOpen) return "";
   const s = SERVICES.find(x => x.id === schemeOpen);
   const name = s ? (s[settings.lang] || s.bn).n : "";
@@ -2747,7 +2791,7 @@ function schemeBar() {
 function renderChat() {
   const head = schemeBar();
   $("#thread").innerHTML = messages.length ? head + messages.map(msgHtml).join("") : head + welcomeHtml();
-  $("#q").placeholder = schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
+  $("#q").placeholder = mode === "office" && officeOpen ? officeWorkName(officeOpen) : schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
   $("#open-memory").hidden = mode !== "office";
   renderPending();
 }
@@ -2759,7 +2803,7 @@ function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]
 const updateLast = () => updateAt(messages.length - 1);
 const scrollDown = () => { const s = $("#scroll"); s.scrollTop = messages.length ? s.scrollHeight : 0; };
 const nid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-const slimMsgs = list => (list || []).filter(m => m.done || m.role === "user").slice(-40).map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via, browseAt: m.browseAt || 0, pages: (m.pages || []).slice(0, 4).map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 500) })) }));
+const slimMsgs = list => (list || []).filter(m => m.done || m.role === "user").slice(-40).map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via, seed: m.seed || undefined, browseAt: m.browseAt || 0, pages: (m.pages || []).slice(0, 4).map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 500) })) }));
 function touchThread() {
   const t = threads.find(x => x.id === threadId);
   if (!t || messages !== chats.ai) return;
@@ -2781,8 +2825,8 @@ let convArch = false;
 let agArch = false;
 let delAsk = "";
 function convCard(row, kind) {
-  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : `data-thread="${row.id}"`;
-  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : row.id === threadId;
+  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : kind === "off" ? `data-off="${row.work || officeOpen}:${row.id}"` : `data-thread="${row.id}"`;
+  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : kind === "off" ? row.id === currentOfficeId() && (row.work || officeOpen) === officeOpen : row.id === threadId;
   const sure = delAsk === kind + ":" + row.id;
   const title = row.title || t(kind === "ag" ? "ag_job" : "conv_empty");
   return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(title)}</b><small>${esc(whenLabel(row.at))}</small></button><div class="conv-links"><button type="button" data-arch="${row.id}" data-box="${kind}">${esc(row.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${row.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
@@ -2828,6 +2872,20 @@ function loadVault() {
     schemeThreads[id].forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
     if (schemeThreads[id][0]) schemeIds[id] = schemeThreads[id][0].id;
   });
+  officeThreads = vaultGet("officeThreads", {});
+  if (!officeThreads || typeof officeThreads !== "object" || Array.isArray(officeThreads)) officeThreads = {};
+  Object.keys(officeThreads).forEach(id => {
+    if (!Array.isArray(officeThreads[id])) { delete officeThreads[id]; return; }
+    officeThreads[id].forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+    if (officeThreads[id][0]) officeIds[id] = officeThreads[id][0].id;
+  });
+  const oldOffice = Array.isArray(chats.office) ? chats.office : [];
+  const officeHas = Object.keys(officeThreads).some(id => (officeThreads[id] || []).some(t => (t.messages || []).some(m => m.role === "user" && !m.seed)));
+  if (!officeHas && oldOffice.some(m => m.role === "user")) {
+    const first = oldOffice.find(m => m.role === "user");
+    officeThreads.saved = [{ id: nid(), title: String((first && (first.shown || first.content)) || "").replace(/\s+/g, " ").trim().slice(0, 72), at: Date.now(), archived: false, messages: oldOffice }];
+    officeIds.saved = officeThreads.saved[0].id;
+  }
   words = vaultGet("words", []);
   if (!Array.isArray(words)) words = [];
   wordId = words[0] ? words[0].id : "";
@@ -2961,6 +3019,111 @@ function togglePublicArch(id) {
   if (mode === "public") renderChat();
   renderPublicConv();
 }
+function touchOffice() {
+  if (mode !== "office" || !officeOpen) return;
+  const row = officeList().find(t => t.id === currentOfficeId());
+  if (!row || messages !== row.messages) return;
+  const users = (row.messages || []).filter(m => m.role === "user" && !m.seed);
+  const picked = users[0];
+  const title = picked ? String(picked.shown || picked.content || "").replace(/\s+/g, " ").trim().slice(0, 72) : "";
+  if (title) row.title = title;
+  else if (!row.title) row.title = officeWorkName(officeOpen);
+  if ((row.messages || []).length) row.at = Date.now();
+}
+function officeRows() {
+  if (officeOpen) return officeList().map(t => Object.assign({}, t, { work: officeOpen }));
+  const out = [];
+  Object.keys(officeThreads || {}).forEach(work => (officeThreads[work] || []).forEach(t => out.push(Object.assign({}, t, { work }))));
+  return out.sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+function renderOfficeConv() {
+  if (mode !== "office") return;
+  const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
+  const rows = officeRows().filter(t => (t.messages || []).some(m => m.role === "user") && !!t.archived === offArch && (!q || String(t.title || "").toLowerCase().includes(q)));
+  const html = rows.length ? rows.map(t => convCard(t, "off")).join("") : `<p class="lead">${esc(offArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  ["#sheet-list", "#chat-conv"].forEach(sel => { const box = $(sel); if (box) box.innerHTML = html; });
+  document.querySelectorAll("[data-conv-arch]").forEach(b => { b.textContent = offArch ? t("show_chats") : t("show_arch"); });
+}
+function newOfficeChat() {
+  if (!officeOpen) return;
+  if (chatCtl) chatCtl.abort();
+  touchOffice();
+  const list = officeThreads[officeOpen] = officeThreads[officeOpen] || [];
+  const cur = list.find(t => t.id === officeIds[officeOpen]);
+  if (cur && !(cur.messages || []).some(m => m.role === "user" && !m.seed)) { bindMessages(); pendingFiles = []; showView(); return; }
+  const row = { id: nid(), title: officeWorkName(officeOpen), at: Date.now(), archived: false, pending: null, messages: [] };
+  list.unshift(row);
+  officeIds[officeOpen] = row.id;
+  pendingFiles = [];
+  bindMessages();
+  persist();
+  showView();
+  const q = $("#q"); if (q) q.focus();
+}
+function openOfficeWork(i) {
+  const id = OFFICE_IDS[i] || "ask";
+  officeOpen = id;
+  mode = "office";
+  tabs.office = "chat";
+  ensureOfficeThread();
+  pendingFiles = [];
+  bindMessages();
+  persist();
+  showView();
+  const q = $("#q"); if (q) q.focus();
+}
+function openOfficeChat(id) {
+  touchOffice();
+  const row = officeList().find(t => t.id === id); if (!row) return;
+  officeIds[officeOpen] = row.id;
+  pendingFiles = [];
+  bindMessages();
+  const sheet = $("#hist-sheet"); if (sheet) sheet.hidden = true;
+  showView();
+}
+function findOfficeWork(id) {
+  if (officeOpen && (officeThreads[officeOpen] || []).some(t => t.id === id)) return officeOpen;
+  return Object.keys(officeThreads || {}).find(w => (officeThreads[w] || []).some(t => t.id === id)) || "";
+}
+function deleteOfficeChat(id) {
+  const work = findOfficeWork(id);
+  if (!work) return;
+  officeOpen = officeOpen || work;
+  let list = (officeThreads[work] || []).filter(t => t.id !== id);
+  officeThreads[work] = list;
+  if (officeIds[work] === id || !list.some(t => t.id === officeIds[work])) {
+    const next = list.find(t => !t.archived) || null;
+    const row = next || { id: nid(), title: officeWorkName(work), at: Date.now(), archived: false, messages: [] };
+    if (!next) list.unshift(row);
+    officeThreads[work] = list;
+    officeIds[work] = row.id;
+  }
+  delAsk = "";
+  bindMessages();
+  persist();
+  renderChat();
+  renderOfficeConv();
+}
+function toggleOfficeArch(id) {
+  const work = findOfficeWork(id);
+  const row = work ? (officeThreads[work] || []).find(t => t.id === id) : null;
+  if (!row) return;
+  row.archived = !row.archived;
+  delAsk = "";
+  if (row.archived && officeIds[work] === id) {
+    const next = (officeThreads[work] || []).find(t => t.id !== id && !t.archived);
+    if (next) officeIds[work] = next.id;
+    else {
+      const fresh = { id: nid(), title: officeWorkName(work), at: Date.now(), archived: false, messages: [] };
+      officeThreads[work].unshift(fresh);
+      officeIds[work] = fresh.id;
+    }
+  }
+  bindMessages();
+  persist();
+  renderChat();
+  renderOfficeConv();
+}
 function renderWord() {
   const html = words.length ? words.map(w => `<button class="chip" type="button" data-word="${w.id}">${esc(w.title || t("word_untitled"))}</button>`).join("") : `<span class="lead">${esc(t("word_none"))}</span>`;
   const a = $("#word-folder"); if (a) a.innerHTML = html;
@@ -2989,6 +3152,7 @@ const persist = () => {
   if (!whoId) return;
   touchThread();
   touchPublic();
+  touchOffice();
   const packed = threads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, messages: slimMsgs(t.messages) }));
   if (!packed.length && threads[0]) packed.push({ id: threads[0].id, title: "", at: threads[0].at || Date.now(), messages: [] });
   vaultSet("threads", packed);
@@ -3008,9 +3172,16 @@ const persist = () => {
     if (Array.isArray(rows) && rows.some(m => m.role === "user")) schemePacked[id] = slimMsgs(rows);
   });
   vaultSet("schemeChats", schemePacked);
+  const officePacked = {};
+  Object.keys(officeThreads || {}).forEach(id => {
+    const rows = (officeThreads[id] || []).filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 20).map(t => Object.assign(packThread(t), { pending: t.pending || null }));
+    if (rows.length) officePacked[id] = rows;
+  });
+  vaultSet("officeThreads", officePacked);
   try { ["chat", "chat:office", "chat:public"].forEach(k => { localStorage.removeItem("pmitra:" + k); sessionStorage.removeItem("pmitra:" + k); }); } catch (e) { /* ignore */ }
   renderConv();
   if (mode === "public") renderPublicConv();
+  if (mode === "office") renderOfficeConv();
 };
 function setBusy(b) {
   $("#send").innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
@@ -3358,6 +3529,7 @@ async function ask(text) {
   const mine = new AbortController();
   chatCtl = mine;
   if (tabs[mode] !== "chat") go(mode, "chat");
+  if (mode === "office" && !officeOpen) { officeOpen = "ask"; ensureOfficeThread(); bindMessages(); }
   const files = pendingFiles; pendingFiles = [];
   let content = text;
   const docs = attachText(files);
@@ -3365,8 +3537,9 @@ async function ask(text) {
   const imgs = attachImages(files);
   if (imgs.length) content += `\n\n(${imgs.length} image(s) attached: ${files.filter(f => f.images).map(f => f.name + (f.kind === "scan" ? " — scanned PDF pages" : "")).join(", ")}. Read them carefully, including Bengali text.)`;
   const box = messages;
-  const wantDoc = box === chats.office ? bkPending : null;
-  if (wantDoc) { content += `\n\n[Office task: using the details above, earlier messages and any attached file, write the ${BK_DESC[wantDoc] || "document"} now, complete and ready to print. Put it in one <<<DOC type="${wantDoc}" title="short English title">>> ... <<<END DOC>>> block. Paragraphs, not points. Leave ______ for anything not given. Do not ask more questions now.]`; setPending(null); }
+  const officeRow = mode === "office" && officeOpen ? ensureOfficeThread() : null;
+  const wantDoc = officeRow ? officeRow.pending : null;
+  if (wantDoc) { content += `\n\n[Office task: using the details above, earlier messages and any attached file, write the ${BK_DESC[wantDoc] || "document"} now, complete and ready to print. Put it in one <<<DOC type="${wantDoc}" title="short English title">>> ... <<<END DOC>>> block. Paragraphs, not points. Leave ______ for anything not given. Do not ask more questions now.]`; officeRow.pending = null; }
   box.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
@@ -3389,7 +3562,7 @@ async function ask(text) {
   if (mode === "office" && turns.length > 6) turns = turns.slice(-6);
   while (turns.length && turns[0].role !== "user") turns.shift();
   const live = () => box === messages && chatCtl === mine;
-  const agent = box === chats.office;
+  const agent = mode === "office";
   const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
   let researchNote = "";
   if ((mode === "ai" || mode === "public") && String(text || "").trim().length > 8 && !greet) {
@@ -3717,9 +3890,10 @@ document.addEventListener("click", e => {
   }
   if ((x = el("[data-del]"))) {
     const key = (x.dataset.box || "chat") + ":" + x.dataset.del;
-    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : renderConv(); return; }
+    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : x.dataset.box === "off" ? renderOfficeConv() : renderConv(); return; }
     if (x.dataset.box === "ag") deleteAgent(x.dataset.del);
     else if (x.dataset.box === "pub") deletePublicChat(x.dataset.del);
+    else if (x.dataset.box === "off") deleteOfficeChat(x.dataset.del);
     else deleteThread(x.dataset.del);
     return;
   }
@@ -3727,22 +3901,29 @@ document.addEventListener("click", e => {
     delAsk = "";
     if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch);
     else if (x.dataset.box === "pub") togglePublicArch(x.dataset.arch);
+    else if (x.dataset.box === "off") toggleOfficeArch(x.dataset.arch);
     else toggleArch(x.dataset.arch);
     return;
   }
-  if (el("[data-conv-arch]")) { if (mode === "public") { pubArch = !pubArch; delAsk = ""; renderPublicConv(); } else { convArch = !convArch; delAsk = ""; renderConv(); } return; }
+  if (el("[data-conv-arch]")) { if (mode === "public") { pubArch = !pubArch; delAsk = ""; renderPublicConv(); } else if (mode === "office") { offArch = !offArch; delAsk = ""; renderOfficeConv(); } else { convArch = !convArch; delAsk = ""; renderConv(); } return; }
   if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
+  if ((x = el("[data-off]"))) {
+    const bits = String(x.dataset.off || "").split(":");
+    officeOpen = bits[0] || officeOpen;
+    const sheet = $("#hist-sheet"); if (sheet) sheet.hidden = true;
+    return openOfficeChat(bits[1] || "");
+  }
   if ((x = el("[data-pub]"))) return openPublicChat(x.dataset.pub);
   if ((x = el("[data-thread]"))) return openThread(x.dataset.thread);
   if ((x = el("[data-word]"))) { closeRail(); return openWord(x.dataset.word); }
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
   if (el("#switch-user")) { closeRail(); return showGate(true); }
-  if (el("#conv-new") || el("#hist-new")) { closeRail(); return newThread(); }
+  if (el("#conv-new") || el("#hist-new")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; mode === "public" ? renderPublicConv() : renderConv(); } return; }
+  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; mode === "public" ? renderPublicConv() : mode === "office" ? renderOfficeConv() : renderConv(); } return; }
   if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
-  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : newThread(); }
+  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
@@ -3813,13 +3994,8 @@ document.addEventListener("click", e => {
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
   // Biswas AI
-  if ((x = el("[data-bk]"))) {
-    const i = +x.dataset.bk, flow = BK_FLOW[i];
-    if (!flow) return ask(t("bk_choices")[i][2]);
-    messages.push({ role: "user", content: t("bk_choices")[i][2], shown: t("bk_choices")[i][2], done: true });
-    messages.push({ role: "assistant", content: flow[settings.lang === "en" ? 2 : 1], done: true, via: "bikram" });
-    setPending(flow[0]); persist(); renderChat(); scrollDown(); q.focus(); return;
-  }
+  if (el("[data-office-home]")) { officeOpen = ""; pendingFiles = []; bindMessages(); showView(); return; }
+  if ((x = el("[data-bk]"))) return openOfficeWork(+x.dataset.bk);
   if ((x = el("[data-dact]"))) {
     const k = +x.dataset.k, j = +x.dataset.j, m = messages[k], act = x.dataset.dact;
     const d = splitDocs(splitMemory(m.content).clean).filter(p => p.t === "doc")[j];
@@ -3849,7 +4025,7 @@ document.addEventListener("click", e => {
     else save(act, m.content, x);
     return;
   }
-  if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : newThread(); }
+  if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#new-person") || el("#switch-user")) { closeRail(); return showGate(true); }
   if (el("#open-status")) return openStatus();
   if (el("#status-close")) return $("#status").close();
@@ -3956,7 +4132,7 @@ $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent();
 const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (chatCtl) chatCtl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
-const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : renderConv(); });
+const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : mode === "office" ? renderOfficeConv() : renderConv(); });
 function resume() {
   if (!isOpen()) { showLock(true); showGate(false); return; }
   showGate(true);
