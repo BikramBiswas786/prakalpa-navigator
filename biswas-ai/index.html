@@ -711,9 +711,34 @@ let wordId = "";
 const chats = { ai: [], office: [], public: [] };
 let schemeChats = {};
 let schemeOpen = "";
+let publicThreads = [];
+let publicId = "";
+let schemeThreads = {};
+let schemeIds = {};
+let pubArch = false;
+function currentPublicId() { return schemeOpen ? schemeIds[schemeOpen] || "" : publicId; }
+function publicList() { return schemeOpen ? (schemeThreads[schemeOpen] || []) : publicThreads; }
+function ensurePublicThread() {
+  if (schemeOpen) {
+    if (!Array.isArray(schemeThreads[schemeOpen])) schemeThreads[schemeOpen] = [];
+    const list = schemeThreads[schemeOpen];
+    if (!list.length) list.push({ id: nid(), title: "", at: Date.now(), messages: Array.isArray(schemeChats[schemeOpen]) ? schemeChats[schemeOpen] : [] });
+    if (!list.some(t => t.id === schemeIds[schemeOpen])) schemeIds[schemeOpen] = list[0].id;
+    return list.find(t => t.id === schemeIds[schemeOpen]);
+  }
+  if (!publicThreads.length) publicThreads.push({ id: nid(), title: "", at: Date.now(), messages: Array.isArray(chats.public) ? chats.public : [] });
+  if (!publicThreads.some(t => t.id === publicId)) publicId = publicThreads[0].id;
+  return publicThreads.find(t => t.id === publicId);
+}
 function bindMessages() {
-  if (mode === "public" && schemeOpen && Array.isArray(schemeChats[schemeOpen])) messages = schemeChats[schemeOpen];
-  else if (mode === "ai") messages = chats.ai || [];
+  if (mode === "public") {
+    const row = ensurePublicThread();
+    messages = row.messages;
+    if (schemeOpen) schemeChats[schemeOpen] = messages;
+    else chats.public = messages;
+    return;
+  }
+  if (mode === "ai") messages = chats.ai || [];
   else messages = chats[mode] || chats.ai || [];
 }
 function openSchemeAi(id, kind) {
@@ -844,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v68", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v69", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2005,6 +2030,7 @@ function showView() {
 function go(section, tab) {
   clearAddress();
   touchThread();
+  touchPublic();
   if (section && section !== "public") schemeOpen = "";
   if (section && section !== mode) mode = section;
   if (tab) tabs[mode] = tab;
@@ -2727,8 +2753,8 @@ let convArch = false;
 let agArch = false;
 let delAsk = "";
 function convCard(row, kind) {
-  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : `data-thread="${row.id}"`;
-  const on = kind === "ag" ? row.id === agentId : row.id === threadId;
+  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : `data-thread="${row.id}"`;
+  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : row.id === threadId;
   const sure = delAsk === kind + ":" + row.id;
   const title = row.title || t(kind === "ag" ? "ag_job" : "conv_empty");
   return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(title)}</b><small>${esc(whenLabel(row.at))}</small></button><div class="conv-links"><button type="button" data-arch="${row.id}" data-box="${kind}">${esc(row.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${row.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
@@ -2754,8 +2780,26 @@ function loadVault() {
   chats.public = vaultGet("chat:public", []);
   if (!Array.isArray(chats.office)) chats.office = [];
   if (!Array.isArray(chats.public)) chats.public = [];
+  publicThreads = vaultGet("publicThreads", []);
+  if (!Array.isArray(publicThreads)) publicThreads = [];
+  if (!publicThreads.length && chats.public.length) publicThreads = [{ id: nid(), title: "", at: Date.now(), messages: chats.public }];
+  publicThreads.forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+  if (!publicThreads.length) publicThreads = [{ id: nid(), title: "", at: Date.now(), messages: [] }];
+  publicId = publicThreads[0].id;
+  chats.public = publicThreads[0].messages;
   schemeChats = vaultGet("schemeChats", {});
   if (!schemeChats || typeof schemeChats !== "object" || Array.isArray(schemeChats)) schemeChats = {};
+  schemeThreads = vaultGet("schemeThreads", {});
+  if (!schemeThreads || typeof schemeThreads !== "object" || Array.isArray(schemeThreads)) schemeThreads = {};
+  Object.keys(schemeChats).forEach(id => {
+    if ((!Array.isArray(schemeThreads[id]) || !schemeThreads[id].length) && Array.isArray(schemeChats[id]) && schemeChats[id].length) schemeThreads[id] = [{ id: nid(), title: "", at: Date.now(), messages: schemeChats[id] }];
+  });
+  schemeIds = {};
+  Object.keys(schemeThreads).forEach(id => {
+    if (!Array.isArray(schemeThreads[id])) { delete schemeThreads[id]; return; }
+    schemeThreads[id].forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+    if (schemeThreads[id][0]) schemeIds[id] = schemeThreads[id][0].id;
+  });
   words = vaultGet("words", []);
   if (!Array.isArray(words)) words = [];
   wordId = words[0] ? words[0].id : "";
@@ -2816,6 +2860,79 @@ function newThread() {
   threads.unshift(t); threadId = t.id; chats.ai = t.messages; messages = chats.ai; pendingFiles = [];
   mode = "ai"; tabs.ai = "chat"; persist(); showView();
 }
+function touchPublic() {
+  if (mode !== "public") return;
+  const row = publicList().find(t => t.id === currentPublicId());
+  if (!row || messages !== row.messages) return;
+  const first = (messages || []).find(m => m.role === "user");
+  const title = first ? String(first.shown || first.content || "").replace(/\s+/g, " ").trim().slice(0, 72) : "";
+  if (title) row.title = title;
+  if ((messages || []).length) row.at = Date.now();
+}
+function renderPublicConv() {
+  const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
+  const rows = publicList().filter(t => (t.messages || []).some(m => m.role === "user") && !!t.archived === pubArch && (!q || String(t.title || "").toLowerCase().includes(q)));
+  const html = rows.length ? rows.map(t => convCard(t, "pub")).join("") : `<p class="lead">${esc(pubArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  const box = $("#sheet-list"); if (box) box.innerHTML = html;
+  document.querySelectorAll("[data-conv-arch]").forEach(b => { b.textContent = pubArch ? t("show_chats") : t("show_arch"); });
+}
+function newPublicChat() {
+  if (ctl) ctl.abort();
+  touchPublic();
+  const list = schemeOpen ? (schemeThreads[schemeOpen] = schemeThreads[schemeOpen] || []) : publicThreads;
+  const cur = list.find(t => t.id === currentPublicId());
+  if (cur && !(cur.messages || []).some(m => m.role === "user")) { bindMessages(); pendingFiles = []; showView(); return; }
+  const row = { id: nid(), title: "", at: Date.now(), archived: false, messages: [] };
+  list.unshift(row);
+  if (schemeOpen) schemeIds[schemeOpen] = row.id;
+  else publicId = row.id;
+  pendingFiles = [];
+  bindMessages();
+  persist();
+  showView();
+  const q = $("#q"); if (q) q.focus();
+}
+function openPublicChat(id) {
+  touchPublic();
+  const row = publicList().find(t => t.id === id); if (!row) return;
+  if (schemeOpen) schemeIds[schemeOpen] = row.id;
+  else publicId = row.id;
+  pendingFiles = [];
+  bindMessages();
+  const sheet = $("#hist-sheet"); if (sheet) sheet.hidden = true;
+  showView();
+}
+function deletePublicChat(id) {
+  let list = publicList().filter(t => t.id !== id);
+  if (schemeOpen) schemeThreads[schemeOpen] = list;
+  else publicThreads = list;
+  if (currentPublicId() === id || !list.some(t => t.id === currentPublicId())) {
+    const next = list.find(t => !t.archived) || null;
+    const row = next || { id: nid(), title: "", at: Date.now(), messages: [] };
+    if (!next) list.unshift(row);
+    if (schemeOpen) { schemeThreads[schemeOpen] = list; schemeIds[schemeOpen] = row.id; }
+    else { publicThreads = list; publicId = row.id; }
+  }
+  delAsk = "";
+  bindMessages();
+  persist();
+  renderChat();
+  renderPublicConv();
+}
+function togglePublicArch(id) {
+  const row = publicList().find(t => t.id === id); if (!row) return;
+  row.archived = !row.archived;
+  delAsk = "";
+  if (row.archived && currentPublicId() === id) {
+    const next = publicList().find(t => t.id !== id && !t.archived);
+    if (next) { if (schemeOpen) schemeIds[schemeOpen] = next.id; else publicId = next.id; }
+    else newPublicChat();
+  }
+  bindMessages();
+  persist();
+  if (mode === "public") renderChat();
+  renderPublicConv();
+}
 function renderWord() {
   const html = words.length ? words.map(w => `<button class="chip" type="button" data-word="${w.id}">${esc(w.title || t("word_untitled"))}</button>`).join("") : `<span class="lead">${esc(t("word_none"))}</span>`;
   const a = $("#word-folder"); if (a) a.innerHTML = html;
@@ -2843,11 +2960,20 @@ function saveWordFile() {
 const persist = () => {
   if (!whoId) return;
   touchThread();
+  touchPublic();
   const packed = threads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, messages: slimMsgs(t.messages) }));
   if (!packed.length && threads[0]) packed.push({ id: threads[0].id, title: "", at: threads[0].at || Date.now(), messages: [] });
   vaultSet("threads", packed);
   vaultSet("chat:office", slimMsgs(chats.office));
   vaultSet("chat:public", slimMsgs(chats.public));
+  const packThread = t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, messages: slimMsgs(t.messages) });
+  vaultSet("publicThreads", publicThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(packThread));
+  const schemePackedThreads = {};
+  Object.keys(schemeThreads || {}).forEach(id => {
+    const rows = (schemeThreads[id] || []).filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 20).map(packThread);
+    if (rows.length) schemePackedThreads[id] = rows;
+  });
+  vaultSet("schemeThreads", schemePackedThreads);
   const schemePacked = {};
   Object.keys(schemeChats || {}).forEach(id => {
     const rows = schemeChats[id];
@@ -2856,6 +2982,7 @@ const persist = () => {
   vaultSet("schemeChats", schemePacked);
   try { ["chat", "chat:office", "chat:public"].forEach(k => { localStorage.removeItem("pmitra:" + k); sessionStorage.removeItem("pmitra:" + k); }); } catch (e) { /* ignore */ }
   renderConv();
+  if (mode === "public") renderPublicConv();
 };
 function setBusy(b) {
   $("#send").innerHTML = b ? `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`;
@@ -3549,17 +3676,22 @@ document.addEventListener("click", e => {
   }
   if ((x = el("[data-del]"))) {
     const key = (x.dataset.box || "chat") + ":" + x.dataset.del;
-    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : renderConv(); return; }
-    if (x.dataset.box === "ag") deleteAgent(x.dataset.del); else deleteThread(x.dataset.del);
+    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : renderConv(); return; }
+    if (x.dataset.box === "ag") deleteAgent(x.dataset.del);
+    else if (x.dataset.box === "pub") deletePublicChat(x.dataset.del);
+    else deleteThread(x.dataset.del);
     return;
   }
   if ((x = el("[data-arch]"))) {
     delAsk = "";
-    if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch); else toggleArch(x.dataset.arch);
+    if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch);
+    else if (x.dataset.box === "pub") togglePublicArch(x.dataset.arch);
+    else toggleArch(x.dataset.arch);
     return;
   }
-  if (el("[data-conv-arch]")) { convArch = !convArch; delAsk = ""; renderConv(); return; }
+  if (el("[data-conv-arch]")) { if (mode === "public") { pubArch = !pubArch; delAsk = ""; renderPublicConv(); } else { convArch = !convArch; delAsk = ""; renderConv(); } return; }
   if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
+  if ((x = el("[data-pub]"))) return openPublicChat(x.dataset.pub);
   if ((x = el("[data-thread]"))) return openThread(x.dataset.thread);
   if ((x = el("[data-word]"))) { closeRail(); return openWord(x.dataset.word); }
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
@@ -3567,9 +3699,9 @@ document.addEventListener("click", e => {
   if (el("#conv-new") || el("#hist-new")) { closeRail(); return newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; renderConv(); } return; }
+  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; mode === "public" ? renderPublicConv() : renderConv(); } return; }
   if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
-  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return newThread(); }
+  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : newThread(); }
   if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
@@ -3676,7 +3808,7 @@ document.addEventListener("click", e => {
     else save(act, m.content, x);
     return;
   }
-  if (el("#new-chat")) { closeRail(); return newThread(); }
+  if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : newThread(); }
   if (el("#new-person") || el("#switch-user")) { closeRail(); return showGate(true); }
   if (el("#open-status")) return openStatus();
   if (el("#status-close")) return $("#status").close();
@@ -3782,7 +3914,7 @@ $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent();
 const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (ctl) ctl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
-const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => renderConv());
+const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : renderConv(); });
 function resume() {
   if (!isOpen()) { showLock(true); showGate(false); return; }
   showGate(true);
