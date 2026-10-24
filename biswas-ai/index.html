@@ -1565,7 +1565,7 @@ function agreeArticle(rows, pages) {
 async function askPanel(question, pages) {
   const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 6)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
-  const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use the office note and any source pages. After each fact, name where it came from. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "");
+  const system = yearLine() + "\nWrite a short sourced answer for the question. Use the source pages if they help. After each fact, name the page. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing." + (src ? "\n\nSource pages:\n" + src : "");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [];
@@ -3064,7 +3064,8 @@ async function runBiswasAgent(job) {
         const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3)
           .map(s => {
             let q = s;
-            if (/\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
+            const aboutDcrb = /\bDCRB\b|death-?cum-?retirement|pension|gratuity|legal heir/i.test(job);
+            if (aboutDcrb && /\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
             return q.slice(0, 180);
           });
         if (next.length) queries = next;
