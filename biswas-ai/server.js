@@ -625,17 +625,24 @@ async function wiki(q) {
 }
 async function research(q) {
   const hits = await searchWeb(q);
+  const more = await searchMore(q);
   const pages = [];
-  for (const hit of hits) {
-    let text = "";
-    try { text = await readPage(hit.url); } catch (e) { text = ""; }
-    pages.push({ title: hit.title || hit.url, url: hit.url, text: text || "" });
-    if (pages.length >= 3) break;
+  const seen = new Set();
+  const add = (hit) => {
+    if (!hit || !hit.url || seen.has(hit.url) || pages.length >= 6) return;
+    seen.add(hit.url);
+    pages.push({ title: hit.title || hit.url, url: hit.url, text: hit.text || "", via: hit.via || "" });
+  };
+  more.slice(0, 4).forEach(add);
+  hits.slice(0, 2).forEach(add);
+  for (const p of pages) {
+    if (String(p.text || "").length > 80) continue;
+    try { p.text = await readPage(p.url); } catch (e) { p.text = ""; }
   }
-  if (pages.filter(p => p.text.length > 80).length < 2) {
-    for (const p of await wiki(q)) if (!pages.some(x => x.url === p.url)) pages.push(p);
+  if (pages.filter(p => String(p.text || "").length > 80).length < 2) {
+    for (const w of await wiki(q)) if (!seen.has(w.url)) { seen.add(w.url); pages.push(w); }
   }
-  return pages.slice(0, 4);
+  return pages.slice(0, 6);
 }
 
 const server = http.createServer(async (req, res) => {
