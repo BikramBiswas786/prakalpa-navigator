@@ -2557,11 +2557,12 @@ function whenLabel(ts) {
 let convArch = false;
 let agArch = false;
 let delAsk = "";
-function convCard(t, kind) {
-  const openAttr = kind === "ag" ? `data-ag="${t.id}"` : `data-thread="${t.id}"`;
-  const on = kind === "ag" ? t.id === agentId : t.id === threadId;
-  const sure = delAsk === kind + ":" + t.id;
-  return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(t.title || t(kind === "ag" ? "ag_job" : "conv_empty"))}</b><small>${esc(whenLabel(t.at))}</small></button><div class="conv-links"><button type="button" data-arch="${t.id}" data-box="${kind}">${esc(t.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${t.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
+function convCard(row, kind) {
+  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : `data-thread="${row.id}"`;
+  const on = kind === "ag" ? row.id === agentId : row.id === threadId;
+  const sure = delAsk === kind + ":" + row.id;
+  const title = row.title || t(kind === "ag" ? "ag_job" : "conv_empty");
+  return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(title)}</b><small>${esc(whenLabel(row.at))}</small></button><div class="conv-links"><button type="button" data-arch="${row.id}" data-box="${kind}">${esc(row.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${row.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
 }
 function renderConv() {
   const name = $("#who-name"); if (name) name.textContent = userName || "";
@@ -2712,23 +2713,23 @@ function renderAgentList() {
   document.querySelectorAll("[data-ag-arch]").forEach(b => { b.textContent = agArch ? t("show_chats") : t("show_arch"); });
 }
 function renderAgentView() {
-  renderAgents();
-  renderAgentList();
   const thread = $("#ag-thread");
   const cur = agentThreads.find(x => x.id === agentId);
   const msgs = cur ? cur.messages : [];
-  if (!thread) return;
-  if (!msgs.length) {
-    thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
-    return;
+  if (thread) {
+    if (!msgs.length) {
+      thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
+    } else {
+      const jobs = [];
+      for (let i = 0; i < msgs.length; i++) {
+        if (msgs[i].role !== "user") continue;
+        jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
+      }
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
+      const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
+    }
   }
-  const jobs = [];
-  for (let i = 0; i < msgs.length; i++) {
-    if (msgs[i].role !== "user") continue;
-    jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
-  }
-  thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
-  const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
+  try { renderAgents(); renderAgentList(); } catch (e) { /* the job must stay on screen */ }
 }
 function pageLinks(pages) {
   if (!pages || !pages.length) return "";
