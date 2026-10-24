@@ -53,7 +53,11 @@ async function searchWeb(q) {
   const found = [];
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
   const hints = [
-    [/birth|death|জন্ম|মৃত্যু|registration/i, [["Janma-Mrityu Tathya", "https://janma-mrityutathya.wb.gov.in/"], ["Civil Registration", "https://crsorgi.gov.in/"]]],
+    [/birth|death|জন্ম|মৃত্যু|registration/i, [
+      ["Janma-Mrityu Tathya", "https://janma-mrityutathya.wb.gov.in/"],
+      ["Birth and death amendment rules, 2026", "https://wbxpress.com/west-bengal-registration-births-deaths-amendment-rules-2026"],
+      ["Civil Registration", "https://crsorgi.gov.in/"]
+    ]],
     [/bsk|sahayata|সহায়তা/i, [["Bangla Sahayata Kendra", "https://bsk.wb.gov.in/about-bsk.html"]]],
     [/ration|khadya|খাদ্য/i, [["Food and Supplies", "https://food.wb.gov.in/"]]],
     [/licen[cs]e|sarathi|driving/i, [["Sarathi", "https://sarathi.parivahan.gov.in/"]]],
@@ -74,17 +78,32 @@ async function searchWeb(q) {
   } catch (e) { /* search can fail; the known sites above still run */ }
   return found.slice(0, 4);
 }
+async function wiki(q) {
+  try {
+    const u = "https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=" + encodeURIComponent(q) + "&gsrlimit=2&prop=extracts&exintro=1&explaintext=1&format=json";
+    const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0" } });
+    const data = await r.json();
+    const pages = data && data.query && data.query.pages ? Object.values(data.query.pages) : [];
+    return pages.filter(p => p.extract && p.extract.length > 80).slice(0, 2).map(p => ({
+      title: p.title,
+      url: "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(p.title || "").replace(/ /g, "_")),
+      text: String(p.extract).slice(0, 1800)
+    }));
+  } catch (e) { return []; }
+}
 async function research(q) {
   const hits = await searchWeb(q);
   const pages = [];
   for (const hit of hits) {
-    try {
-      const text = await readPage(hit.url);
-      if (text.length > 60) pages.push({ title: hit.title || hit.url, url: hit.url, text });
-    } catch (e) { /* skip a page that does not open */ }
+    let text = "";
+    try { text = await readPage(hit.url); } catch (e) { text = ""; }
+    pages.push({ title: hit.title || hit.url, url: hit.url, text: text || "" });
     if (pages.length >= 3) break;
   }
-  return pages;
+  if (pages.filter(p => p.text.length > 80).length < 2) {
+    for (const p of await wiki(q)) if (!pages.some(x => x.url === p.url)) pages.push(p);
+  }
+  return pages.slice(0, 4);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -122,7 +141,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v27"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v28"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
