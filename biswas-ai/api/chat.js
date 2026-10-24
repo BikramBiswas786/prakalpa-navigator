@@ -3,6 +3,7 @@
 // fails before answering, the next is used, so the free limits add up.
 // Every provider is optional: set the API keys you have in Vercel.
 //
+//   NARA_API_KEY         NaraRouter free (7M tokens/day, 15 RPM): agnes, nemotron, laguna
 //   GEMINI_API_KEY       Google AI Studio (free, no card)
 //   NVIDIA_API_KEY       NVIDIA build.nvidia.com developer API (free): Llama and Kimi models
 //   GROQ_API_KEY         Groq (free, no card; each model has its own daily quota): Llama, gpt-oss
@@ -36,6 +37,7 @@ const env = name => (process.env[name] || "").trim();
 const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.trim()).filter(Boolean);
 
 const PROVIDERS = {
+  nara: { key: "NARA_API_KEY", kind: "openai", url: "https://router.bynara.id/v1/chat/completions", models: list("NARA_MODELS", "agnes-2.5-flash,nemotron-3.5-lightning-free,laguna-s-2.1") },
   gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-lite-latest,gemini-flash-latest") },
   nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b") },
   mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-small-latest,mistral-medium-latest") },
@@ -56,7 +58,7 @@ const PROVIDERS = {
   together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
   fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
-const ORDER = list("PROVIDER_ORDER", "groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -272,7 +274,7 @@ export async function POST(request) {
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
   if (body.panel) {
-    const FREE = ["gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
+    const FREE = ["nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
     const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 3);
     const readAll = async stream => {
       const reader = stream.getReader();
