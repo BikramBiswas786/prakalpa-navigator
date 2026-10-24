@@ -176,6 +176,12 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .browser-tabs .chip { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .browser-url { font-size: .75rem; color: var(--muted); padding: 0 10px 6px; overflow-wrap: anywhere; }
 .browser-page { max-height: 132px; overflow: auto; margin: 0; padding: 0 10px 8px; font-size: .82rem; white-space: pre-wrap; }
+.job { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 0 0 12px; background: var(--surface); }
+.job-ask { margin: 0 0 10px; font-weight: 600; }
+.job-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.job-steps li { border-top: 1px solid var(--line); padding-top: 8px; }
+.job-steps b { display: block; font-size: .78rem; letter-spacing: .03em; color: var(--muted); margin-bottom: 4px; }
+.starter.on { border-color: var(--accent); background: var(--accent-soft); }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
 .mobile-tasks { display: none; }
@@ -718,10 +724,11 @@ const STR = {
     mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
-    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "যা জানতে চান, নিচে লিখুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "বিশ্বাস এজেন্ট", ag_note: "এই এজেন্টের চ্যাট আলাদা। বিশ্বাস AI-র চ্যাটে যায় না। প্রশ্ন পেলে ওয়েবসাইট খুলে পড়ে, তারপর উত্তর দেয়।",
-    ag_ph: "এজেন্টকে লিখুন। এটি নিজে পাতা খুলবে।",
-    ag_go: "চালান", ag_new: "নতুন", ag_reply: "উত্তর দিন", ag_think: "ভাবনা:",
+    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "বিশ্বাস AI কথা বলে। এজেন্ট কথা বলে না। একটা কাজ দেন, সেটা শেষ করে। তিনজন আলাদা।",
+    ag_ph: "একটা কাজ লিখুন। যেমন: বিলম্বিত মৃত্যু নিবন্ধনের ধাপ লিখুন",
+    ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
+    ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. খোলা পাতা", ag_s3: "৩. ফল",
     ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
     ag_free: "স্বাধীন এজেন্ট", ag_free_d: "নিজে ঠিক করে খোঁজে, লেখে, একবার যাচাই করে।",
@@ -788,10 +795,11 @@ const STR = {
     mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
-    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Ask anything below.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "Biswas agent", ag_note: "This agent's chat is separate. It is not saved in Biswas AI. It opens web pages, reads them, then answers.",
-    ag_ph: "Write to the agent. It will open pages itself.",
-    ag_go: "Run", ag_new: "New", ag_reply: "Reply", ag_think: "Thought:",
+    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
+    ag_tab: "Agents", ag_h: "One job", ag_note: "Biswas AI talks with you. An agent does not chat. You give one job and it finishes it. Three workers, three different results.",
+    ag_ph: "Write one job. For example: write the steps for delayed death registration",
+    ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
+    ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Pages opened", ag_s3: "3. Result",
     ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
     ag_free: "Independent agent", ag_free_d: "Decides, looks up, writes, then checks once.",
@@ -2660,26 +2668,32 @@ function cleanAgent(s) {
 }
 function renderAgents() {
   const box = $("#ag-picks"); if (!box) return;
-  box.innerHTML = [["free", "ag_free"], ["write", "ag_write"], ["find", "ag_find"]].map(([id, n]) => `<button class="chip" type="button" data-agent="${id}" aria-pressed="${id === agentKind}">${esc(t(n))}</button>`).join("");
-}
-function pageLinks(pages) {
-  if (!pages || !pages.length) return "";
-  return `<div class="sources"><b>${esc(t("ag_sources"))}</b>${pages.map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`;
+  box.innerHTML = [["find", "ag_find", "ag_find_d"], ["write", "ag_write", "ag_write_d"], ["free", "ag_free", "ag_free_d"]].map(([id, n, d]) => `<button class="chip" type="button" data-agent="${id}" aria-pressed="${id === agentKind}" title="${esc(t(d))}">${esc(t(n))}</button>`).join("");
 }
 function renderAgentView() {
   renderAgents();
   const list = $("#ag-list");
   const rows = agentThreads.filter(t => (t.messages || []).length);
-  if (list) list.innerHTML = `<button class="btn small" type="button" data-ag-new>${esc(t("ag_new"))}</button>` + rows.map(t => `<button class="chip" type="button" data-ag="${t.id}" aria-pressed="${t.id === agentId}">${esc(t.title || t("conv_empty"))}</button>`).join("");
+  if (list) list.innerHTML = `<button class="btn small" type="button" data-ag-new>${esc(t("ag_new"))}</button>` + rows.map(t => `<button class="chip" type="button" data-ag="${t.id}" aria-pressed="${t.id === agentId}">${esc(t.title || t("ag_job"))}</button>`).join("");
   const thread = $("#ag-thread");
   const cur = agentThreads.find(x => x.id === agentId);
   const msgs = cur ? cur.messages : [];
   if (!thread) return;
-  thread.innerHTML = msgs.length ? msgs.map(m => m.role === "user"
-    ? `<div class="msg user"><div class="bubble">${esc(m.shown || m.content)}</div></div>`
-    : `<div class="msg ai">${m.think ? `<div class="thought">${esc(t("ag_think"))} ${esc(m.think)}</div>` : ""}<div class="doc">${m.content ? mdToHtml(cleanAgent(m.content)) : (m.done ? "" : thinkingHtml(m))}</div>${pageLinks(m.pages)}${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}${m.done && m.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</div>`).join("")
-    : `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
-  const sc = $("#ag-scroll"); if (sc && msgs.length) sc.scrollTop = sc.scrollHeight;
+  if (!msgs.length) {
+    thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p><div class="starters">${[["find", "ag_find", "ag_find_d"], ["write", "ag_write", "ag_write_d"], ["free", "ag_free", "ag_free_d"]].map(([id, n, d]) => `<button class="starter${id === agentKind ? " on" : ""}" type="button" data-agent="${id}"><b>${esc(t(n))}</b><span>${esc(t(d))}</span></button>`).join("")}</div></div>`;
+    return;
+  }
+  const jobs = [];
+  for (let i = 0; i < msgs.length; i++) {
+    if (msgs[i].role !== "user") continue;
+    jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
+  }
+  thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b><span>${esc((ans && ans.think) || t("ag_step1"))}</span></li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() }))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
+  const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
+}
+function pageLinks(pages) {
+  if (!pages || !pages.length) return "";
+  return `<div class="sources">${pages.map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`;
 }
 function catalogBrief() {
   return SERVICES.map(s => { const d = s[settings.lang] || s.bn; return s.id + " | " + d.n; }).join("\n");
@@ -2748,8 +2762,10 @@ async function runBiswasAgent(job) {
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
     ai.content = ""; renderAgentView();
-    let sys = `You are the Biswas research agent. This chat is not the normal Biswas AI chat. ${lang} Today is ${today()}. Write plain sentences. No table, no markdown, no HTML. Do not invent a fee, an order number or a date. If a fact is not in the pages or the notes, say it was not on the pages you opened.`;
-    if (agentKind === "write" && !web) sys += " Write the office paper, ready to print. Leave ______ where a fact was not given.";
+    let sys = `You finish one office job. You are not Biswas AI chat. Do not greet. Do not ask a question. ${lang} Today is ${today()}. Plain sentences. No table, no markdown, no HTML. Do not invent a fee, an order number or a date.`;
+    if (agentKind === "find") sys += " Result only: who can apply, papers to carry, steps, and where to go. Nothing else.";
+    else if (agentKind === "write") sys += " Result only: the office paper, ready to print. Leave ______ where a fact was not given.";
+    else sys += " Result only: three short lines an officer can act on, then the source page.";
     if (web) sys += "\n\nPages opened:\n" + web;
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
