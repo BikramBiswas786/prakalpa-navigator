@@ -70,7 +70,7 @@ function followLinks(html, base) {
       if (s && !out.includes(s)) out.push(s);
     } catch (e) { /* skip a bad link */ }
   }
-  return out.slice(0, 2);
+  return out.slice(0, 3);
 }
 async function searchWeb(q) {
   const found = [];
@@ -179,7 +179,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v31"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v32"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
