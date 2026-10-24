@@ -59,17 +59,23 @@ function isWall(text) {
 }
 function readableText(html) {
   const raw = String(html || "");
-  const markers = [/itemprop="articleBody"/i, /class="[^"]*entry-content[^"]*"/i, /class="[^"]*articlebody[^"]*"/i, /class="[^"]*article-body[^"]*"/i];
-  for (const re of markers) {
+  const bits = [];
+  const metaRes = [
+    /property="og:description"\s+content="([^"]+)"/i,
+    /content="([^"]+)"\s+property="og:description"/i,
+    /name="description"\s+content="([^"]+)"/i,
+    /"description"\s*:\s*"([^"\\]{40,400})"/i
+  ];
+  for (const re of metaRes) {
     const m = re.exec(raw);
-    if (!m) continue;
-    const slice = raw.slice(m.index, m.index + 24000);
-    const paras = [...slice.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
-      .map(x => decodeBasic(x[1].replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim())
-      .filter(t => t.length > 40);
-    const joined = paras.join("\n\n").slice(0, 3500);
-    if (joined.length > 80 && !isWall(joined)) return joined;
+    if (m) bits.push(decodeBasic(m[1]).replace(/\\n/g, " ").replace(/\s+/g, " ").trim());
   }
+  const paras = [...raw.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+    .map(x => decodeBasic(x[1].replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim())
+    .filter(t => t.length > 40)
+    .slice(0, 14);
+  const joined = bits.concat(paras).join("\n\n").slice(0, 4500);
+  if (joined.length > 80 && !isWall(joined)) return joined;
   const plain = stripPage(raw);
   return plain.length > 80 && !isWall(plain) ? plain : "";
 }
@@ -750,7 +756,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v64"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v65"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
