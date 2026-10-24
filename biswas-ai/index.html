@@ -1481,6 +1481,17 @@ const BHANDAR_EN = `Lakshmir Bhandar is also written Laxmi Vandar, Lakshmi Bhand
 const BHANDAR_BN = `লক্ষ্মীর ভান্ডারকে Laxmi Vandar, Lakshmi Bhandar-ও লেখে। এটা আগের রাজ্য সরকারের প্রকল্প। জুন ২০২৬ থেকে খবরে নতুন নাম অন্নপূর্ণা যোজনা / অন্নপূর্ণা ভান্ডার: যোগ্য মহিলাদের মাসে ৩,০০০ টাকা। পুরনো উপভোক্তা নতুন আবেদন ছাড়াই চলে এসেছেন। বিধবা ভাতার সঙ্গে একসঙ্গে মেলে না। এটা খবর — socialsecurity.wb.gov.in-এ মিলিয়ে নিন। এটা রাজ্যের প্রকল্প, ভারতের গেজেটের প্রকল্প নয়।`;
 const DCRB_EN = `DCRB here means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971. It is not the Delaware Compensation Rating Bureau and not a District of Columbia office. Finance Department (Pension Branch) notification No. 45-F(Pen) dated 20.02.2026 amends Rule 7(1)(e)(1). For death gratuity, "family" includes sons, including stepsons. The new name in that notification is married daughters, added as item (viii), with unmarried, widowed and divorced daughters already listed. A married son is not a new category in this order. This is the death-gratuity family list, not the family-pension order. Family pension is paid first to the widow or widower, then to the minor children. Do not treat an adult married son as the family pensioner from this notification. Copies: wbxpress.com (definition of family for death gratuity, and the 1971 rules). Check the Finance Department order before you rely on it.`;
 const DCRB_BN = `এখানে DCRB মানে West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971। এটা ডেলাওয়্যার বা ওয়াশিংটন ডিসির অফিস নয়। অর্থ দপ্তরের (পেনশন শাখা) বিজ্ঞপ্তি নং ৪৫-এফ(পেন), তারিখ ২০.০২.২০২৬, বিধি ৭(১)(ঙ)(১) বদলেছে। ডেথ গ্র্যাচুইটির জন্য "পরিবার"-এ ছেলে, সৎছেলে-সহ, আছে। এই বিজ্ঞপ্তিতে নতুন করে যোগ হয়েছে বিবাহিতা কন্যা, ক্রম (viii)। বিবাহিত ছেলে নতুন শ্রেণি নয়। এটা ডেথ গ্র্যাচুইটির তালিকা, ফ্যামিলি পেনশনের আদেশ নয়। ফ্যামিলি পেনশন আগে বিধবা বা বিপত্নীক, তারপর নাবালক সন্তান পান। এই বিজ্ঞপ্তি দেখিয়ে প্রাপ্তবয়স্ক বিবাহিত ছেলেকে ফ্যামিলি পেনশনার বলবেন না। কপি: wbxpress.com। অর্থ দপ্তরের আদেশে মিলিয়ে নিন।`;
+function officeTopic(s) {
+  return /\b(dcrb|pension|gratuity|heir|annapurna|lakshmir|lakshmi|bhandar|vandar|ration|khadya|banglarbhumi|khatian|mutation|sarathi|prakalpa|birth|death|land)\b|জন্ম|মৃত্যু|প্রকল্প|ভাতা|পেনশন|গ্র্যাচুইটি/i.test(String(s || ""));
+}
+function wbPage(hit) {
+  const blob = String((hit && hit.url) || "") + " " + String((hit && hit.title) || "");
+  return /wbxpress|banglarbhumi|\.wb\.gov\.in|socialsecurity\.wb|janma-mrityu|edistrict\.wb/i.test(blob);
+}
+function driftedQuery(q, job) {
+  if (officeTopic(job)) return false;
+  return /\b(dcrb|wbxpress|annapurna|bhandar|vandar|banglarbhumi|pension|gratuity)\b|west bengal|death-cum-retirement/i.test(q || "");
+}
 function dcrbNote(topic) {
   if (!/\bDCRB\b|death-?cum-?retirement|ডেথ.?কাম|গ্র্যাচুইটি/i.test(topic || "")) return "";
   if (!/heir|son|daughter|family|পরিবার|ছেলে|কন্যা|উত্তরাধিকার|গ্র্যাচুইটি|pension|পেনশন|DCRB/i.test(topic || "")) return "";
@@ -1542,12 +1553,13 @@ function claimsMatch(a, b) {
 function splitClaims(text) {
   return String(text || "").replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 50 && s.length < 420);
 }
-function agreeArticle(rows, pages) {
+function agreeArticle(rows, pages, question) {
   const good = (rows || []).filter(r => r && r.text && !r.error);
   if (good.length < 2) return "";
   const kept = [];
   for (const row of good) {
     for (const s of splitClaims(row.text)) {
+      if (question && !officeTopic(question) && driftedQuery(s, question)) continue;
       const others = good.filter(o => o !== row && splitClaims(o.text).some(t => claimsMatch(s, t)));
       if (!others.length || kept.some(k => claimsMatch(k.text, s))) continue;
       row.used = true;
@@ -1565,7 +1577,7 @@ function agreeArticle(rows, pages) {
 async function askPanel(question, pages) {
   const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 6)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
-  const system = yearLine() + "\nWrite a short sourced answer for the question. Use the source pages if they help. After each fact, name the page. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing." + (src ? "\n\nSource pages:\n" + src : "");
+  const system = yearLine() + "\nAnswer only the question the user asked. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. Use a source page only when it is about the question. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [];
@@ -2910,7 +2922,7 @@ function renderAgentView() {
   try { renderAgents(); renderAgentList(); } catch (e) { /* the job must stay on screen */ }
 }
 function engineName(via) {
-  return { google: "Google", bing: "Bing", msn: "MSN", yahoo: "Yahoo", duck: "DuckDuckGo", parallel: "Parallel", wiki: "Wikipedia", orders: "Government orders", web: "Web" }[via] || "Web";
+  return { google: "Google", bing: "Bing", msn: "MSN", yahoo: "Yahoo", duck: "DuckDuckGo", parallel: "Parallel", "parallel-key": "Parallel", wiki: "Wikipedia", orders: "Government orders", web: "Web", tavily: "Tavily", exa: "Exa", serper: "Serper", firecrawl: "Firecrawl", keiro: "Keiro" }[via] || "Web";
 }
 function auditHead(pages) {
   const rows = (pages || []).filter(p => p && String(p.text || "").length > 40);
@@ -3026,6 +3038,7 @@ async function runBiswasAgent(job) {
       const plan = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
       const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
+      if (!officeTopic(job)) ids = [];
     } catch (e) { ids = []; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
     const seen = new Set();
@@ -3037,6 +3050,7 @@ async function runBiswasAgent(job) {
       while (queue.length && pages.length < cap) {
         const hit = queue.shift();
         if (!hit.url || seen.has(hit.url)) continue;
+        if (!officeTopic(job) && (wbPage(hit) || driftedQuery((hit.title || "") + " " + (hit.url || ""), job))) continue;
         if (/delaware|dcrb\.dc\.gov|district of columbia|compensation rating/i.test((hit.url || "") + " " + (hit.title || ""))) continue;
         seen.add(hit.url);
         mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
@@ -3049,7 +3063,7 @@ async function runBiswasAgent(job) {
         const via = hit.via || (/wbxpress\.com|\.gov\.in/.test(hit.url || "") ? "orders" : "web");
         pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via });
         ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
-        (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
+        if (officeTopic(job)) (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
         ai.pages = snap();
         renderAgentView();
       }
@@ -3058,17 +3072,17 @@ async function runBiswasAgent(job) {
     let queries = [job];
     if (!writerOff) try {
       mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
-      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for the question. If the question is about DCRB, pension, gratuity, or legal heir in West Bengal, every search must include "West Bengal" or "wbxpress". For any other topic, do not force those words. No other text.` });
+      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Write 3 short English web searches for the user's exact question. Keep the same subject. Do not add a place, an office, or a scheme the user did not name. No other text.` });
       const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(jq.queries)) {
         const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3)
           .map(s => {
             let q = s;
-            const aboutDcrb = /\bDCRB\b|death-?cum-?retirement|pension|gratuity|legal heir/i.test(job);
-            if (aboutDcrb && /\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
+            if (officeTopic(job) && /\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
             return q.slice(0, 180);
-          });
-        if (next.length) queries = next;
+          })
+          .filter(q => !driftedQuery(q, job));
+        queries = next.length ? next : [job];
       }
     } catch (e) { queries = [job]; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const useGoogle = googleOn;
@@ -3082,12 +3096,12 @@ async function runBiswasAgent(job) {
         const more = Array.isArray(data.more) ? data.more : [];
         if (more.length) await readRound(more, Math.min(12, pages.length + 8));
         if (useGoogle && ghits.length) await readRound(ghits, Math.min(10, pages.length + 2));
-        if (orders.length) await readRound(orders, Math.min(8, pages.length + 2));
+        if (officeTopic(job) && orders.length) await readRound(orders, Math.min(8, pages.length + 2));
       } catch (e) { /* the next search still runs */ }
     }
     mark(settings.lang === "en" ? "Asking the free AIs, then keeping only the lines that match" : "ফ্রি AI-কে জিজ্ঞাসা করছি, তারপর যে লাইন মিলেছে শুধু সেটা রাখছি");
     try { ai.panel = await askPanel(job, pages); } catch (e) { ai.panel = []; }
-    const article = agreeArticle(ai.panel, pages);
+    const article = agreeArticle(ai.panel, pages, job);
     renderAgentView();
     if (article || writerOff) {
       ai.pages = snap();
@@ -3099,15 +3113,20 @@ async function runBiswasAgent(job) {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
-    let sys = yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971. If a page is about Delaware or the District of Columbia, ignore that page. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the private audit lists it under Agreed. If only one engine says it, leave it out. Do not show the audit, the words Agreed, or One engine only. The order pages are public copies of West Bengal government orders. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs. Cover what changed, the papers, the steps, and what the person still has to do. Name the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages);
-    if (/birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
+    let sys = officeTopic(job)
+      ? yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only when the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the private audit lists it under Agreed. If only one engine says it, leave it out. Do not show the audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages)
+      : yearLine() + `\nYou answer only the user's question. ${lang} Use the pages that are about that question. Do not mention West Bengal schemes, DCRB, pensions, Annapurna, Lakshmir Bhandar, land records, or birth and death registration unless the question asked about them. If the pages are about something else, ignore those pages and answer the question. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
+    if (officeTopic(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
-    if (facts) sys += "\n\nNotes already in this app:\n" + facts;
+    if (officeTopic(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPrivate audit, do not copy this into the note:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit, Agreed, or One engine only. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
+    const checkSys = officeTopic(job)
+      ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
+      : `You are the editor. ${lang} The note must answer the job and nothing else. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Do not invent a score. Return only the corrected note.`;
+    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys });
     ai.pages = snap();
     ai.content = hideAudit(dropCutoff(cleanAgent(checked.text || draft.text), job));
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
