@@ -97,12 +97,13 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 #conv-list { max-height: 42vh; overflow: auto; }
 .hist { min-height: 0; overflow: auto; padding: 12px; display: grid; align-content: start; gap: 8px; background: var(--surface); border-right: 1px solid var(--line); }
 .word-folder { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
-#hist-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
-#hist-sheet[hidden] { display: none !important; }
+#hist-sheet, #ag-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
+#hist-sheet { grid-template-rows: auto auto minmax(0, 1fr); }
+#hist-sheet[hidden], #ag-sheet[hidden] { display: none !important; }
 .sheet-top { display: flex; align-items: center; gap: 8px; }
 .sheet-top b { margin-right: auto; font-family: var(--f-display); font-size: 1.25rem; }
 #sheet-q { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
-#sheet-list { overflow: auto; display: grid; align-content: start; gap: 8px; }
+#sheet-list, #ag-sheet-list { overflow: auto; display: grid; align-content: start; gap: 8px; }
 .welcome.home { justify-items: center; text-align: center; padding-top: 10vh; }
 .welcome.home .mark { width: 48px; height: 48px; }
 .box { border-radius: 22px; }
@@ -158,12 +159,9 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .welcome p { color: var(--muted); margin: 0; max-width: 62ch; }
 .starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
 .starter { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; }
-#v-agent { grid-template-rows: auto 1fr auto; }
-#v-agent .ag-top { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; min-width: 0; }
-#v-agent .ag-row { display: flex; gap: 6px; overflow-x: auto; min-width: 0; }
-#v-agent .ag-row button { flex: 0 0 auto; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#v-agent .scroll { grid-row: 2; }
-#v-agent .composer { grid-row: 3; }
+#v-agent { grid-template-rows: minmax(0, 1fr) auto; }
+#v-agent .scroll { grid-row: 1; min-height: 0; }
+#v-agent .composer { grid-row: 2; }
 #v-agent .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sources { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .sources a { color: var(--accent); overflow-wrap: anywhere; }
@@ -533,16 +531,13 @@ textarea.paper { white-space: pre-wrap; }
     </section>
 
     <section class="view chat" id="v-agent" hidden>
-      <div class="ag-top">
-        <div class="ag-row" id="ag-picks"></div>
-        <div class="ag-row" id="ag-list"></div>
-      </div>
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
         <form class="box" id="ag-form">
           <textarea id="ag-job" rows="1" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </form>
+        <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <span id="ag-picks"></span></div>
       </div></div>
     </section>
 
@@ -587,6 +582,14 @@ textarea.paper { white-space: pre-wrap; }
   </form>
 </div>
 
+<aside id="ag-sheet" hidden>
+  <div class="sheet-top">
+    <b data-t="conv_h">কথোপকথন</b>
+    <button class="btn small" type="button" id="ag-sheet-new" data-t="newchat"></button>
+    <button class="btn small" type="button" id="ag-sheet-close" data-t="cancel"></button>
+  </div>
+  <div id="ag-sheet-list"></div>
+</aside>
 <aside id="hist-sheet" hidden>
   <div class="sheet-top">
     <b data-t="conv_h">কথোপকথন</b>
@@ -2678,11 +2681,15 @@ function renderAgents() {
   if (!box) return;
   box.innerHTML = `<button class="chip" type="button" id="ag-google" aria-pressed="${googleOn ? "true" : "false"}" title="${esc(t("ag_google_d"))}">${esc(t("ag_google"))}</button>`;
 }
+function renderAgentList() {
+  const list = $("#ag-sheet-list");
+  if (!list) return;
+  const rows = agentThreads.filter(t => (t.messages || []).length);
+  list.innerHTML = rows.length ? rows.map(t => `<button class="conv${t.id === agentId ? " on" : ""}" type="button" data-ag="${t.id}"><b>${esc(t.title || t("ag_job"))}</b><small>${esc(whenLabel(t.at))}</small></button>`).join("") : `<p class="lead">${esc(t("conv_empty"))}</p>`;
+}
 function renderAgentView() {
   renderAgents();
-  const list = $("#ag-list");
-  const rows = agentThreads.filter(t => (t.messages || []).length);
-  if (list) list.innerHTML = `<button class="btn small" type="button" data-ag-new>${esc(t("ag_new"))}</button>` + rows.map(t => `<button class="chip" type="button" data-ag="${t.id}" aria-pressed="${t.id === agentId}">${esc(t.title || t("ag_job"))}</button>`).join("");
+  renderAgentList();
   const thread = $("#ag-thread");
   const cur = agentThreads.find(x => x.id === agentId);
   const msgs = cur ? cur.messages : [];
@@ -3078,8 +3085,16 @@ document.addEventListener("click", e => {
     renderAgents();
     return;
   }
-  if (el("[data-ag-new]")) { agentId = ""; renderAgentView(); const job = $("#ag-job"); if (job) job.focus(); return; }
-  if ((x = el("[data-ag]"))) return openAgent(x.dataset.ag);
+  if (el("#ag-new") || el("#ag-sheet-new") || el("[data-ag-new]")) {
+    agentId = "";
+    const s = $("#ag-sheet"); if (s) s.hidden = true;
+    renderAgentView();
+    const job = $("#ag-job"); if (job) job.focus();
+    return;
+  }
+  if (el("#ag-convs")) { const s = $("#ag-sheet"); if (s) { s.hidden = false; renderAgentList(); } return; }
+  if (el("#ag-sheet-close")) { const s = $("#ag-sheet"); if (s) s.hidden = true; return; }
+  if ((x = el("[data-ag]"))) { const s = $("#ag-sheet"); if (s) s.hidden = true; return openAgent(x.dataset.ag); }
   if ((x = el("[data-agent]"))) { agentKind = x.dataset.agent; renderAgents(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-kind]"))) {
     draft.type = x.dataset.kind; draft.lang = settings.lang; saveDraft();
