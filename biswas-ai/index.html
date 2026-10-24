@@ -158,7 +158,11 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .welcome p { color: var(--muted); margin: 0; max-width: 62ch; }
 .starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
 .starter { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; }
-.starter.on { border-color: var(--accent); background: var(--accent-soft); }
+#v-agent .starters { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 8px; }
+#v-agent .starter { flex: 0 0 auto; min-width: 132px; }
+#v-agent .starter.on { border-color: var(--accent); background: var(--accent-soft); }
+.ag-bar { display: flex; gap: 6px; overflow-x: auto; }
+.thought { color: var(--muted); font-size: .84rem; margin: 0 0 8px; }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
 .mobile-tasks { display: none; }
@@ -508,17 +512,16 @@ textarea.paper { white-space: pre-wrap; }
       </div>
     </section>
 
-    <section class="view page" id="v-agent" hidden>
-      <div class="page-inner">
-        <h2 data-t="ag_h"></h2>
-        <p class="lead" data-t="ag_note"></p>
+    <section class="view chat" id="v-agent" hidden>
+      <div class="banner"><div class="ag-bar" id="ag-list"></div></div>
+      <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
+      <div class="composer"><div class="inner">
         <div class="starters" id="ag-picks"></div>
-        <form class="panel" id="ag-form">
-          <textarea id="ag-job" rows="6" data-t-ph="ag_ph"></textarea>
-          <div class="tools"><button class="btn primary" type="submit" id="ag-go" data-t="ag_go"></button><span class="status-line" id="ag-status"></span></div>
+        <form class="box" id="ag-form">
+          <textarea id="ag-job" rows="1" data-t-ph="ag_ph"></textarea>
+          <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </form>
-        <pre class="desk-out" id="ag-out"></pre>
-      </div>
+      </div></div>
     </section>
 
     <!-- BOTH: AI chat -->
@@ -701,9 +704,10 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "যা জানতে চান, নিচে লিখুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "বিশ্বাস এজেন্ট", ag_note: "একই ফ্রি সংযোগ। নতুন চাবি নেই। স্বাধীন এজেন্ট নিজে খোঁজে, লেখে, তারপর একবার মিলিয়ে দেখে।",
-    ag_ph: "কাজ লিখুন। যেমন: এই আদেশের সংশোধনী লিখুন / রেশন কার্ডে আধার জোড়া কীভাবে হয়",
-    ag_go: "চালান", ag_done: "হয়ে গেছে। চ্যাটেও জমা আছে।", ag_step1: "খুঁজছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
+    ag_tab: "এজেন্ট", ag_h: "বিশ্বাস এজেন্ট", ag_note: "এই অ্যাপে যে ফ্রি চাবি আছে, এজেন্ট সেটাই ব্যবহার করে। আলাদা মডেল নয়। আগে ভাবে, তালিকা দেখে, তারপর উত্তর দেয়। নিচে উত্তর দিতে পারবেন।",
+    ag_ph: "কাজ লিখুন, বা ওপরের উত্তরের পর আবার লিখুন",
+    ag_go: "চালান", ag_new: "নতুন", ag_reply: "উত্তর দিন", ag_think: "ভাবনা:",
+    ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
     ag_free: "স্বাধীন এজেন্ট", ag_free_d: "নিজে ঠিক করে খোঁজে, লেখে, একবার যাচাই করে।",
     ag_write: "লেখক", ag_write_d: "আদেশ, রেজোলিউশন, চিঠি বা সংশোধনী লেখে।",
     ag_find: "খোঁজ", ag_find_d: "এই অ্যাপের সরকারি তালিকা থেকে কাজ ও কাগজ বলে।",
@@ -768,9 +772,10 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Ask anything below.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "Biswas agents", ag_note: "The same free connection. No new key. The independent agent looks up the job, writes it, then checks the draft once.",
-    ag_ph: "Write the job. For example: draft a corrigendum to this order / how do I link Aadhaar to a ration card",
-    ag_go: "Run", ag_done: "Done. It is also saved in the chat.", ag_step1: "Looking…", ag_step2: "Writing…", ag_step3: "Checking…",
+    ag_tab: "Agents", ag_h: "Biswas agent", ag_note: "This agent uses the free keys already in this app. It is not a separate model. It thinks, checks the list in this app, then answers. You can reply below.",
+    ag_ph: "Write the job, or reply under the last answer",
+    ag_go: "Run", ag_new: "New", ag_reply: "Reply", ag_think: "Thought:",
+    ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
     ag_free: "Independent agent", ag_free_d: "Decides, looks up, writes, then checks once.",
     ag_write: "Writer", ag_write_d: "Writes an order, resolution, letter or corrigendum.",
     ag_find: "Finder", ag_find_d: "Answers from the government list in this app.",
@@ -1786,7 +1791,7 @@ function showView() {
   if (tab === "catalog") renderCatalog();
   if (tab === "chat") { renderChat(); scrollDown(); }
   if (tab === "word" || tab === "table") renderWord();
-  if (tab === "agent") renderAgents();
+  if (tab === "agent") renderAgentView();
   renderRail();
 }
 function go(section, tab) {
@@ -2516,6 +2521,10 @@ function loadVault() {
   words = vaultGet("words", []);
   if (!Array.isArray(words)) words = [];
   wordId = words[0] ? words[0].id : "";
+  agentThreads = vaultGet("agents", []);
+  if (!Array.isArray(agentThreads)) agentThreads = [];
+  agentThreads.forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+  agentId = agentThreads[0] ? agentThreads[0].id : "";
   messages = chats.ai;
 }
 function peopleBook() { try { return JSON.parse(localStorage.getItem("pmitra:people") || "{}"); } catch (e) { return {}; } }
@@ -2618,9 +2627,29 @@ setInterval(() => {
 }, 1000);
 let agentKind = "free";
 let agentBusy = false;
+let agentThreads = [];
+let agentId = "";
+function cleanAgent(s) {
+  return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/\*\*/g, "").replace(/^\s*\|.+\|\s*$/gm, "").replace(/^\s*[-| :]{3,}\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+}
 function renderAgents() {
   const box = $("#ag-picks"); if (!box) return;
   box.innerHTML = [["free", "ag_free", "ag_free_d"], ["write", "ag_write", "ag_write_d"], ["find", "ag_find", "ag_find_d"]].map(([id, n, d]) => `<button class="starter${id === agentKind ? " on" : ""}" type="button" data-agent="${id}"><b>${esc(t(n))}</b><span>${esc(t(d))}</span></button>`).join("");
+}
+function renderAgentView() {
+  renderAgents();
+  const list = $("#ag-list");
+  const rows = agentThreads.filter(t => (t.messages || []).length);
+  if (list) list.innerHTML = `<button class="btn small" type="button" data-ag-new>${esc(t("ag_new"))}</button>` + rows.map(t => `<button class="chip" type="button" data-ag="${t.id}" aria-pressed="${t.id === agentId}">${esc(t.title || t("conv_empty"))}</button>`).join("");
+  const thread = $("#ag-thread");
+  const cur = agentThreads.find(x => x.id === agentId);
+  const msgs = cur ? cur.messages : [];
+  if (!thread) return;
+  thread.innerHTML = msgs.length ? msgs.map(m => m.role === "user"
+    ? `<div class="msg user"><div class="bubble">${esc(m.shown || m.content)}</div></div>`
+    : `<div class="msg ai">${m.think ? `<div class="thought">${esc(t("ag_think"))} ${esc(m.think)}</div>` : ""}<div class="doc">${m.content ? mdToHtml(cleanAgent(m.content)) : (m.done ? "" : thinkingHtml(m))}</div>${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}${m.done && m.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</div>`).join("")
+    : `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
+  const sc = $("#ag-scroll"); if (sc && msgs.length) sc.scrollTop = sc.scrollHeight;
 }
 function catalogBrief() {
   return SERVICES.map(s => { const d = s[settings.lang] || s.bn; return s.id + " | " + d.n; }).join("\n");
@@ -2630,46 +2659,69 @@ function serviceFacts(id) {
   const d = s[settings.lang] || s.bn;
   return [d.n, d.b, (d.c || []).join("; "), (d.d || []).join("; "), (d.s || []).join("; "), d.x || ""].filter(Boolean).join("\n");
 }
+function saveAgent() {
+  vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", messages: slimMsgs(t.messages) })));
+}
+function openAgent(id) {
+  agentId = id || "";
+  const cur = agentThreads.find(t => t.id === agentId);
+  if (cur && cur.kind) agentKind = cur.kind;
+  renderAgentView();
+}
 async function runBiswasAgent(job) {
   if (!engine) return toast(t("no_ai"));
   if (agentBusy || ctl) return toast(errText("busy"));
   agentBusy = true;
-  const status = $("#ag-status"), out = $("#ag-out"), go = $("#ag-go");
-  if (go) go.disabled = true;
-  if (out) out.textContent = "";
+  const go = $("#ag-go"); if (go) go.disabled = true;
   const lang = settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.";
+  let cur = agentThreads.find(t => t.id === agentId);
+  if (!cur) { cur = { id: nid(), title: "", at: Date.now(), kind: agentKind, messages: [] }; agentThreads.unshift(cur); agentId = cur.id; }
+  cur.kind = agentKind;
+  cur.messages.push({ role: "user", content: job, shown: job, done: true });
+  const ai = { role: "assistant", content: "", think: "", done: false, started: Date.now() };
+  cur.messages.push(ai);
+  if (!cur.title) cur.title = job.replace(/\s+/g, " ").trim().slice(0, 72);
+  renderAgentView();
   try {
-    let need = agentKind === "write" ? "write" : agentKind === "find" ? "find" : "answer";
     let ids = [];
+    let need = agentKind === "write" ? "write" : agentKind === "find" ? "find" : "answer";
     if (agentKind !== "write") {
-      if (status) status.textContent = t("ag_step1");
-      const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `You are Biswas AI. Reply with JSON only: {"need":"find|write|answer","ids":[]}. ids must be copied from this list and only if the job is about that service.\n${catalogBrief()}` });
+      ai.think = t("ag_step1"); renderAgentView();
+      const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `You are Biswas AI. Reply with JSON only: {"need":"find|write|answer","ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
       try {
         const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
         if (agentKind === "free" && j.need) need = j.need;
         if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
       } catch (e) { /* keep the default */ }
     }
+    const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
+    ai.think = names.length
+      ? (settings.lang === "en" ? "I looked up " + names.join(", ") + " in this app, then wrote from that." : "এই অ্যাপের তালিকায় " + names.join(", ") + " দেখেছি, তারপর সেটা থেকে লিখেছি।")
+      : (need === "write" || agentKind === "write"
+        ? (settings.lang === "en" ? "I wrote the paper from what you said. I did not invent a fee or an order number." : "আপনি যা বলেছেন, তা থেকে কাগজ লিখেছি। ফি বা আদেশ নম্বর বানাইনি।")
+        : (settings.lang === "en" ? "This app's list has no matching service, so I did not invent a process." : "এই অ্যাপের তালিকায় মিল পাইনি, তাই নিয়ম বানাইনি।"));
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
-    if (status) status.textContent = t("ag_step2");
-    let sys = `You are Biswas AI. ${lang} Today is ${today()}. Do not invent fees, order numbers or dates. If a fact is not in the notes, say it is not in the list.`;
-    if (need === "write" || agentKind === "write") sys += " Write the office paper, ready to print. Paragraphs. Leave a blank ______ for anything not given. Do not ask a question.";
+    ai.content = ""; renderAgentView();
+    let sys = `You are Biswas AI. ${lang} Today is ${today()}. Write plain sentences or short lines. No table, no markdown, no HTML. Do not invent a fee, an order number or a date.`;
+    if (need === "write" || agentKind === "write") sys += " Write the office paper, ready to print. Leave ______ where a fact was not given.";
     else if (facts) sys += " Use only these notes:\n" + facts;
-    else if (need === "find") sys += " The list in this app has no matching service. Say that, and do not invent a process.";
-    const draft = await aiRun([{ role: "user", content: job }], { fast: true, system: sys });
-    if (status) status.textContent = t("ag_step3");
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nDraft:\n" + draft.text + (facts ? "\n\nNotes:\n" + facts : "") }], { fast: true, system: `You are Biswas AI checking your own draft. ${lang} Delete any fee, date or order number that is not in the notes. Keep the rest. Return only the corrected answer.` });
-    const answer = (checked.text || draft.text || "").trim();
-    if (out) out.textContent = answer;
-    messages.push({ role: "user", content: job, shown: job, files: [], done: true });
-    messages.push({ role: "assistant", content: answer, done: true, started: Date.now() });
-    persist();
-    if (status) status.textContent = t("ag_done");
+    else if (need === "find") sys += " Say that this app's list has no matching service.";
+    const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
+    const draft = await aiRun(prior, { fast: true, system: sys });
+    ai.content = cleanAgent(draft.text);
+    ai.done = true;
+    cur.at = Date.now();
+    saveAgent();
   } catch (e) {
-    if (status) status.textContent = aiFailed(e);
+    ai.content = cleanAgent((e && e.text) || "");
+    ai.error = aiFailed(e);
+    ai.done = true;
+    saveAgent();
   } finally {
     agentBusy = false;
     if (go) go.disabled = false;
+    const box = $("#ag-job"); if (box) box.value = "";
+    renderAgentView();
   }
 }
 async function ask(text) {
@@ -2893,6 +2945,9 @@ $("#mem-file").addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
+  if ((x = el("[data-ag-reply]"))) { const job = $("#ag-job"); if (job) job.focus(); return; }
+  if (el("[data-ag-new]")) { agentId = ""; renderAgentView(); const job = $("#ag-job"); if (job) job.focus(); return; }
+  if ((x = el("[data-ag]"))) return openAgent(x.dataset.ag);
   if ((x = el("[data-agent]"))) { agentKind = x.dataset.agent; renderAgents(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-kind]"))) {
     draft.type = x.dataset.kind; draft.lang = settings.lang; saveDraft();
