@@ -859,16 +859,16 @@ const CATS = [
 const SERVICES = [
   { id: "bsk", cat: "window", st: "ok", by: "state", help: "",
     links: [["বাংলা সহায়তা কেন্দ্র", "Bangla Sahayata Kendra", "https://bsk.wb.gov.in/"]],
-    bn: { n: "বাংলা সহায়তা কেন্দ্র (BSK)", old: "", b: "সরকারি প্রকল্প, শংসাপত্র ও বিল — এক জায়গায়, বিনামূল্যে সাহায্য। অপারেটর ফর্ম ভরে দেন।",
-      c: ["পশ্চিমবঙ্গের যে কোনো নাগরিক", "যে কাজের জন্য আসছেন, সেই নথি সঙ্গে আনুন"],
-      d: ["আধার", "সেই পরিষেবার নিজের কাগজ, যেমন রেশন কার্ড, ব্যাঙ্ক পাসবুক বা আগের শংসাপত্র"],
-      s: ["কেন্দ্র আছে জেলাশাসক, মহকুমা শাসক, বিডিও, গ্রাম পঞ্চায়েত, স্বাস্থ্যকেন্দ্র, সরকারি সাহায্যপ্রাপ্ত লাইব্রেরি ও পুরসভায়", "তিন হাজার পাঁচশোর বেশি কেন্দ্র। প্রায় ৪০টি দপ্তরের তিনশোর বেশি পরিষেবা", "bsk.wb.gov.in-এ পুরো তালিকা আছে", "কেন্দ্রে গিয়ে বলুন কোন কাজ। রসিদ রাখুন"],
-      x: "কেন্দ্রের সাহায্য বিনামূল্যে। কোনো পরিষেবায় সরকারি ফি থাকলে তা ফর্মেই লেখা থাকে। দালালকে টাকা দেবেন না।" },
-    en: { n: "Bangla Sahayata Kendra (BSK)", old: "", b: "One free counter for schemes, certificates and bill payments. The operator fills the form with you.",
-      c: ["Any resident of West Bengal", "Bring the papers for the particular service"],
-      d: ["Aadhaar", "The papers that service asks for, such as a ration card, bank passbook or an earlier certificate"],
-      s: ["Centres sit at the District Magistrate, the Sub-Divisional Officer, the BDO, the gram panchayat, a health centre, a government-aided library and the municipality", "More than 3,500 centres. More than 300 services of about 40 departments", "The full list is on bsk.wb.gov.in", "Go to a centre, say which service, and keep the receipt"],
-      x: "Help at the centre is free. A government fee, if that service has one, is printed on the form. Do not pay a tout." } },
+    bn: { n: "বাংলা সহায়তা কেন্দ্র (BSK)", old: "", b: "অপারেটর আপনার হয়ে সরকারি সাইটে আবেদন জমা দেন। কেন্দ্রের সাহায্যের জন্য টাকা লাগে না।",
+      c: ["পশ্চিমবঙ্গের বাসিন্দা", "যে কাজের কাগজ, সেই কাগজ সঙ্গে আনুন"],
+      d: ["আধার", "সেই কাজের কাগজ"],
+      s: ["কেন্দ্র আছে জেলাশাসক, মহকুমা শাসক, বিডিও, গ্রাম পঞ্চায়েত, স্বাস্থ্যকেন্দ্র, সরকারি সাহায্যপ্রাপ্ত লাইব্রেরি ও পুরসভায়", "রাজ্যের সাইট বলছে ৩,৫৬১টি কেন্দ্র, ৪০টি দপ্তর, ৩২৬টি কাজ", "নিচের কার্ডগুলো দুটি জেলার সরকারি তালিকায় লেখা নাম", "কেন্দ্রে কাজের নাম বলুন। রসিদ রাখুন"],
+      x: "সরকারি ফি থাকলে তা ফর্মে লেখা থাকে। দালালকে টাকা দেবেন না। পুরো ৩২৬টি নাম শুধু bsk.wb.gov.in-এ।" },
+    en: { n: "Bangla Sahayata Kendra (BSK)", old: "", b: "The operator files the application on the government site for you. The centre does not charge for the help.",
+      c: ["A resident of West Bengal", "Bring the papers for that particular work"],
+      d: ["Aadhaar", "The papers for that work"],
+      s: ["A centre is at the District Magistrate, the Sub-Divisional Officer, the BDO, the gram panchayat, a health centre, a government-aided library and the municipality", "The state site says 3,561 centres, 40 departments and 326 services", "The cards below are the names printed on two district sites", "Tell the centre the name of the work. Keep the receipt"],
+      x: "A government fee, if any, is printed on the form. Do not pay a tout. The full 326 names are only on bsk.wb.gov.in." } },
   { id: "duare", cat: "window", st: "ok", by: "state", help: "",
     links: [["দুয়ারে সরকার", "Duare Sarkar", "https://ds.wb.gov.in/"]],
     bn: { n: "দুয়ারে সরকার", old: "", b: "গ্রাম পঞ্চায়েত ও পুরসভার ওয়ার্ডে শিবির। প্রকল্পের আবেদন ও কিছু পরিষেবা বাড়ির কাছে। পাড়ায় সমাধান স্থানীয় ছোট সমস্যার জন্য।",
@@ -1252,6 +1252,50 @@ const SERVICES = [
       s: ["Open echallan.parivahan.gov.in", "Enter the number and see what is due", "Pay on the portal and keep the receipt"],
       x: "The amount is printed on the challan. Do not pay it on a third-party site." } }
 ];
+const BSK_MORE = [
+  ["seed", "ok", "বীজের লাইসেন্স", "Seed licence", "বীজ বিক্রির লাইসেন্সের আবেদন। কৃষি দপ্তর।", "Application for a licence to sell seed. Agriculture Department."],
+  ["sufal", "ok", "সুফল বাংলায় নাম", "Sufal Bangla registration", "কৃষক বা দলের নাম নথিভুক্তি, যাতে ফসল বিক্রি করা যায়।", "Register a farmer or a group so they can sell produce."],
+  ["cropins", "ok", "ফসল বীমা", "Crop insurance", "ফসল বীমার আবেদন। কৃষি দপ্তর।", "Application for crop insurance. Agriculture Department."],
+  ["rationnew", "ok", "ডিজিটাল রেশন কার্ড", "Digital ration card", "নতুন ডিজিটাল রেশন কার্ডের আবেদন। খাদ্য দপ্তর।", "Application for a new digital ration card. Food and Supplies Department."],
+  ["rationlink", "ok", "রেশন কার্ডে আধার ও মোবাইল", "Link Aadhaar and mobile to the ration card", "রেশন কার্ডের সঙ্গে আধার ও মোবাইল জোড়া।", "Link Aadhaar and a mobile number to the ration card."],
+  ["voter", "ok", "ভোটার তালিকা", "Voter list", "ফর্ম ৬ নতুন নাম, ফর্ম ৭ নাম কাটা, ফর্ম ৮ শুধরে, ফর্ম ৮ক ঠিকানা বদল।", "Form 6 to add a name, Form 7 to delete, Form 8 to correct, Form 8A to shift address."],
+  ["psc", "ok", "পিএসসি-তে চাকরির আবেদন", "Public Service Commission application", "পশ্চিমবঙ্গ পিএসসি-র ফর্ম জমা।", "Filing a West Bengal Public Service Commission form."],
+  ["fire", "ok", "ফায়ার লাইসেন্স", "Fire licence", "অগ্নি নিরাপত্তা ও ফায়ার লাইসেন্সের আবেদন।", "Application for fire safety and a fire licence."],
+  ["jexpo", "ok", "ভোকলেট ও জেক্সপো", "VOCLET and JEXPO", "পলিটেকনিক ও কারিগরি ভর্তির ফর্ম।", "Forms for polytechnic and technical admission."],
+  ["passport", "ok", "পাসপোর্টের আবেদন", "Passport application", "পাসপোর্টের ফর্ম ভরা। ফি ও নিয়ম বিদেশ মন্ত্রকের।", "Filling the passport form. The fee and the rules are the Ministry of External Affairs'."],
+  ["trade", "ok", "ট্রেড লাইসেন্স", "Trade registration", "দোকান বা ব্যাবসার অনলাইন নিবন্ধন। পুরসভা।", "Online registration of a shop or a trade. Municipality."],
+  ["cmgriev", "ok", "মুখ্যমন্ত্রীর দপ্তরে অভিযোগ", "Complaint to the Chief Minister's office", "অভিযোগের খবর জানানো।", "Sending a complaint to the Chief Minister's office."],
+  ["sabuj", "unc", "সবুজসাথী", "Sabuj Sathi", "ছাত্রছাত্রীর সাইকেল প্রকল্পের আবেদন।", "Application under the student bicycle scheme."],
+  ["siksha", "unc", "শিক্ষাশ্রী", "Sikshashree", "পড়ুয়াদের সাহায্যের আবেদন।", "Application for the student assistance scheme."],
+  ["scc", "unc", "স্টুডেন্ট ক্রেডিট কার্ড", "Student credit card", "পড়ার খরচের জন্য রাজ্যের কার্ডের আবেদন।", "Application for the State's card for study expenses."],
+  ["gatidhara", "unc", "গতিধারা", "Gatidhara", "যান কেনার প্রকল্পের আবেদন।", "Application under the vehicle-purchase scheme."],
+  ["lokprasar", "unc", "লোকপ্রসার", "Lok Prasar", "লোকশিল্পীদের প্রকল্পের আবেদন।", "Application under the folk-artists' scheme."],
+  ["ssy", "unc", "সামাজিক সুরক্ষা যোজনা", "Samajik Suraksha Yojana", "শ্রমিকের সামাজিক সুরক্ষার আবেদন। শ্রম দপ্তর।", "Application for a worker's social security. Labour Department."],
+  ["yuvasree", "unc", "যুবশ্রী", "Yuvasree", "তালিকায় এই নাম আছে। ২০২৬-এ চালু আছে কিনা পোর্টালে দেখুন।", "The list still prints this name. Check the portal for whether it runs in 2026."],
+  ["karma", "unc", "কর্মসাথী", "Karma Sathi", "তালিকায় এই নাম আছে। ২০২৬-এ চালু আছে কিনা পোর্টালে দেখুন।", "The list still prints this name. Check the portal for whether it runs in 2026."],
+  ["awas", "unc", "বাংলার আবাস যোজনা", "Banglar Awas Yojana", "বাড়ির প্রকল্পের আবেদন।", "Application under the housing scheme."],
+  ["nirmal", "unc", "নির্মল বাংলা", "Nirmal Bangla", "শৌচাগার প্রকল্পের আবেদন।", "Application under the toilet scheme."],
+  ["samabyathi", "unc", "সমাব্যাপ্তি", "Samabyathi", "মৃত্যুর পর পরিবারকে সাহায্যের আবেদন।", "Application for help to a family after a death."],
+  ["svskp", "unc", "স্বনির্ভর কর্মসংস্থান প্রকল্প", "Swanirbhar Karmasansthan", "স্বামী বিবেকানন্দ স্বনির্ভর কর্মসংস্থান প্রকল্পের আবেদন।", "Application under the Swami Vivekananda self-employment scheme."],
+  ["taposhili", "unc", "তপশিলি বন্ধু", "Taposili Bandhu", "তফসিলি জাতির বৃদ্ধ ভাতার আবেদন। চালু আছে কিনা পোর্টালে দেখুন।", "Application for the Scheduled Caste old-age pension. Check the portal for whether it still runs."],
+  ["jaijohar", "unc", "জয় জোহার", "Jai Johar", "তফসিলি উপজাতির বৃদ্ধ ভাতার আবেদন। চালু আছে কিনা পোর্টালে দেখুন।", "Application for the Scheduled Tribe old-age pension. Check the portal for whether it still runs."],
+  ["manobik", "unc", "মানবিক", "Manobik", "প্রতিবন্ধী ভাতার খবর ও আবেদন।", "Information and an application for the disability pension."],
+  ["swasthya", "unc", "স্বাস্থ্যসাথী কার্ড", "Swasthya Sathi card", "তালিকায় নথিভুক্তির আবেদন আছে। ২০২৬-এ কার্ডের নাম আয়ুষ্মান হতে পারে। পোর্টাল দেখুন।", "The list still has an enrolment form. In 2026 the card may be named Ayushman. Check the portal."]
+];
+BSK_MORE.forEach(([id, st, bn, en, bbn, ben]) => {
+  const xbn = st === "unc"
+    ? "কোচবিহার ও পশ্চিম মেদিনীপুর জেলার সরকারি পাতায় এই নাম আছে। টাকার অঙ্ক এখানে লেখা হয়নি। bsk.wb.gov.in-এ মিলিয়ে নিন।"
+    : "কোচবিহার ও পশ্চিম মেদিনীপুর জেলার সরকারি পাতায় এই কাজ আছে। কেন্দ্র আলাদা টাকা নেয় না। সরকারি ফি থাকলে ফর্মে লেখা থাকে।";
+  const xen = st === "unc"
+    ? "This name is on the official pages of Cooch Behar and Paschim Medinipur. No amount is written here. Match it on bsk.wb.gov.in."
+    : "This work is on the official pages of Cooch Behar and Paschim Medinipur. The centre charges nothing extra. A government fee, if any, is on the form.";
+  SERVICES.push({
+    id: "bsk-" + id, cat: "window", st, by: "state", help: "",
+    links: [["বাংলা সহায়তা কেন্দ্র", "Bangla Sahayata Kendra", "https://bsk.wb.gov.in/"]],
+    bn: { n: bn, old: "", b: bbn, c: ["পশ্চিমবঙ্গের বাসিন্দা"], d: ["আধার", "যে কাগজ অপারেটর চাইবেন"], s: ["কাছের বাংলা সহায়তা কেন্দ্রে যান", "বলুন: " + bn, "রসিদ রাখুন"], x: xbn },
+    en: { n: en, old: "", b: ben, c: ["A resident of West Bengal"], d: ["Aadhaar", "Whatever papers the operator asks for"], s: ["Go to the nearest Bangla Sahayata Kendra", "Say: " + en, "Keep the receipt"], x: xen }
+  });
+});
 
 /* ---------------- the standing instructions sent with every question ---------------- */
 const UPDATES = `KNOWLEDGE BASE, compiled October 2026 from official orders and news reports. (reported) = from news or secondary sites, not yet checked against the order; always tell the user to verify those. (status?) = continuation under the new government not confirmed.
