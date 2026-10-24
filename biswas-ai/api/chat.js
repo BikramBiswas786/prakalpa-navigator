@@ -277,13 +277,13 @@ export async function POST(request) {
 
   if (body.panel) {
     const FREE = ["llm7", "nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 3);
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 5);
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();
       let text = "";
-      const stop = Date.now() + 12000;
-      while (text.length < 3500 && Date.now() < stop) {
+      const stop = Date.now() + 18000;
+      while (text.length < 6000 && Date.now() < stop) {
         const { value, done } = await reader.read();
         if (done) break;
         text += dec.decode(value, { stream: true });
@@ -298,7 +298,7 @@ export async function POST(request) {
       for (const name of extra) if (!models.includes(name)) models.push(name);
       let last = { provider: id, model: models[0], text: "", error: "no answer" };
       for (const model of models.slice(0, 2)) {
-        const r = await attempt(p, model, { ...body, images: [], maxOut: 900 }, request.signal, 9000);
+        const r = await attempt(p, model, { ...body, images: [], maxOut: 1400 }, request.signal, 14000);
         if (!r.ok) {
           const raw = String(r.error || "");
           last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };
