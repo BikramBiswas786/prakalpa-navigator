@@ -870,7 +870,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v71", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v72", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -3155,7 +3155,8 @@ function officeFile(s) {
 }
 async function runBiswasAgent(job) {
   if (!engine) return toast(t("no_ai"));
-  if (agentBusy || ctl) return toast(errText("busy"));
+  if (ctl) { agentHalt = true; try { ctl.abort(); } catch (e) { /* the new job replaces it */ } }
+  const gen = (runBiswasAgent.gen = (runBiswasAgent.gen || 0) + 1);
   agentBusy = true;
   agentHalt = false;
   ctl = new AbortController();
@@ -3181,12 +3182,13 @@ async function runBiswasAgent(job) {
     try { ai.panel = await askPanel(job); } catch (e) { ai.think = t("stopped"); }
     cur.at = Date.now();
     saveAgent();
-    agentBusy = false;
-    agentHalt = false;
-    ctl = null;
-    setAgentBusy(false);
-    const box = $("#ag-job"); if (box) box.value = "";
-    renderAgentView();
+    if (gen === runBiswasAgent.gen) {
+      agentBusy = false;
+      agentHalt = false;
+      ctl = null;
+      setAgentBusy(false);
+      renderAgentView();
+    }
     return;
   }
   try {
@@ -3323,17 +3325,19 @@ async function runBiswasAgent(job) {
     ai.done = true;
     saveAgent();
   } finally {
+    if (gen !== runBiswasAgent.gen) return;
     agentBusy = false;
     agentHalt = false;
     ctl = null;
     setAgentBusy(false);
-    const box = $("#ag-job"); if (box && !String(ai.content || "").includes(t("stopped"))) box.value = "";
     renderAgentView();
   }
 }
 async function ask(text) {
   if (!engine) return toast(t("no_ai"));
-  if (chatCtl) return toast(errText("busy"));
+  if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* the new prompt replaces it */ } }
+  const mine = new AbortController();
+  chatCtl = mine;
   if (tabs[mode] !== "chat") go(mode, "chat");
   const files = pendingFiles; pendingFiles = [];
   let content = text;
@@ -3356,6 +3360,7 @@ async function ask(text) {
     ai.panel = [];
     updateAt(box.indexOf(ai));
     persist();
+    if (chatCtl === mine) chatCtl = null;
     askPanel(text).then(rows => { ai.panel = rows; if (box === messages) updateAt(box.indexOf(ai)); persist(); });
     return;
   }
@@ -3363,8 +3368,7 @@ async function ask(text) {
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
   while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
   while (turns.length && turns[0].role !== "user") turns.shift();
-  chatCtl = new AbortController();
-  const live = () => box === messages;
+  const live = () => box === messages && chatCtl === mine;
   const agent = box === chats.office;
   const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
   let researchNote = "";
@@ -3380,7 +3384,7 @@ async function ask(text) {
       ai.browseAt = 0;
       researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
     } catch (e) {
-      if (e && e.name === "AbortError") { ai.content = t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      if (e && e.name === "AbortError") { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
       ai.pages = [];
     }
     if (live()) updateAt(box.indexOf(ai));
@@ -3405,7 +3409,7 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
       ai.think = thought || ai.think;
       if (live()) updateAt(box.indexOf(ai));
     } catch (e) {
-      if (e && (e.name === "AbortError" || e.code === "cancelled")) { ai.content = t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
       thought = "";
     }
   }
@@ -3433,7 +3437,8 @@ ${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone op
     else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
     else ai.error = aiFailed(e);
   } finally {
-    ai.done = true; chatCtl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();
+    if (chatCtl === mine) chatCtl = null;
+    ai.done = true; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist();
   }
 }
 let bannerText = null;
@@ -3462,7 +3467,6 @@ q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.
 const sendBtn = $("#send"); if (sendBtn) sendBtn.addEventListener("mousedown", e => e.preventDefault());
 $("#ask").addEventListener("submit", e => {
   e.preventDefault();
-  if (chatCtl) { chatCtl.abort(); return; }
   const text = q.value.trim();
   if (!text && !pendingFiles.length) return;
   if (!engine) return toast(t("no_ai"));
@@ -3915,7 +3919,8 @@ function sendAgent() {
   const job = ((box && box.value) || "").trim();
   if (!job) return;
   if (!engine) return toast(t("no_ai"));
-  if (agentBusy || ctl) return toast(errText("busy"));
+  box.value = "";
+  box.style.height = "auto";
   runBiswasAgent(job);
 }
 const agBox = $("#ag-job");
