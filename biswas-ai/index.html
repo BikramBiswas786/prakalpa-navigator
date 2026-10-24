@@ -283,7 +283,13 @@ button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-al
 .draft-grid { display: grid; grid-template-columns: minmax(420px, 36vw) minmax(0, 1fr); gap: 18px; align-items: start; width: 100%; }
 @media (max-width: 900px) { .draft-grid { grid-template-columns: minmax(0, 1fr); } }
 .paperwrap { display: grid; gap: 10px; min-width: 0; }
-.paper { width: 100%; min-height: 62vh; background: var(--sheet); border: 1px solid var(--line); border-radius: 4px; padding: clamp(16px, 4vw, 44px); font: 15.5px/1.75 var(--f-doc); color: var(--ink); resize: vertical; box-shadow: 0 10px 30px -20px rgba(20, 20, 50, .45); }
+.letterhead { display: grid; grid-template-columns: 76px minmax(0, 1fr) 76px; gap: 12px; align-items: center; text-align: center; padding: 12px 16px 10px; background: var(--sheet); border: 1px solid var(--line); border-bottom: 3px solid var(--accent); border-radius: 4px 4px 0 0; color: var(--ink); }
+.letterhead .lh-mid { display: grid; gap: 2px; }
+.letterhead b { font-family: var(--f-display); font-size: 1.05rem; letter-spacing: .02em; }
+.letterhead span, .letterhead small { color: var(--muted); }
+.letterhead .lh-mark { display: grid; place-items: center; min-height: 72px; }
+.letterhead svg, .letterhead img { width: 68px; height: 76px; object-fit: contain; }
+.paper { width: 100%; min-height: 62vh; background: var(--sheet); border: 1px solid var(--line); border-radius: 0 0 4px 4px; padding: clamp(16px, 4vw, 44px); font: 15.5px/1.75 var(--f-doc); color: var(--ink); resize: vertical; box-shadow: 0 10px 30px -20px rgba(20, 20, 50, .45); }
 .paper:focus { outline: 2px solid var(--accent-soft); }
 textarea.paper { white-space: pre-wrap; }
 .revise { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -408,7 +414,18 @@ textarea.paper { white-space: pre-wrap; }
           <div class="field"><label for="d-sub" data-t="d_sub"></label><input id="d-sub"></div>
           <div class="field"><label for="d-ref" data-t="d_ref"></label><input id="d-ref"></div>
           <div class="field"><label for="d-facts" data-t="d_facts"></label><textarea id="d-facts"></textarea></div>
-          <div class="tools"><input type="file" id="d-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,image/*"><button class="btn small" type="button" id="d-attach" data-t="d_attach"></button></div>
+          <div class="field">
+            <label data-t="d_files_h">সংযুক্তি</label>
+            <p class="sch-note" data-t="d_files_p"></p>
+            <div class="tools">
+              <input type="file" id="d-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,image/*">
+              <button class="btn small" type="button" id="d-attach" data-t="d_attach"></button>
+              <input type="file" id="d-logo-file" hidden accept="image/*">
+              <button class="btn small" type="button" id="d-logo" data-t="d_logo"></button>
+              <button class="btn small" type="button" id="d-logo-x" data-t="d_logo_x" hidden></button>
+              <button class="btn small" type="button" id="d-emblem" data-t="d_emblem"></button>
+            </div>
+          </div>
           <div class="pending" id="d-files"></div>
           <button class="btn primary big" type="submit" id="d-write" data-t="d_write"></button>
           <div class="fmt-note" id="d-fmt"></div>
@@ -423,6 +440,7 @@ textarea.paper { white-space: pre-wrap; }
             <button class="btn small" type="button" id="d-clear" data-t="d_clear"></button>
             <span class="status-line" id="d-status"></span>
           </div>
+          <header class="letterhead" id="d-head"></header>
           <textarea class="paper" id="d-paper" spellcheck="false"></textarea>
           <div class="paper doc" id="d-view" hidden></div>
           <form class="revise" id="d-revform"><input id="d-rev"><button class="btn" type="submit" id="d-revise" data-t="d_revise"></button></form>
@@ -823,7 +841,7 @@ const STR = {
   bn: {
     tab_draft: "লেখার টেবিল", tab_table: "টেবিল / Excel", tab_files: "ফাইল টুল", tab_chat: "AI চ্যাট", tab_catalog: "প্রকল্প ও পরিষেবা", tab_helper: "AI সহায়ক",
     d_title: "খসড়া তৈরি", d_type: "কী লিখবেন", d_lang: "ভাষা", d_to: "প্রাপক (যাকে পাঠানো হবে)", d_sub: "বিষয়", d_ref: "সূত্র / PUC", d_facts: "মূল তথ্য ও নির্দেশ", d_facts_ph: "যেমন: আবেদনকারী শ্রী … জাতি শংসাপত্রের আবেদন করেছেন; BDO-র রিপোর্ট পাওয়া গেছে; শুনানি ১৫.১১.২০২৬ তারিখে …",
-    d_attach: "ফাইল যোগ করুন (GO, চিঠি)", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
+    d_attach: "নমুনা চিঠি যোগ", d_files_h: "সংযুক্তি", d_files_p: "একটি পুরনো চিঠি বা নমুনা যোগ করুন। ডেস্ক আগে পুরোটা পড়বে, তারপর লিখবে।", d_logo: "ওয়ার্ডের ছবি", d_logo_x: "ছবি সরান", d_emblem: "অশোকস্তম্ভ", d_reading: "সংযুক্ত চিঠি পড়ছি…", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
     d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
     types: { resolution: "রেজোলিউশন (প্রশাসনিক সিদ্ধান্ত)", admin: "প্রশাসনিক অনুমোদন", order: "অফিস আদেশ", corrigendum: "সংশোধনী (corrigendum)", speaking: "কারণযুক্ত আদেশ (শুনানির পর)", reminder: "তাগিদ", minutes: "সভার কার্যবিবরণী", allotment: "বরাদ্দ / টাকা ছাড়", notesheet: "নোটশিট", dfa: "খসড়া চিঠি (DFA)", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "তদন্ত রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই", letter: "সাধারণ সরকারি চিঠি" },
     t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
@@ -844,7 +862,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v80", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v81", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -897,7 +915,7 @@ const STR = {
   en: {
     tab_draft: "Drafting desk", tab_table: "Table / Excel", tab_files: "File tools", tab_chat: "AI chat", tab_catalog: "Schemes and services", tab_helper: "AI helper",
     d_title: "Create a draft", d_type: "What to write", d_lang: "Language", d_to: "To (addressee)", d_sub: "Subject", d_ref: "Reference / PUC", d_facts: "Main facts and instructions", d_facts_ph: "e.g. Sri … applied for a caste certificate; BDO's report received; hearing on 15.11.2026 …",
-    d_attach: "Add file (GO, letter)", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
+    d_attach: "Add a demo letter", d_files_h: "Attachments", d_files_p: "Add an old letter or a sample. The desk reads all of it before it writes.", d_logo: "Ward logo", d_logo_x: "Remove logo", d_emblem: "Ashoka Stambha", d_reading: "Reading the attached letter…", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
     d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
     types: { resolution: "Resolution", admin: "Administrative approval", order: "Office order", corrigendum: "Corrigendum", speaking: "Speaking order (after hearing)", reminder: "Reminder", minutes: "Minutes of a meeting", allotment: "Allotment or release of fund", notesheet: "Notesheet", dfa: "Draft letter (DFA)", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste-certificate re-verification", letter: "General official letter" },
     t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
@@ -918,7 +936,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v80", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v81", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1882,9 +1900,10 @@ function wRuns(s, extra = {}) {
   }).join("");
 }
 const wP = (inner, ppr = "") => `<w:p><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/>${ppr}</w:pPr>${inner}</w:p>`;
-async function toDocx(md) {
+async function toDocx(md, headText) {
   await load("jszip");
-  const body = parseMd(md).map(b => {
+  const head = headText ? headText.split("\n").filter(Boolean).map((line, i) => wP(wRuns(line, { b: true, sz: i === 0 ? 28 : 24 }), '<w:jc w:val="center"/>')).join("") : "";
+  const body = head + parseMd(md).map(b => {
     if (b.t === "h") return wP(wRuns(b.text, { b: true, sz: b.level === 1 ? 28 : 26 }), b.level === 1 ? '<w:jc w:val="center"/>' : "");
     if (b.t === "p") return wP(wRuns(b.text));
     if (b.t === "hr") return wP("", '<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="999999"/></w:pBdr>');
@@ -1905,9 +1924,9 @@ async function toDocx(md) {
   zip.file("word/document.xml", doc);
   return zip.generateAsync({ type: "blob" });
 }
-async function toPdf(md) {
+async function toPdf(md, headHtml) {
   await load("html2pdf");
-  const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = mdToHtml(md);
+  const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = (headHtml || "") + mdToHtml(md);
   await document.fonts.ready;
   return window.html2pdf().set({
       margin: [15, 15, 15, 15], image: { type: "jpeg", quality: 0.95 },
@@ -1953,11 +1972,11 @@ function catalogueText() {
     }).join("\n");
 }
 
-async function save(kind, md, btn, hint) {
+async function save(kind, md, btn, hint, head) {
   if (!canSave()) return toast(t("no_save"));
   const label = btn.textContent; btn.disabled = true; btn.textContent = t("making");
   try {
-    const data = kind === "docx" ? await toDocx(md) : kind === "pdf" ? await toPdf(md) : await toXlsx(md);
+    const data = kind === "docx" ? await toDocx(md, head && head.text) : kind === "pdf" ? await toPdf(md, head && head.html) : await toXlsx(md);
     await saveFile(`${fileBase(md, hint)}.${kind}`, data);
     toast(t("file_ready"));
   } catch (e) {
@@ -2182,6 +2201,43 @@ let draftArch = false;
 let draftFiles = [];
 let draftBusy = null;
 let draftPreview = false;
+let showEmblem = true;
+let wardLogo = "";
+try { showEmblem = localStorage.getItem("pmitra:emblem") !== "0"; wardLogo = localStorage.getItem("pmitra:wardlogo") || ""; if (!wardLogo.startsWith("data:image/")) wardLogo = ""; } catch (e) { /* keep the defaults */ }
+const ASHOKA_SVG = `<svg viewBox="0 0 64 84" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"><path d="M10 78h44M14 74h36"/><rect x="16" y="56" width="32" height="14" rx="1"/><circle cx="32" cy="63" r="4"/><path d="M32 59v8M28.4 63h7.2M29.2 60.4l5.6 5.2M34.8 60.4l-5.6 5.2"/><path d="M20 56c1-8 5-14 12-14s11 6 12 14"/><path d="M24 46c-4 1-7 5-7 10M40 46c4 1 7 5 7 10"/><circle cx="32" cy="40" r="5"/><path d="M27 40c1-6 3-9 5-9s4 3 5 9M22 48c2-7 6-11 10-11s8 4 10 11"/><path d="M18 52c2-3 4-4 6-3M46 52c-2-3-4-4-6-3"/></g></svg>`;
+function letterheadHtml() {
+  const en = settings.lang === "en";
+  const gov = en ? "Government of West Bengal" : "পশ্চিমবঙ্গ সরকার";
+  const off = en ? `Office of the ${settings.officer || "Sub-Divisional Officer"}` : `${settings.officer || "মহকুমা শাসক"}-এর কার্যালয়`;
+  const place = [settings.subdiv, settings.district].filter(Boolean).join(", ");
+  const emblem = showEmblem ? ASHOKA_SVG : "";
+  const logo = wardLogo.startsWith("data:image/") ? `<img alt="" src="${wardLogo}">` : "";
+  return `<div class="lh-mark">${emblem}</div><div class="lh-mid"><b>${esc(gov)}</b><span>${esc(off)}</span>${place ? `<small>${esc(place)}</small>` : ""}</div><div class="lh-mark">${logo}</div>`;
+}
+function letterheadPlain() {
+  const en = settings.lang === "en";
+  const gov = en ? "Government of West Bengal" : "পশ্চিমবঙ্গ সরকার";
+  const off = en ? `Office of the ${settings.officer || "Sub-Divisional Officer"}` : `${settings.officer || "মহকুমা শাসক"}-এর কার্যালয়`;
+  const place = [settings.subdiv, settings.district].filter(Boolean).join(", ");
+  return [gov, off, place].filter(Boolean).join("\n");
+}
+function fitLogo(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 180, s = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * s));
+      cv.height = Math.max(1, Math.round(img.height * s));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL("image/png"));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad")); };
+    img.src = url;
+  });
+}
 function blankDraft(type) {
   return { id: nid(), title: "", at: Date.now(), archived: false, type, lang: settings.lang, to: "", sub: "", ref: "", facts: "", text: "", prev: "" };
 }
@@ -2288,7 +2344,10 @@ function renderDraftForm() {
   $("#d-fmt").innerHTML = settings.sampleText ? esc(t("d_fmt_on") + settings.sampleName) : `${esc(t("d_fmt_off"))}<button type="button" id="d-fmt-btn">${esc(t("give_sample"))}</button>`;
   $("#d-toggle").textContent = t(draftPreview ? "d_editmode" : "d_preview");
   $("#d-paper").hidden = draftPreview; $("#d-view").hidden = !draftPreview;
-  if (draftPreview) $("#d-view").innerHTML = mdToHtml(draft.text) || `<p class="lead">${esc(t("d_empty"))}</p>`;
+  if (draftPreview) $("#d-view").innerHTML = (letterheadHtml() ? `<header class="letterhead">${letterheadHtml()}</header>` : "") + (mdToHtml(draft.text) || `<p class="lead">${esc(t("d_empty"))}</p>`);
+  const head = $("#d-head"); if (head) { head.innerHTML = letterheadHtml(); head.hidden = draftPreview; }
+  const emb = $("#d-emblem"); if (emb) emb.setAttribute("aria-pressed", showEmblem ? "true" : "false");
+  const lx = $("#d-logo-x"); if (lx) lx.hidden = !wardLogo;
   $("#d-undo").disabled = !draft.prev;
   $("#d-write").textContent = draftBusy ? t("d_writing") : t("d_write");
   const note = $("#d-only"); if (note) note.textContent = t("draft_only");
@@ -2301,8 +2360,12 @@ async function runDraft(turns, images) {
   draftBusy = new AbortController();
   const before = draft.text;
   const t0 = Date.now();
-  const tick = setInterval(() => { if (draft._id === caseId) draftStatus(`${t("d_writing")} ${Math.round((Date.now() - t0) / 1000)} ${t("secs")}`); }, 1000);
-  draftPreview = false; renderDraftForm(); draftStatus(t("d_writing"));
+  const tick = setInterval(() => {
+    if (draft._id !== caseId) return;
+    const phase = draftFiles.length && !$("#d-paper").value ? t("d_reading") : t("d_writing");
+    draftStatus(`${phase} ${Math.round((Date.now() - t0) / 1000)} ${t("secs")}`);
+  }, 1000);
+  draftPreview = false; renderDraftForm(); draftStatus(draftFiles.length ? t("d_reading") : t("d_writing"));
   try {
     const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { if (draft._id === caseId) $("#d-paper").value = text; } });
     if (draft._id !== caseId || draft.type !== caseType) return;
@@ -2326,7 +2389,10 @@ Reference / PUC: ${draft.ref || "—"}
 Facts and instructions:
 ${draft.facts || "(see attached file)"}
 ${attachText(draftFiles)}
-Output only the document in Markdown, ready to print. No preface and no notes after it. Use paragraphs, not points.`;
+${settings.sampleText ? "Office sample already saved:\n" + settings.sampleText.slice(0, 4000) : ""}
+Be flexible. Follow this type, but if the facts, or an attached letter, show another order, a shorter paper, a list of people, or a different close, follow that. Do not pad.
+${draftFiles.length || settings.sampleText ? "Read every attached page before you write. Copy that letter's opening lines, numbering and close. The Ashoka emblem and any ward logo are already printed on the screen, so do not draw them and do not write the words [letterhead]. Write the words of the paper only." : "The screen already prints the office letterhead, the Ashoka emblem and any ward logo. Start at the memo number. Do not write the words [letterhead]."}
+Output only the document in Markdown, ready to print. No preface and no notes after it.`;
 }
 
 /* ---------------- OFFICE: table / Excel ---------------- */
@@ -3805,6 +3871,11 @@ $("#d-form").addEventListener("input", e => {
 $("#d-paper").addEventListener("input", e => { draft.text = e.target.value; saveDraft(); });
 $("#d-attach").addEventListener("click", () => $("#d-file").click());
 $("#d-file").addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, draftFiles, renderDraftForm); });
+$("#d-logo-file").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  fitLogo(f).then(url => { wardLogo = url; try { localStorage.setItem("pmitra:wardlogo", url); } catch (err) { toast(t("no_save")); } renderDraftForm(); }).catch(() => toast(t("sample_bad")));
+});
 $("#d-form").addEventListener("submit", e => {
   e.preventDefault();
   if (!draft.facts.trim() && !draftFiles.length && !draft.sub.trim()) return toast(t("d_need"));
@@ -4093,7 +4164,18 @@ document.addEventListener("click", e => {
   if ((x = el("[data-ask-app]"))) return openSchemeAi(x.dataset.askApp, "app");
   // drafting desk
   if (el("#d-toggle")) { draftPreview = !draftPreview; return renderDraftForm(); }
-  if (el("#d-docx") || el("#d-pdf")) { if (!draft.text.trim()) return toast(t("d_empty")); return save(el("#d-docx") ? "docx" : "pdf", draft.text, e.target.closest("button"), draft.type); }
+  if (el("#d-emblem")) {
+    showEmblem = !showEmblem;
+    try { localStorage.setItem("pmitra:emblem", showEmblem ? "1" : "0"); } catch (err) { /* keep it for this visit */ }
+    return renderDraftForm();
+  }
+  if (el("#d-logo")) return $("#d-logo-file").click();
+  if (el("#d-logo-x")) { wardLogo = ""; try { localStorage.removeItem("pmitra:wardlogo"); } catch (err) { /* ignore */ } return renderDraftForm(); }
+  if (el("#d-docx") || el("#d-pdf")) {
+    if (!draft.text.trim()) return toast(t("d_empty"));
+    const head = { html: `<style>.pdf-doc .letterhead{display:grid;grid-template-columns:76px 1fr 76px;gap:12px;align-items:center;text-align:center;color:#14221c;background:#fff;border-bottom:3px solid #1c3d32;padding:4px 8px 10px;margin-bottom:14px}.pdf-doc .letterhead span,.pdf-doc .letterhead small{color:#333}.pdf-doc .letterhead svg,.pdf-doc .letterhead img{width:68px;height:76px;object-fit:contain}</style><header class="letterhead">${letterheadHtml()}</header>`, text: letterheadPlain() };
+    return save(el("#d-docx") ? "docx" : "pdf", draft.text, e.target.closest("button"), draft.type, head);
+  }
   if (el("#d-copy")) return navigator.clipboard.writeText(draft.text).then(() => toast(t("copied")), () => toast(t("copy_fail")));
   if (el("#d-undo")) { if (draft.prev) { const cur = draft.text; draft.text = draft.prev; draft.prev = cur; saveDraft(); renderDraftForm(); } return; }
   if (el("#d-clear")) { if (draft.text) draft.prev = draft.text; draft.text = ""; ["to", "sub", "ref", "facts"].forEach(k => { draft[k] = ""; }); draftFiles = []; saveDraft(); renderDraftForm(); return toast(t("d_cleared")); }
