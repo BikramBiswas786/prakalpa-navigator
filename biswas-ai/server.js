@@ -265,7 +265,7 @@ async function searchGoogle(q) {
     const items = [];
     const re = /<item>([\s\S]*?)<\/item>/gi;
     let m;
-    while ((m = re.exec(xml)) && items.length < 5) {
+    while ((m = re.exec(xml)) && items.length < 8) {
       const block = m[1];
       let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
       title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/\s+/g, " ").trim();
@@ -303,7 +303,7 @@ async function searchGoogle(q) {
     }
     why.kept = found.length;
   } catch (e) { why.error = "failed"; }
-  const out = found.slice(0, 3);
+  const out = found.slice(0, 6);
   out.why = why;
   return out;
 }
@@ -317,9 +317,9 @@ function closeEnough(title, q) {
   const words = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
   if (words.length < 2) return true;
   const hay = String(title || "").toLowerCase();
-  const strong = words.filter(w => w.length > 6);
-  if (strong.length && !strong.some(w => hay.includes(w))) return false;
-  return words.filter(w => hay.includes(w)).length >= Math.min(2, words.length);
+  const hit = words.filter(w => hay.includes(w) || (w.length > 5 && w.endsWith("ed") && hay.includes(w.slice(0, -2))));
+  if (hit.some(w => w.length > 4)) return true;
+  return hit.length >= 2;
 }
 function bingUrl(link) {
   const safe = safeHttpUrl(String(link || "").trim());
@@ -344,7 +344,7 @@ async function searchNews(q, via, hostNeed) {
     const xml = await r.text();
     const re = /<item>([\s\S]*?)<\/item>/gi;
     let m;
-    while ((m = re.exec(xml)) && out.length < 3) {
+    while ((m = re.exec(xml)) && out.length < 8) {
       const block = m[1];
       let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
       title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
@@ -367,13 +367,13 @@ function searchYahoo(q) { return searchNews("site:yahoo.com " + q, "yahoo", "yah
 async function searchWiki(q) {
   const out = [];
   try {
-    const u = "https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=" + encodeURIComponent(q) + "&gsrlimit=2&prop=extracts&exintro=1&explaintext=1&format=json&origin=*";
+    const u = "https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=" + encodeURIComponent(q) + "&gsrlimit=6&prop=extracts&exintro=1&explaintext=1&format=json&origin=*";
     const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0", accept: "application/json" } });
     if (!r.ok) return out;
     const j = await r.json();
     const pages = ((j.query || {}).pages) || {};
     for (const p of Object.values(pages)) {
-      if (out.length >= 2 || !p || !p.title) continue;
+      if (out.length >= 6 || !p || !p.title) continue;
       const text = String(p.extract || "").replace(/\s+/g, " ").trim();
       if (!closeEnough(p.title + " " + text, q)) continue;
       const url = "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(p.title).replace(/ /g, "_"));
@@ -393,7 +393,7 @@ async function searchDuck(q) {
     const html = await r.text();
     const re = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
     let m;
-    while ((m = re.exec(html)) && out.length < 4) {
+    while ((m = re.exec(html)) && out.length < 8) {
       let href = m[1];
       const uddg = href.match(/uddg=([^&"]+)/);
       if (uddg) { try { href = decodeURIComponent(uddg[1]); } catch (e) { continue; } }
@@ -425,7 +425,7 @@ async function searchParallel(q) {
     const chunk = (((msg.result || {}).content || [])[0] || {}).text || "";
     const data = JSON.parse(chunk);
     for (const row of data.results || []) {
-      if (out.length >= 3) break;
+      if (out.length >= 8) break;
       const url = safeHttpUrl(row && row.url);
       if (!url) continue;
       const title = String((row && row.title) || url).replace(/\s+/g, " ").trim().slice(0, 160);
@@ -454,11 +454,11 @@ async function searchTavily(q) {
     const r = await fetch("https://api.tavily.com/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), max_results: 8, include_answer: false })
+      body: JSON.stringify({ query: String(q).slice(0, 200), max_results: 10, include_answer: false })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 8).map(row => ({
+    return (j.results || []).slice(0, 10).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "tavily",
@@ -473,11 +473,11 @@ async function searchExa(q) {
     const r = await fetch("https://api.exa.ai/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 8, contents: { text: { maxCharacters: 1400 } } })
+      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 10, contents: { text: { maxCharacters: 1400 } } })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 8).map(row => ({
+    return (j.results || []).slice(0, 10).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "exa",
@@ -492,12 +492,12 @@ async function searchFirecrawl(q) {
     const r = await fetch("https://api.firecrawl.dev/v2/search", {
       method: "POST", signal: AbortSignal.timeout(12000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), limit: 8 })
+      body: JSON.stringify({ query: String(q).slice(0, 200), limit: 10 })
     });
     if (!r.ok) return [];
     const j = await r.json();
     const rows = (j.data && j.data.web) || j.data || [];
-    return rows.slice(0, 8).map(row => ({
+    return rows.slice(0, 10).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "firecrawl",
@@ -512,11 +512,11 @@ async function searchSerper(q) {
     const r = await fetch("https://google.serper.dev/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ q: String(q).slice(0, 200), num: 8 })
+      body: JSON.stringify({ q: String(q).slice(0, 200), num: 10 })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.organic || []).slice(0, 8).map(row => ({
+    return (j.organic || []).slice(0, 10).map(row => ({
       title: String(row.title || row.link || "").slice(0, 160),
       url: safeHttpUrl(row.link),
       via: "serper",
@@ -535,7 +535,7 @@ async function searchParallelKey(q) {
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 8).map(row => ({
+    return (j.results || []).slice(0, 10).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "parallel-key",
@@ -550,11 +550,11 @@ async function searchKeiro(q) {
     const r = await fetch("https://api.keirolabs.cloud/api/v2/search/fast", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), maxResults: 8 })
+      body: JSON.stringify({ query: String(q).slice(0, 200), maxResults: 10 })
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return (j.results || []).slice(0, 8).map(row => ({
+    return (j.results || []).slice(0, 10).map(row => ({
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "keiro",
@@ -576,31 +576,35 @@ function dropBangladesh(row) {
   return false;
 }
 async function searchMore(q, opts) {
+  const cap = opts && opts.wide ? 36 : 24;
   const [par, parKey, tavily, exa, fire, serper, keiro, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
     searchParallel(q), searchParallelKey(q), searchTavily(q), searchExa(q), searchFirecrawl(q), searchSerper(q), searchKeiro(q),
     searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
   ]);
   const out = [];
   const push = row => {
-    if (!row || !row.url || out.length >= 24 || out.some(x => x.url === row.url)) return;
+    if (!row || !row.url || out.length >= cap || out.some(x => x.url === row.url)) return;
     if (opts && opts.wb && dropBangladesh(row)) return;
-    const words = String(q).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
-    if (words.length >= 2 && String(row.text || "").length > 40) {
-      const hay = (String(row.title || "") + " " + String(row.text || "")).toLowerCase();
-      if (words.filter(w => hay.includes(w)).length < 2) return;
+    if (!(opts && opts.wide)) {
+      const words = String(q).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4);
+      const text = String(row.text || "");
+      if (words.length >= 2 && text.length > 40) {
+        const hay = (String(row.title || "") + " " + text).toLowerCase();
+        if (words.filter(w => hay.includes(w)).length < 2) return;
+      }
     }
     out.push(row);
   };
   const buckets = [tavily, exa, serper, fire, parKey, keiro, bing, par, msn, yahoo, wiki, duck, instant];
   let n = 0;
-  while (out.length < 24) {
+  while (out.length < cap) {
     let added = false;
     for (const bucket of buckets) {
       const row = bucket[n];
       if (!row) continue;
       push(row);
       added = true;
-      if (out.length >= 24) break;
+      if (out.length >= cap) break;
     }
     if (!added) break;
     n++;
@@ -743,7 +747,7 @@ const server = http.createServer(async (req, res) => {
       if (body.list) {
         const hits = q && officeTopic(q) ? await searchWeb(q) : [];
         const google = body.google && q ? await searchGoogle(q) : [];
-        const more = q ? await searchMore(q, { wb }) : [];
+        const more = q ? await searchMore(q, { wb, wide: true }) : [];
         const keep = row => row && !(wb && dropBangladesh(row));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
         res.end(JSON.stringify({ hits: hits.filter(keep), google: (Array.isArray(google) ? google : []).filter(keep), more: more.filter(keep), googleWhy: google.why || "" }));
@@ -775,7 +779,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v74"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v75"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
