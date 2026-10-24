@@ -325,7 +325,7 @@ function bingUrl(link) {
     return safe;
   } catch (e) { return ""; }
 }
-async function searchBing(q) {
+async function searchNews(q, via, hostNeed) {
   const out = [];
   try {
     const r = await fetch("https://www.bing.com/news/search?q=" + encodeURIComponent(q) + "&format=RSS", {
@@ -336,19 +336,42 @@ async function searchBing(q) {
     const xml = await r.text();
     const re = /<item>([\s\S]*?)<\/item>/gi;
     let m;
-    while ((m = re.exec(xml)) && out.length < 4) {
+    while ((m = re.exec(xml)) && out.length < 3) {
       const block = m[1];
       let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
       title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-      let link = ((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
-      link = decodeBasic(link);
-      const desc = decodeBasic(((block.match(/<description>([\s\S]*?)<\/description>/i) || [])[1] || "").replace(/<[^>]+>/g, " "));
+      let link = decodeBasic(((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim());
+      const desc = decodeBasic(((block.match(/<description>([\s\S]*?)<\/description>/i) || [])[1] || "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
       const safe = bingUrl(link);
       if (!safe || skipSearchHost(safe) || title.length < 8) continue;
-      if (!closeEnough(title + " " + desc, q)) continue;
-      if (!out.some(x => x.url === safe)) out.push({ title: title.slice(0, 160), url: safe, via: "bing" });
+      const host = (() => { try { return new URL(safe).hostname.toLowerCase(); } catch (e) { return ""; } })();
+      if (hostNeed && !host.includes(hostNeed)) continue;
+      if (!hostNeed && (host.includes("msn.com") || host.endsWith("yahoo.com"))) continue;
+      if (!closeEnough(title + " " + desc, q.replace(/^site:\S+\s+/, ""))) continue;
+      if (!out.some(x => x.url === safe)) out.push({ title: title.slice(0, 160), url: safe, via, text: desc.slice(0, 500) });
     }
-  } catch (e) { /* Bing can be down; DuckDuckGo still runs */ }
+  } catch (e) { /* this engine can fail; the others still run */ }
+  return out;
+}
+function searchBing(q) { return searchNews(q, "bing", ""); }
+function searchMsn(q) { return searchNews("site:msn.com " + q, "msn", "msn.com"); }
+function searchYahoo(q) { return searchNews("site:yahoo.com " + q, "yahoo", "yahoo.com"); }
+async function searchWiki(q) {
+  const out = [];
+  try {
+    const u = "https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=" + encodeURIComponent(q) + "&gsrlimit=2&prop=extracts&exintro=1&explaintext=1&format=json&origin=*";
+    const r = await fetch(u, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "BiswasAI/1.0", accept: "application/json" } });
+    if (!r.ok) return out;
+    const j = await r.json();
+    const pages = ((j.query || {}).pages) || {};
+    for (const p of Object.values(pages)) {
+      if (out.length >= 2 || !p || !p.title) continue;
+      const text = String(p.extract || "").replace(/\s+/g, " ").trim();
+      if (!closeEnough(p.title + " " + text, q)) continue;
+      const url = "https://en.wikipedia.org/wiki/" + encodeURIComponent(String(p.title).replace(/ /g, "_"));
+      out.push({ title: String(p.title).slice(0, 160), url, via: "wiki", text: text.slice(0, 700) });
+    }
+  } catch (e) { /* Wikipedia can be skipped */ }
   return out;
 }
 async function searchDuck(q) {
@@ -417,15 +440,18 @@ async function searchInstant(q) {
   } catch (e) { return []; }
 }
 async function searchMore(q) {
-  const [par, bing, duck, instant] = await Promise.all([searchParallel(q), searchBing(q), searchDuck(q), searchInstant(q)]);
+  const [par, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
+    searchParallel(q), searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
+  ]);
   const out = [];
-  const push = row => { if (row && row.url && out.length < 6 && !out.some(x => x.url === row.url)) out.push(row); };
+  const push = row => { if (row && row.url && out.length < 8 && !out.some(x => x.url === row.url)) out.push(row); };
   par.slice(0, 2).forEach(push);
   bing.slice(0, 2).forEach(push);
+  msn.slice(0, 2).forEach(push);
+  yahoo.slice(0, 1).forEach(push);
+  wiki.slice(0, 1).forEach(push);
   duck.slice(0, 1).forEach(push);
   instant.forEach(push);
-  par.slice(2).forEach(push);
-  bing.slice(2).forEach(push);
   return out;
 }
 async function searchWeb(q) {
@@ -562,7 +588,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v51"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v52"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
