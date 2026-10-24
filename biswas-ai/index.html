@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Biswas AI for Office</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -222,7 +222,10 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 /* ---- two sections: header, sub-tabs, page views ---- */
 .app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
 .stage { min-height: 0; min-width: 0; display: grid; grid-template-rows: auto 1fr; }
-.views { height: 100%; }
+.views { height: 100%; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+.views > .view { min-height: 0; min-width: 0; }
+.view.chat { height: 100%; }
+.view.page { height: 100%; overflow: auto; }
 .nav-toggle { display: none; }
 button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: inherit; font: inherit; }
 .rail-brand { display: grid; gap: 2px; }
@@ -538,7 +541,7 @@ textarea.paper { white-space: pre-wrap; }
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
         <form class="box" id="ag-form">
-          <textarea id="ag-job" rows="1" data-t-ph="ag_ph"></textarea>
+          <textarea id="ag-job" rows="1" enterkeyhint="send" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
         </form>
         <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <span id="ag-picks"></span></div>
@@ -562,7 +565,7 @@ textarea.paper { white-space: pre-wrap; }
             <button class="iconbtn" type="button" id="attach" aria-label="Attach">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
             </button>
-            <textarea id="q" rows="1"></textarea>
+            <textarea id="q" rows="1" enterkeyhint="send"></textarea>
             <button class="iconbtn send" type="submit" id="send" aria-label="Send">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
@@ -2760,7 +2763,7 @@ async function runBiswasAgent(job) {
   const ai = { role: "assistant", content: "", think: "", done: false, started: Date.now() };
   cur.messages.push(ai);
   if (!cur.title) cur.title = job.replace(/\s+/g, " ").trim().slice(0, 72);
-  renderAgentView();
+  try { renderAgentView(); } catch (e) { /* still run the job */ }
   try {
     let ids = [];
     ai.think = t("ag_search"); renderAgentView();
@@ -2932,11 +2935,14 @@ const q = $("#q");
 const autosize = () => { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 200) + "px"; };
 q.addEventListener("input", autosize);
 q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#ask").requestSubmit(); } });
+const sendBtn = $("#send"); if (sendBtn) sendBtn.addEventListener("mousedown", e => e.preventDefault());
 $("#ask").addEventListener("submit", e => {
   e.preventDefault();
   if (ctl) { ctl.abort(); return; }
   const text = q.value.trim();
   if (!text && !pendingFiles.length) return;
+  if (!engine) return toast(t("no_ai"));
+  if (agentBusy) return toast(errText("busy"));
   q.value = ""; autosize();
   ask(text || t("file_default"));
 });
@@ -3376,7 +3382,24 @@ $("#gate-form").addEventListener("submit", e => {
   if (!booted) startApp(); else { mode = "ai"; messages = chats.ai; tabs.ai = "chat"; showView(); }
 });
 $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFile(); });
-$("#ag-form").addEventListener("submit", e => { e.preventDefault(); const job = ($("#ag-job").value || "").trim(); if (job) runBiswasAgent(job); });
+function sendAgent() {
+  const box = $("#ag-job");
+  const job = ((box && box.value) || "").trim();
+  if (!job) return;
+  if (!engine) return toast(t("no_ai"));
+  if (agentBusy || ctl) return toast(errText("busy"));
+  runBiswasAgent(job);
+}
+const agBox = $("#ag-job");
+if (agBox) {
+  const grow = () => { agBox.style.height = "auto"; agBox.style.height = Math.min(agBox.scrollHeight, 160) + "px"; };
+  agBox.addEventListener("input", grow);
+  agBox.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendAgent(); }
+  });
+}
+const agGo = $("#ag-go"); if (agGo) agGo.addEventListener("mousedown", e => e.preventDefault());
+$("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
 const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => renderConv());
 function resume() {
