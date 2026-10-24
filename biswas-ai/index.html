@@ -1477,6 +1477,19 @@ function dropCutoff(text, topic) {
   if (settings.lang === "en") return `Today is ${today()}. I am Biswas AI as of 2026. I do read public pages. I will not say that I cannot search.`;
   return `আজ ${today()}। আমি বিশ্বাস AI, ২০২৬। আমি সরকারি পাতা পড়ি। আমি বলব না যে খুঁজতে পারি না।`;
 }
+function fromPages(pages) {
+  const rows = (pages || []).filter(p => p && (p.url || p.text));
+  if (!rows.length) return "";
+  const head = settings.lang === "en"
+    ? "The free AI limit is used up, so this is not a rewritten note. It is the text from the pages just opened."
+    : "ফ্রি AI-এর সীমা শেষ, তাই এটা নতুন করে লেখা নোট নয়। এইমাত্র খোলা পাতার লেখা।";
+  const body = rows.slice(0, 6).map(p => {
+    const bit = String(p.text || "").replace(/\s+/g, " ").trim().slice(0, 900);
+    const empty = settings.lang === "en" ? "The page opened, but little text could be read." : "পাতা খুলেছে, কিন্তু লেখা কম পড়া গেছে।";
+    return `**${p.title || p.url}**\n${p.url || ""}\n\n${bit || empty}`;
+  }).join("\n\n");
+  return head + "\n\n" + body;
+}
 const PANEL_NAME = { gemini: "Gemini", groq: "Groq", nvidia: "NVIDIA", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare", sambanova: "SambaNova", cerebras: "Cerebras", sarvam: "Sarvam", panel: "Free AIs" };
 function panelHtml(m) {
   if (!m || !m.panel) return "";
@@ -2832,6 +2845,8 @@ async function runBiswasAgent(job) {
   const known = knownAnswer(job);
   ai.panel = [];
   const panelP = askPanel(job).then(rows => { ai.panel = rows; renderAgentView(); });
+  let pages = [];
+  let writerOff = false;
   if (known) {
     ai.content = known;
     ai.done = true;
@@ -2853,12 +2868,11 @@ async function runBiswasAgent(job) {
       const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
       const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
-    } catch (e) { ids = []; }
+    } catch (e) { ids = []; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
     const seen = new Set();
-    const pages = [];
     ai.log = [];
-    const mark = (line) => { ai.log.push(line); ai.think = line; ai.pages = pages.map(p => ({ title: p.title, url: p.url })); renderAgentView(); };
+    const mark = (line) => { ai.log.push(line); ai.think = line; ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) })); renderAgentView(); };
     async function readRound(hits, cap) {
       const queue = (hits || []).filter(h => h && h.url);
       while (queue.length && pages.length < cap) {
@@ -2881,7 +2895,7 @@ async function runBiswasAgent(job) {
     }
     mark(t("ag_search"));
     let queries = [job];
-    try {
+    if (!writerOff) try {
       mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
       const planQ = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for this job: the official rule, the latest government order, and the how-to page. No other text.` });
       const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
@@ -2889,7 +2903,7 @@ async function runBiswasAgent(job) {
         const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3);
         if (next.length) queries = next;
       }
-    } catch (e) { queries = [job]; }
+    } catch (e) { queries = [job]; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const useGoogle = googleOn;
     for (let i = 0; i < queries.length; i++) {
       mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i] + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
@@ -2908,6 +2922,13 @@ async function runBiswasAgent(job) {
         } else await readRound(orders, 10);
       } catch (e) { /* the next search still runs */ }
     }
+    if (writerOff) {
+      ai.content = fromPages(pages) || (settings.lang === "en" ? "The free AI limit is used up, and no page text came back." : "ফ্রি AI-এর সীমা শেষ, এবং কোনো পাতার লেখা আসেনি।");
+      ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) }));
+      ai.done = true;
+      cur.at = Date.now();
+      saveAgent();
+    } else {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => (p.via === "google" ? "[Google News] " : "") + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
@@ -2927,9 +2948,12 @@ async function runBiswasAgent(job) {
     ai.done = true;
     cur.at = Date.now();
     saveAgent();
+    }
   } catch (e) {
-    ai.content = cleanAgent((e && e.text) || "");
-    ai.error = aiFailed(e);
+    const found = fromPages(pages);
+    ai.content = found || cleanAgent((e && e.text) || "");
+    ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) }));
+    ai.error = found ? "" : aiFailed(e);
     ai.done = true;
     saveAgent();
   } finally {
@@ -2980,7 +3004,7 @@ async function ask(text) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240) }) });
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240), google: true }) });
       const data = rr.ok ? await rr.json() : { pages: [] };
       const pages = Array.isArray(data.pages) ? data.pages.slice(0, 4) : [];
       ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
@@ -3008,6 +3032,7 @@ async function ask(text) {
     const code = e && e.code;
     ai.content = code === "refused" ? "" : ((e && e.text) || ai.content);
     if (code === "cancelled") { if (!ai.content) ai.content = t("stopped"); }
+    else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
     else ai.error = aiFailed(e);
   } finally {
     ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist();

@@ -408,12 +408,23 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ hits, google, googleWhy: google.why || "" }));
         return;
       }
-      const pages = q ? await research(q) : [];
+      let pages = q ? await research(q) : [];
+      if (body.google && q) {
+        try {
+          const g = await searchGoogle(q);
+          for (const hit of (Array.isArray(g) ? g : []).slice(0, 2)) {
+            if (!hit || !hit.url || pages.some(p => p.url === hit.url)) continue;
+            let text = "";
+            try { text = await readPage(hit.url); } catch (e) { text = ""; }
+            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: "google" });
+          }
+        } catch (e) { /* the pages already opened still go back */ }
+      }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end(JSON.stringify({ pages }));
+      res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v47"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v48"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
