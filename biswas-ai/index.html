@@ -726,10 +726,11 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
+    ag_google: "গুগল", ag_google_d: "চালু থাকলে গুগলের খবরের পাতাও খোলে",
     ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. খোলা পাতা", ag_s3: "৩. ফল",
     ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
@@ -798,10 +799,11 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job", ag_note: "One agent. It first picks three searches, then reads the pages, writes the note, and checks it. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job", ag_note: "One agent. With Google on, it also opens news pages. It first picks three searches, then reads the pages, writes the note, and checks it. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
+    ag_google: "Google", ag_google_d: "When on, also opens pages found through Google News",
     ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Pages opened", ag_s3: "3. Result",
     ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
@@ -2663,6 +2665,8 @@ setInterval(() => {
   });
 }, 1000);
 let agentKind = "free";
+let googleOn = true;
+try { googleOn = localStorage.getItem("biswas:google") !== "0"; } catch (e) { /* default on */ }
 let agentBusy = false;
 let agentThreads = [];
 let agentId = "";
@@ -2670,7 +2674,9 @@ function cleanAgent(s) {
   return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/\*\*/g, "").replace(/^\s*\|.+\|\s*$/gm, "").replace(/^\s*[-| :]{3,}\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 function renderAgents() {
-  const box = $("#ag-picks"); if (box) box.innerHTML = "";
+  const box = $("#ag-picks");
+  if (!box) return;
+  box.innerHTML = `<button class="chip" type="button" id="ag-google" aria-pressed="${googleOn ? "true" : "false"}" title="${esc(t("ag_google_d"))}">${esc(t("ag_google"))}</button>`;
 }
 function renderAgentView() {
   renderAgents();
@@ -2757,7 +2763,7 @@ async function runBiswasAgent(job) {
           if (rr.ok) one = await rr.json();
         } catch (e) { /* next page */ }
         const text = String(one.text || "");
-        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text });
+        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via: hit.via || "" });
         ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
         (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
         ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
@@ -2775,18 +2781,28 @@ async function runBiswasAgent(job) {
         if (next.length) queries = next;
       }
     } catch (e) { queries = [job]; }
+    const useGoogle = googleOn;
     for (let i = 0; i < queries.length; i++) {
-      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i]);
+      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i] + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
       try {
-        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true }) });
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true, google: useGoogle }) });
         const data = rr.ok ? await rr.json() : {};
-        await readRound(Array.isArray(data.hits) ? data.hits : [], 10);
+        const orders = Array.isArray(data.hits) ? data.hits : [];
+        const ghits = Array.isArray(data.google) ? data.google : [];
+        if (useGoogle) {
+          await readRound(orders, Math.min(10, pages.length + 2));
+          mark((settings.lang === "en" ? "Google: " : "গুগল: ") + queries[i]);
+          if (!ghits.length) {
+            ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no readable page" : " — পড়ার মতো পাতা নেই";
+            renderAgentView();
+          } else await readRound(ghits, Math.min(10, pages.length + 2));
+        } else await readRound(orders, 10);
       } catch (e) { /* the next search still runs */ }
     }
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
-    const web = pages.map(p => p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
-    let sys = `You are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} Today is ${today()}. You only read public pages. The order pages are public copies of West Bengal government orders, notifications and circulars across departments. Quote the memo number and the date when the page gives them. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs, not a table and not three lines. Cover what the pages say, what changed, the papers, the steps, and what the person still has to do after they sign in themselves. Name the page after each fact. If the job asks for an office paper, write that paper after the note and leave ______ for a missing fact. Do not invent a fee, an order number or a date. If a fact was not on a page, say so.`;
+    const web = pages.map(p => (p.via === "google" ? "[Google News] " : "") + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
+    let sys = `You are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} Today is ${today()}. You only read public pages. The order pages are public copies of West Bengal government orders, notifications and circulars across departments. Lines marked [Google News] are news reports found through Google. They are not government orders. Quote the memo number and the date when the page text gives them. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs, not a table and not three lines. Cover what the pages say, what changed, the papers, the steps, and what the person still has to do after they sign in themselves. Name the page after each fact. If the job asks for an office paper, write that paper after the note and leave ______ for a missing fact. Do not invent a fee, an order number or a date. If a fact was not on a page, say so.`;
     if (web) sys += "\n\nPages opened:\n" + web;
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
@@ -3056,6 +3072,12 @@ document.addEventListener("click", e => {
     return;
   }
   if ((x = el("[data-ag-reply]"))) { const job = $("#ag-job"); if (job) job.focus(); return; }
+  if (el("#ag-google")) {
+    googleOn = !googleOn;
+    try { localStorage.setItem("biswas:google", googleOn ? "1" : "0"); } catch (err) { /* keep the choice for this visit */ }
+    renderAgents();
+    return;
+  }
   if (el("[data-ag-new]")) { agentId = ""; renderAgentView(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-ag]"))) return openAgent(x.dataset.ag);
   if ((x = el("[data-agent]"))) { agentKind = x.dataset.agent; renderAgents(); const job = $("#ag-job"); if (job) job.focus(); return; }

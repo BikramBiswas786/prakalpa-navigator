@@ -53,6 +53,26 @@ function stripPage(html) {
     .trim()
     .slice(0, 3500);
 }
+function isWall(text) {
+  const t = String(text || "").slice(0, 500).toLowerCase();
+  return String(text || "").length < 900 && /access denied|enable javascript|just a moment|captcha|pardon our interruption|browser isn't supported/.test(t);
+}
+function readableText(html) {
+  const raw = String(html || "");
+  const markers = [/itemprop="articleBody"/i, /class="[^"]*entry-content[^"]*"/i, /class="[^"]*articlebody[^"]*"/i, /class="[^"]*article-body[^"]*"/i];
+  for (const re of markers) {
+    const m = re.exec(raw);
+    if (!m) continue;
+    const slice = raw.slice(m.index, m.index + 24000);
+    const paras = [...slice.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map(x => decodeBasic(x[1].replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim())
+      .filter(t => t.length > 40);
+    const joined = paras.join("\n\n").slice(0, 3500);
+    if (joined.length > 80 && !isWall(joined)) return joined;
+  }
+  const plain = stripPage(raw);
+  return plain.length > 80 && !isWall(plain) ? plain : "";
+}
 async function readPage(url) {
   const safe = safeHttpUrl(url);
   if (!safe) return "";
@@ -102,6 +122,107 @@ async function searchOrders(q, found, add) {
       }
     } catch (e) { /* the next page or source still runs */ }
   }
+}
+const CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+const GART_CTX = [["X", "X", ["X", "X"], null, null, 1, 1, "US:en", null, 1, null, null, null, null, null, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1, null, 0, 0, null, 0];
+function googleArticleId(link) {
+  try {
+    const u = new URL(String(link || "").trim());
+    if (u.hostname !== "news.google.com") return "";
+    const parts = u.pathname.split("/").filter(Boolean);
+    const kind = parts[parts.length - 2];
+    if (kind !== "articles" && kind !== "read") return "";
+    const id = parts[parts.length - 1] || "";
+    return /^[A-Za-z0-9_\-]+$/.test(id) ? id : "";
+  } catch (e) { return ""; }
+}
+function parseGoogleBatch(text) {
+  let body = String(text || "");
+  const split = body.indexOf("\n\n");
+  if (split >= 0) body = body.slice(split + 2);
+  body = body.trimStart();
+  if (body.startsWith(")]}'")) {
+    const nl = body.indexOf("\n");
+    body = (nl >= 0 ? body.slice(nl + 1) : body.slice(4)).trimStart();
+  }
+  let rows = JSON.parse(body);
+  while (rows.length && Array.isArray(rows[rows.length - 1]) && (rows[rows.length - 1][0] === "di" || rows[rows.length - 1][0] === "e")) rows.pop();
+  const out = {};
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length < 3) continue;
+    if (row[0] !== "wrb.fr" && row[1] !== "Fbv4je") continue;
+    let payload = row[2];
+    if (typeof payload === "string") payload = JSON.parse(payload);
+    if (!Array.isArray(payload) || payload[0] !== "garturlres" || typeof payload[1] !== "string") continue;
+    let reqId = "";
+    for (let i = row.length - 1; i >= 3; i--) if (row[i] != null) { reqId = String(row[i]); break; }
+    let host = "";
+    try { host = new URL(payload[1]).hostname.toLowerCase(); } catch (e) { host = ""; }
+    if (reqId && host && !host.endsWith("google.com") && !host.endsWith("google.co.in")) out[reqId] = payload[1];
+  }
+  return out;
+}
+async function decodeGoogleNews(ids) {
+  const signed = await Promise.all(ids.map(async (id) => {
+    try {
+      const pageUrl = "https://news.google.com/rss/articles/" + id + "?hl=en-IN&gl=IN&ceid=IN:en";
+      const r = await fetch(pageUrl, { redirect: "manual", signal: AbortSignal.timeout(12000), headers: { "user-agent": CHROME, accept: "text/html" } });
+      if (!r.ok) return null;
+      const html = await r.text();
+      const sg = (html.match(/data-n-a-sg="([^"]+)"/) || [])[1];
+      const ts = (html.match(/data-n-a-ts="([^"]+)"/) || [])[1];
+      if (!sg || !ts) return null;
+      return { id, sg, ts };
+    } catch (e) { return null; }
+  }));
+  const ready = [];
+  signed.forEach((row, i) => { if (row) ready.push({ ...row, req: String(i) }); });
+  if (!ready.length) return {};
+  const envelopes = ready.map(s => ["Fbv4je", JSON.stringify(["garturlreq", GART_CTX, s.id, /^\d+$/.test(s.ts) ? Number(s.ts) : s.ts, s.sg]), null, s.req]);
+  const body = "f.req=" + encodeURIComponent(JSON.stringify([envelopes]));
+  try {
+    const dec = await fetch("https://news.google.com/_/DotsSplashUi/data/batchexecute", {
+      method: "POST",
+      headers: { "user-agent": CHROME, "content-type": "application/x-www-form-urlencoded;charset=UTF-8" },
+      body,
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!dec.ok) return {};
+    return parseGoogleBatch(await dec.text());
+  } catch (e) { return {}; }
+}
+async function searchGoogle(q) {
+  const found = [];
+  const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe, via: "google" }); };
+  try {
+    const rssUrl = "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en-IN&gl=IN&ceid=IN:en";
+    const r = await fetch(rssUrl, { signal: AbortSignal.timeout(10000), headers: { "user-agent": CHROME, accept: "application/rss+xml, application/xml, text/xml" } });
+    if (!r.ok) return found;
+    const xml = await r.text();
+    const items = [];
+    const re = /<item>([\s\S]*?)<\/item>/gi;
+    let m;
+    while ((m = re.exec(xml)) && items.length < 8) {
+      const block = m[1];
+      let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
+      title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/\s+/g, " ").trim();
+      const link = ((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+      const id = googleArticleId(link);
+      if (title.length < 12 || !id) continue;
+      items.push({ title: title.slice(0, 160), id });
+    }
+    const urls = await decodeGoogleNews(items.map(x => x.id));
+    const picked = [];
+    await Promise.all(items.map(async (item, i) => {
+      const pub = urls[String(i)];
+      if (!pub) return;
+      const text = readableText(await readHtml(pub));
+      if (text.length > 80) picked.push({ title: item.title, url: pub, via: "google", n: i });
+    }));
+    picked.sort((a, b) => a.n - b.n);
+    for (const row of picked) add(row.title, row.url);
+  } catch (e) { /* Google can fail; the order search still stands */ }
+  return found.slice(0, 3);
 }
 async function searchWeb(q) {
   const found = [];
@@ -195,7 +316,7 @@ const server = http.createServer(async (req, res) => {
           const html = safe ? await readHtml(safe) : "";
           const more = followLinks(html, safe || "https://example.com").map(u => ({ title: u.replace(/^https?:\/\//, "").slice(0, 90), url: u }));
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-          res.end(JSON.stringify({ title: String(body.title || safe || "").slice(0, 140), url: safe, text: stripPage(html), more }));
+          res.end(JSON.stringify({ title: String(body.title || safe || "").slice(0, 140), url: safe, text: readableText(html), more }));
         } catch (e) {
           res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
           res.end(JSON.stringify({ title: String(body.title || ""), url: "", text: "", more: [] }));
@@ -205,8 +326,9 @@ const server = http.createServer(async (req, res) => {
       const q = String(body.q || "").slice(0, 240).trim();
       if (body.list) {
         const hits = q ? await searchWeb(q) : [];
+        const google = body.google && q ? await searchGoogle(q) : [];
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(JSON.stringify({ hits }));
+        res.end(JSON.stringify({ hits, google }));
         return;
       }
       const pages = q ? await research(q) : [];
@@ -214,7 +336,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v35"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v36"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
