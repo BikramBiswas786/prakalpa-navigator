@@ -1575,11 +1575,11 @@ function agreeArticle(rows, pages, question) {
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
 async function askPanel(question, pages) {
-  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 6)
-    .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
-  const system = yearLine() + "\nAnswer only the question the user asked. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. Use a source page only when it is about the question. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
+  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 10)
+    .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
+  const system = yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }), signal: ctl ? ctl.signal : undefined });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 2000) }], maxOut: 1400 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [];
@@ -3069,43 +3069,52 @@ async function runBiswasAgent(job) {
       }
     }
     mark(t("ag_search"));
-    let queries = [job];
+    const bits = String(job).split(/\?|\n|;\s+|\s+\band\b\s+|\s+\bthen\b\s+/i).map(s => s.replace(/\s+/g, " ").trim()).filter(s => s.length > 12 && s.length < 160);
+    let queries = [job].concat(bits).filter((q, i, a) => a.findIndex(x => x.toLowerCase() === q.toLowerCase()) === i).slice(0, 4);
     if (!writerOff) try {
       mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
-      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Write 3 short English web searches for the user's exact question. Keep the same subject. Do not add a place, an office, or a scheme the user did not name. No other text.` });
+      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Split the user's question into every part they asked. Write up to 6 short English web searches, one part each, plus the whole question. Keep the same subject. Do not add a place, an office, or a scheme the user did not name. No other text.` });
       const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(jq.queries)) {
-        const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3)
+        const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 6)
           .map(s => {
             let q = s;
             if (officeTopic(job) && /\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
             return q.slice(0, 180);
           })
           .filter(q => !driftedQuery(q, job));
-        queries = next.length ? next : [job];
+        queries = [job].concat(bits).concat(next).filter((q, i, a) => q && a.findIndex(x => x.toLowerCase() === q.toLowerCase()) === i).slice(0, 6);
       }
-    } catch (e) { queries = [job]; if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
+    } catch (e) { if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const useGoogle = googleOn;
-    for (let i = 0; i < queries.length; i++) {
-      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i] + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
+    async function searchOne(q) {
+      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + ": " + q + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
       try {
-        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true, google: useGoogle }), signal: ctl ? ctl.signal : undefined });
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q, list: true, google: useGoogle }), signal: ctl ? ctl.signal : undefined });
         const data = rr.ok ? await rr.json() : {};
         const orders = Array.isArray(data.hits) ? data.hits : [];
         const ghits = Array.isArray(data.google) ? data.google : [];
         const more = Array.isArray(data.more) ? data.more : [];
-        if (more.length) await readRound(more, Math.min(12, pages.length + 8));
-        if (useGoogle && ghits.length) await readRound(ghits, Math.min(10, pages.length + 2));
-        if (officeTopic(job) && orders.length) await readRound(orders, Math.min(8, pages.length + 2));
+        if (more.length) await readRound(more, Math.min(16, pages.length + 4));
+        if (useGoogle && ghits.length) await readRound(ghits, Math.min(16, pages.length + 2));
+        if (officeTopic(job) && orders.length) await readRound(orders, Math.min(16, pages.length + 2));
       } catch (e) { /* the next search still runs */ }
     }
-    mark(settings.lang === "en" ? "Asking the free AIs, then keeping only the lines that match" : "ফ্রি AI-কে জিজ্ঞাসা করছি, তারপর যে লাইন মিলেছে শুধু সেটা রাখছি");
+    for (let i = 0; i < queries.length; i++) await searchOne(queries[i]);
+    const covered = pages.map(p => ((p.title || "") + " " + (p.text || "")).toLowerCase()).join(" ");
+    const again = queries.filter(q => {
+      const words = q.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 5);
+      return words.length >= 2 && !words.some(w => covered.includes(w));
+    }).slice(0, 2);
+    for (const q of again) await searchOne(q);
+    mark(settings.lang === "en" ? "Asking the free AIs the whole question" : "পুরো প্রশ্নটা ফ্রি AI-কে জিজ্ঞাসা করছি");
     try { ai.panel = await askPanel(job, pages); } catch (e) { ai.panel = []; }
-    const article = agreeArticle(ai.panel, pages, job);
     renderAgentView();
-    if (article || writerOff) {
+    const notes = (ai.panel || []).filter(a => a && a.text && !a.error).map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + a.text).join("\n\n").slice(0, 7000);
+    if (writerOff) {
+      const best = (ai.panel || []).filter(a => a && a.text && !/not mentioned|do not contain|was not mentioned/i.test(a.text)).sort((a, b) => b.text.length - a.text.length)[0];
       ai.pages = snap();
-      ai.content = hideAudit(article || deepDump(pages) || (settings.lang === "en" ? "No two free AIs agreed, and no page text came back." : "দুটি ফ্রি AI মেলেনি, এবং পাতার লেখাও আসেনি।"));
+      ai.content = hideAudit((best && best.text) || deepDump(pages) || (settings.lang === "en" ? "No page text came back." : "পাতার লেখা আসেনি।"));
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
@@ -3115,17 +3124,18 @@ async function runBiswasAgent(job) {
     const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
     let sys = officeTopic(job)
       ? yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only when the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the private audit lists it under Agreed. If only one engine says it, leave it out. Do not show the audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages)
-      : yearLine() + `\nYou answer only the user's question. ${lang} Use the pages that are about that question. Do not mention West Bengal schemes, DCRB, pensions, Annapurna, Lakshmir Bhandar, land records, or birth and death registration unless the question asked about them. If the pages are about something else, ignore those pages and answer the question. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
+      : yearLine() + `\nYou answer every part of the user's question, in order. ${lang} Do not stop after the first fact. Use the pages and the other AI notes. If one page lacks a fact, use another. Do not say a fact is missing unless none of the pages contain it. Do not mention West Bengal schemes, DCRB, pensions, Annapurna, Lakshmir Bhandar, land records, or birth and death registration unless the question asked about them. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
     if (officeTopic(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
     if (officeTopic(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
+    if (notes) sys += "\n\nOther AIs, on the same question:\n" + notes;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
     const checkSys = officeTopic(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
-      : `You are the editor. ${lang} The note must answer the job and nothing else. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Do not invent a score. Return only the corrected note.`;
+      : `You are the editor. ${lang} The note must answer every part of the job. Keep facts that the pages support. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Delete a line that says a fact is missing when another page states it. Do not invent a score. Return only the corrected note.`;
     const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys });
     ai.pages = snap();
     ai.content = hideAudit(dropCutoff(cleanAgent(checked.text || draft.text), job));
