@@ -698,7 +698,7 @@ const chats = { ai: [], office: [], public: [] };
 let messages = chats[mode];   // {role, content, shown, files, via}
 let pendingFiles = [];                  // {name, kind, text?, images?: Blob[]}
 let sample = null, downloads = null, imageLimits = null;
-let engine = null;   // "claude" inside claude.ai, "server" on the website
+let engine = "server";   // website always uses the server; claude.ai can take over after boot
 let ctl = null;
 
 const $ = s => document.querySelector(s);
@@ -1744,7 +1744,7 @@ async function serverAsk(system, turns, imgs, { signal, onText, fast }) {
   for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
   let res;
   try {
-    res = await fetch("api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: fast ? 1600 : undefined }), signal });
+    res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: fast ? 1600 : undefined }), signal });
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
@@ -2919,7 +2919,7 @@ async function openStatus() {
   if (engine === "claude") { body.innerHTML = `<p>${esc(t("stat_claude"))}</p>`; return; }
   body.innerHTML = `<p>${esc(t("stat_checking"))}</p>`;
   try {
-    const r = await (await fetch("api/chat?test=1", { cache: "no-store" })).json();
+    const r = await (await fetch("/api/chat?test=1", { cache: "no-store" })).json();
     if (!r.results || !r.results.length) { body.innerHTML = `<p>${esc(t("stat_none"))}</p>`; return; }
     body.innerHTML = `<div class="tbl"><table><thead><tr><th>${esc(t("th_ai"))}</th><th>${esc(t("th_model"))}</th><th>${esc(t("th_res"))}</th><th>${esc(t("th_time"))}</th><th>${esc(t("th_why"))}</th></tr></thead><tbody>${
       r.results.map(x => `<tr><td>${esc(PROVIDER_NAMES[x.provider] || x.provider)}</td><td>${esc(x.model)}</td><td><span class="pill ${x.ok ? "ok" : "unc"}">${esc(t(x.ok ? "stat_ok" : "stat_fail"))}</span></td><td>${(x.ms / 1000).toFixed(1)}s</td><td class="err">${esc(x.ok ? "" : `${x.status || ""} ${x.error || ""}`.trim())}</td></tr>`).join("")
@@ -3325,24 +3325,37 @@ let booted = false;
 function startApp() {
   if (booted) return;
   booted = true;
+  const onClaude = !!(window.claude && window.claude.use && /(^|\.)claude\.ai$/i.test(location.hostname));
+  if (!onClaude) engine = "server";
   Object.values(chats).forEach(list => list.forEach(m => { m.done = true; m.editing = false; }));
   clearAddress();
   mode = "ai"; messages = chats.ai; tabs.ai = "chat";
-  showView();
+  try { showView(); } catch (e) { /* a bad saved chat must not turn the AI off */ }
   if (!store.get("langChosen", false)) { try { $("#langpick").showModal(); } catch (e) { /* dialog unsupported */ } }
   (async () => {
-    if (!window.claude || !window.claude.use) {
+    if (!onClaude) {
       engine = "server"; imageLimits = { maxCount: 4 };
-      $("#engine-note").textContent = "";
-      try { const h = await (await fetch("api/chat", { cache: "no-store" })).json(); if (!h.configured) showBanner(() => errText("server_unconfigured")); }
-      catch (e) { showBanner(() => t("unreachable")); }
-      if (tabs[mode] === "chat") renderChat();
+      const note = $("#engine-note"); if (note) note.textContent = "";
+      let configured = true;
+      for (let n = 0; n < 2; n++) {
+        try {
+          const h = await (await fetch("/api/chat", { cache: "no-store" })).json();
+          configured = !!h.configured;
+          break;
+        } catch (e) {
+          configured = null;
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+      if (configured === false) showBanner(() => errText("server_unconfigured"));
+      else if (configured === null) showBanner(() => t("unreachable"));
+      if (tabs[mode] === "chat") { try { renderChat(); } catch (e) { /* ignore */ } }
       return;
     }
     const [s, d] = await Promise.all([window.claude.use("sample").catch(() => null), window.claude.use("downloads").catch(() => null)]);
     sample = s; downloads = d;
     if (sample) { engine = "claude"; try { const lim = await sample.limits(); imageLimits = lim.images || null; } catch (e) { imageLimits = null; } }
-    else showBanner(() => t("no_ai_claude"));
+    else { engine = "server"; imageLimits = { maxCount: 4 }; }
     if (tabs[mode] === "chat") renderChat();
   })();
 }
