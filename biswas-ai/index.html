@@ -869,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v69", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v70", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1629,7 +1629,7 @@ How this office works (follow it):
 - Put ______ for any fact you were not given. Never make up names, numbers or dates.
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
-  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal.
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal, India. Bengali in this section means West Bengal, not Bangladesh. Never answer from Bangladesh, a .bd website, Dhaka, or the Bangladesh Fire Service. A fire licence here is the West Bengal Fire and Emergency Services licence, or the municipal fire-safety certificate. Ignore a page that is about another country.
 First answer, and only when they ask how to apply: short steps, the office, the portal named in the catalogue, the documents, any fee that is written down, and the time if it is written down. Use the current scheme name, with the old name in brackets. Government camps and offices do not charge a tout's fee.
 If they ask for more detail, an analysis, a review, features, each point, or any new rule: do not send that application card again. Do not pad it with longer sentences.
 Write four short parts instead.
@@ -3355,9 +3355,10 @@ async function ask(text) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240), google: true }), signal: ctl.signal });
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(text) }), signal: ctl.signal });
       const data = rr.ok ? await rr.json() : { pages: [] };
-      const pages = Array.isArray(data.pages) ? data.pages.slice(0, 4) : [];
+      const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
+      const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && !foreign(p)).slice(0, 4);
       ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
       ai.browseAt = 0;
       researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
@@ -3374,7 +3375,7 @@ async function ask(text) {
     try {
       const note = await aiRun([{ role: "user", content: "Question:\n" + String(text).slice(0, 2000) }], {
         fast: true, signal: ctl.signal,
-        system: `You are the reading step. Do not write the answer the person will see. Read the dataset and the pages. Write a short analysis in ${settings.lang === "en" ? "English" : "colloquial Bengali"}.
+        system: `You are the reading step for a West Bengal, India service. Bengali does not mean Bangladesh. Ignore any page about Bangladesh, a .bd site, Dhaka, or the Bangladesh Fire Service. A fire licence is the West Bengal one. Do not write the answer the person will see. Read the dataset and the pages. Write a short analysis in ${settings.lang === "en" ? "English" : "colloquial Bengali"}.
 - Asked: how to apply, or more detail, or a new rule.
 - On record: only a line that is written in the dataset or a page. Name where it is written.
 - Not on record: the amount, a year of practice, a training course, an exhibition, a new rule, or a time, if they are absent. Do not fill them.
