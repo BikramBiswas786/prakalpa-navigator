@@ -467,7 +467,7 @@ async function searchExa(q) {
     const r = await fetch("https://api.exa.ai/search", {
       method: "POST", signal: AbortSignal.timeout(10000),
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 8, useAutoprompt: true })
+      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 8, contents: { text: { maxCharacters: 1400 } } })
     });
     if (!r.ok) return [];
     const j = await r.json();
@@ -475,7 +475,7 @@ async function searchExa(q) {
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "exa",
-      text: String(row.text || row.snippet || "").slice(0, 1400)
+      text: String((row.text && row.text.text) || row.text || row.snippet || "").slice(0, 1400)
     })).filter(x => x.url);
   } catch (e) { return []; }
 }
@@ -495,7 +495,7 @@ async function searchFirecrawl(q) {
       title: String(row.title || row.url || "").slice(0, 160),
       url: safeHttpUrl(row.url),
       via: "firecrawl",
-      text: String(row.description || row.snippet || "").slice(0, 1400)
+      text: String(row.markdown || row.description || row.snippet || "").slice(0, 1400)
     })).filter(x => x.url);
   } catch (e) { return []; }
 }
@@ -562,7 +562,15 @@ async function searchMore(q) {
     searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
   ]);
   const out = [];
-  const push = row => { if (row && row.url && out.length < 24 && !out.some(x => x.url === row.url)) out.push(row); };
+  const push = row => {
+    if (!row || !row.url || out.length >= 24 || out.some(x => x.url === row.url)) return;
+    const words = String(q).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
+    if (words.length >= 2 && String(row.text || "").length > 40) {
+      const hay = (String(row.title || "") + " " + String(row.text || "")).toLowerCase();
+      if (words.filter(w => hay.includes(w)).length < 2) return;
+    }
+    out.push(row);
+  };
   const buckets = [tavily, exa, serper, fire, parKey, keiro, bing, par, msn, yahoo, wiki, duck, instant];
   let n = 0;
   while (out.length < 24) {
@@ -742,7 +750,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v63"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v64"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
