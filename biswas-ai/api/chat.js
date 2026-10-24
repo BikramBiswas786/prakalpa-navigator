@@ -3,6 +3,7 @@
 // fails before answering, the next is used, so the free limits add up.
 // Every provider is optional: set the API keys you have in Vercel.
 //
+//   LLM7_API_KEY         LLM7.io free (100k tokens/day, 60 RPM): turbo models
 //   NARA_API_KEY         NaraRouter free (7M tokens/day, 15 RPM): agnes, nemotron, laguna
 //   GEMINI_API_KEY       Google AI Studio (free, no card)
 //   NVIDIA_API_KEY       NVIDIA build.nvidia.com developer API (free): Llama and Kimi models
@@ -37,12 +38,13 @@ const env = name => (process.env[name] || "").trim();
 const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.trim()).filter(Boolean);
 
 const PROVIDERS = {
+  llm7: { key: "LLM7_API_KEY", kind: "openai", url: "https://api.llm7.io/v1/chat/completions", models: list("LLM7_MODELS", "fast,default,gpt-oss") },
   nara: { key: "NARA_API_KEY", kind: "openai", url: "https://router.bynara.id/v1/chat/completions", models: list("NARA_MODELS", "agnes-2.5-flash,nemotron-3.5-lightning-free,laguna-s-2.1") },
   gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-lite-latest,gemini-flash-latest") },
   nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b") },
   mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-small-latest,mistral-medium-latest") },
   groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-20b,openai/gpt-oss-120b") },
-  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "moonshotai/kimi-k2:free,meta-llama/llama-3.3-70b-instruct:free,openai/gpt-oss-120b:free") },
+  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free") },
   cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
   sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
   zai: { key: "ZAI_API_KEY", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
@@ -58,7 +60,7 @@ const PROVIDERS = {
   together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
   fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
-const ORDER = list("PROVIDER_ORDER", "nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
 const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -274,7 +276,7 @@ export async function POST(request) {
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
   if (body.panel) {
-    const FREE = ["nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
+    const FREE = ["llm7", "nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
     const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 3);
     const readAll = async stream => {
       const reader = stream.getReader();
