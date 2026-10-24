@@ -461,6 +461,10 @@ async function searchWeb(q) {
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
   await searchOrders(q, found, add);
   const hints = [
+    [/pension|dcrb|gratuity|death-cum-retirement|legal heir/i, [
+      ["West Bengal DCRB Rules, 1971", "https://wbxpress.com/west-bengal-service-death-cum-retirement-benefit-rules-1971/"],
+      ["Family for death gratuity", "https://wbxpress.com/definition-family-death-gratuity/"]
+    ]],
     [/birth|death|জন্ম|মৃত্যু/i, [
       ["Janma-Mrityu Tathya", "https://janma-mrityutathya.wb.gov.in/"],
       ["Civil Registration", "https://crsorgi.gov.in/"]
@@ -590,7 +594,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v58"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v59"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
