@@ -443,7 +443,13 @@ textarea.paper { white-space: pre-wrap; }
           <header class="letterhead" id="d-head"></header>
           <textarea class="paper" id="d-paper" spellcheck="false"></textarea>
           <div class="paper doc" id="d-view" hidden></div>
-          <form class="revise" id="d-revform"><input id="d-rev"><button class="btn" type="submit" id="d-revise" data-t="d_revise"></button></form>
+          <form class="revise" id="d-revform">
+            <input id="d-rev">
+            <input type="file" id="d-rev-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,image/*">
+            <button class="btn" type="button" id="d-rev-attach" data-t="d_attach"></button>
+            <button class="btn" type="submit" id="d-revise" data-t="d_revise"></button>
+          </form>
+          <div class="pending" id="d-rev-files"></div>
         </div>
       </div>
       <div class="composer">
@@ -862,7 +868,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v82", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v83", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -936,7 +942,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v82", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v83", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2199,6 +2205,7 @@ let draftCases = {};
 let draftIds = {};
 let draftArch = false;
 let draftFiles = [];
+let draftRevFiles = [];
 let draftBusy = null;
 let draftPreview = false;
 let showEmblem = true;
@@ -2270,6 +2277,7 @@ function openDraftCase(type, id, save) {
   draftIds[type] = row.id;
   draft = { _id: row.id, type, lang: row.lang || settings.lang, to: row.to || "", sub: row.sub || "", ref: row.ref || "", facts: row.facts || "", text: row.text || "", prev: row.prev || "" };
   draftFiles = [];
+  draftRevFiles = [];
   draftPreview = false;
   if (save !== false) saveDraft();
   if ($("#d-type")) renderDraftForm();
@@ -2283,6 +2291,7 @@ function newDraftCase() {
   draftIds[type] = row.id;
   draft = { _id: row.id, type, lang: settings.lang, to: "", sub: "", ref: "", facts: "", text: "", prev: "" };
   draftFiles = [];
+  draftRevFiles = [];
   draftPreview = false;
   saveDraft();
   renderDraftForm();
@@ -2345,6 +2354,7 @@ function renderDraftForm() {
   ["to", "sub", "ref", "facts"].forEach(k => { const el = $("#d-" + k); if (el.value !== draft[k]) el.value = draft[k] || ""; });
   if ($("#d-paper").value !== draft.text) $("#d-paper").value = draft.text || "";
   $("#d-files").innerHTML = draftFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-dunpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
+  const revBox = $("#d-rev-files"); if (revBox) revBox.innerHTML = draftRevFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-drevpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
   $("#d-fmt").innerHTML = settings.sampleText ? esc(t("d_fmt_on") + settings.sampleName) : `${esc(t("d_fmt_off"))}<button type="button" id="d-fmt-btn">${esc(t("give_sample"))}</button>`;
   $("#d-toggle").textContent = t(draftPreview ? "d_editmode" : "d_preview");
   $("#d-paper").hidden = draftPreview; $("#d-view").hidden = !draftPreview;
@@ -3893,10 +3903,15 @@ $("#d-revform").addEventListener("submit", e => {
   e.preventDefault();
   const how = $("#d-rev").value.trim();
   if (!draft.text.trim()) return toast(t("d_empty"));
-  if (!how) return $("#d-rev").focus();
-  runDraft([{ role: "user", content: `Here is the current document:\n<<<\n${draft.text}\n>>>\nRevise it as follows: ${how}\nKeep the same format and paragraphs style. Output only the revised document, nothing else.` }], []);
+  if (!how && !draftRevFiles.length) return $("#d-rev").focus();
+  const extra = attachText(draftRevFiles);
+  runDraft([{ role: "user", content: `Here is the current document:\n<<<\n${draft.text}\n>>>\n${extra ? "Read this attached material fully before you change the paper:\n" + extra + "\n" : ""}Revise it as follows: ${how || "Follow the attached letter."}\nKeep what still fits. Output only the revised document, nothing else.` }], attachImages(draftRevFiles));
   $("#d-rev").value = "";
+  draftRevFiles = [];
+  renderDraftForm();
 });
+$("#d-rev-attach").addEventListener("click", () => $("#d-rev-file").click());
+$("#d-rev-file").addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, draftRevFiles, renderDraftForm); });
 
 // table maker
 $("#t-grid").addEventListener("input", e => { const td = e.target.closest("td[data-r]"); if (!td) return; grid[+td.dataset.r][+td.dataset.c] = td.innerText.replace(/\n+$/, ""); saveGrid(); });
@@ -4188,6 +4203,7 @@ document.addEventListener("click", e => {
   if (el("#d-undo")) { if (draft.prev) { const cur = draft.text; draft.text = draft.prev; draft.prev = cur; saveDraft(); renderDraftForm(); } return; }
   if (el("#d-clear")) { if (draft.text) draft.prev = draft.text; draft.text = ""; ["to", "sub", "ref", "facts"].forEach(k => { draft[k] = ""; }); draftFiles = []; saveDraft(); renderDraftForm(); return toast(t("d_cleared")); }
   if ((x = el("[data-dunpend]"))) { draftFiles.splice(+x.dataset.dunpend, 1); return renderDraftForm(); }
+  if ((x = el("[data-drevpend]"))) { draftRevFiles.splice(+x.dataset.drevpend, 1); return renderDraftForm(); }
   if (el("#d-fmt-btn")) return $("#open-settings").click();
   // table maker
   if (el("#t-addrow")) { grid.push(grid[0].map(() => "")); saveGrid(); return renderGrid(); }
