@@ -2885,7 +2885,7 @@ async function runBiswasAgent(job) {
           const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }) });
           if (rr.ok) one = await rr.json();
         } catch (e) { /* next page */ }
-        const text = String(one.text || "");
+        const text = String(one.text || "").length > 80 ? String(one.text || "") : String(hit.text || one.text || "");
         pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via: hit.via || "" });
         ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
         (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
@@ -2920,7 +2920,7 @@ async function runBiswasAgent(job) {
             renderAgentView();
           } else await readRound(ghits, Math.min(10, pages.length + 2));
           const more = Array.isArray(data.more) ? data.more : [];
-          mark((settings.lang === "en" ? "Bing and DuckDuckGo: " : "বিং ও ডাকডাকগো: ") + queries[i]);
+          mark((settings.lang === "en" ? "Parallel, Bing and DuckDuckGo: " : "প্যারালেল, বিং ও ডাকডাকগো: ") + queries[i]);
           if (!more.length) {
             ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no page" : " — পাতা নেই";
             renderAgentView();
