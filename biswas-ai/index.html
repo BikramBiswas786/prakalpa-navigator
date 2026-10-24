@@ -2852,6 +2852,21 @@ let agentBusy = false;
 let agentHalt = false;
 let agentThreads = [];
 let agentId = "";
+function hideAudit(text) {
+  const lines = String(text || "").split("\n");
+  const out = [];
+  let skip = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^(Audit\.|যাচাই।)/.test(t) || /^\*\*(Agreed|মিলল|One engine only|এক ইঞ্জিনে)/.test(t)) { skip = true; continue; }
+    if (skip) {
+      if (!t || /^[-*] /.test(t)) continue;
+      skip = false;
+    }
+    out.push(line);
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
 function cleanAgent(s) {
   return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/\*\*/g, "").replace(/^\s*\|.+\|\s*$/gm, "").replace(/^\s*[-| :]{3,}\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -3071,7 +3086,7 @@ async function runBiswasAgent(job) {
     renderAgentView();
     if (article || writerOff) {
       ai.pages = snap();
-      ai.content = auditHead(pages) + "\n\n" + (article || deepDump(pages) || (settings.lang === "en" ? "No two free AIs agreed, and no page text came back." : "দুটি ফ্রি AI মেলেনি, এবং পাতার লেখাও আসেনি।"));
+      ai.content = hideAudit(article || deepDump(pages) || (settings.lang === "en" ? "No two free AIs agreed, and no page text came back." : "দুটি ফ্রি AI মেলেনি, এবং পাতার লেখাও আসেনি।"));
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
@@ -3079,7 +3094,7 @@ async function runBiswasAgent(job) {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
-    let sys = yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the audit lists it under Agreed. If only one engine says it, call it unchecked. The order pages are public copies of West Bengal government orders. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs after the reader has already seen the audit. Cover what changed, the papers, the steps, and what the person still has to do. Name the engine and the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages);
+    let sys = yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the private audit lists it under Agreed. If only one engine says it, leave it out. Do not show the audit, the words Agreed, or One engine only. The order pages are public copies of West Bengal government orders. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs. Cover what changed, the papers, the steps, and what the person still has to do. Name the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages);
     if (/birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
@@ -3087,9 +3102,9 @@ async function runBiswasAgent(job) {
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nAudit:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest or mark it unchecked. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
+    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPrivate audit, do not copy this into the note:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit, Agreed, or One engine only. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
     ai.pages = snap();
-    ai.content = auditHead(pages) + "\n\n" + dropCutoff(cleanAgent(checked.text || draft.text), job);
+    ai.content = hideAudit(dropCutoff(cleanAgent(checked.text || draft.text), job));
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
     ai.done = true;
     cur.at = Date.now();
@@ -3103,7 +3118,7 @@ async function runBiswasAgent(job) {
     } else {
     const found = deepDump(pages);
     ai.pages = snap();
-    ai.content = found ? auditHead(pages) + "\n\n" + found : cleanAgent((e && e.text) || "");
+    ai.content = found ? hideAudit(found) : cleanAgent((e && e.text) || "");
     ai.error = found ? "" : aiFailed(e);
     }
     ai.done = true;
