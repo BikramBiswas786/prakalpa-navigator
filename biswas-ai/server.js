@@ -562,7 +562,20 @@ async function searchKeiro(q) {
     })).filter(x => x.url);
   } catch (e) { return []; }
 }
-async function searchMore(q) {
+function forWestBengal(q) {
+  const s = String(q || "").replace(/\s+/g, " ").trim();
+  if (/bangladesh|বাংলাদেশ/i.test(s)) return s.slice(0, 220);
+  const place = /west bengal|পশ্চিমবঙ্গ/i.test(s) ? "" : " West Bengal India";
+  return (s + place).slice(0, 220);
+}
+function dropBangladesh(row) {
+  const url = String(row && row.url || "");
+  const blob = url + " " + String(row && row.title || "") + " " + String(row && row.text || "");
+  if (/\.bd(\/|$|:)/i.test(url)) return true;
+  if (/bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test(blob) && !/west bengal|পশ্চিমবঙ্গ/i.test(blob)) return true;
+  return false;
+}
+async function searchMore(q, opts) {
   const [par, parKey, tavily, exa, fire, serper, keiro, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
     searchParallel(q), searchParallelKey(q), searchTavily(q), searchExa(q), searchFirecrawl(q), searchSerper(q), searchKeiro(q),
     searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
@@ -570,6 +583,7 @@ async function searchMore(q) {
   const out = [];
   const push = row => {
     if (!row || !row.url || out.length >= 24 || out.some(x => x.url === row.url)) return;
+    if (opts && opts.wb && dropBangladesh(row)) return;
     const words = String(q).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
     if (words.length >= 2 && String(row.text || "").length > 40) {
       const hay = (String(row.title || "") + " " + String(row.text || "")).toLowerCase();
@@ -656,13 +670,15 @@ async function wiki(q) {
     }));
   } catch (e) { return []; }
 }
-async function research(q) {
-  const hits = officeTopic(q) ? await searchWeb(q) : [];
-  const more = await searchMore(q);
+async function research(q, opts) {
+  const query = opts && opts.wb ? forWestBengal(q) : q;
+  const hits = officeTopic(query) ? await searchWeb(query) : [];
+  const more = await searchMore(query, opts);
   const pages = [];
   const seen = new Set();
   const add = (hit) => {
     if (!hit || !hit.url || seen.has(hit.url) || pages.length >= 6) return;
+    if (opts && opts.wb && dropBangladesh(hit)) return;
     seen.add(hit.url);
     pages.push({ title: hit.title || hit.url, url: hit.url, text: hit.text || "", via: hit.via || "" });
   };
@@ -673,7 +689,7 @@ async function research(q) {
     try { p.text = await readPage(p.url); } catch (e) { p.text = ""; }
   }
   if (pages.filter(p => String(p.text || "").length > 80).length < 2) {
-    for (const w of await wiki(q)) if (!seen.has(w.url)) { seen.add(w.url); pages.push(w); }
+    for (const w of await wiki(query)) if (!seen.has(w.url) && !(opts && opts.wb && dropBangladesh(w))) { seen.add(w.url); pages.push(w); }
   }
   return pages.slice(0, 6);
 }
@@ -721,21 +737,24 @@ const server = http.createServer(async (req, res) => {
         }
         return;
       }
-      const q = String(body.q || "").slice(0, 240).trim();
+      const rawQ = String(body.q || "").slice(0, 240).trim();
+      const wb = !!body.wb && !/bangladesh|বাংলাদেশ/i.test(rawQ);
+      const q = wb ? forWestBengal(rawQ) : rawQ;
       if (body.list) {
         const hits = q && officeTopic(q) ? await searchWeb(q) : [];
         const google = body.google && q ? await searchGoogle(q) : [];
-        const more = q ? await searchMore(q) : [];
+        const more = q ? await searchMore(q, { wb }) : [];
+        const keep = row => row && !(wb && dropBangladesh(row));
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(JSON.stringify({ hits, google, more, googleWhy: google.why || "" }));
+        res.end(JSON.stringify({ hits: hits.filter(keep), google: (Array.isArray(google) ? google : []).filter(keep), more: more.filter(keep), googleWhy: google.why || "" }));
         return;
       }
-      let pages = q ? await research(q) : [];
+      let pages = q ? await research(rawQ, { wb }) : [];
       if (body.google && q) {
         try {
           const g = await searchGoogle(q);
           for (const hit of (Array.isArray(g) ? g : []).slice(0, 2)) {
-            if (!hit || !hit.url || pages.some(p => p.url === hit.url)) continue;
+            if (!hit || !hit.url || pages.some(p => p.url === hit.url) || (wb && dropBangladesh(hit))) continue;
             let text = "";
             try { text = await readPage(hit.url); } catch (e) { text = ""; }
             pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: "google" });
@@ -745,7 +764,7 @@ const server = http.createServer(async (req, res) => {
       if (body.google && q) {
         try {
           for (const hit of (await searchMore(q)).slice(0, 2)) {
-            if (!hit || !hit.url || pages.some(p => p.url === hit.url)) continue;
+            if (!hit || !hit.url || pages.some(p => p.url === hit.url) || (wb && dropBangladesh(hit))) continue;
             let text = "";
             try { text = await readPage(hit.url); } catch (e) { text = ""; }
             pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: hit.via || "web" });
@@ -756,7 +775,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v69"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v70"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
