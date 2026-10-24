@@ -726,7 +726,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। কাজটা কয়েক মিনিট চলে। পাতা একে একে খোলে, আবার খোঁজে, তারপর নোট মিলিয়ে দেখে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -798,7 +798,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job", ag_note: "One agent. A job runs for a few minutes. It opens pages one by one, searches again, then checks the note. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job", ag_note: "One agent. It first picks three searches, then reads the pages, writes the note, and checks it. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2765,17 +2765,24 @@ async function runBiswasAgent(job) {
       }
     }
     mark(t("ag_search"));
+    let queries = [job];
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: job, list: true }) });
-      const data = rr.ok ? await rr.json() : {};
-      await readRound(Array.isArray(data.hits) ? data.hits : [], 6);
-    } catch (e) { /* second search still runs */ }
-    mark(settings.lang === "en" ? "Searching again for the government order" : "সরকারি আদেশের জন্য আবার খুঁজছি");
-    try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: job + " West Bengal government order", list: true }) });
-      const data = rr.ok ? await rr.json() : {};
-      await readRound(Array.isArray(data.hits) ? data.hits : [], 10);
-    } catch (e) { /* write from whatever was read */ }
+      mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
+      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for this job: the official rule, the latest government order, and the how-to page. No other text.` });
+      const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
+      if (Array.isArray(jq.queries)) {
+        const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3);
+        if (next.length) queries = next;
+      }
+    } catch (e) { queries = [job]; }
+    for (let i = 0; i < queries.length; i++) {
+      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (i + 1) + ": " + queries[i]);
+      try {
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: queries[i], list: true }) });
+        const data = rr.ok ? await rr.json() : {};
+        await readRound(Array.isArray(data.hits) ? data.hits : [], 10);
+      } catch (e) { /* the next search still runs */ }
+    }
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
