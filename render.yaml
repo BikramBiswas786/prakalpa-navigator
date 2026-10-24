@@ -13,6 +13,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NARA_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: NVIDIA_API_KEY
