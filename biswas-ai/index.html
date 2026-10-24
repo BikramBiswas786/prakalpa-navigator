@@ -93,12 +93,16 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .conv:hover, .conv.on { background: var(--accent-soft); border-color: transparent; }
 .conv b { font-weight: 600; font-size: .95rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .conv small { color: var(--muted); font-size: .75rem; }
+.conv-item { display: grid; gap: 2px; }
+.conv-links { display: flex; gap: 18px; padding: 0 6px 8px; }
+.conv-links button, .textlink { border: 0; background: none; padding: 6px 0; color: var(--accent); cursor: pointer; font-size: .84rem; text-decoration: underline; }
+.conv-links button[data-del] { color: var(--bad); }
 #conv-list, #chat-conv { display: grid; gap: 8px; }
 #conv-list { max-height: 42vh; overflow: auto; }
 .hist { min-height: 0; overflow: auto; padding: 12px; display: grid; align-content: start; gap: 8px; background: var(--surface); border-right: 1px solid var(--line); }
 .word-folder { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
-#hist-sheet, #ag-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
-#hist-sheet { grid-template-rows: auto auto minmax(0, 1fr); }
+#hist-sheet, #ag-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
+#hist-sheet { grid-template-rows: auto auto auto minmax(0, 1fr); }
 #hist-sheet[hidden], #ag-sheet[hidden] { display: none !important; }
 .sheet-top { display: flex; align-items: center; gap: 8px; }
 .sheet-top b { margin-right: auto; font-family: var(--f-display); font-size: 1.25rem; }
@@ -545,6 +549,7 @@ textarea.paper { white-space: pre-wrap; }
     <section class="view chat" id="v-chat" hidden>
       <aside class="hist" id="chat-hist">
         <div class="conv-head"><b data-t="conv_h">কথোপকথন</b><button class="btn small" type="button" id="hist-new" data-t="newchat"></button></div>
+        <button class="textlink" type="button" data-conv-arch></button>
         <div id="chat-conv"></div>
       </aside>
       <div class="banner" id="banner" hidden><div id="banner-text"></div></div>
@@ -588,6 +593,7 @@ textarea.paper { white-space: pre-wrap; }
     <button class="btn small" type="button" id="ag-sheet-new" data-t="newchat"></button>
     <button class="btn small" type="button" id="ag-sheet-close" data-t="cancel"></button>
   </div>
+  <button class="textlink" type="button" data-ag-arch></button>
   <div id="ag-sheet-list"></div>
 </aside>
 <aside id="hist-sheet" hidden>
@@ -597,6 +603,7 @@ textarea.paper { white-space: pre-wrap; }
     <button class="btn small" type="button" id="sheet-close" data-t="cancel"></button>
   </div>
   <input id="sheet-q" type="search" data-t-ph="conv_search">
+  <button class="textlink" type="button" data-conv-arch></button>
   <div id="sheet-list"></div>
 </aside>
 <div id="scrim" hidden></div>
@@ -741,8 +748,8 @@ const STR = {
     ag_write: "লেখক", ag_write_d: "আদেশ, রেজোলিউশন, চিঠি বা সংশোধনী লেখে।",
     ag_find: "খোঁজ", ag_find_d: "এই অ্যাপের সরকারি তালিকা থেকে কাজ ও কাগজ বলে।",
     g_title: "বানান ও ব্যাকরণ", g_note: "বাংলা বা ইংরেজি লেখা বসান। শুধু বানান, ব্যাকরণ ও বাক্য ঠিক হবে। মানে বদলাবে না।", g_go: "যাচাই করুন", g_ph: "এখানে লেখা বসান", g_wait: "দেখা হচ্ছে…", g_empty: "আগে লেখা বসান।", g_fail: "এখন যাচাই করা গেল না। আবার চেষ্টা করুন।",
-    gate_p: "আপনার নাম লিখুন। এই ফোনে প্রত্যেক নামের চ্যাট আলাদা থাকে। লিঙ্কে কারও কথা থাকে না।", gate_ph: "আপনার নাম", gate_go: "ঢুকুন", gate_need: "নাম অন্তত দুই অক্ষরের দিন।", switch_user: "নাম বদলান",
-    conv_h: "কথোপকথন", conv_search: "কথোপকথন খুঁজুন", conv_empty: "নতুন কথা",
+    gate_p: "আপনার নাম লিখুন। ওই নামের চ্যাট আলাদা থাকে। লিঙ্কে কারও নাম বা চ্যাট থাকে না, তাই ক্লিক করলে অন্যের কথা খোলে না।", gate_ph: "আপনার নাম", gate_go: "ঢুকুন", gate_need: "নাম অন্তত দুই অক্ষরের দিন।", switch_user: "নাম বদলান",
+    conv_h: "কথোপকথন", conv_search: "কথোপকথন খুঁজুন", conv_empty: "নতুন কথা", archive: "আর্কাইভ", restore: "ফেরত আনুন", del_chat: "মুছুন", del_sure: "মুছে ফেলবেন?", show_arch: "আর্কাইভ", show_chats: "চ্যাট", arch_empty: "আর্কাইভে কিছু নেই।",
     word_h: "Word", word_note: "লেখা সেভ করুন। সেভ হওয়া ফাইল উপরে ফোল্ডারে থাকবে, Excel-এর উপরেও।", word_title_ph: "ফাইলের নাম", word_body_ph: "এখানে লিখুন", word_save: "সেভ", word_new: "নতুন পাতা", word_saved: "সেভ হয়েছে", word_empty: "আগে কিছু লিখুন।", word_untitled: "নামহীন", word_none: "এখনও কোনো ফাইল সেভ হয়নি।",
     new_person: "নতুন ব্যবহারকারী", new_person_done: "এই ফোনে নতুন ফাঁকা চ্যাট খোলা হয়েছে।",
     priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।",
@@ -814,8 +821,8 @@ const STR = {
     ag_write: "Writer", ag_write_d: "Writes an order, resolution, letter or corrigendum.",
     ag_find: "Finder", ag_find_d: "Answers from the government list in this app.",
     g_title: "Spelling and grammar", g_note: "Paste Bengali or English. Only spelling, grammar and the sentence are corrected. The meaning stays the same.", g_go: "Check", g_ph: "Paste the text here", g_wait: "Checking…", g_empty: "Paste some text first.", g_fail: "Could not check just now. Try again.",
-    gate_p: "Type your name. On this phone each name has its own chat. Nothing is stored in the link.", gate_ph: "Your name", gate_go: "Enter", gate_need: "Type at least two letters.", switch_user: "Change name",
-    conv_h: "Conversations", conv_search: "Search conversations", conv_empty: "New chat",
+    gate_p: "Type your name. That name has its own chats. The link does not open anyone else's chats, and other names are not listed.", gate_ph: "Your name", gate_go: "Enter", gate_need: "Type at least two letters.", switch_user: "Change name",
+    conv_h: "Conversations", conv_search: "Search conversations", conv_empty: "New chat", archive: "Archive", restore: "Restore", del_chat: "Delete", del_sure: "Delete this?", show_arch: "Archive", show_chats: "Chats", arch_empty: "Nothing in the archive.",
     word_h: "Word", word_note: "Save the writing. Saved files sit in the folder above, and above Excel too.", word_title_ph: "File name", word_body_ph: "Write here", word_save: "Save", word_new: "New page", word_saved: "Saved", word_empty: "Write something first.", word_untitled: "Untitled", word_none: "No file saved yet.",
     new_person: "New person", new_person_done: "A new blank chat is open on this phone.",
     home: "Home", nav_chat: "Office chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "SDO papers", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
@@ -2540,12 +2547,22 @@ function whenLabel(ts) {
   if ((now - d) / 86400000 < 6) return d.toLocaleDateString(loc, { weekday: "long" });
   return d.toLocaleDateString(loc, { day: "numeric", month: "short" });
 }
+let convArch = false;
+let agArch = false;
+let delAsk = "";
+function convCard(t, kind) {
+  const openAttr = kind === "ag" ? `data-ag="${t.id}"` : `data-thread="${t.id}"`;
+  const on = kind === "ag" ? t.id === agentId : t.id === threadId;
+  const sure = delAsk === kind + ":" + t.id;
+  return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(t.title || t(kind === "ag" ? "ag_job" : "conv_empty"))}</b><small>${esc(whenLabel(t.at))}</small></button><div class="conv-links"><button type="button" data-arch="${t.id}" data-box="${kind}">${esc(t.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${t.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
+}
 function renderConv() {
   const name = $("#who-name"); if (name) name.textContent = userName || "";
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
-  const rows = threads.filter(t => (t.messages || []).length && (!q || String(t.title || "").toLowerCase().includes(q)));
-  const html = rows.length ? rows.map(t => `<button class="conv${t.id === threadId ? " on" : ""}" type="button" data-thread="${t.id}"><b>${esc(t.title || t("conv_empty"))}</b><small>${esc(whenLabel(t.at))}</small></button>`).join("") : `<p class="lead">${esc(t("conv_empty"))}</p>`;
+  const rows = threads.filter(t => (t.messages || []).length && !!t.archived === convArch && (!q || String(t.title || "").toLowerCase().includes(q)));
+  const html = rows.length ? rows.map(t => convCard(t, "chat")).join("") : `<p class="lead">${esc(convArch ? t("arch_empty") : t("conv_empty"))}</p>`;
   ["#sheet-list", "#chat-conv"].forEach(sel => { const box = $(sel); if (box) box.innerHTML = html; });
+  document.querySelectorAll("[data-conv-arch]").forEach(b => { b.textContent = convArch ? t("show_chats") : t("show_arch"); });
 }
 function loadVault() {
   threads = vaultGet("threads", []);
@@ -2599,9 +2616,8 @@ function showGate(on) {
   const g = $("#gate"); if (g) g.hidden = !on;
   const app = document.querySelector(".app"); if (app) app.hidden = on || !isOpen();
   if (on) {
-    const book = peopleBook();
     const box = $("#gate-people");
-    if (box) box.innerHTML = Object.values(book).map(p => `<button class="chip" type="button" data-pick="${esc(p.name)}">${esc(p.name)}</button>`).join("");
+    if (box) box.innerHTML = "";
     const input = $("#gate-name"); if (input) input.focus();
   }
 }
@@ -2648,7 +2664,7 @@ function saveWordFile() {
 const persist = () => {
   if (!whoId) return;
   touchThread();
-  const packed = threads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), messages: slimMsgs(t.messages) }));
+  const packed = threads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, messages: slimMsgs(t.messages) }));
   if (!packed.length && threads[0]) packed.push({ id: threads[0].id, title: "", at: threads[0].at || Date.now(), messages: [] });
   vaultSet("threads", packed);
   vaultSet("chat:office", slimMsgs(chats.office));
@@ -2684,8 +2700,9 @@ function renderAgents() {
 function renderAgentList() {
   const list = $("#ag-sheet-list");
   if (!list) return;
-  const rows = agentThreads.filter(t => (t.messages || []).length);
-  list.innerHTML = rows.length ? rows.map(t => `<button class="conv${t.id === agentId ? " on" : ""}" type="button" data-ag="${t.id}"><b>${esc(t.title || t("ag_job"))}</b><small>${esc(whenLabel(t.at))}</small></button>`).join("") : `<p class="lead">${esc(t("conv_empty"))}</p>`;
+  const rows = agentThreads.filter(t => (t.messages || []).length && !!t.archived === agArch);
+  list.innerHTML = rows.length ? rows.map(t => convCard(t, "ag")).join("") : `<p class="lead">${esc(agArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  document.querySelectorAll("[data-ag-arch]").forEach(b => { b.textContent = agArch ? t("show_chats") : t("show_arch"); });
 }
 function renderAgentView() {
   renderAgents();
@@ -2720,7 +2737,7 @@ function serviceFacts(id) {
 }
 function saveAgent() {
   vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({
-    id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free",
+    id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", archived: !!t.archived,
     messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-20).map(m => ({ role: m.role, content: m.content, shown: m.shown, done: m.done, error: m.error, think: m.think || "", log: (m.log || []).slice(-24), pages: (m.pages || []).slice(0, 10).map(p => ({ title: p.title, url: p.url })) }))
   })));
 }
@@ -3069,6 +3086,44 @@ $("#mem-file").addEventListener("change", async e => {
   } catch (err) { toast(t("dl_fail")); }
 });
 
+function deleteThread(id) {
+  threads = threads.filter(t => t.id !== id);
+  delAsk = "";
+  if (threadId === id) {
+    const next = threads.find(t => (t.messages || []).length && !t.archived);
+    if (next) { threadId = next.id; chats.ai = next.messages; messages = chats.ai; }
+    else { const n = { id: nid(), title: "", at: Date.now(), messages: [] }; threads.unshift(n); threadId = n.id; chats.ai = n.messages; messages = chats.ai; }
+  }
+  persist();
+  if (mode === "ai") renderChat();
+}
+function toggleArch(id) {
+  const row = threads.find(t => t.id === id); if (!row) return;
+  row.archived = !row.archived;
+  delAsk = "";
+  if (row.archived && threadId === id) {
+    const next = threads.find(t => t.id !== id && !t.archived && (t.messages || []).length);
+    if (next) { threadId = next.id; chats.ai = next.messages; messages = chats.ai; }
+    else { const n = { id: nid(), title: "", at: Date.now(), messages: [] }; threads.unshift(n); threadId = n.id; chats.ai = n.messages; messages = chats.ai; }
+    if (mode === "ai") renderChat();
+  }
+  persist();
+}
+function deleteAgent(id) {
+  agentThreads = agentThreads.filter(t => t.id !== id);
+  if (agentId === id) agentId = (agentThreads.find(t => !t.archived) || {}).id || "";
+  delAsk = "";
+  saveAgent();
+  renderAgentView();
+}
+function toggleAgentArch(id) {
+  const row = agentThreads.find(t => t.id === id); if (!row) return;
+  row.archived = !row.archived;
+  if (row.archived && agentId === id) agentId = (agentThreads.find(t => t.id !== id && !t.archived) || {}).id || "";
+  delAsk = "";
+  saveAgent();
+  renderAgentView();
+}
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
@@ -3107,6 +3162,19 @@ document.addEventListener("click", e => {
     const parts = x.dataset.nav.split(":");
     return go(parts[0], parts[1]);
   }
+  if ((x = el("[data-del]"))) {
+    const key = (x.dataset.box || "chat") + ":" + x.dataset.del;
+    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : renderConv(); return; }
+    if (x.dataset.box === "ag") deleteAgent(x.dataset.del); else deleteThread(x.dataset.del);
+    return;
+  }
+  if ((x = el("[data-arch]"))) {
+    delAsk = "";
+    if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch); else toggleArch(x.dataset.arch);
+    return;
+  }
+  if (el("[data-conv-arch]")) { convArch = !convArch; delAsk = ""; renderConv(); return; }
+  if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
   if ((x = el("[data-thread]"))) return openThread(x.dataset.thread);
   if ((x = el("[data-word]"))) { closeRail(); return openWord(x.dataset.word); }
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
@@ -3299,11 +3367,8 @@ $("#ag-form").addEventListener("submit", e => { e.preventDefault(); const job = 
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
 const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => renderConv());
 function resume() {
-  let saved = "";
-  try { saved = localStorage.getItem("pmitra:uname") || ""; } catch (e) { /* ignore */ }
   if (!isOpen()) { showLock(true); showGate(false); return; }
-  if (!saved || !signIn(saved)) { showGate(true); return; }
-  showGate(false); startApp();
+  showGate(true);
 }
 applyLang();
 resume();
