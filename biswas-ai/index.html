@@ -170,6 +170,12 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .doc table { display: block; max-width: 100%; overflow-x: auto; }
 .doc { overflow-wrap: anywhere; }
 .thought { color: var(--muted); font-size: .84rem; margin: 0 0 8px; }
+.browser { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 0 0 8px; background: var(--bg); }
+.browser-bar { font-size: .75rem; letter-spacing: .04em; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.browser-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 6px 8px; }
+.browser-tabs .chip { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.browser-url { font-size: .75rem; color: var(--muted); padding: 0 10px 6px; overflow-wrap: anywhere; }
+.browser-page { max-height: 132px; overflow: auto; margin: 0; padding: 0 10px 8px; font-size: .82rem; white-space: pre-wrap; }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
 .mobile-tasks { display: none; }
@@ -741,6 +747,7 @@ const STR = {
     hint: "Enter = পাঠান · Shift+Enter = নতুন লাইন · উত্তর Word, PDF, Excel-এ নামানো যায়",
     copy: "কপি", edit: "সম্পাদনা", save: "সংরক্ষণ", cancel: "বাতিল", remove: "সরান", answered_by: "উত্তর দিয়েছে: ",
     thinking: "ভাবছে…", secs: "সেকেন্ড", slow: "কোনও ফ্রি AI ব্যস্ত থাকলে পরেরটি চেষ্টা করা হচ্ছে…", stopped: "_(থামানো হয়েছে)_",
+    br_h: "ব্রাউজার", br_open: "পাতা খুলুন", br_empty: "এই পাতায় পড়ার মতো লেখা পাইনি।",
     copied: "কপি হয়েছে", copy_fail: "কপি করা গেল না। লেখাটি সিলেক্ট করে Ctrl+C চাপুন।", saved_edit: "সংরক্ষিত", reading: "পড়া হচ্ছে…",
     file_ready: "ফাইল দেওয়া হয়েছে", dl_cancel: "ফাইল নামানো বাতিল হয়েছে", dl_wait: "একটু অপেক্ষা করে আবার চেষ্টা করুন", dl_fail: "ফাইল তৈরি করা গেল না", making: "তৈরি হচ্ছে…", no_save: "এখানে ফাইল নামানো যাচ্ছে না।",
     settings_saved: "সেটিংস সংরক্ষিত", sample_saved: "নমুনা চিঠি সংরক্ষিত। এখন থেকে খসড়া এই ফরম্যাটে হবে।", sample_removed: "নমুনা চিঠি সরানো হয়েছে", sample_bad: "এই ফাইল থেকে লেখা পড়া গেল না। Word (.docx) বা লেখা-সহ PDF দিন।", none_sample: "কোনও নমুনা দেওয়া নেই",
@@ -810,6 +817,7 @@ const STR = {
     hint: "Enter = send · Shift+Enter = new line · Answers can be saved as Word, PDF, Excel",
     copy: "Copy", edit: "Edit", save: "Save", cancel: "Cancel", remove: "Remove", answered_by: "Answered by: ",
     thinking: "Thinking…", secs: "s", slow: "If a free AI is busy, the next one is being tried…", stopped: "_(stopped)_",
+    br_h: "Browser", br_open: "Open page", br_empty: "This page had no readable text.",
     copied: "Copied", copy_fail: "Could not copy. Select the text and press Ctrl+C.", saved_edit: "Saved", reading: "reading…",
     file_ready: "File ready", dl_cancel: "Download cancelled", dl_wait: "Wait a moment and try again", dl_fail: "Could not create the file", making: "Preparing…", no_save: "Files can't be saved here.",
     settings_saved: "Settings saved", sample_saved: "Sample letter saved. Drafts will now follow this format.", sample_removed: "Sample letter removed", sample_bad: "Could not read text from this file. Use Word (.docx) or a PDF with text.", none_sample: "No sample letter",
@@ -2460,6 +2468,13 @@ function thinkingHtml(m) {
   const s = Math.max(0, Math.round((Date.now() - (m.started || Date.now())) / 1000));
   return `<span class="thinking">${esc(t("thinking"))} <span class="secs" data-started="${m.started || Date.now()}">${s}</span> ${esc(t("secs"))}<small${s < 20 ? " hidden" : ""}>${esc(t("slow"))}</small></span>`;
 }
+function browserHtml(m, k) {
+  const pages = m.pages || [];
+  if (!pages.length) return m.browse && !m.content ? `<div class="browser"><div class="browser-bar">${esc(t("br_h"))}</div><div class="browser-page">${esc(t("ag_browse"))}</div></div>` : "";
+  const i = Math.min(m.browseAt || 0, pages.length - 1);
+  const p = pages[i];
+  return `<div class="browser"><div class="browser-bar">${esc(t("br_h"))}</div><div class="browser-tabs">${pages.map((x, n) => `<button class="chip" type="button" data-browse="${n}" data-bk="${k}" aria-pressed="${n === i}">${esc((x.title || x.url || "").slice(0, 42))}</button>`).join("")}</div><div class="browser-url">${esc(p.url || "")}</div><div class="browser-page">${esc((p.text || "").trim() || t("br_empty"))}</div><div class="actions"><a class="btn small" href="${esc(p.url || "#")}" target="_blank" rel="noopener">${esc(t("br_open"))}</a></div></div>`;
+}
 function msgHtml(m, k) {
   if (m.role !== "user" && mode === "office") return bikramMsgHtml(m, k);
   if (m.role === "user") {
@@ -2467,7 +2482,7 @@ function msgHtml(m, k) {
   }
   const hasTable = parseMd(m.content).some(b => b.t === "table");
   return `<div class="msg ai" data-k="${k}">
-    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
+    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `${browserHtml(m, k)}<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
     ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
     ${m.done && m.content ? `<div class="actions">
@@ -2491,7 +2506,7 @@ function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]
 const updateLast = () => updateAt(messages.length - 1);
 const scrollDown = () => { const s = $("#scroll"); s.scrollTop = messages.length ? s.scrollHeight : 0; };
 const nid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-const slimMsgs = list => (list || []).filter(m => m.done || m.role === "user").slice(-40).map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via }));
+const slimMsgs = list => (list || []).filter(m => m.done || m.role === "user").slice(-40).map(m => ({ role: m.role, content: m.content, shown: m.shown, files: m.files, done: m.done, error: m.error, via: m.via, browseAt: m.browseAt || 0, pages: (m.pages || []).slice(0, 4).map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 500) })) }));
 function touchThread() {
   const t = threads.find(x => x.id === threadId);
   if (!t || messages !== chats.ai) return;
@@ -2779,8 +2794,24 @@ async function ask(text) {
   ctl = new AbortController();
   const live = () => box === messages;
   const agent = box === chats.office;
+  const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
+  let researchNote = "";
+  if (mode === "ai" && String(text || "").trim().length > 8 && !greet) {
+    ai.browse = true;
+    if (live()) updateAt(box.indexOf(ai));
+    try {
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 240) }) });
+      const data = rr.ok ? await rr.json() : { pages: [] };
+      const pages = Array.isArray(data.pages) ? data.pages.slice(0, 4) : [];
+      ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
+      ai.browseAt = 0;
+      researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
+    } catch (e) { ai.pages = []; }
+    if (live()) updateAt(box.indexOf(ai));
+  }
   try {
-    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const system = mode === "ai" ? shortRules() + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date.\n\n" + researchNote : "") : undefined;
+    const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = r.text; ai.via = r.via;
     if (agent) {
       const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
@@ -2977,6 +3008,12 @@ $("#mem-file").addEventListener("change", async e => {
 document.addEventListener("click", e => {
   const el = sel => e.target.closest(sel);
   let x;
+  if ((x = el("[data-browse]"))) {
+    const k = Number(x.dataset.bk);
+    const msg = messages[k];
+    if (msg) { msg.browseAt = Number(x.dataset.browse) || 0; updateAt(k); }
+    return;
+  }
   if ((x = el("[data-ag-reply]"))) { const job = $("#ag-job"); if (job) job.focus(); return; }
   if (el("[data-ag-new]")) { agentId = ""; renderAgentView(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-ag]"))) return openAgent(x.dataset.ag);
