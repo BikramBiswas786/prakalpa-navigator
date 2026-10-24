@@ -1525,9 +1525,10 @@ function fromPages(pages) {
 const PANEL_NAME = { gemini: "Gemini", groq: "Groq", nvidia: "NVIDIA", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare", sambanova: "SambaNova", zai: "Z.ai", cohere: "Cohere", cerebras: "Cerebras", sarvam: "Sarvam", panel: "Free AIs" };
 function panelHtml(m) {
   if (!m || !m.panel) return "";
+  const good = m.panel.filter(a => a && a.text && !a.error);
+  if (!good.length) return "";
   const title = settings.lang === "en" ? "Free AIs asked. Only lines that match go into the article." : "ফ্রি AI-কে জিজ্ঞাসা করা হয়েছে। যে লাইন মিলেছে, শুধু সেটা নিবন্ধে যাবে।";
-  if (!m.panel.length) return `<div class="panel"><h3>${esc(title)}</h3><p class="thinking">${esc(settings.lang === "en" ? "Asking them now…" : "এখন তাদের জিজ্ঞাসা করছি…")}</p></div>`;
-  return `<div class="panel"><h3>${esc(title)}</h3>${m.panel.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}${a.used ? (settings.lang === "en" ? " · in the article" : " · নিবন্ধে") : (a.text ? (settings.lang === "en" ? " · not added" : " · যোগ হয়নি") : "")}</b><div>${a.text ? mdToHtml(a.text) : `<span class="err">${esc(a.error || "no answer")}</span>`}</div></article>`).join("")}</div>`;
+  return `<div class="panel"><h3>${esc(title)}</h3>${good.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}${a.used ? (settings.lang === "en" ? " · in the article" : " · নিবন্ধে") : ""}</b><div>${mdToHtml(a.text)}</div></article>`).join("")}</div>`;
 }
 function claimWords(s) {
   return new Set(String(s || "").toLowerCase().split(/[^a-z0-9₹]+/).filter(w => w.length > 4));
@@ -1567,17 +1568,11 @@ async function askPanel(question, pages) {
   const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use the office note and any source pages. After each fact, name where it came from. Do not invent a fee, a date or an order number. Do not refuse just because a web page is missing. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "");
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }), signal: ctl ? ctl.signal : undefined });
-    if (!r.ok) {
-      const raw = await r.text().catch(() => "");
-      let why = "HTTP " + r.status;
-      try { const j = JSON.parse(raw); if (j && j.error) why = j.error; } catch (e) { if (raw) why = raw.replace(/\s+/g, " ").slice(0, 120); }
-      return [{ provider: "panel", text: "", error: (settings.lang === "en" ? "The free AIs did not answer. " : "ফ্রি AI উত্তর দেয়নি। ") + why }];
-    }
+    if (!r.ok) return [];
     const j = await r.json();
-    return Array.isArray(j.answers) && j.answers.length ? j.answers : [{ provider: "panel", text: "", error: settings.lang === "en" ? "No free AI key is set, or every free AI is on a short rest after a rate limit." : "কোনো ফ্রি AI চাবি নেই, বা সীমা শেষ হওয়ায় সবাই একটু বিরতিতে আছে।" }];
+    return Array.isArray(j.answers) && j.answers.length ? j.answers : [];
   } catch (e) {
-    const why = e && e.name === "AbortError" ? (settings.lang === "en" ? "The request was stopped." : "অনুরোধ থামানো হয়েছে।") : ((e && e.message) || "network");
-    return [{ provider: "panel", text: "", error: (settings.lang === "en" ? "The free AIs did not answer. " : "ফ্রি AI উত্তর দেয়নি। ") + why }];
+    return [];
   }
 }
 function rules() {
@@ -3063,7 +3058,7 @@ async function runBiswasAgent(job) {
     let queries = [job];
     if (!writerOff) try {
       mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
-      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. This office is in West Bengal, India. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, not Delaware and not the District of Columbia. Give 3 short English web searches: the official rule, the latest West Bengal government order, and the how-to page. Every search must include West Bengal or wbxpress. No other text.` });
+      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Give 3 short English web searches for the question. If the question is about DCRB, pension, gratuity, or legal heir in West Bengal, every search must include "West Bengal" or "wbxpress". For any other topic, do not force those words. No other text.` });
       const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
       if (Array.isArray(jq.queries)) {
         const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 3)
