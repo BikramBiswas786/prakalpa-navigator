@@ -49,6 +49,29 @@ async function readPage(url) {
   if (!r.ok) return "";
   return stripPage(await r.text());
 }
+async function readHtml(url) {
+  const safe = safeHttpUrl(url);
+  if (!safe) return "";
+  const r = await fetch(safe, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0 (compatible; BiswasAI/1.0)" } });
+  if (!r.ok) return "";
+  return await r.text();
+}
+function followLinks(html, base) {
+  const out = [];
+  const re = /href=["']([^"'#]+)["']/gi;
+  let m;
+  while ((m = re.exec(String(html || ""))) && out.length < 12) {
+    try {
+      const u = new URL(m[1], base);
+      const host = u.hostname.toLowerCase();
+      if (!host.endsWith(".gov.in") && host !== "wbxpress.com") continue;
+      if (/\.(pdf|jpg|jpeg|png|zip|svg)$/i.test(u.pathname)) continue;
+      const s = safeHttpUrl(u.toString());
+      if (s && !out.includes(s)) out.push(s);
+    } catch (e) { /* skip a bad link */ }
+  }
+  return out.slice(0, 2);
+}
 async function searchWeb(q) {
   const found = [];
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
@@ -69,14 +92,14 @@ async function searchWeb(q) {
     const html = await r.text();
     const re = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
     let m;
-    while ((m = re.exec(html)) && found.length < 5) {
+    while ((m = re.exec(html)) && found.length < 6) {
       let href = m[1].replace(/&/g, "&");
       const ud = href.match(/uddg=([^&]+)/);
       if (ud) href = decodeURIComponent(ud[1]);
       add(m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 140), href);
     }
   } catch (e) { /* search can fail; the known sites above still run */ }
-  return found.slice(0, 4);
+  return found.slice(0, 5);
 }
 async function wiki(q) {
   try {
@@ -134,14 +157,29 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/api/research" && req.method === "POST") {
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 20000) { res.writeHead(413).end(); return; } chunks.push(c); }
-      let q = "";
-      try { q = String(JSON.parse(Buffer.concat(chunks).toString("utf8")).q || "").slice(0, 240); } catch (e) { q = ""; }
-      const pages = q.trim() ? await research(q.trim()) : [];
+      let body = {};
+      try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")) || {}; } catch (e) { body = {}; }
+      if (body.url) {
+        const safe = safeHttpUrl(String(body.url));
+        const html = safe ? await readHtml(safe) : "";
+        const more = followLinks(html, safe).map(u => ({ title: u.replace(/^https?:\/\//, "").slice(0, 90), url: u }));
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ title: String(body.title || safe || "").slice(0, 140), url: safe, text: stripPage(html), more }));
+        return;
+      }
+      const q = String(body.q || "").slice(0, 240).trim();
+      if (body.list) {
+        const hits = q ? await searchWeb(q) : [];
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ hits }));
+        return;
+      }
+      const pages = q ? await research(q) : [];
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ pages }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v30"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v31"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);

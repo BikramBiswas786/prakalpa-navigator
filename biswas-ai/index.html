@@ -181,7 +181,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .job-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
 .job-steps li { border-top: 1px solid var(--line); padding-top: 8px; }
 .job-steps b { display: block; font-size: .78rem; letter-spacing: .03em; color: var(--muted); margin-bottom: 4px; }
-.starter.on { border-color: var(--accent); background: var(--accent-soft); }
+#ag-picks:empty { display: none; }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
 .mobile-tasks { display: none; }
@@ -725,9 +725,10 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "বিশ্বাস AI কথা বলে। এজেন্ট কথা বলে না। একটা কাজ দেন, সেটা শেষ করে। তিনজন আলাদা।",
-    ag_ph: "একটা কাজ লিখুন। যেমন: বিলম্বিত মৃত্যু নিবন্ধনের ধাপ লিখুন",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। সরকারি পাতা একে একে খুলে পড়ে, লিঙ্ক ধরে আরও যায়, তারপর লম্বা নোট দেয়। কোনো সাইটে লগইন করে না।",
+    ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
+    ag_search: "কোন পাতা খুলব, খুঁজছি…",
     ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. খোলা পাতা", ag_s3: "৩. ফল",
     ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
@@ -796,9 +797,10 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job", ag_note: "Biswas AI talks with you. An agent does not chat. You give one job and it finishes it. Three workers, three different results.",
-    ag_ph: "Write one job. For example: write the steps for delayed death registration",
+    ag_tab: "Agents", ag_h: "One job", ag_note: "One agent. It opens public pages one by one, follows links, then writes a long note. It does not log in to any website.",
+    ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
+    ag_search: "Looking for pages to open…",
     ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Pages opened", ag_s3: "3. Result",
     ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
@@ -2667,8 +2669,7 @@ function cleanAgent(s) {
   return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/\*\*/g, "").replace(/^\s*\|.+\|\s*$/gm, "").replace(/^\s*[-| :]{3,}\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 function renderAgents() {
-  const box = $("#ag-picks"); if (!box) return;
-  box.innerHTML = [["find", "ag_find", "ag_find_d"], ["write", "ag_write", "ag_write_d"], ["free", "ag_free", "ag_free_d"]].map(([id, n, d]) => `<button class="chip" type="button" data-agent="${id}" aria-pressed="${id === agentKind}" title="${esc(t(d))}">${esc(t(n))}</button>`).join("");
+  const box = $("#ag-picks"); if (box) box.innerHTML = "";
 }
 function renderAgentView() {
   renderAgents();
@@ -2680,7 +2681,7 @@ function renderAgentView() {
   const msgs = cur ? cur.messages : [];
   if (!thread) return;
   if (!msgs.length) {
-    thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p><div class="starters">${[["find", "ag_find", "ag_find_d"], ["write", "ag_write", "ag_write_d"], ["free", "ag_free", "ag_free_d"]].map(([id, n, d]) => `<button class="starter${id === agentKind ? " on" : ""}" type="button" data-agent="${id}"><b>${esc(t(n))}</b><span>${esc(t(d))}</span></button>`).join("")}</div></div>`;
+    thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
     return;
   }
   const jobs = [];
@@ -2731,41 +2732,45 @@ async function runBiswasAgent(job) {
   renderAgentView();
   try {
     let ids = [];
-    let need = agentKind === "write" ? "write" : agentKind === "find" ? "find" : "answer";
-    if (agentKind !== "write") {
-      ai.think = t("ag_step1"); renderAgentView();
-      const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `You are Biswas AI. Reply with JSON only: {"need":"find|write|answer","ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
-      try {
-        const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
-        if (agentKind === "free" && j.need) need = j.need;
-        if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
-      } catch (e) { /* keep the default */ }
-    }
+    ai.think = t("ag_search"); renderAgentView();
+    try {
+      const plan = await aiRun([{ role: "user", content: job }], { fast: true, system: `Reply with JSON only: {"ids":[]}. Copy ids only from this list, and only if the job is about that service.\n${catalogBrief()}` });
+      const j = JSON.parse((plan.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
+      if (Array.isArray(j.ids)) ids = j.ids.filter(id => SERVICES.some(s => s.id === id)).slice(0, 2);
+    } catch (e) { ids = []; }
     const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
-    const wantsWeb = agentKind !== "write" || /rule|2026|latest|research|law|আইন|নিয়ম|সংশোধন/i.test(job);
-    let pages = [];
-    if (wantsWeb) {
-      ai.think = t("ag_browse"); renderAgentView();
+    const queue = [];
+    const seen = new Set();
+    const pages = [];
+    try {
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: job, list: true }) });
+      const data = rr.ok ? await rr.json() : {};
+      (Array.isArray(data.hits) ? data.hits : []).slice(0, 4).forEach(h => { if (h && h.url) queue.push({ title: h.title || h.url, url: h.url }); });
+    } catch (e) { /* the read loop still stops cleanly */ }
+    while (queue.length && pages.length < 6) {
+      const hit = queue.shift();
+      if (!hit || !hit.url || seen.has(hit.url)) continue;
+      seen.add(hit.url);
+      ai.think = (settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url);
+      ai.pages = pages.concat([{ title: hit.title, url: hit.url }]).map(p => ({ title: p.title, url: p.url }));
+      renderAgentView();
+      let one = { title: hit.title, url: hit.url, text: "", more: [] };
       try {
-        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: job }) });
-        const data = rr.ok ? await rr.json() : { pages: [] };
-        pages = Array.isArray(data.pages) ? data.pages.slice(0, 3) : [];
-      } catch (e) { pages = []; }
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }) });
+        if (rr.ok) one = await rr.json();
+      } catch (e) { /* keep going to the next page */ }
+      pages.push({ title: one.title || hit.title, url: one.url || hit.url, text: String(one.text || "") });
+      (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < 6) queue.push(extra); });
     }
     ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
     const opened = pages.map(p => p.title).filter(Boolean).join(", ");
     ai.think = opened
-      ? (settings.lang === "en" ? "I opened " + opened + " and read them before answering." : "উত্তরের আগে খুলেছি: " + opened + "।")
-      : (agentKind === "write"
-        ? (settings.lang === "en" ? "I wrote the paper from what you said. I did not invent a fee or an order number." : "আপনি যা বলেছেন, তা থেকে কাগজ লিখেছি। ফি বা আদেশ নম্বর বানাইনি।")
-        : (settings.lang === "en" ? "No page opened. I will not invent a rule." : "কোনো পাতা খোলেনি। নিয়ম বানাব না।"));
+      ? (settings.lang === "en" ? "Read " + pages.length + " pages: " + opened : pages.length + "টি পাতা পড়েছি: " + opened)
+      : (settings.lang === "en" ? "No page opened. I will not invent a rule." : "কোনো পাতা খোলেনি। নিয়ম বানাব না।");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     const web = pages.map(p => p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
     ai.content = ""; renderAgentView();
-    let sys = `You finish one office job. You are not Biswas AI chat. Do not greet. Do not ask a question. ${lang} Today is ${today()}. Plain sentences. No table, no markdown, no HTML. Do not invent a fee, an order number or a date.`;
-    if (agentKind === "find") sys += " Result only: who can apply, papers to carry, steps, and where to go. Nothing else.";
-    else if (agentKind === "write") sys += " Result only: the office paper, ready to print. Leave ______ where a fact was not given.";
-    else sys += " Result only: three short lines an officer can act on, then the source page.";
+    let sys = `You are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} Today is ${today()}. You only read public pages. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs, not a table and not three lines. Cover what the pages say, what changed, the papers, the steps, and what the person still has to do after they sign in themselves. Name the page after each fact. If the job asks for an office paper, write that paper after the note and leave ______ for a missing fact. Do not invent a fee, an order number or a date. If a fact was not on a page, say so.`;
     if (web) sys += "\n\nPages opened:\n" + web;
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
