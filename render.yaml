@@ -55,5 +55,17 @@ services:
         sync: false
       - key: FIREWORKS_API_KEY
         sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: EXA_API_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: PARALLEL_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: KEIRO_API_KEY
+        sync: false
       - key: GITHUB_MODELS_TOKEN
         sync: false
