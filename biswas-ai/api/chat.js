@@ -291,7 +291,9 @@ export async function POST(request) {
       try { await stream.cancel(); } catch { /* done */ }
       return text.replace(/\u0000[A-Z_]+$/, "").trim();
     };
-    const answers = await Promise.all(ids.map(async id => {
+    const answers = [];
+    for (let i = 0; i < ids.length; i += 2) {
+      const batch = await Promise.all(ids.slice(i, i + 2).map(async id => {
       const p = PROVIDERS[id];
       const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
       const models = p.models.slice();
@@ -309,9 +311,11 @@ export async function POST(request) {
         if (text && !/^\s*\{"object"\s*:\s*"error"/i.test(text)) return { provider: id, model, text, error: "" };
         last = { provider: id, model, text: "", error: "empty answer" };
       }
-      if (last.error === "rate limit") cool(id, 10 * 60 * 1000);
+      if (last.error === "rate limit") cool(id, 60 * 1000);
       return last;
     }));
+      answers.push(...batch);
+    }
     return json({ answers });
   }
 
@@ -335,7 +339,7 @@ export async function POST(request) {
       if (quotaError(r.status, r.error)) { sawLimit = true; limited += 1; }
       tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
     }
-    if (asked && limited === asked) cool(id, 15 * 60 * 1000);
+    if (asked && limited === asked) cool(id, 60 * 1000);
   }
   if (wantsVision && !tried.length) return json({ error: "no_vision" }, 422);
   console.warn("all providers failed:\n  " + tried.join("\n  "));
