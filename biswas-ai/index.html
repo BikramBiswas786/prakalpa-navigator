@@ -752,7 +752,7 @@ const STR = {
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
     ag_google: "গুগল", ag_google_d: "চালু থাকলে গুগলের খবরের পাতাও খোলে",
-    ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. খোলা পাতা", ag_s3: "৩. ফল",
+    ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. সার্চ ইঞ্জিন", ag_s3: "৩. যাচাই করা উত্তর",
     ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
     ag_free: "স্বাধীন এজেন্ট", ag_free_d: "নিজে ঠিক করে খোঁজে, লেখে, একবার যাচাই করে।",
@@ -825,7 +825,7 @@ const STR = {
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
     ag_google: "Google", ag_google_d: "When on, also opens pages found through Google News",
-    ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Pages opened", ag_s3: "3. Result",
+    ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Search engines", ag_s3: "3. Checked reply",
     ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
     ag_free: "Independent agent", ag_free_d: "Decides, looks up, writes, then checks once.",
@@ -2804,9 +2804,59 @@ function renderAgentView() {
   }
   try { renderAgents(); renderAgentList(); } catch (e) { /* the job must stay on screen */ }
 }
+function engineName(via) {
+  return { google: "Google", bing: "Bing", msn: "MSN", yahoo: "Yahoo", duck: "DuckDuckGo", parallel: "Parallel", wiki: "Wikipedia", orders: "Government orders", web: "Web" }[via] || "Web";
+}
+function auditHead(pages) {
+  const rows = (pages || []).filter(p => p && String(p.text || "").length > 40);
+  const money = /(?:Rs\.?|₹)\s?[\d,]+/gi;
+  const dated = /\b\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi;
+  const where = {};
+  const seenVia = {};
+  for (const p of rows) {
+    const via = p.via || "web";
+    const bag = new Set();
+    for (const tok of (String(p.text).match(money) || []).concat(String(p.text).match(dated) || [])) {
+      const label = String(tok).replace(/\s+/g, " ").trim();
+      const key = label.toLowerCase().replace(/rs\.?/g, "₹").replace(/,/g, "");
+      if (bag.has(key)) continue;
+      bag.add(key);
+      if (!where[key]) where[key] = { label, vias: [] };
+      if (!where[key].vias.includes(via)) where[key].vias.push(via);
+    }
+    seenVia[via] = true;
+  }
+  const agreed = Object.values(where).filter(x => x.vias.length >= 2);
+  const single = Object.values(where).filter(x => x.vias.length === 1);
+  const engines = Object.keys(seenVia).map(engineName).join(", ") || "none";
+  const line = (x) => "- " + x.label + " — " + x.vias.map(engineName).join(", ");
+  const en = settings.lang === "en";
+  return (en ? "Audit. A figure is kept only when two different search engines say it. Opera has no public search feed, so it is not called. Engines that answered: " : "যাচাই। একটি অঙ্ক তখনই রাখা হয় যখন দুটি আলাদা সার্চ ইঞ্জিন সেটা বলে। অপেরার কোনো পাবলিক সার্চ ফিড নেই, তাই তাকে ডাকা হয়নি। যে ইঞ্জিন উত্তর দিয়েছে: ")
+    + engines + "\n\n"
+    + (en ? "**Agreed**\n" : "**মিলল**\n")
+    + (agreed.length ? agreed.map(line).join("\n") : (en ? "- No figure was repeated by two engines." : "- দুটি ইঞ্জিনে মিলে এমন কোনো অঙ্ক নেই।"))
+    + "\n\n" + (en ? "**One engine only — not confirmed**\n" : "**এক ইঞ্জিনে — নিশ্চিত নয়**\n")
+    + (single.length ? single.slice(0, 8).map(line).join("\n") : (en ? "- None." : "- নেই।"));
+}
+function deepDump(pages) {
+  const groups = {};
+  for (const p of pages || []) {
+    const via = p.via || "web";
+    (groups[via] ||= []).push(p);
+  }
+  return Object.keys(groups).map(via => {
+    const bits = groups[via].slice(0, 2).map(p => {
+      const bit = String(p.text || "").replace(/\s+/g, " ").trim().slice(0, 420);
+      return `**${p.title || p.url}**\n${p.url || ""}\n${bit || ""}`;
+    }).join("\n\n");
+    return `### ${engineName(via)}\n${bits}`;
+  }).join("\n\n");
+}
 function pageLinks(pages) {
   if (!pages || !pages.length) return "";
-  return `<div class="sources">${pages.map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`;
+  const groups = {};
+  for (const p of pages) (groups[p.via || "web"] ||= []).push(p);
+  return Object.keys(groups).map(via => `<div class="sources"><b>${esc(engineName(via))}</b>${groups[via].map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`).join("");
 }
 function catalogBrief() {
   return SERVICES.map(s => { const d = s[settings.lang] || s.bn; return s.id + " | " + d.n; }).join("\n");
@@ -2819,7 +2869,7 @@ function serviceFacts(id) {
 function saveAgent() {
   vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({
     id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", archived: !!t.archived,
-    messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-20).map(m => ({ role: m.role, content: m.content, shown: m.shown, done: m.done, error: m.error, think: m.think || "", log: (m.log || []).slice(-24), pages: (m.pages || []).slice(0, 10).map(p => ({ title: p.title, url: p.url })) }))
+    messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-20).map(m => ({ role: m.role, content: m.content, shown: m.shown, done: m.done, error: m.error, think: m.think || "", log: (m.log || []).slice(-24), pages: (m.pages || []).slice(0, 12).map(p => ({ title: p.title, url: p.url, via: p.via || "" })) }))
   })));
 }
 function openAgent(id) {
@@ -2872,7 +2922,8 @@ async function runBiswasAgent(job) {
     const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
     const seen = new Set();
     ai.log = [];
-    const mark = (line) => { ai.log.push(line); ai.think = line; ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) })); renderAgentView(); };
+    const snap = () => pages.map(p => ({ title: p.title, url: p.url, via: p.via || "", text: String(p.text || "").slice(0, 900) }));
+    const mark = (line) => { ai.log.push(line); ai.think = line; ai.pages = snap(); renderAgentView(); };
     async function readRound(hits, cap) {
       const queue = (hits || []).filter(h => h && h.url);
       while (queue.length && pages.length < cap) {
@@ -2886,10 +2937,11 @@ async function runBiswasAgent(job) {
           if (rr.ok) one = await rr.json();
         } catch (e) { /* next page */ }
         const text = String(one.text || "").length > 80 ? String(one.text || "") : String(hit.text || one.text || "");
-        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via: hit.via || "" });
+        const via = hit.via || (/wbxpress\.com|\.gov\.in/.test(hit.url || "") ? "orders" : "web");
+        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via });
         ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
         (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
-        ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
+        ai.pages = snap();
         renderAgentView();
       }
     }
@@ -2920,25 +2972,25 @@ async function runBiswasAgent(job) {
             renderAgentView();
           } else await readRound(ghits, Math.min(10, pages.length + 2));
           const more = Array.isArray(data.more) ? data.more : [];
-          mark((settings.lang === "en" ? "Parallel, Bing and DuckDuckGo: " : "প্যারালেল, বিং ও ডাকডাকগো: ") + queries[i]);
+          mark((settings.lang === "en" ? "Google, Bing, MSN, Yahoo, DuckDuckGo, Wikipedia, Parallel: " : "গুগল, বিং, এমএসএন, ইয়াহু, ডাকডাকগো, উইকিপিডিয়া, প্যারালেল: ") + queries[i]);
           if (!more.length) {
             ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no page" : " — পাতা নেই";
             renderAgentView();
-          } else await readRound(more, Math.min(10, pages.length + 3));
+          } else await readRound(more, Math.min(12, pages.length + 8));
         } else await readRound(orders, 10);
       } catch (e) { /* the next search still runs */ }
     }
     if (writerOff) {
-      ai.content = fromPages(pages) || (settings.lang === "en" ? "The free AI limit is used up, and no page text came back." : "ফ্রি AI-এর সীমা শেষ, এবং কোনো পাতার লেখা আসেনি।");
-      ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) }));
+      ai.pages = snap();
+      ai.content = auditHead(pages) + "\n\n" + (deepDump(pages) || (settings.lang === "en" ? "The free AI limit is used up, and no page text came back." : "ফ্রি AI-এর সীমা শেষ, এবং কোনো পাতার লেখা আসেনি।"));
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
     } else {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
-    const web = pages.map(p => (p.via === "google" ? "[Google News] " : "") + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
-    let sys = yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. The order pages are public copies of West Bengal government orders, notifications and circulars across departments. Lines marked [Google News] are news reports found through Google. They are not government orders. Quote the memo number and the date when the page text gives them. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs, not a table and not three lines. Cover what the pages say, what changed, the papers, the steps, and what the person still has to do after they sign in themselves. Name the page after each fact. If the job asks for an office paper, write that paper after the note and leave ______ for a missing fact. Do not invent a fee, an order number or a date. If a fact was not on a page, say so. Do not answer with a 2021 training cutoff.`;
+    const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
+    let sys = yearLine() + `\nYou are one research agent for a West Bengal office. You are not Biswas AI chat. ${lang} You only read public pages. Each page is tagged with the search engine that found it. A figure, fee or date is a fact only when the audit lists it under Agreed. If only one engine says it, call it unchecked. The order pages are public copies of West Bengal government orders. You cannot log in to a website. Never claim that you signed in or filed a form. Write a full note in plain paragraphs after the reader has already seen the audit. Cover what changed, the papers, the steps, and what the person still has to do. Name the engine and the page after each fact. Do not invent a fee, an order number or a date. Do not answer with a 2021 training cutoff.\n\n` + auditHead(pages);
     if (/birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
     if (facts) sys += "\n\nNotes already in this app:\n" + facts;
@@ -2946,9 +2998,9 @@ async function runBiswasAgent(job) {
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, system: sys });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, system: `Check the note against the pages. ${lang} Delete any fee, date or order number that is not in the pages or in the instructions. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
-    ai.content = dropCutoff(cleanAgent(checked.text || draft.text), job);
-    ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
+    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nAudit:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest or mark it unchecked. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
+    ai.pages = snap();
+    ai.content = auditHead(pages) + "\n\n" + dropCutoff(cleanAgent(checked.text || draft.text), job);
     await panelP;
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
     ai.done = true;
@@ -2956,9 +3008,9 @@ async function runBiswasAgent(job) {
     saveAgent();
     }
   } catch (e) {
-    const found = fromPages(pages);
-    ai.content = found || cleanAgent((e && e.text) || "");
-    ai.pages = pages.map(p => ({ title: p.title, url: p.url, text: String(p.text || "").slice(0, 900) }));
+    const found = deepDump(pages);
+    ai.pages = snap();
+    ai.content = found ? auditHead(pages) + "\n\n" + found : cleanAgent((e && e.text) || "");
     ai.error = found ? "" : aiFailed(e);
     ai.done = true;
     saveAgent();
