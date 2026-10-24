@@ -301,6 +301,69 @@ async function searchGoogle(q) {
   out.why = why;
   return out;
 }
+function skipSearchHost(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return /(^|\.)bing\.com$|(^|\.)microsoft\.com$|(^|\.)duckduckgo\.com$|(^|\.)google\.[a-z.]+$|(^|\.)google\.co\.[a-z]+$/.test(host);
+  } catch (e) { return true; }
+}
+async function searchBing(q) {
+  const out = [];
+  try {
+    const r = await fetch("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q), {
+      redirect: "follow", signal: AbortSignal.timeout(12000),
+      headers: { ...NAV, accept: "application/rss+xml, application/xml, text/xml, */*" }
+    });
+    if (!r.ok) return out;
+    const xml = await r.text();
+    const re = /<item>([\s\S]*?)<\/item>/gi;
+    let m;
+    while ((m = re.exec(xml)) && out.length < 4) {
+      const block = m[1];
+      let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
+      title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      let link = ((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
+      const safe = safeHttpUrl(link);
+      if (!safe || skipSearchHost(safe) || title.length < 8) continue;
+      if (!out.some(x => x.url === safe)) out.push({ title: title.slice(0, 160), url: safe, via: "bing" });
+    }
+  } catch (e) { /* Bing can be down; DuckDuckGo still runs */ }
+  return out;
+}
+async function searchDuck(q) {
+  const out = [];
+  try {
+    const r = await fetch("https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q), {
+      redirect: "follow", signal: AbortSignal.timeout(12000),
+      headers: { ...NAV, accept: "text/html" }
+    });
+    if (!r.ok) return out;
+    const html = await r.text();
+    const re = /class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+    let m;
+    while ((m = re.exec(html)) && out.length < 4) {
+      let href = m[1];
+      const uddg = href.match(/uddg=([^&"]+)/);
+      if (uddg) { try { href = decodeURIComponent(uddg[1]); } catch (e) { continue; } }
+      const safe = safeHttpUrl(href);
+      if (!safe || skipSearchHost(safe)) continue;
+      const title = decodeBasic(m[2].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+      if (!out.some(x => x.url === safe)) out.push({ title: (title || safe).slice(0, 160), url: safe, via: "duck" });
+    }
+  } catch (e) { /* leave Bing's results */ }
+  return out;
+}
+async function searchMore(q) {
+  const bing = await searchBing(q);
+  const duck = await searchDuck(q);
+  const out = [];
+  const push = row => { if (row && row.url && out.length < 4 && !out.some(x => x.url === row.url)) out.push(row); };
+  bing.slice(0, 2).forEach(push);
+  duck.slice(0, 2).forEach(push);
+  bing.slice(2).forEach(push);
+  duck.slice(2).forEach(push);
+  return out;
+}
 async function searchWeb(q) {
   const found = [];
   const add = (title, url) => { const safe = safeHttpUrl(url); if (safe && !found.some(x => x.url === safe)) found.push({ title, url: safe }); };
@@ -404,8 +467,9 @@ const server = http.createServer(async (req, res) => {
       if (body.list) {
         const hits = q ? await searchWeb(q) : [];
         const google = body.google && q ? await searchGoogle(q) : [];
+        const more = body.google && q ? await searchMore(q) : [];
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(JSON.stringify({ hits, google, googleWhy: google.why || "" }));
+        res.end(JSON.stringify({ hits, google, more, googleWhy: google.why || "" }));
         return;
       }
       let pages = q ? await research(q) : [];
@@ -420,11 +484,21 @@ const server = http.createServer(async (req, res) => {
           }
         } catch (e) { /* the pages already opened still go back */ }
       }
+      if (body.google && q) {
+        try {
+          for (const hit of (await searchMore(q)).slice(0, 2)) {
+            if (!hit || !hit.url || pages.some(p => p.url === hit.url)) continue;
+            let text = "";
+            try { text = await readPage(hit.url); } catch (e) { text = ""; }
+            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: hit.via || "web" });
+          }
+        } catch (e) { /* keep what is already open */ }
+      }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v48"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v49"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);

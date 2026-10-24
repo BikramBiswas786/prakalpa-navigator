@@ -2919,6 +2919,12 @@ async function runBiswasAgent(job) {
             ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no readable page" : " — পড়ার মতো পাতা নেই";
             renderAgentView();
           } else await readRound(ghits, Math.min(10, pages.length + 2));
+          const more = Array.isArray(data.more) ? data.more : [];
+          mark((settings.lang === "en" ? "Bing and DuckDuckGo: " : "বিং ও ডাকডাকগো: ") + queries[i]);
+          if (!more.length) {
+            ai.log[ai.log.length - 1] += settings.lang === "en" ? " — no page" : " — পাতা নেই";
+            renderAgentView();
+          } else await readRound(more, Math.min(10, pages.length + 3));
         } else await readRound(orders, 10);
       } catch (e) { /* the next search still runs */ }
     }
