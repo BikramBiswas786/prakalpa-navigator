@@ -48,7 +48,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
-body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 var(--f-body); }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.6 var(--f-body); overflow: hidden; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -70,7 +70,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .btn.small { padding: 3px 9px; font-size: .8rem; font-weight: 600; }
 .btn[disabled] { opacity: .5; cursor: default; }
 
-.body { min-height: 0; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+.body { min-height: 0; overflow: hidden; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
 .rail { border-right: 1px solid var(--line); background: var(--surface); overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 16px; }
 @media (max-width: 900px) {
   .body { grid-template-columns: minmax(0, 1fr); }
@@ -121,12 +121,12 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .chip { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: .82rem; font-family: var(--f-display); }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 
-.chat { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
+.chat { min-height: 0; height: 100%; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(8rem, 1fr) auto; }
 #v-chat > .hist { display: none !important; }
-.banner { margin: 10px auto 0; width: min(820px, 100%); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); grid-column: 1; grid-row: 1; }
+.banner { margin: 10px auto 0; width: min(820px, 100%); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .banner div { font-size: .85rem; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; }
-.scroll { grid-column: 1; grid-row: 2; overflow-y: auto; min-height: 0; }
-.composer { grid-column: 1; grid-row: 3; }
+.scroll { min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.composer { background: var(--surface); }
 @media (max-width: 900px) {
   .brand span, #lang-label, .hint span { display: none; }
   header.top { gap: 8px; padding-block: 6px; }
@@ -163,8 +163,12 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .welcome p { color: var(--muted); margin: 0; max-width: 62ch; }
 .starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
 .starter { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; }
-#v-agent { grid-template-rows: minmax(0, 1fr) auto; }
-#v-agent .scroll { grid-row: 1; min-height: 0; }
+#v-chat { grid-template-rows: auto minmax(8rem, 1fr) auto; }
+#v-chat .banner { grid-row: 1; }
+#v-chat .scroll { grid-row: 2; }
+#v-chat .composer { grid-row: 3; }
+#v-agent { grid-template-rows: minmax(8rem, 1fr) auto; }
+#v-agent .scroll { grid-row: 1; min-height: 8rem; }
 #v-agent .composer { grid-row: 2; }
 #v-agent .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sources { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
@@ -220,11 +224,11 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 .pdf-doc hr { border: 0; border-top: 1px solid #999; }
 .pdf-doc .tbl { overflow: visible; }
 /* ---- two sections: header, sub-tabs, page views ---- */
-.app { height: 100%; display: grid; grid-template-rows: auto 1fr; }
-.stage { min-height: 0; min-width: 0; display: grid; grid-template-rows: auto 1fr; }
-.views { height: 100%; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+.app { height: 100%; height: 100dvh; max-height: 100dvh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.stage { min-height: 0; min-width: 0; height: 100%; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.views { height: 100%; min-height: 0; overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); }
 .views > .view { min-height: 0; min-width: 0; }
-.view.chat { height: 100%; }
+.view.chat { height: 100%; min-height: 0; overflow: hidden; }
 .view.page { height: 100%; overflow: auto; }
 .nav-toggle { display: none; }
 button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: inherit; font: inherit; }
@@ -2723,7 +2727,7 @@ function renderAgentView() {
     if (msgs[i].role !== "user") continue;
     jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
   }
-  thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() }))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
+  thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
   const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
 }
 function pageLinks(pages) {
