@@ -277,7 +277,7 @@ export async function POST(request) {
 
   if (body.panel) {
     const FREE = ["llm7", "nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 5);
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 8);
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();
