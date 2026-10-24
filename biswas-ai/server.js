@@ -307,10 +307,28 @@ function skipSearchHost(url) {
     return /(^|\.)bing\.com$|(^|\.)microsoft\.com$|(^|\.)duckduckgo\.com$|(^|\.)google\.[a-z.]+$|(^|\.)google\.co\.[a-z]+$/.test(host);
   } catch (e) { return true; }
 }
+function closeEnough(title, q) {
+  const words = String(q || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
+  if (words.length < 2) return true;
+  const hay = String(title || "").toLowerCase();
+  return words.filter(w => hay.includes(w)).length >= Math.min(2, words.length);
+}
+function bingUrl(link) {
+  const safe = safeHttpUrl(String(link || "").trim());
+  if (!safe) return "";
+  try {
+    const u = new URL(safe);
+    if (u.hostname.endsWith("bing.com")) {
+      const inner = u.searchParams.get("url");
+      return inner ? safeHttpUrl(inner) : "";
+    }
+    return safe;
+  } catch (e) { return ""; }
+}
 async function searchBing(q) {
   const out = [];
   try {
-    const r = await fetch("https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q), {
+    const r = await fetch("https://www.bing.com/news/search?q=" + encodeURIComponent(q) + "&format=RSS", {
       redirect: "follow", signal: AbortSignal.timeout(12000),
       headers: { ...NAV, accept: "application/rss+xml, application/xml, text/xml, */*" }
     });
@@ -323,8 +341,11 @@ async function searchBing(q) {
       let title = (block.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || "";
       title = decodeBasic(title.replace(/<!\[CDATA\[|\]\]>/g, "")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
       let link = ((block.match(/<link>([\s\S]*?)<\/link>/i) || [])[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
-      const safe = safeHttpUrl(link);
+      link = decodeBasic(link);
+      const desc = decodeBasic(((block.match(/<description>([\s\S]*?)<\/description>/i) || [])[1] || "").replace(/<[^>]+>/g, " "));
+      const safe = bingUrl(link);
       if (!safe || skipSearchHost(safe) || title.length < 8) continue;
+      if (!closeEnough(title + " " + desc, q)) continue;
       if (!out.some(x => x.url === safe)) out.push({ title: title.slice(0, 160), url: safe, via: "bing" });
     }
   } catch (e) { /* Bing can be down; DuckDuckGo still runs */ }
@@ -348,6 +369,7 @@ async function searchDuck(q) {
       const safe = safeHttpUrl(href);
       if (!safe || skipSearchHost(safe)) continue;
       const title = decodeBasic(m[2].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
+      if (!closeEnough(title, q)) continue;
       if (!out.some(x => x.url === safe)) out.push({ title: (title || safe).slice(0, 160), url: safe, via: "duck" });
     }
   } catch (e) { /* leave Bing's results */ }
@@ -498,7 +520,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v49"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v50"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
