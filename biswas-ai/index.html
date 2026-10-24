@@ -797,7 +797,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v75", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v76", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -870,7 +870,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v75", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v76", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -3229,8 +3229,7 @@ async function runBiswasAgent(job) {
         seen.add(hit.url);
         const snippet = String(hit.text || "");
         let one = { title: hit.title, url: hit.url, text: "", more: [] };
-        const opened = pages.filter(p => p.opened).length;
-        if (snippet.length < 240 && opened < 14) {
+        if (snippet.length < 180) {
           mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
           try {
             const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
@@ -3239,10 +3238,16 @@ async function runBiswasAgent(job) {
         } else {
           mark((settings.lang === "en" ? "From " : "সূত্র ") + (hit.title || hit.url));
         }
-        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n");
+        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n").slice(0, 1600);
+        if (text.length < 80) {
+          ai.log[ai.log.length - 1] += settings.lang === "en" ? " — not a page" : " — পাতা নয়";
+          ai.pages = snap();
+          renderAgentView();
+          continue;
+        }
         const via = hit.via || (/wbxpress\.com|\.gov\.in/.test(hit.url || "") ? "orders" : "web");
-        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via, opened: snippet.length < 240 && String(one.text || "").length > 40 });
-        ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
+        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via, opened: true });
+        ai.log[ai.log.length - 1] += settings.lang === "en" ? " — page" : " — পাতা";
         if (officeTopic(job)) (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
         ai.pages = snap();
         renderAgentView();
@@ -3263,25 +3268,25 @@ async function runBiswasAgent(job) {
         const more = Array.isArray(data.more) ? data.more : [];
         const ghits = Array.isArray(data.google) ? data.google : [];
         const orders = Array.isArray(data.hits) ? data.hits : [];
-        if (more.length) await readRound(more, 28);
-        if (useGoogle && ghits.length) await readRound(ghits, 28);
-        if (officeTopic(job) && orders.length) await readRound(orders, 28);
+        if (more.length) await readRound(more, 35);
+        if (useGoogle && ghits.length) await readRound(ghits, 35);
+        if (officeTopic(job) && orders.length) await readRound(orders, 35);
       } catch (e) { /* the next search still runs */ }
     }
-    for (let round = 0; round < 3 && pages.length < 28; round++) {
+    for (let round = 0; round < 3 && pages.length < 35; round++) {
       await searchAsk(ask);
-      if (pages.length >= 25) break;
+      if (pages.length >= 35) break;
       const core = String(job).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3 && !/^(what|whats|new|the|and|for|till|date|era|from|please|tell|this|that|with|into|about)$/.test(w)).slice(0, 8).join(" ");
       if (!core || asked.has(core)) break;
       ask = core;
-      mark(settings.lang === "en" ? "Fewer than 25 pages. Searching again." : "২৫টি পাতার কম। আবার খুঁজছি।");
+      mark(settings.lang === "en" ? "Fewer than 35 sources. Searching again." : "৩৫টি সূত্রের কম। আবার খুঁজছি।");
     }
     mark(settings.lang === "en" ? "Asking the free AIs the whole question" : "পুরো প্রশ্নটা ফ্রি AI-কে জিজ্ঞাসা করছি");
     let rows = [];
     try { rows = await askPanel(job, pages); } catch (e) { rows = []; }
     ai.panel = rows;
     const hole = rows.map(a => String(a && a.text || "")).join(" ").match(/(?:not mentioned|do not contain|not in the pages|no information about)\s+([^.]{6,80})/i);
-    if (hole && hole[1] && !driftedQuery(hole[1], job) && pages.length < 28) {
+    if (hole && hole[1] && !driftedQuery(hole[1], job) && pages.length < 35) {
       mark(settings.lang === "en" ? "An AI still missed a part. Searching that." : "একটা AI একটা অংশ পায়নি। সেটা খুঁজছি।");
       await searchAsk((job + " " + hole[1]).slice(0, 220));
       try {
