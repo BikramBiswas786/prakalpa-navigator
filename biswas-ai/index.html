@@ -852,9 +852,9 @@ const CATS = [
   ["health", "স্বাস্থ্য", "Health"], ["students", "ছাত্রছাত্রী", "Students"], ["farmers", "কৃষক", "Farmers"],
   ["work", "যুব, শ্রমিক ও কারিগর", "Youth, workers, artisans"], ["housing", "আবাস, খাদ্য ও গ্যাস", "Housing, food, gas"],
   ["certs", "শংসাপত্র ও পরিষেবা", "Certificates and services"],
-  ["window", "সেবার জানালা", "Service windows"],
   ["land", "জমি", "Land"],
-  ["vehicle", "যান", "Vehicles"]
+  ["vehicle", "যান", "Vehicles"],
+  ["window", "সেবার জানালা", "Service windows"]
 ];
 const SERVICES = [
   { id: "bsk", cat: "window", st: "ok", by: "state", help: "",
@@ -905,7 +905,7 @@ const SERVICES = [
       d: ["Consumer number, printed on the bill", "For a new line: proof of address, identity, and the house papers"],
       s: ["Most of the State is WBSEDCL. On wbsedcl.in open Consumer Corner, then Pay Online", "Most of Kolkata city is CESC, at cesc.co.in", "UPI and bank apps also take the consumer number", "A new connection is applied for on the same site"],
       x: "Do not pay on a site that only looks similar. Match the receipt." } },
-  { id: "aikyashree", cat: "students", st: "ok", by: "state", help: "",
+  { id: "aikyashree", cat: "window", st: "ok", by: "state", help: "",
     links: [["ডব্লিউবিএমডিএফসি", "WBMDFC", "https://www.wbmdfc.org/"], ["বাংলা সহায়তা কেন্দ্র", "Bangla Sahayata Kendra", "https://bsk.wb.gov.in/"]],
     bn: { n: "ঐক্যশ্রী বৃত্তি", old: "", b: "সংখ্যালঘু ছাত্রছাত্রীর বৃত্তি। প্রি-ম্যাট্রিক, পোস্ট-ম্যাট্রিক ও মেধা-সহ-উপায়। টাকার অঙ্ক ও শেষ তারিখ প্রতি বছর বদলায়।",
       c: ["পশ্চিমবঙ্গের বাসিন্দা", "বৌদ্ধ, খ্রিস্টান, জৈন, মুসলিম, পারসি বা শিখ", "সেই বছরের বিজ্ঞপ্তিতে লেখা নম্বর ও পারিবারিক আয়"],
@@ -2138,7 +2138,8 @@ function renderCatalog() {
   const L = settings.lang;
   $("#c-cats").innerHTML = CATS.map(c => `<button class="chip" type="button" data-cat="${c[0]}" aria-pressed="${c[0] === catFilter}">${esc(L === "en" ? c[2] : c[1])}</button>`).join("");
   const q = $("#c-search").value.trim().toLowerCase();
-  const list = SERVICES.filter(s => (catFilter === "all" || s.cat === catFilter) && (!q || JSON.stringify([s.bn, s.en]).toLowerCase().includes(q)));
+  const order = id => { const i = CATS.findIndex(c => c[0] === id); return i < 0 ? 99 : i; };
+  const list = SERVICES.filter(s => (catFilter === "all" || s.cat === catFilter) && (!q || JSON.stringify([s.bn, s.en]).toLowerCase().includes(q))).sort((a, b) => order(a.cat) - order(b.cat));
   $("#c-count").textContent = t("c_count", list.length);
   $("#c-list").innerHTML = list.length ? list.map(s => `<button class="card" type="button" data-open="${s.id}">
     <h3>${esc(s[L].n)}</h3>${s[L].old ? `<span class="old">${esc(t("old"))}${esc(s[L].old)}</span>` : ""}
