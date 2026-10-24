@@ -158,10 +158,17 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .welcome p { color: var(--muted); margin: 0; max-width: 62ch; }
 .starters { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
 .starter { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 14px; cursor: pointer; display: grid; gap: 2px; }
-#v-agent .starters { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 8px; }
-#v-agent .starter { flex: 0 0 auto; min-width: 132px; }
-#v-agent .starter.on { border-color: var(--accent); background: var(--accent-soft); }
-.ag-bar { display: flex; gap: 6px; overflow-x: auto; }
+#v-agent { grid-template-rows: auto 1fr auto; }
+#v-agent .ag-top { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; min-width: 0; }
+#v-agent .ag-row { display: flex; gap: 6px; overflow-x: auto; min-width: 0; }
+#v-agent .ag-row button { flex: 0 0 auto; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#v-agent .scroll { grid-row: 2; }
+#v-agent .composer { grid-row: 3; }
+#v-agent .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.sources { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.sources a { color: var(--accent); overflow-wrap: anywhere; }
+.doc table { display: block; max-width: 100%; overflow-x: auto; }
+.doc { overflow-wrap: anywhere; }
 .thought { color: var(--muted); font-size: .84rem; margin: 0 0 8px; }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
@@ -513,10 +520,12 @@ textarea.paper { white-space: pre-wrap; }
     </section>
 
     <section class="view chat" id="v-agent" hidden>
-      <div class="banner"><div class="ag-bar" id="ag-list"></div></div>
+      <div class="ag-top">
+        <div class="ag-row" id="ag-picks"></div>
+        <div class="ag-row" id="ag-list"></div>
+      </div>
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
-        <div class="starters" id="ag-picks"></div>
         <form class="box" id="ag-form">
           <textarea id="ag-job" rows="1" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -704,9 +713,10 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "যা জানতে চান, নিচে লিখুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "বিশ্বাস এজেন্ট", ag_note: "এই অ্যাপে যে ফ্রি চাবি আছে, এজেন্ট সেটাই ব্যবহার করে। আলাদা মডেল নয়। আগে ভাবে, তালিকা দেখে, তারপর উত্তর দেয়। নিচে উত্তর দিতে পারবেন।",
-    ag_ph: "কাজ লিখুন, বা ওপরের উত্তরের পর আবার লিখুন",
+    ag_tab: "এজেন্ট", ag_h: "বিশ্বাস এজেন্ট", ag_note: "এই এজেন্টের চ্যাট আলাদা। বিশ্বাস AI-র চ্যাটে যায় না। প্রশ্ন পেলে ওয়েবসাইট খুলে পড়ে, তারপর উত্তর দেয়।",
+    ag_ph: "এজেন্টকে লিখুন। এটি নিজে পাতা খুলবে।",
     ag_go: "চালান", ag_new: "নতুন", ag_reply: "উত্তর দিন", ag_think: "ভাবনা:",
+    ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
     ag_free: "স্বাধীন এজেন্ট", ag_free_d: "নিজে ঠিক করে খোঁজে, লেখে, একবার যাচাই করে।",
     ag_write: "লেখক", ag_write_d: "আদেশ, রেজোলিউশন, চিঠি বা সংশোধনী লেখে।",
@@ -772,9 +782,10 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Ask anything below.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "Biswas agent", ag_note: "This agent uses the free keys already in this app. It is not a separate model. It thinks, checks the list in this app, then answers. You can reply below.",
-    ag_ph: "Write the job, or reply under the last answer",
+    ag_tab: "Agents", ag_h: "Biswas agent", ag_note: "This agent's chat is separate. It is not saved in Biswas AI. It opens web pages, reads them, then answers.",
+    ag_ph: "Write to the agent. It will open pages itself.",
     ag_go: "Run", ag_new: "New", ag_reply: "Reply", ag_think: "Thought:",
+    ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
     ag_free: "Independent agent", ag_free_d: "Decides, looks up, writes, then checks once.",
     ag_write: "Writer", ag_write_d: "Writes an order, resolution, letter or corrigendum.",
@@ -1731,7 +1742,7 @@ function shortRules() {
   const lang = settings.lang === "en"
     ? "Reply in English unless the user writes in Bengali. Bengali answers use correct colloquial Bengali in Bengali script."
     : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
-  return `You are Biswas AI (বিশ্বাস AI), a normal assistant. Answer the question directly. Do not turn it into an office letter unless the user asks. Today is ${today()}. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say so.`;
+  return `You are Biswas AI (বিশ্বাস AI), a normal assistant. Answer the question directly. Do not turn it into an office letter unless the user asks. Today is ${today()}. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say so. Write short paragraphs, not a wide table.`;
 }
 async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false } = {}) {
   if (!engine) throw { code: "not_ready" };
@@ -2634,7 +2645,11 @@ function cleanAgent(s) {
 }
 function renderAgents() {
   const box = $("#ag-picks"); if (!box) return;
-  box.innerHTML = [["free", "ag_free", "ag_free_d"], ["write", "ag_write", "ag_write_d"], ["find", "ag_find", "ag_find_d"]].map(([id, n, d]) => `<button class="starter${id === agentKind ? " on" : ""}" type="button" data-agent="${id}"><b>${esc(t(n))}</b><span>${esc(t(d))}</span></button>`).join("");
+  box.innerHTML = [["free", "ag_free"], ["write", "ag_write"], ["find", "ag_find"]].map(([id, n]) => `<button class="chip" type="button" data-agent="${id}" aria-pressed="${id === agentKind}">${esc(t(n))}</button>`).join("");
+}
+function pageLinks(pages) {
+  if (!pages || !pages.length) return "";
+  return `<div class="sources"><b>${esc(t("ag_sources"))}</b>${pages.map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`;
 }
 function renderAgentView() {
   renderAgents();
@@ -2647,7 +2662,7 @@ function renderAgentView() {
   if (!thread) return;
   thread.innerHTML = msgs.length ? msgs.map(m => m.role === "user"
     ? `<div class="msg user"><div class="bubble">${esc(m.shown || m.content)}</div></div>`
-    : `<div class="msg ai">${m.think ? `<div class="thought">${esc(t("ag_think"))} ${esc(m.think)}</div>` : ""}<div class="doc">${m.content ? mdToHtml(cleanAgent(m.content)) : (m.done ? "" : thinkingHtml(m))}</div>${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}${m.done && m.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</div>`).join("")
+    : `<div class="msg ai">${m.think ? `<div class="thought">${esc(t("ag_think"))} ${esc(m.think)}</div>` : ""}<div class="doc">${m.content ? mdToHtml(cleanAgent(m.content)) : (m.done ? "" : thinkingHtml(m))}</div>${pageLinks(m.pages)}${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}${m.done && m.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</div>`).join("")
     : `<div class="welcome home"><h2>${esc(t("ag_h"))}</h2><p>${esc(t("ag_note"))}</p></div>`;
   const sc = $("#ag-scroll"); if (sc && msgs.length) sc.scrollTop = sc.scrollHeight;
 }
@@ -2660,7 +2675,10 @@ function serviceFacts(id) {
   return [d.n, d.b, (d.c || []).join("; "), (d.d || []).join("; "), (d.s || []).join("; "), d.x || ""].filter(Boolean).join("\n");
 }
 function saveAgent() {
-  vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", messages: slimMsgs(t.messages) })));
+  vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({
+    id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free",
+    messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-20).map(m => ({ role: m.role, content: m.content, shown: m.shown, done: m.done, error: m.error, think: m.think || "", pages: (m.pages || []).slice(0, 4).map(p => ({ title: p.title, url: p.url })) }))
+  })));
 }
 function openAgent(id) {
   agentId = id || "";
@@ -2695,17 +2713,31 @@ async function runBiswasAgent(job) {
       } catch (e) { /* keep the default */ }
     }
     const names = ids.map(id => { const s = SERVICES.find(x => x.id === id); return s ? (s[settings.lang] || s.bn).n : ""; }).filter(Boolean);
-    ai.think = names.length
-      ? (settings.lang === "en" ? "I looked up " + names.join(", ") + " in this app, then wrote from that." : "এই অ্যাপের তালিকায় " + names.join(", ") + " দেখেছি, তারপর সেটা থেকে লিখেছি।")
-      : (need === "write" || agentKind === "write"
+    const wantsWeb = agentKind !== "write" || /rule|2026|latest|research|law|আইন|নিয়ম|সংশোধন/i.test(job);
+    let pages = [];
+    if (wantsWeb) {
+      ai.think = t("ag_browse"); renderAgentView();
+      try {
+        const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: job }) });
+        const data = rr.ok ? await rr.json() : { pages: [] };
+        pages = Array.isArray(data.pages) ? data.pages.slice(0, 3) : [];
+      } catch (e) { pages = []; }
+    }
+    ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
+    const opened = pages.map(p => p.title).filter(Boolean).join(", ");
+    ai.think = opened
+      ? (settings.lang === "en" ? "I opened " + opened + " and read them before answering." : "উত্তরের আগে খুলেছি: " + opened + "।")
+      : (agentKind === "write"
         ? (settings.lang === "en" ? "I wrote the paper from what you said. I did not invent a fee or an order number." : "আপনি যা বলেছেন, তা থেকে কাগজ লিখেছি। ফি বা আদেশ নম্বর বানাইনি।")
-        : (settings.lang === "en" ? "This app's list has no matching service, so I did not invent a process." : "এই অ্যাপের তালিকায় মিল পাইনি, তাই নিয়ম বানাইনি।"));
+        : (settings.lang === "en" ? "No page opened. I will not invent a rule." : "কোনো পাতা খোলেনি। নিয়ম বানাব না।"));
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
+    const web = pages.map(p => p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
     ai.content = ""; renderAgentView();
-    let sys = `You are Biswas AI. ${lang} Today is ${today()}. Write plain sentences or short lines. No table, no markdown, no HTML. Do not invent a fee, an order number or a date.`;
-    if (need === "write" || agentKind === "write") sys += " Write the office paper, ready to print. Leave ______ where a fact was not given.";
-    else if (facts) sys += " Use only these notes:\n" + facts;
-    else if (need === "find") sys += " Say that this app's list has no matching service.";
+    let sys = `You are the Biswas research agent. This chat is not the normal Biswas AI chat. ${lang} Today is ${today()}. Write plain sentences. No table, no markdown, no HTML. Do not invent a fee, an order number or a date. If a fact is not in the pages or the notes, say it was not on the pages you opened.`;
+    if (agentKind === "write" && !web) sys += " Write the office paper, ready to print. Leave ______ where a fact was not given.";
+    if (web) sys += "\n\nPages opened:\n" + web;
+    if (facts) sys += "\n\nNotes already in this app:\n" + facts;
+    if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
     const draft = await aiRun(prior, { fast: true, system: sys });
     ai.content = cleanAgent(draft.text);
