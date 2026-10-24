@@ -801,7 +801,7 @@ const STR = {
     ph_office: "বাংলা বা ইংরেজিতে লিখুন… যেমন: শো-কজ নোটিশের নোটশিট লিখে দিন", ph_public: "আপনার প্রশ্ন লিখুন… যেমন: অন্নপূর্ণা যোজনায় কীভাবে আবেদন করব?",
     hint: "Enter = পাঠান · Shift+Enter = নতুন লাইন · উত্তর Word, PDF, Excel-এ নামানো যায়",
     copy: "কপি", edit: "সম্পাদনা", save: "সংরক্ষণ", cancel: "বাতিল", remove: "সরান", answered_by: "উত্তর দিয়েছে: ",
-    thinking: "ভাবছে…", secs: "সেকেন্ড", slow: "কোনও ফ্রি AI ব্যস্ত থাকলে পরেরটি চেষ্টা করা হচ্ছে…", stopped: "_(থামানো হয়েছে)_", pause: "থামান",
+    thinking: "ভাবছে…", think_read: "রেকর্ড পড়া", secs: "সেকেন্ড", slow: "কোনও ফ্রি AI ব্যস্ত থাকলে পরেরটি চেষ্টা করা হচ্ছে…", stopped: "_(থামানো হয়েছে)_", pause: "থামান",
     br_h: "ব্রাউজার", br_open: "পাতা খুলুন", br_empty: "এই পাতায় পড়ার মতো লেখা পাইনি।",
     copied: "কপি হয়েছে", copy_fail: "কপি করা গেল না। লেখাটি সিলেক্ট করে Ctrl+C চাপুন।", saved_edit: "সংরক্ষিত", reading: "পড়া হচ্ছে…",
     file_ready: "ফাইল দেওয়া হয়েছে", dl_cancel: "ফাইল নামানো বাতিল হয়েছে", dl_wait: "একটু অপেক্ষা করে আবার চেষ্টা করুন", dl_fail: "ফাইল তৈরি করা গেল না", making: "তৈরি হচ্ছে…", no_save: "এখানে ফাইল নামানো যাচ্ছে না।",
@@ -844,7 +844,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v67", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v68", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -874,7 +874,7 @@ const STR = {
     ph_office: "Type in English or Bengali… e.g. Write a notesheet for a show-cause notice", ph_public: "Type your question… e.g. How do I apply for Annapurna Yojana?",
     hint: "Enter = send · Shift+Enter = new line · Answers can be saved as Word, PDF, Excel",
     copy: "Copy", edit: "Edit", save: "Save", cancel: "Cancel", remove: "Remove", answered_by: "Answered by: ",
-    thinking: "Thinking…", secs: "s", slow: "If a free AI is busy, the next one is being tried…", stopped: "_(stopped)_", pause: "Pause",
+    thinking: "Thinking…", think_read: "Reading the record", secs: "s", slow: "If a free AI is busy, the next one is being tried…", stopped: "_(stopped)_", pause: "Pause",
     br_h: "Browser", br_open: "Open page", br_empty: "This page had no readable text.",
     copied: "Copied", copy_fail: "Could not copy. Select the text and press Ctrl+C.", saved_edit: "Saved", reading: "reading…",
     file_ready: "File ready", dl_cancel: "Download cancelled", dl_wait: "Wait a moment and try again", dl_fail: "Could not create the file", making: "Preparing…", no_save: "Files can't be saved here.",
@@ -1622,7 +1622,7 @@ Language: ${lang}
 Accuracy rules, most important:
 - Never invent GO, memo or notification numbers, dates, section numbers, amounts or limits. If you do not know the exact figure, say so and name where to check (the department website, wbxpress.com, the gazette, e-District).
 - Your own knowledge may be old, and West Bengal changed government in May 2026. The knowledge base below is newer: prefer it. Say "reported — please verify" for items marked (reported), and say the status is not confirmed for items marked (status?).
-- For a scheme (prakalpa) question give: what it gives, who is eligible, how and where to apply, documents, and its current status, then the official portal.
+- For a first "how do I apply" question, give what it gives, who is eligible, how and where to apply, documents, and its current status, then the official portal. If a reading of the dataset is attached below, follow that reading instead of repeating this list.
 - For caste certificate questions follow section B, including the 2026 re-verification and the new OBC list.
 - If the user attached a document, answer from it and quote the relevant paragraph or clause number.
 - Explain rules; do not decide individual cases. The competent authority decides.
@@ -2673,7 +2673,7 @@ function msgHtml(m, k) {
   }
   const hasTable = parseMd(m.content).some(b => b.t === "table");
   return `<div class="msg ai" data-k="${k}">
-    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `${browserHtml(m, k)}<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
+    ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `${browserHtml(m, k)}${m.think ? `<div class="thinking"><b>${esc(t("think_read"))}</b><small>${esc(m.think)}</small></div>` : ""}<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
     ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
     ${panelHtml(m)}
@@ -2986,6 +2986,12 @@ function pageLinks(pages) {
 function catalogBrief() {
   return SERVICES.map(s => { const d = s[settings.lang] || s.bn; return s.id + " | " + d.n; }).join("\n");
 }
+function publicRecord(q) {
+  if (schemeOpen && mode === "public") return serviceFacts(schemeOpen);
+  const words = String(q || "").toLowerCase().split(/[^a-z0-9\u0980-\u09ff]+/).filter(w => w.length > 3);
+  const lines = catalogueText().split("\n").filter(line => words.some(w => line.toLowerCase().includes(w)));
+  return (lines.slice(0, 12).join("\n") || catalogueText().slice(0, 3500));
+}
 function serviceFacts(id) {
   const s = SERVICES.find(x => x.id === id); if (!s) return "";
   const d = s[settings.lang] || s.bn;
@@ -3234,10 +3240,35 @@ async function ask(text) {
     }
     if (live()) updateAt(box.indexOf(ai));
   }
+  let thought = "";
+  if (mode === "public" && String(text || "").trim().length > 8 && !greet) {
+    ai.think = settings.lang === "en" ? "Reading the record…" : "রেকর্ড পড়ছি…";
+    if (live()) updateAt(box.indexOf(ai));
+    try {
+      const note = await aiRun([{ role: "user", content: "Question:\n" + String(text).slice(0, 2000) }], {
+        fast: true, signal: ctl.signal,
+        system: `You are the reading step. Do not write the answer the person will see. Read the dataset and the pages. Write a short analysis in ${settings.lang === "en" ? "English" : "colloquial Bengali"}.
+- Asked: how to apply, or more detail, or a new rule.
+- On record: only a line that is written in the dataset or a page. Name where it is written.
+- Not on record: the amount, a year of practice, a training course, an exhibition, a new rule, or a time, if they are absent. Do not fill them.
+- Reading: one paragraph. Use only the on-record lines. Say what the record supports and what it does not.
+Do not invent a URL, an amount, a year, or a programme.
+DATASET:\n${publicRecord(text).slice(0, 6000)}
+${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone opened."}`
+      });
+      thought = String(note.text || "").slice(0, 4000);
+      ai.think = thought || ai.think;
+      if (live()) updateAt(box.indexOf(ai));
+    } catch (e) {
+      if (e && (e.name === "AbortError" || e.code === "cancelled")) { ai.content = t("stopped"); ai.done = true; ctl = null; setBusy(false); if (live()) updateAt(box.indexOf(ai)); persist(); return; }
+      thought = "";
+    }
+  }
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
     const pagesNote = researchNote ? "\n\nPages opened for this question. A fact in your answer must come from these pages or from the catalogue. If a page does not contain the amount, the new rule, or the years of practice, say it is not on record. Do not invent a link.\n\n" + researchNote : "";
-    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote : undefined;
+    const readNote = thought ? "\n\nA reading of the dataset was done first. The person can see it. Write the reply from that reading, in clear paragraphs. Do not paste the reading again. If the reading says they asked for more detail or an analysis, do not send the application card. If the reading says a fact is not on record, do not state it.\n\nREADING:\n" + thought : "";
+    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote + readNote : undefined;
     const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
     if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
