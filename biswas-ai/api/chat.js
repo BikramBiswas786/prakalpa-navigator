@@ -272,8 +272,8 @@ export async function POST(request) {
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
   if (body.panel) {
-    const FREE = ["gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "cerebras", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 3);
+    const FREE = ["gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 4);
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();

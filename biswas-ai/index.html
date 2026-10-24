@@ -1490,17 +1490,51 @@ function fromPages(pages) {
   }).join("\n\n");
   return head + "\n\n" + body;
 }
-const PANEL_NAME = { gemini: "Gemini", groq: "Groq", nvidia: "NVIDIA", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare", sambanova: "SambaNova", cerebras: "Cerebras", sarvam: "Sarvam", panel: "Free AIs" };
+const PANEL_NAME = { gemini: "Gemini", groq: "Groq", nvidia: "NVIDIA", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare", sambanova: "SambaNova", zai: "Z.ai", cohere: "Cohere", cerebras: "Cerebras", sarvam: "Sarvam", panel: "Free AIs" };
 function panelHtml(m) {
   if (!m || !m.panel) return "";
-  const title = settings.lang === "en" ? "Free AIs — Gemini and the others. ChatGPT and Grok are paid, so they are not called." : "ফ্রি AI — জেমিনি ও অন্যরা। চ্যাটজিপিটি ও গ্রোক পেইড, তাই তাদের ডাকা হয়নি।";
+  const title = settings.lang === "en" ? "Free AIs asked. Only lines that match go into the article." : "ফ্রি AI-কে জিজ্ঞাসা করা হয়েছে। যে লাইন মিলেছে, শুধু সেটা নিবন্ধে যাবে।";
   if (!m.panel.length) return `<div class="panel"><h3>${esc(title)}</h3><p class="thinking">${esc(settings.lang === "en" ? "Asking them now…" : "এখন তাদের জিজ্ঞাসা করছি…")}</p></div>`;
-  return `<div class="panel"><h3>${esc(title)}</h3>${m.panel.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}</b><div>${a.text ? mdToHtml(a.text) : `<span class="err">${esc(a.error || "no answer")}</span>`}</div></article>`).join("")}</div>`;
+  return `<div class="panel"><h3>${esc(title)}</h3>${m.panel.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}${a.used ? (settings.lang === "en" ? " · in the article" : " · নিবন্ধে") : (a.text ? (settings.lang === "en" ? " · not added" : " · যোগ হয়নি") : "")}</b><div>${a.text ? mdToHtml(a.text) : `<span class="err">${esc(a.error || "no answer")}</span>`}</div></article>`).join("")}</div>`;
 }
-async function askPanel(question) {
-  const system = yearLine() + "\nAnswer in short paragraphs for a person in West Bengal. " + BHANDAR_EN + " Do not say a West Bengal scheme does not exist just because it is missing from a central portal. Do not say you cannot search.";
+function claimWords(s) {
+  return new Set(String(s || "").toLowerCase().split(/[^a-z0-9₹]+/).filter(w => w.length > 4));
+}
+function claimsMatch(a, b) {
+  const A = claimWords(a), B = claimWords(b);
+  let n = 0;
+  for (const w of A) if (B.has(w)) n++;
+  return n >= 4;
+}
+function splitClaims(text) {
+  return String(text || "").replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(s => s.length > 50 && s.length < 420);
+}
+function agreeArticle(rows, pages) {
+  const good = (rows || []).filter(r => r && r.text && !r.error);
+  if (good.length < 2) return "";
+  const kept = [];
+  for (const row of good) {
+    for (const s of splitClaims(row.text)) {
+      const others = good.filter(o => o !== row && splitClaims(o.text).some(t => claimsMatch(s, t)));
+      if (!others.length || kept.some(k => claimsMatch(k.text, s))) continue;
+      row.used = true;
+      others.forEach(o => { o.used = true; });
+      const cites = (pages || []).filter(p => p && p.url && claimsMatch(s, (p.title || "") + " " + String(p.text || "").slice(0, 600))).slice(0, 2);
+      kept.push({ text: s, who: [row.provider].concat(others.map(o => o.provider)), cites });
+    }
+  }
+  if (!kept.length) return "";
+  const en = settings.lang === "en";
+  return (en ? "## Article\nThese lines were written by at least two free AIs, and each line names the pages that say the same thing.\n\n" : "## নিবন্ধ\nএই লাইনগুলো অন্তত দুটি ফ্রি AI লিখেছে, এবং যে পাতা সেই কথা বলেছে সেটাও আছে।\n\n")
+    + kept.slice(0, 8).map(k => k.text + " (" + [...new Set(k.who)].map(id => PANEL_NAME[id] || id).join(", ") + ")"
+      + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
+}
+async function askPanel(question, pages) {
+  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 6)
+    .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 700)).join("\n\n");
+  const system = yearLine() + "\nWrite a sourced article of four short paragraphs for a person in West Bengal. Use only the source pages below. After each fact, name the page. Do not invent a fee, a date or an order number. " + BHANDAR_EN + (src ? "\n\nSource pages:\n" + src : "\nNo source page was opened. Say that you cannot add a figure.");
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 2000) }], maxOut: 700 }) });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 1500) }], maxOut: 900 }) });
     if (!r.ok) return [{ provider: "panel", text: "", error: settings.lang === "en" ? "The free AIs did not answer." : "ফ্রি AI উত্তর দেয়নি।" }];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [{ provider: "panel", text: "", error: settings.lang === "en" ? "No free AI key is set." : "কোনো ফ্রি AI চাবি নেই।" }];
@@ -2894,7 +2928,6 @@ async function runBiswasAgent(job) {
   try { renderAgentView(); } catch (e) { /* still run the job */ }
   const known = knownAnswer(job);
   ai.panel = [];
-  const panelP = askPanel(job).then(rows => { ai.panel = rows; renderAgentView(); });
   let pages = [];
   let writerOff = false;
   if (known) {
@@ -2902,7 +2935,7 @@ async function runBiswasAgent(job) {
     ai.done = true;
     ai.think = settings.lang === "en" ? "Answered from the October 2026 note. Asking the free AIs too." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর। ফ্রি AI-কেও জিজ্ঞাসা করছি।";
     renderAgentView();
-    await panelP;
+    ai.panel = await askPanel(job);
     cur.at = Date.now();
     saveAgent();
     agentBusy = false;
@@ -2980,9 +3013,13 @@ async function runBiswasAgent(job) {
         } else await readRound(orders, 10);
       } catch (e) { /* the next search still runs */ }
     }
-    if (writerOff) {
+    mark(settings.lang === "en" ? "Asking the free AIs, then keeping only the lines that match" : "ফ্রি AI-কে জিজ্ঞাসা করছি, তারপর যে লাইন মিলেছে শুধু সেটা রাখছি");
+    try { ai.panel = await askPanel(job, pages); } catch (e) { ai.panel = []; }
+    const article = agreeArticle(ai.panel, pages);
+    renderAgentView();
+    if (article || writerOff) {
       ai.pages = snap();
-      ai.content = auditHead(pages) + "\n\n" + (deepDump(pages) || (settings.lang === "en" ? "The free AI limit is used up, and no page text came back." : "ফ্রি AI-এর সীমা শেষ, এবং কোনো পাতার লেখা আসেনি।"));
+      ai.content = auditHead(pages) + "\n\n" + (article || deepDump(pages) || (settings.lang === "en" ? "No two free AIs agreed, and no page text came back." : "দুটি ফ্রি AI মেলেনি, এবং পাতার লেখাও আসেনি।"));
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
@@ -3001,7 +3038,6 @@ async function runBiswasAgent(job) {
     const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nAudit:\n" + auditHead(pages) + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, system: `You are the audit engine. ${lang} Keep a fee, date or amount only if the audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest or mark it unchecked. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
     ai.pages = snap();
     ai.content = auditHead(pages) + "\n\n" + dropCutoff(cleanAgent(checked.text || draft.text), job);
-    await panelP;
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
     ai.done = true;
     cur.at = Date.now();
