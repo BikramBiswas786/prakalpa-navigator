@@ -375,15 +375,57 @@ async function searchDuck(q) {
   } catch (e) { /* leave Bing's results */ }
   return out;
 }
-async function searchMore(q) {
-  const bing = await searchBing(q);
-  const duck = await searchDuck(q);
+async function searchParallel(q) {
   const out = [];
-  const push = row => { if (row && row.url && out.length < 4 && !out.some(x => x.url === row.url)) out.push(row); };
+  const endpoint = "https://search.parallel.ai/mcp";
+  const base = { "content-type": "application/json", accept: "application/json, text/event-stream", "user-agent": CHROME };
+  const call = async (payload, session) => {
+    const headers = { ...base };
+    if (session) headers["mcp-session-id"] = session;
+    const r = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(payload), signal: AbortSignal.timeout(18000) });
+    return { ok: r.ok, sid: r.headers.get("mcp-session-id") || session || "", text: await r.text() };
+  };
+  try {
+    const init = await call({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "biswas-ai", version: "1.0" } } });
+    if (!init.ok || !init.sid) return out;
+    await call({ jsonrpc: "2.0", method: "notifications/initialized" }, init.sid);
+    const asked = await call({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "web_search", arguments: { search_queries: [String(q).slice(0, 180)], objective: "Current public pages for: " + String(q).slice(0, 180) } } }, init.sid);
+    const msg = JSON.parse(asked.text);
+    const chunk = (((msg.result || {}).content || [])[0] || {}).text || "";
+    const data = JSON.parse(chunk);
+    for (const row of data.results || []) {
+      if (out.length >= 3) break;
+      const url = safeHttpUrl(row && row.url);
+      if (!url) continue;
+      const title = String((row && row.title) || url).replace(/\s+/g, " ").trim().slice(0, 160);
+      const text = ((row && row.excerpts) || []).map(x => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean).join(" ").slice(0, 900);
+      if (!out.some(x => x.url === url)) out.push({ title, url, via: "parallel", text });
+    }
+  } catch (e) { /* Parallel is free and keyless, but it can be busy */ }
+  return out;
+}
+async function searchInstant(q) {
+  try {
+    const r = await fetch("https://api.duckduckgo.com/?format=json&no_html=1&skip_disambig=1&q=" + encodeURIComponent(q), {
+      redirect: "follow", signal: AbortSignal.timeout(8000), headers: { ...NAV, accept: "application/json" }
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const url = safeHttpUrl(j.AbstractURL);
+    if (!url || !j.AbstractText) return [];
+    return [{ title: String(j.Heading || j.AbstractSource || url).slice(0, 160), url, via: "duck", text: String(j.AbstractText).slice(0, 900) }];
+  } catch (e) { return []; }
+}
+async function searchMore(q) {
+  const [par, bing, duck, instant] = await Promise.all([searchParallel(q), searchBing(q), searchDuck(q), searchInstant(q)]);
+  const out = [];
+  const push = row => { if (row && row.url && out.length < 6 && !out.some(x => x.url === row.url)) out.push(row); };
+  par.slice(0, 2).forEach(push);
   bing.slice(0, 2).forEach(push);
-  duck.slice(0, 2).forEach(push);
+  duck.slice(0, 1).forEach(push);
+  instant.forEach(push);
+  par.slice(2).forEach(push);
   bing.slice(2).forEach(push);
-  duck.slice(2).forEach(push);
   return out;
 }
 async function searchWeb(q) {
@@ -520,7 +562,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 5) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v50"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v51"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
