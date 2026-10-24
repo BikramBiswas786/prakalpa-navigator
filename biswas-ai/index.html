@@ -454,7 +454,7 @@ textarea.paper { white-space: pre-wrap; }
       </div>
       <div class="composer">
         <div class="inner">
-          <div class="hint"><button class="btn small" type="button" id="d-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="d-new" data-t="newchat"></button></div>
+          <div class="hint"><button class="btn small" type="button" id="d-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="d-save" data-t="d_savechat"></button> <button class="btn small" type="button" id="d-new" data-t="newchat"></button></div>
         </div>
       </div>
     </section>
@@ -645,6 +645,7 @@ textarea.paper { white-space: pre-wrap; }
 <aside id="hist-sheet" hidden>
   <div class="sheet-top">
     <b data-t="conv_h">কথোপকথন</b>
+    <button class="btn small" type="button" id="sheet-save" data-t="d_savechat" hidden></button>
     <button class="btn small" type="button" id="sheet-new" data-t="newchat"></button>
     <button class="btn small" type="button" id="sheet-close" data-t="cancel"></button>
   </div>
@@ -847,7 +848,7 @@ const STR = {
   bn: {
     tab_draft: "লেখার টেবিল", tab_table: "টেবিল / Excel", tab_files: "ফাইল টুল", tab_chat: "AI চ্যাট", tab_catalog: "প্রকল্প ও পরিষেবা", tab_helper: "AI সহায়ক",
     d_title: "খসড়া তৈরি", d_type: "কী লিখবেন", d_lang: "ভাষা", d_to: "প্রাপক (যাকে পাঠানো হবে)", d_sub: "বিষয়", d_ref: "সূত্র / PUC", d_facts: "মূল তথ্য ও নির্দেশ", d_facts_ph: "যেমন: আবেদনকারী শ্রী … জাতি শংসাপত্রের আবেদন করেছেন; BDO-র রিপোর্ট পাওয়া গেছে; শুনানি ১৫.১১.২০২৬ তারিখে …",
-    d_attach: "নমুনা চিঠি যোগ", d_files_h: "সংযুক্তি", d_files_p: "একটি পুরনো চিঠি বা নমুনা যোগ করুন। ডেস্ক আগে পুরোটা পড়বে, তারপর লিখবে।", d_logo: "ওয়ার্ডের ছবি", d_logo_x: "ছবি সরান", d_emblem: "অশোকস্তম্ভ", d_reading: "সংযুক্ত চিঠি পড়ছি…", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
+    d_attach: "নমুনা চিঠি যোগ", d_files_h: "সংযুক্তি", d_files_p: "একটি পুরনো চিঠি বা নমুনা যোগ করুন। ডেস্ক আগে পুরোটা পড়বে, তারপর লিখবে।", d_logo: "ওয়ার্ডের ছবি", d_logo_x: "ছবি সরান", d_emblem: "অশোকস্তম্ভ", d_reading: "সংযুক্ত চিঠি পড়ছি…", d_savechat: "চ্যাট সেভ", d_saved: "কথোপকথনে নতুন বক্স সেভ হয়েছে", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
     d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
     types: { resolution: "রেজোলিউশন (প্রশাসনিক সিদ্ধান্ত)", admin: "প্রশাসনিক অনুমোদন", order: "অফিস আদেশ", corrigendum: "সংশোধনী (corrigendum)", speaking: "কারণযুক্ত আদেশ (শুনানির পর)", reminder: "তাগিদ", minutes: "সভার কার্যবিবরণী", allotment: "বরাদ্দ / টাকা ছাড়", notesheet: "নোটশিট", dfa: "খসড়া চিঠি (DFA)", hearing: "শুনানির নোটিশ", showcause: "শো-কজ নোটিশ", rti: "RTI-র উত্তর", enquiry: "তদন্ত রিপোর্ট", reverify: "জাতি শংসাপত্র পুনর্যাচাই", letter: "সাধারণ সরকারি চিঠি" },
     t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
@@ -868,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v83", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v84", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -921,7 +922,7 @@ const STR = {
   en: {
     tab_draft: "Drafting desk", tab_table: "Table / Excel", tab_files: "File tools", tab_chat: "AI chat", tab_catalog: "Schemes and services", tab_helper: "AI helper",
     d_title: "Create a draft", d_type: "What to write", d_lang: "Language", d_to: "To (addressee)", d_sub: "Subject", d_ref: "Reference / PUC", d_facts: "Main facts and instructions", d_facts_ph: "e.g. Sri … applied for a caste certificate; BDO's report received; hearing on 15.11.2026 …",
-    d_attach: "Add a demo letter", d_files_h: "Attachments", d_files_p: "Add an old letter or a sample. The desk reads all of it before it writes.", d_logo: "Ward logo", d_logo_x: "Remove logo", d_emblem: "Ashoka Stambha", d_reading: "Reading the attached letter…", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
+    d_attach: "Add a demo letter", d_files_h: "Attachments", d_files_p: "Add an old letter or a sample. The desk reads all of it before it writes.", d_logo: "Ward logo", d_logo_x: "Remove logo", d_emblem: "Ashoka Stambha", d_reading: "Reading the attached letter…", d_savechat: "Save chat", d_saved: "Saved as a new conversation", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
     d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
     types: { resolution: "Resolution", admin: "Administrative approval", order: "Office order", corrigendum: "Corrigendum", speaking: "Speaking order (after hearing)", reminder: "Reminder", minutes: "Minutes of a meeting", allotment: "Allotment or release of fund", notesheet: "Notesheet", dfa: "Draft letter (DFA)", hearing: "Hearing notice", showcause: "Show-cause notice", rti: "RTI reply", enquiry: "Enquiry report", reverify: "Caste-certificate re-verification", letter: "General official letter" },
     t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
@@ -942,7 +943,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v83", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v84", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2282,8 +2283,33 @@ function openDraftCase(type, id, save) {
   if (save !== false) saveDraft();
   if ($("#d-type")) renderDraftForm();
 }
+function pullDraftForm() {
+  ["to", "sub", "ref", "facts"].forEach(k => { const el = $("#d-" + k); if (el) draft[k] = el.value; });
+  const paper = $("#d-paper");
+  if (paper && !draftPreview) draft.text = paper.value;
+}
+function draftHasBody() {
+  return [draft.text, draft.sub, draft.to, draft.facts, draft.ref].some(v => String(v || "").trim());
+}
+function saveChatFolder() {
+  pullDraftForm();
+  if (!draftHasBody()) return toast(t("d_need"));
+  const type = DOC_TYPES[draft.type] ? draft.type : "notesheet";
+  if (!Array.isArray(draftCases[type])) draftCases[type] = [];
+  const title = String(draft.sub || draft.to || String(draft.text || "").split("\n").map(s => s.trim()).find(Boolean) || draft.facts || "").replace(/\s+/g, " ").trim().slice(0, 72);
+  const copy = blankDraft(type);
+  Object.assign(copy, { title: title || t("d_savechat"), at: Date.now(), lang: draft.lang, to: draft.to || "", sub: draft.sub || "", ref: draft.ref || "", facts: draft.facts || "", text: draft.text || "", prev: draft.prev || "" });
+  draftCases[type].unshift(copy);
+  saveDraft();
+  const sheet = $("#hist-sheet");
+  if (sheet) sheet.hidden = false;
+  const saveBtn = $("#sheet-save"); if (saveBtn) saveBtn.hidden = false;
+  renderDraftConv();
+  toast(t("d_saved"));
+}
 function newDraftCase() {
   const type = DOC_TYPES[draft.type] ? draft.type : "notesheet";
+  pullDraftForm();
   saveDraft();
   const row = blankDraft(type);
   draftCases[type] = draftCases[type] || [];
@@ -2301,8 +2327,8 @@ function newDraftCase() {
 function renderDraftConv() {
   if (mode !== "office" || tabs.office !== "draft") return;
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
-  const rows = (draftCases[draft.type] || []).filter(t => (t.id === draft._id || t.text || t.facts || t.sub || t.to) && !!t.archived === draftArch && (!q || String(t.title || t.sub || "").toLowerCase().includes(q)));
-  const html = rows.length ? rows.map(t => convCard(Object.assign({}, t, { title: t.title || t.sub || t("newchat") }), "dr")).join("") : `<p class="lead">${esc(draftArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  const rows = (draftCases[draft.type] || []).filter(t => (t.text || t.facts || t.sub || t.to) && !!t.archived === draftArch && (!q || String(t.title || t.sub || "").toLowerCase().includes(q)));
+  const html = rows.length ? rows.map(t => convCard(t, "dr")).join("") : `<p class="lead">${esc(draftArch ? t("arch_empty") : t("conv_empty"))}</p>`;
   const box = $("#sheet-list"); if (box) box.innerHTML = html;
   document.querySelectorAll("[data-conv-arch]").forEach(b => { if (tabs.office === "draft") b.textContent = draftArch ? t("show_chats") : t("show_arch"); });
 }
@@ -2331,13 +2357,14 @@ const saveDraft = () => {
   if (!Array.isArray(draftCases[type])) draftCases[type] = [];
   let row = draftCases[type].find(t => t.id === draft._id);
   if (!row) { row = blankDraft(type); row.id = draft._id || row.id; draft._id = row.id; draftCases[type].unshift(row); }
-  const title = String(draft.sub || draft.to || draft.text || draft.facts || "").replace(/\s+/g, " ").trim().slice(0, 72);
-  Object.assign(row, { lang: draft.lang, to: draft.to || "", sub: draft.sub || "", ref: draft.ref || "", facts: draft.facts || "", text: draft.text || "", prev: draft.prev || "", at: Date.now(), title: title || t("newchat") });
+  const title = String(draft.sub || draft.to || String(draft.text || "").split("\n").map(s => s.trim()).find(Boolean) || draft.facts || "").replace(/\s+/g, " ").trim().slice(0, 72);
+  Object.assign(row, { lang: draft.lang, to: draft.to || "", sub: draft.sub || "", ref: draft.ref || "", facts: draft.facts || "", text: draft.text || "", prev: draft.prev || "", at: row.at || Date.now() });
+  if (title) row.title = title;
   draftIds[type] = row.id;
   if (whoId) {
     const packed = {};
     Object.keys(draftCases).forEach(k => {
-      const rows = (draftCases[k] || []).filter(t => t.id || t.text || t.facts || t.sub || t.to).slice(0, 30).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, lang: t.lang, to: t.to || "", sub: t.sub || "", ref: t.ref || "", facts: t.facts || "", text: t.text || "", prev: t.prev || "" }));
+      const rows = (draftCases[k] || []).filter(t => t.text || t.facts || t.sub || t.to).slice(0, 30).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, lang: t.lang, to: t.to || "", sub: t.sub || "", ref: t.ref || "", facts: t.facts || "", text: t.text || "", prev: t.prev || "" }));
       if (rows.length) packed[k] = rows;
     });
     vaultSet("draftCases", packed);
@@ -4132,8 +4159,9 @@ document.addEventListener("click", e => {
   }
   if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
   if ((x = el("[data-dr]"))) { const s = $("#hist-sheet"); if (s) s.hidden = true; return openDraftCase(draft.type, x.dataset.dr); }
+  if (el("#d-save") || (el("#sheet-save") && mode === "office" && tabs.office === "draft")) return saveChatFolder();
   if (el("#d-new")) return newDraftCase();
-  if (el("#d-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; renderDraftConv(); } return; }
+  if (el("#d-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; const b = $("#sheet-save"); if (b) b.hidden = false; renderDraftConv(); } return; }
   if ((x = el("[data-off]"))) {
     const bits = String(x.dataset.off || "").split(":");
     officeOpen = bits[0] || officeOpen;
@@ -4148,7 +4176,7 @@ document.addEventListener("click", e => {
   if (el("#conv-new") || el("#hist-new")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; mode === "public" ? renderPublicConv() : mode === "office" ? renderOfficeConv() : renderConv(); } return; }
+  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; const b = $("#sheet-save"); if (b) b.hidden = !(mode === "office" && tabs.office === "draft"); mode === "public" ? renderPublicConv() : mode === "office" && tabs.office === "draft" ? renderDraftConv() : mode === "office" ? renderOfficeConv() : renderConv(); } return; }
   if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
   if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
