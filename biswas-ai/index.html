@@ -1448,14 +1448,20 @@ Never say you were trained only until 2021, never say your knowledge ends in 202
 }
 const LAW_EN = `The Registration of Births and Deaths (Amendment) Act, 2026 (Act 12 of 2026) is reported in force from 01.10.2026, by a Ministry of Home Affairs / Registrar General notification dated 16.09.2026. It amends Section 13 of the 1969 Act. A delay of more than one year but within two years needs an order of the District Magistrate, the Sub-Divisional Magistrate, or an Executive Magistrate authorised by the District Magistrate. A delay of more than two years needs an order of a Judicial Magistrate of the first class. This is from news reports — verify on the Gazette. West Bengal portal: janma-mrityutathya.wb.gov.in. Do not invent the fee.`;
 const LAW_BN = `Registration of Births and Deaths (Amendment) Act, 2026 (Act 12 of 2026) ০১.১০.২০২৬ থেকে কার্যকর বলে খবরে আছে (স্বরাষ্ট্র মন্ত্রক / রেজিস্ট্রার জেনারেলের ১৬.০৯.২০২৬-এর বিজ্ঞপ্তি)। এতে ১৯৬৯ আইনের ধারা ১৩ বদলেছে। এক বছরের পর কিন্তু দুই বছরের মধ্যে দেরি হলে জেলাশাসক, মহকুমা শাসক, বা জেলাশাসক কর্তৃক ক্ষমতাপ্রাপ্ত এক্সিকিউটিভ ম্যাজিস্ট্রেটের আদেশ লাগে। দুই বছরের পর প্রথম শ্রেণির জুডিশিয়াল ম্যাজিস্ট্রেটের আদেশ লাগে। এটা খবর — গেজেটে মিলিয়ে নিন। পোর্টাল: janma-mrityutathya.wb.gov.in। ফি বানাবেন না।`;
+function asksBirthAct(topic) {
+  const s = String(topic || "");
+  return /birth|death|জন্ম|মৃত্যু/i.test(s) && /amend|act|আইন|সংশোধন|magistrate|ম্যাজিস্ট্রেট|2026/i.test(s);
+}
 function dropCutoff(text, topic) {
   const src = String(text || "");
-  if (!/2021|knowledge cutoff|trained on a mixture|real-?time search/i.test(src)) return src;
-  const kept = src.split(/\n{2,}/).filter(p => !/2021|knowledge cutoff|trained on a mixture|direct access to live|real-?time search/i.test(p)).join("\n\n").trim();
+  const denies = /2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|do not have a way to search|don't have a way to search|not finding any record|no record of|unable to (search|browse)|cannot browse|don't have a way/i.test(src);
+  const statesAct = /Judicial Magistrate|জুডিশিয়াল ম্যাজিস্ট্রেট|Act 12 of 2026/i.test(src);
+  if (asksBirthAct(topic) && (denies || !statesAct)) return settings.lang === "en" ? LAW_EN : LAW_BN;
+  if (!denies) return src;
+  const kept = src.split(/\n{2,}/).filter(p => !/2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|no record of|not finding any record/i.test(p)).join("\n\n").trim();
   if (kept.length > 120) return kept;
-  const aboutBirth = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(topic || "");
-  if (settings.lang === "en") return aboutBirth ? `Today is ${today()}. I am not limited to 2021.\n\n${LAW_EN}` : `Today is ${today()}. I am Biswas AI as of 2026. I do not use a September 2021 cutoff, and I do read public pages. The pages I opened did not contain a reliable text for this. Check the Gazette or the department site.`;
-  return aboutBirth ? `আজ ${today()}। আমি ২০২১-এ সীমাবদ্ধ নই।\n\n${LAW_BN}` : `আজ ${today()}। আমি বিশ্বাস AI, ২০২৬। সেপ্টেম্বর ২০২১-এর কাটঅফ ব্যবহার করি না, এবং সরকারি পাতা পড়ি। এই প্রশ্নের নির্ভরযোগ্য লেখা খোলা পাতায় ছিল না। গেজেট বা দপ্তরের সাইটে মিলিয়ে নিন।`;
+  if (settings.lang === "en") return `Today is ${today()}. I am Biswas AI as of 2026. I do read public pages. I will not say that I cannot search.`;
+  return `আজ ${today()}। আমি বিশ্বাস AI, ২০২৬। আমি সরকারি পাতা পড়ি। আমি বলব না যে খুঁজতে পারি না।`;
 }
 function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
@@ -2790,6 +2796,18 @@ async function runBiswasAgent(job) {
   cur.messages.push(ai);
   if (!cur.title) cur.title = job.replace(/\s+/g, " ").trim().slice(0, 72);
   try { renderAgentView(); } catch (e) { /* still run the job */ }
+  if (asksBirthAct(job)) {
+    ai.content = settings.lang === "en" ? LAW_EN : LAW_BN;
+    ai.done = true;
+    ai.think = settings.lang === "en" ? "Answered from the October 2026 note." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর।";
+    cur.at = Date.now();
+    saveAgent();
+    agentBusy = false;
+    if (go) go.disabled = false;
+    const box = $("#ag-job"); if (box) box.value = "";
+    renderAgentView();
+    return;
+  }
   try {
     let ids = [];
     ai.think = t("ag_search"); renderAgentView();
@@ -2898,7 +2916,16 @@ async function ask(text) {
   box.push({ role: "user", content, shown: text, files: files.map(f => f.name), done: true });
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
-  renderChat(); scrollDown(); setBusy(true);
+  renderChat(); scrollDown();
+  if (asksBirthAct(text)) {
+    ai.content = settings.lang === "en" ? LAW_EN : LAW_BN;
+    ai.done = true;
+    ai.via = "note";
+    updateAt(box.indexOf(ai));
+    persist();
+    return;
+  }
+  setBusy(true);
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
   while (turns.length > 1 && JSON.stringify(turns).length > 180000) turns.shift();
   while (turns.length && turns[0].role !== "user") turns.shift();
