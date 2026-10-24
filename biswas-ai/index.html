@@ -399,6 +399,8 @@ textarea.paper { white-space: pre-wrap; }
       <div class="page-inner draft-grid">
         <form class="panel" id="d-form">
           <h2 data-t="d_title"></h2>
+          <div class="tools"><button class="btn small" type="button" id="d-convs" data-t="conv_h"></button><button class="btn small" type="button" id="d-new" data-t="newchat"></button></div>
+          <p class="sch-note" id="d-only"></p>
           <div class="field"><label for="d-type" data-t="d_type"></label><select id="d-type"></select></div>
           <div class="field"><label for="d-lang" data-t="d_lang"></label><select id="d-lang"><option value="bn">বাংলা</option><option value="en">English</option></select></div>
           <div class="field"><label for="d-to" data-t="d_to"></label><input id="d-to"></div>
@@ -836,7 +838,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v77", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v78", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -875,6 +877,7 @@ const STR = {
     sample_label: "অফিসের নমুনা চিঠি (লেটারহেড ও ফরম্যাট)", sample_help: "অফিস থেকে যাওয়া একটি পুরনো চিঠি (Word বা PDF) দিন। সব খসড়া সেই লেটারহেড, মেমো নম্বর ও স্বাক্ষরের ধরনে লেখা হবে।",
     sch_title: "প্রকল্প ও পরিষেবা", sch_note: "অক্টোবর ২০২৬ পর্যন্ত সংগৃহীত তথ্য। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' বা 'অনিশ্চিত' লেখা তথ্য সরকারি পোর্টাল বা আদেশে মিলিয়ে নিন।",
     search: "প্রকল্প খুঁজুন…", f_benefit: "সুবিধা", f_who: "কারা পাবেন", f_how: "কীভাবে আবেদন", f_note: "জরুরি তথ্য", ask_ai: "AI-কে বিস্তারিত জিজ্ঞাসা", old: "আগে: ", no_match: "কিছু পাওয়া যায়নি।", scheme_only: "এই চ্যাট শুধু এই প্রকল্পের। অন্য প্রকল্পের আলাদা পাতা আছে।", office_back: "← সব কাজ", office_only: "এই পাতা শুধু এই কাজের। অন্য কাজের আলাদা পাতা আছে। আগের চ্যাট কথোপকথনে থাকে।", office_saved: "আগের চ্যাট",
+    draft_only: "এই পাতা শুধু এই ধরনের কাগজের। অন্য ধরন আলাদা পাতায়। আগের কাগজ কথোপকথনে থাকে।",
     st_ok: "নিশ্চিত", st_rep: "খবর অনুযায়ী", st_unc: "অনিশ্চিত",
     ask_scheme: n => `${n} সম্পর্কে বিস্তারিত বলুন: কী পাওয়া যায়, কারা যোগ্য, কোথায় ও কীভাবে আবেদন, কী নথি লাগে, এবং বর্তমান অবস্থা।`,
     stat_title: "AI অবস্থা", stat_checking: "সব AI key পরীক্ষা করা হচ্ছে… (২০ সেকেন্ড পর্যন্ত লাগতে পারে)", stat_ok: "কাজ করছে", stat_fail: "কাজ করছে না",
@@ -909,7 +912,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v77", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v78", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -948,6 +951,7 @@ const STR = {
     sample_label: "Office sample letter (letterhead and format)", sample_help: "Upload one old letter of the office (Word or PDF). Every draft will copy its letterhead, memo number and signature style.",
     sch_title: "Schemes and services", sch_note: "Information collected up to October 2026. Current State Government names, earlier names below. Check items marked 'Reported' or 'Unconfirmed' on the official portal or order.",
     search: "Search schemes…", f_benefit: "Benefit", f_who: "Who can get it", f_how: "How to apply", f_note: "Note", ask_ai: "Ask the AI for details", old: "Earlier: ", no_match: "Nothing found.", scheme_only: "This chat is only for this scheme. Every other scheme has its own page.", office_back: "← All work", office_only: "This page is only for this work. Every other work has its own page. Earlier chats stay in Conversations.", office_saved: "Earlier chat",
+    draft_only: "This page is only for this kind of paper. Every other kind has its own page. Earlier papers stay in Conversations.",
     st_ok: "Confirmed", st_rep: "Reported", st_unc: "Unconfirmed",
     ask_scheme: n => `Tell me about ${n} in detail: what it gives, who is eligible, where and how to apply, documents needed, and its current status.`,
     stat_title: "AI status", stat_checking: "Checking every AI key… (can take up to 20 seconds)", stat_ok: "Working", stat_fail: "Not working",
@@ -2077,6 +2081,7 @@ function renderRail() {
   renderConv();
   if (mode === "public") renderPublicConv();
   if (mode === "office") renderOfficeConv();
+  if (mode === "office" && tab === "draft") renderDraftConv();
 }
 function showView() {
   let tab = tabs[mode];
@@ -2165,10 +2170,109 @@ const DOC_TYPES = {
   letter: "General official letter."
 };
 let draft = store.get("draft", { type: "notesheet", lang: settings.lang, to: "", sub: "", ref: "", facts: "", text: "", prev: "" });
+let draftCases = {};
+let draftIds = {};
+let draftArch = false;
 let draftFiles = [];
 let draftBusy = null;
 let draftPreview = false;
-const saveDraft = () => store.set("draft", draft);
+function blankDraft(type) {
+  return { id: nid(), title: "", at: Date.now(), archived: false, type, lang: settings.lang, to: "", sub: "", ref: "", facts: "", text: "", prev: "" };
+}
+function loadDraftCases() {
+  draftCases = vaultGet("draftCases", {});
+  if (!draftCases || typeof draftCases !== "object" || Array.isArray(draftCases)) draftCases = {};
+  draftIds = vaultGet("draftIds", {});
+  if (!draftIds || typeof draftIds !== "object" || Array.isArray(draftIds)) draftIds = {};
+  Object.keys(draftCases).forEach(type => {
+    if (!DOC_TYPES[type] || !Array.isArray(draftCases[type])) { delete draftCases[type]; return; }
+    draftCases[type].forEach(t => { if (!t.id) t.id = nid(); });
+    if (!draftCases[type].some(t => t.id === draftIds[type])) draftIds[type] = (draftCases[type][0] || {}).id || "";
+  });
+  const old = store.get("draft", null);
+  const has = Object.keys(draftCases).some(type => (draftCases[type] || []).some(t => t.text || t.facts || t.sub || t.to));
+  if (!has && old && DOC_TYPES[old.type] && (old.text || old.facts || old.sub || old.to)) {
+    const row = Object.assign(blankDraft(old.type), { lang: old.lang, to: old.to, sub: old.sub, ref: old.ref, facts: old.facts, text: old.text, prev: old.prev || "", title: String(old.sub || old.to || "").replace(/\s+/g, " ").trim().slice(0, 72) });
+    draftCases[old.type] = [row];
+    draftIds[old.type] = row.id;
+  }
+  const type = old && DOC_TYPES[old.type] && draftCases[old.type] ? old.type : "notesheet";
+  openDraftCase(type, draftIds[type] || "", false);
+}
+function openDraftCase(type, id, save) {
+  if (!DOC_TYPES[type]) type = "notesheet";
+  if (draftBusy) { try { draftBusy.abort(); } catch (e) { /* the other page must not receive this paper */ } draftBusy = null; }
+  if (!Array.isArray(draftCases[type])) draftCases[type] = [];
+  let row = draftCases[type].find(t => t.id === id && !t.archived);
+  if (!row) row = draftCases[type].find(t => t.id === id);
+  if (!row) row = draftCases[type].find(t => !t.archived);
+  if (!row) { row = blankDraft(type); draftCases[type].unshift(row); }
+  draftIds[type] = row.id;
+  draft = { _id: row.id, type, lang: row.lang || settings.lang, to: row.to || "", sub: row.sub || "", ref: row.ref || "", facts: row.facts || "", text: row.text || "", prev: row.prev || "" };
+  draftFiles = [];
+  draftPreview = false;
+  if (save !== false) saveDraft();
+  if ($("#d-type")) renderDraftForm();
+}
+function newDraftCase() {
+  const type = DOC_TYPES[draft.type] ? draft.type : "notesheet";
+  saveDraft();
+  const cur = (draftCases[type] || []).find(t => t.id === draft._id);
+  if (cur && !cur.text && !cur.facts && !cur.sub && !cur.to) { renderDraftForm(); return; }
+  const row = blankDraft(type);
+  draftCases[type] = draftCases[type] || [];
+  draftCases[type].unshift(row);
+  openDraftCase(type, row.id);
+}
+function renderDraftConv() {
+  if (mode !== "office" || tabs.office !== "draft") return;
+  const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
+  const rows = (draftCases[draft.type] || []).filter(t => (t.text || t.facts || t.sub || t.to) && !!t.archived === draftArch && (!q || String(t.title || t.sub || "").toLowerCase().includes(q)));
+  const html = rows.length ? rows.map(t => convCard(t, "dr")).join("") : `<p class="lead">${esc(draftArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  const box = $("#sheet-list"); if (box) box.innerHTML = html;
+  document.querySelectorAll("[data-conv-arch]").forEach(b => { if (tabs.office === "draft") b.textContent = draftArch ? t("show_chats") : t("show_arch"); });
+}
+function deleteDraftCase(id) {
+  const type = draft.type;
+  let list = (draftCases[type] || []).filter(t => t.id !== id);
+  draftCases[type] = list;
+  delAsk = "";
+  if (draft._id === id) openDraftCase(type, (list.find(t => !t.archived) || {}).id || "");
+  else saveDraft();
+  renderDraftConv();
+}
+function toggleDraftArch(id) {
+  const row = (draftCases[draft.type] || []).find(t => t.id === id);
+  if (!row) return;
+  row.archived = !row.archived;
+  delAsk = "";
+  if (row.archived && draft._id === id) {
+    const next = (draftCases[draft.type] || []).find(t => t.id !== id && !t.archived);
+    openDraftCase(draft.type, next ? next.id : "");
+  } else saveDraft();
+  renderDraftConv();
+}
+const saveDraft = () => {
+  const type = DOC_TYPES[draft.type] ? draft.type : "notesheet";
+  if (!Array.isArray(draftCases[type])) draftCases[type] = [];
+  let row = draftCases[type].find(t => t.id === draft._id);
+  if (!row) { row = blankDraft(type); row.id = draft._id || row.id; draft._id = row.id; draftCases[type].unshift(row); }
+  const title = String(draft.sub || draft.to || draft.facts || "").replace(/\s+/g, " ").trim().slice(0, 72);
+  Object.assign(row, { lang: draft.lang, to: draft.to || "", sub: draft.sub || "", ref: draft.ref || "", facts: draft.facts || "", text: draft.text || "", prev: draft.prev || "", at: Date.now() });
+  if (title) row.title = title;
+  draftIds[type] = row.id;
+  if (whoId) {
+    const packed = {};
+    Object.keys(draftCases).forEach(k => {
+      const rows = (draftCases[k] || []).filter(t => t.text || t.facts || t.sub || t.to).slice(0, 20).map(t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, lang: t.lang, to: t.to || "", sub: t.sub || "", ref: t.ref || "", facts: t.facts || "", text: t.text || "", prev: t.prev || "" }));
+      if (rows.length) packed[k] = rows;
+    });
+    vaultSet("draftCases", packed);
+    vaultSet("draftIds", draftIds);
+  }
+  store.set("draft", { type, lang: draft.lang, to: draft.to, sub: draft.sub, ref: draft.ref, facts: draft.facts, text: draft.text, prev: draft.prev });
+  if (mode === "office" && tabs.office === "draft") renderDraftConv();
+};
 function renderDraftForm() {
   $("#d-type").innerHTML = Object.keys(DOC_TYPES).map(k => `<option value="${k}" ${k === draft.type ? "selected" : ""}>${esc(tt("types", k))}</option>`).join("");
   $("#d-lang").value = draft.lang || settings.lang;
@@ -2181,24 +2285,29 @@ function renderDraftForm() {
   if (draftPreview) $("#d-view").innerHTML = mdToHtml(draft.text) || `<p class="lead">${esc(t("d_empty"))}</p>`;
   $("#d-undo").disabled = !draft.prev;
   $("#d-write").textContent = draftBusy ? t("d_writing") : t("d_write");
+  const note = $("#d-only"); if (note) note.textContent = t("draft_only");
 }
 function draftStatus(text) { $("#d-status").textContent = text || ""; }
 async function runDraft(turns, images) {
   if (draftBusy) return toast(errText("busy"));
+  const caseId = draft._id;
+  const caseType = draft.type;
   draftBusy = new AbortController();
   const before = draft.text;
   const t0 = Date.now();
-  const tick = setInterval(() => draftStatus(`${t("d_writing")} ${Math.round((Date.now() - t0) / 1000)} ${t("secs")}`), 1000);
+  const tick = setInterval(() => { if (draft._id === caseId) draftStatus(`${t("d_writing")} ${Math.round((Date.now() - t0) / 1000)} ${t("secs")}`); }, 1000);
   draftPreview = false; renderDraftForm(); draftStatus(t("d_writing"));
   try {
-    const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { $("#d-paper").value = text; } });
+    const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { if (draft._id === caseId) $("#d-paper").value = text; } });
+    if (draft._id !== caseId || draft.type !== caseType) return;
     draft.prev = before; draft.text = r.text; saveDraft();
     draftStatus(`${t("answered_by")}${t("brand")}${r.truncated ? " · " + errText("cut") : ""}`);
   } catch (e) {
+    if (draft._id !== caseId) return;
     if (e && e.text) { draft.prev = before; draft.text = e.text; saveDraft(); }
     else $("#d-paper").value = draft.text;
     draftStatus(aiFailed(e));
-  } finally { clearInterval(tick); draftBusy = null; renderDraftForm(); }
+  } finally { clearInterval(tick); if (draft._id === caseId) { draftBusy = null; renderDraftForm(); } }
 }
 function draftRequest() {
   const lang = draft.lang === "en" ? "English" : "Bengali";
@@ -2825,8 +2934,8 @@ let convArch = false;
 let agArch = false;
 let delAsk = "";
 function convCard(row, kind) {
-  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : kind === "off" ? `data-off="${row.work || officeOpen}:${row.id}"` : `data-thread="${row.id}"`;
-  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : kind === "off" ? row.id === currentOfficeId() && (row.work || officeOpen) === officeOpen : row.id === threadId;
+  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : kind === "off" ? `data-off="${row.work || officeOpen}:${row.id}"` : kind === "dr" ? `data-dr="${row.id}"` : `data-thread="${row.id}"`;
+  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : kind === "off" ? row.id === currentOfficeId() && (row.work || officeOpen) === officeOpen : kind === "dr" ? row.id === draft._id : row.id === threadId;
   const sure = delAsk === kind + ":" + row.id;
   const title = row.title || t(kind === "ag" ? "ag_job" : "conv_empty");
   return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(title)}</b><small>${esc(whenLabel(row.at))}</small></button><div class="conv-links"><button type="button" data-arch="${row.id}" data-box="${kind}">${esc(row.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${row.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
@@ -2879,6 +2988,7 @@ function loadVault() {
     officeThreads[id].forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
     if (officeThreads[id][0]) officeIds[id] = officeThreads[id][0].id;
   });
+  loadDraftCases();
   const oldOffice = Array.isArray(chats.office) ? chats.office : [];
   const officeHas = Object.keys(officeThreads).some(id => (officeThreads[id] || []).some(t => (t.messages || []).some(m => m.role === "user" && !m.seed)));
   if (!officeHas && oldOffice.some(m => m.role === "user")) {
@@ -3037,7 +3147,7 @@ function officeRows() {
   return out.sort((a, b) => (b.at || 0) - (a.at || 0));
 }
 function renderOfficeConv() {
-  if (mode !== "office") return;
+  if (mode !== "office" || tabs.office !== "chat") return;
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = officeRows().filter(t => (t.messages || []).some(m => m.role === "user") && !!t.archived === offArch && (!q || String(t.title || "").toLowerCase().includes(q)));
   const html = rows.length ? rows.map(t => convCard(t, "off")).join("") : `<p class="lead">${esc(offArch ? t("arch_empty") : t("conv_empty"))}</p>`;
@@ -3678,7 +3788,13 @@ $("#file-in").addEventListener("change", e => { const l = Array.from(e.target.fi
 // drafting desk
 $("#d-form").addEventListener("input", e => {
   const k = (e.target.id || "").replace("d-", "");
-  if (["type", "lang", "to", "sub", "ref", "facts"].includes(k)) { draft[k] = e.target.value; saveDraft(); }
+  if (k === "type") {
+    const next = e.target.value;
+    saveDraft();
+    openDraftCase(next, draftIds[next] || "");
+    return;
+  }
+  if (["lang", "to", "sub", "ref", "facts"].includes(k)) { draft[k] = e.target.value; saveDraft(); }
 });
 $("#d-paper").addEventListener("input", e => { draft.text = e.target.value; saveDraft(); });
 $("#d-attach").addEventListener("click", () => $("#d-file").click());
@@ -3878,7 +3994,8 @@ document.addEventListener("click", e => {
   if ((x = el("[data-ag]"))) { const s = $("#ag-sheet"); if (s) s.hidden = true; return openAgent(x.dataset.ag); }
   if ((x = el("[data-agent]"))) { agentKind = x.dataset.agent; renderAgents(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-kind]"))) {
-    draft.type = x.dataset.kind; draft.lang = settings.lang; saveDraft();
+    saveDraft();
+    openDraftCase(x.dataset.kind, draftIds[x.dataset.kind] || "");
     return go("office", "draft");
   }
   if ((x = el("[data-nav]"))) {
@@ -3890,10 +4007,11 @@ document.addEventListener("click", e => {
   }
   if ((x = el("[data-del]"))) {
     const key = (x.dataset.box || "chat") + ":" + x.dataset.del;
-    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : x.dataset.box === "off" ? renderOfficeConv() : renderConv(); return; }
+    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : x.dataset.box === "off" ? renderOfficeConv() : x.dataset.box === "dr" ? renderDraftConv() : renderConv(); return; }
     if (x.dataset.box === "ag") deleteAgent(x.dataset.del);
     else if (x.dataset.box === "pub") deletePublicChat(x.dataset.del);
     else if (x.dataset.box === "off") deleteOfficeChat(x.dataset.del);
+    else if (x.dataset.box === "dr") deleteDraftCase(x.dataset.del);
     else deleteThread(x.dataset.del);
     return;
   }
@@ -3902,11 +4020,20 @@ document.addEventListener("click", e => {
     if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch);
     else if (x.dataset.box === "pub") togglePublicArch(x.dataset.arch);
     else if (x.dataset.box === "off") toggleOfficeArch(x.dataset.arch);
+    else if (x.dataset.box === "dr") toggleDraftArch(x.dataset.arch);
     else toggleArch(x.dataset.arch);
     return;
   }
-  if (el("[data-conv-arch]")) { if (mode === "public") { pubArch = !pubArch; delAsk = ""; renderPublicConv(); } else if (mode === "office") { offArch = !offArch; delAsk = ""; renderOfficeConv(); } else { convArch = !convArch; delAsk = ""; renderConv(); } return; }
+  if (el("[data-conv-arch]")) {
+    if (mode === "office" && tabs.office === "draft") { draftArch = !draftArch; delAsk = ""; renderDraftConv(); return; }
+    if (mode === "public") { pubArch = !pubArch; delAsk = ""; renderPublicConv(); return; }
+    if (mode === "office") { offArch = !offArch; delAsk = ""; renderOfficeConv(); return; }
+    convArch = !convArch; delAsk = ""; renderConv(); return;
+  }
   if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
+  if ((x = el("[data-dr]"))) { const s = $("#hist-sheet"); if (s) s.hidden = true; return openDraftCase(draft.type, x.dataset.dr); }
+  if (el("#d-new")) return newDraftCase();
+  if (el("#d-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; renderDraftConv(); } return; }
   if ((x = el("[data-off]"))) {
     const bits = String(x.dataset.off || "").split(":");
     officeOpen = bits[0] || officeOpen;
@@ -3918,12 +4045,12 @@ document.addEventListener("click", e => {
   if ((x = el("[data-word]"))) { closeRail(); return openWord(x.dataset.word); }
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
   if (el("#switch-user")) { closeRail(); return showGate(true); }
-  if (el("#conv-new") || el("#hist-new")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
+  if (el("#conv-new") || el("#hist-new")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
   if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; mode === "public" ? renderPublicConv() : mode === "office" ? renderOfficeConv() : renderConv(); } return; }
   if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
-  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
+  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
@@ -4132,7 +4259,7 @@ $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent();
 const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (chatCtl) chatCtl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
-const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : mode === "office" ? renderOfficeConv() : renderConv(); });
+const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : mode === "office" && tabs.office === "draft" ? renderDraftConv() : mode === "office" ? renderOfficeConv() : renderConv(); });
 function resume() {
   if (!isOpen()) { showLock(true); showGate(false); return; }
   showGate(true);
