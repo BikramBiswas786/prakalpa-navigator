@@ -271,6 +271,33 @@ export async function POST(request) {
   const problem = validate(body);
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
+  if (body.panel) {
+    const FREE = ["gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "cerebras", "sarvam"];
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 3);
+    const readAll = async stream => {
+      const reader = stream.getReader();
+      const dec = new TextDecoder();
+      let text = "";
+      const stop = Date.now() + 20000;
+      while (text.length < 3500 && Date.now() < stop) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        text += dec.decode(value, { stream: true });
+      }
+      try { await stream.cancel(); } catch { /* done */ }
+      return text.replace(/\u0000[A-Z_]+$/, "").trim();
+    };
+    const answers = await Promise.all(ids.map(async id => {
+      const p = PROVIDERS[id];
+      const model = p.models[0];
+      const r = await attempt(p, model, { ...body, images: [], maxOut: 700 }, request.signal, 12000);
+      if (!r.ok) return { provider: id, model, text: "", error: String(r.error || "failed").slice(0, 180) };
+      const text = await readAll(r.stream);
+      return { provider: id, model, text, error: text ? "" : "empty" };
+    }));
+    return json({ answers });
+  }
+
   const wantsVision = Boolean(body.images && body.images.length);
   let sawLimit = false;
   const tried = [];

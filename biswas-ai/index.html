@@ -188,6 +188,10 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .job-steps li { border-top: 1px solid var(--line); padding-top: 8px; }
 .job-steps b { display: block; font-size: .78rem; letter-spacing: .03em; color: var(--muted); margin-bottom: 4px; }
 .ag-log { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; font-size: .84rem; }
+.panel { display: grid; gap: 8px; margin-top: 12px; }
+.panel h3 { margin: 0; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.panel article { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--paper); }
+.panel article b { display: block; margin-bottom: 4px; }
 #ag-picks:empty { display: none; }
 .starter b { font-family: var(--f-display); font-weight: 600; color: var(--accent); }
 .starter span { font-size: .85rem; color: var(--muted); }
@@ -1397,7 +1401,7 @@ C. OTHER CERTIFICATES
 - Residential, income and similar certificates: through e-District (edistrict.wb.gov.in) or the office. Income: BDO for rural, SDO for municipal areas; no fee. Residential: SDO, after enquiry by BDO/Inspector/municipality.
 
 D. SCHEMES (PRAKALPA) UNDER THE BJP-LED STATE GOVERNMENT - status October 2026. The previous (TMC) government's scheme names and amounts are OUT OF DATE unless stated here; always give the current name first, and the old name in brackets so people recognise it.
-1. Annapurna Yojana / Annapurna Bhandar (old: Lakshmir Bhandar): Rs. 3,000 per month by DBT to eligible women, from June 2026 (01.06 or 03.06.2026). Budget 22.06.2026 allotted Rs. 36,000 crore; women aged 25-60 (some sources say 21). Existing Lakshmir Bhandar beneficiaries were moved over without a fresh application. A beneficiary cannot draw Annapurna and the widow pension together and must choose one (Women & Child Development & Social Welfare Dept. directive, reported by ThePrint). Other conditions (income limit, ration card category) and the window for fresh applications vary between sources (reported); official portals named: socialsecurity.wb.gov.in / socialregistry.wb.gov.in. Warn people against look-alike private websites.
+1. Annapurna Yojana / Annapurna Bhandar (old names, same scheme: Lakshmir Bhandar, Lakshmi Bhandar, Laxmi Vandar, Laxmi Bhandar, লক্ষ্মীর ভান্ডার): Rs. 3,000 per month by DBT to eligible women, from June 2026 (01.06 or 03.06.2026). Budget 22.06.2026 allotted Rs. 36,000 crore; women aged 25-60 (some sources say 21). Existing Lakshmir Bhandar beneficiaries were moved over without a fresh application. A beneficiary cannot draw Annapurna and the widow pension together and must choose one (Women & Child Development & Social Welfare Dept. directive, reported by ThePrint). Other conditions (income limit, ration card category) and the window for fresh applications vary between sources (reported); official portals named: socialsecurity.wb.gov.in / socialregistry.wb.gov.in. Warn people against look-alike private websites. Do not say this scheme does not exist. It is a West Bengal scheme, not a Gazette of India rural scheme.
 2. Ayushman Bharat PM-JAY (old: Swasthya Sathi): West Bengal joined in 2026; cashless treatment up to Rs. 5 lakh per family per year; Swasthya Sathi cards were honoured during the changeover (reported). Check eligibility at beneficiary.nha.gov.in.
 3. Social welfare pensions - Old Age, Widow, Disability (Manabik), and NSAP pensions: raised from Rs. 1,000 to Rs. 1,500 per month by DBT from 01.08.2026 (Cabinet decision reported by AIR/newsonair and The Statesman). The previous government's waiting list was scrapped; a fresh list of eligible beneficiaries is being prepared. (The old umbrella name was "Jai Bangla"; Taposili Bandhu (SC) and Jai Johar (ST) pensions: status?)
 4. Kanyaratna (old: Kanyashree): renamed by the CM on 14.08.2026. Schoolgirls get a one-time Rs. 1,000 in 2026; Rs. 2,000 a year from the 2027 academic year; about 20.13 lakh girls this year; Education Department to issue detailed guidelines. Beti Bachao Beti Padhao also launched in the State. Applications go through the school/college.
@@ -1448,20 +1452,48 @@ Never say you were trained only until 2021, never say your knowledge ends in 202
 }
 const LAW_EN = `The Registration of Births and Deaths (Amendment) Act, 2026 (Act 12 of 2026) is reported in force from 01.10.2026, by a Ministry of Home Affairs / Registrar General notification dated 16.09.2026. It amends Section 13 of the 1969 Act. A delay of more than one year but within two years needs an order of the District Magistrate, the Sub-Divisional Magistrate, or an Executive Magistrate authorised by the District Magistrate. A delay of more than two years needs an order of a Judicial Magistrate of the first class. This is from news reports — verify on the Gazette. West Bengal portal: janma-mrityutathya.wb.gov.in. Do not invent the fee.`;
 const LAW_BN = `Registration of Births and Deaths (Amendment) Act, 2026 (Act 12 of 2026) ০১.১০.২০২৬ থেকে কার্যকর বলে খবরে আছে (স্বরাষ্ট্র মন্ত্রক / রেজিস্ট্রার জেনারেলের ১৬.০৯.২০২৬-এর বিজ্ঞপ্তি)। এতে ১৯৬৯ আইনের ধারা ১৩ বদলেছে। এক বছরের পর কিন্তু দুই বছরের মধ্যে দেরি হলে জেলাশাসক, মহকুমা শাসক, বা জেলাশাসক কর্তৃক ক্ষমতাপ্রাপ্ত এক্সিকিউটিভ ম্যাজিস্ট্রেটের আদেশ লাগে। দুই বছরের পর প্রথম শ্রেণির জুডিশিয়াল ম্যাজিস্ট্রেটের আদেশ লাগে। এটা খবর — গেজেটে মিলিয়ে নিন। পোর্টাল: janma-mrityutathya.wb.gov.in। ফি বানাবেন না।`;
+const BHANDAR_EN = `Lakshmir Bhandar is also written Laxmi Vandar, Lakshmi Bhandar and লক্ষ্মীর ভান্ডার. It is the previous West Bengal government's scheme. From June 2026 the reported current name is Annapurna Yojana / Annapurna Bhandar: Rs. 3,000 a month by DBT to eligible women. Existing beneficiaries were moved over without a fresh application. A woman cannot draw this and the widow pension together. This is reported — check socialsecurity.wb.gov.in. It is a State scheme, not a Gazette of India project, so a search of only central portals will miss it.`;
+const BHANDAR_BN = `লক্ষ্মীর ভান্ডারকে Laxmi Vandar, Lakshmi Bhandar-ও লেখে। এটা আগের রাজ্য সরকারের প্রকল্প। জুন ২০২৬ থেকে খবরে নতুন নাম অন্নপূর্ণা যোজনা / অন্নপূর্ণা ভান্ডার: যোগ্য মহিলাদের মাসে ৩,০০০ টাকা। পুরনো উপভোক্তা নতুন আবেদন ছাড়াই চলে এসেছেন। বিধবা ভাতার সঙ্গে একসঙ্গে মেলে না। এটা খবর — socialsecurity.wb.gov.in-এ মিলিয়ে নিন। এটা রাজ্যের প্রকল্প, ভারতের গেজেটের প্রকল্প নয়।`;
 function asksBirthAct(topic) {
   const s = String(topic || "");
   return /birth|death|জন্ম|মৃত্যু/i.test(s) && /amend|act|আইন|সংশোধন|magistrate|ম্যাজিস্ট্রেট|2026/i.test(s);
 }
+function schemeNote(topic) {
+  if (!/laxmi|lakshmi|lakshmir|bhandar|vandar|bhander|ভান্ডার|লক্ষ্মী|অন্নপূর্ণা|annapurna/i.test(topic || "")) return "";
+  return settings.lang === "en" ? BHANDAR_EN : BHANDAR_BN;
+}
+function knownAnswer(topic) {
+  if (asksBirthAct(topic)) return settings.lang === "en" ? LAW_EN : LAW_BN;
+  return schemeNote(topic);
+}
 function dropCutoff(text, topic) {
   const src = String(text || "");
-  const denies = /2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|do not have a way to search|don't have a way to search|not finding any record|no record of|unable to (search|browse)|cannot browse|don't have a way/i.test(src);
-  const statesAct = /Judicial Magistrate|জুডিশিয়াল ম্যাজিস্ট্রেট|Act 12 of 2026/i.test(src);
-  if (asksBirthAct(topic) && (denies || !statesAct)) return settings.lang === "en" ? LAW_EN : LAW_BN;
+  const denies = /2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|do not have a way to search|don't have a way to search|not finding any record|no record of|couldn.t find|cannot confirm|unable to (search|browse)|cannot browse|don't have a way/i.test(src);
+  const known = knownAnswer(topic);
+  if (known && (denies || (asksBirthAct(topic) && !/Judicial Magistrate|জুডিশিয়াল ম্যাজিস্ট্রেট|Act 12 of 2026/i.test(src)) || (schemeNote(topic) && !/Annapurna|অন্নপূর্ণা|3,000|৩,০০০/i.test(src)))) return known;
   if (!denies) return src;
   const kept = src.split(/\n{2,}/).filter(p => !/2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|no record of|not finding any record/i.test(p)).join("\n\n").trim();
   if (kept.length > 120) return kept;
   if (settings.lang === "en") return `Today is ${today()}. I am Biswas AI as of 2026. I do read public pages. I will not say that I cannot search.`;
   return `আজ ${today()}। আমি বিশ্বাস AI, ২০২৬। আমি সরকারি পাতা পড়ি। আমি বলব না যে খুঁজতে পারি না।`;
+}
+const PANEL_NAME = { gemini: "Gemini", groq: "Groq", nvidia: "NVIDIA", mistral: "Mistral", openrouter: "OpenRouter", cloudflare: "Cloudflare", sambanova: "SambaNova", cerebras: "Cerebras", sarvam: "Sarvam", panel: "Free AIs" };
+function panelHtml(m) {
+  if (!m || !m.panel) return "";
+  const title = settings.lang === "en" ? "Free AIs — Gemini and the others. ChatGPT and Grok are paid, so they are not called." : "ফ্রি AI — জেমিনি ও অন্যরা। চ্যাটজিপিটি ও গ্রোক পেইড, তাই তাদের ডাকা হয়নি।";
+  if (!m.panel.length) return `<div class="panel"><h3>${esc(title)}</h3><p class="thinking">${esc(settings.lang === "en" ? "Asking them now…" : "এখন তাদের জিজ্ঞাসা করছি…")}</p></div>`;
+  return `<div class="panel"><h3>${esc(title)}</h3>${m.panel.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}</b><div>${a.text ? mdToHtml(a.text) : `<span class="err">${esc(a.error || "no answer")}</span>`}</div></article>`).join("")}</div>`;
+}
+async function askPanel(question) {
+  const system = yearLine() + "\nAnswer in short paragraphs for a person in West Bengal. " + BHANDAR_EN + " Do not say a West Bengal scheme does not exist just because it is missing from a central portal. Do not say you cannot search.";
+  try {
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 2000) }], maxOut: 700 }) });
+    if (!r.ok) return [{ provider: "panel", text: "", error: settings.lang === "en" ? "The free AIs did not answer." : "ফ্রি AI উত্তর দেয়নি।" }];
+    const j = await r.json();
+    return Array.isArray(j.answers) && j.answers.length ? j.answers : [{ provider: "panel", text: "", error: settings.lang === "en" ? "No free AI key is set." : "কোনো ফ্রি AI চাবি নেই।" }];
+  } catch (e) {
+    return [{ provider: "panel", text: "", error: settings.lang === "en" ? "The free AIs did not answer." : "ফ্রি AI উত্তর দেয়নি।" }];
+  }
 }
 function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
@@ -2542,6 +2574,7 @@ function msgHtml(m, k) {
     ${m.editing ? `<textarea class="edit-area" id="edit-${k}" aria-label="${esc(t("edit"))}">${esc(m.content)}</textarea>` : `${browserHtml(m, k)}<div class="doc">${m.content ? mdToHtml(m.content) : (m.done ? "" : thinkingHtml(m))}</div>`}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
     ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
+    ${panelHtml(m)}
     ${m.done && m.content ? `<div class="actions">
       ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
       ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
@@ -2752,7 +2785,7 @@ function renderAgentView() {
         if (msgs[i].role !== "user") continue;
         jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
       }
-      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(cleanAgent(ans.content))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
       const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
     }
   }
@@ -2796,10 +2829,15 @@ async function runBiswasAgent(job) {
   cur.messages.push(ai);
   if (!cur.title) cur.title = job.replace(/\s+/g, " ").trim().slice(0, 72);
   try { renderAgentView(); } catch (e) { /* still run the job */ }
-  if (asksBirthAct(job)) {
-    ai.content = settings.lang === "en" ? LAW_EN : LAW_BN;
+  const known = knownAnswer(job);
+  ai.panel = [];
+  const panelP = askPanel(job).then(rows => { ai.panel = rows; renderAgentView(); });
+  if (known) {
+    ai.content = known;
     ai.done = true;
-    ai.think = settings.lang === "en" ? "Answered from the October 2026 note." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর।";
+    ai.think = settings.lang === "en" ? "Answered from the October 2026 note. Asking the free AIs too." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর। ফ্রি AI-কেও জিজ্ঞাসা করছি।";
+    renderAgentView();
+    await panelP;
     cur.at = Date.now();
     saveAgent();
     agentBusy = false;
@@ -2884,6 +2922,7 @@ async function runBiswasAgent(job) {
     const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draft.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, system: `Check the note against the pages. ${lang} Delete any fee, date or order number that is not in the pages or in the instructions. Keep the full note. Do not shorten it to three lines. Never rewrite it as a model trained until September 2021. Return only the corrected note.` });
     ai.content = dropCutoff(cleanAgent(checked.text || draft.text), job);
     ai.pages = pages.map(p => ({ title: p.title, url: p.url }));
+    await panelP;
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
     ai.done = true;
     cur.at = Date.now();
@@ -2917,12 +2956,15 @@ async function ask(text) {
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
   renderChat(); scrollDown();
-  if (asksBirthAct(text)) {
-    ai.content = settings.lang === "en" ? LAW_EN : LAW_BN;
+  const known = knownAnswer(text);
+  if (known) {
+    ai.content = known;
     ai.done = true;
     ai.via = "note";
+    ai.panel = [];
     updateAt(box.indexOf(ai));
     persist();
+    askPanel(text).then(rows => { ai.panel = rows; if (box === messages) updateAt(box.indexOf(ai)); persist(); });
     return;
   }
   setBusy(true);
@@ -2952,6 +2994,10 @@ async function ask(text) {
     const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : undefined;
     const r = await aiRun(turns, { images: imgs, signal: ctl.signal, agent, system, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
+    if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
+      ai.panel = [];
+      askPanel(text).then(rows => { ai.panel = rows; if (live()) updateAt(box.indexOf(ai)); persist(); });
+    }
     if (agent) {
       const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
       // the AI forgot the document markers: treat the whole answer as the document
