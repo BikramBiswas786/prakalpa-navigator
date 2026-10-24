@@ -1575,7 +1575,7 @@ function agreeArticle(rows, pages, question) {
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
 async function askPanel(question, pages) {
-  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 10)
+  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
   const system = yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
   try {
@@ -3053,15 +3053,21 @@ async function runBiswasAgent(job) {
         if (!officeTopic(job) && (wbPage(hit) || driftedQuery((hit.title || "") + " " + (hit.url || ""), job))) continue;
         if (/delaware|dcrb\.dc\.gov|district of columbia|compensation rating/i.test((hit.url || "") + " " + (hit.title || ""))) continue;
         seen.add(hit.url);
-        mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
+        const snippet = String(hit.text || "");
         let one = { title: hit.title, url: hit.url, text: "", more: [] };
-        try {
-          const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
-          if (rr.ok) one = await rr.json();
-        } catch (e) { /* next page */ }
-        const text = String(one.text || "").length > 80 ? String(one.text || "") : String(hit.text || one.text || "");
+        const opened = pages.filter(p => p.opened).length;
+        if (snippet.length < 240 && opened < 8) {
+          mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
+          try {
+            const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
+            if (rr.ok) one = await rr.json();
+          } catch (e) { /* keep the engine text */ }
+        } else {
+          mark((settings.lang === "en" ? "From " : "সূত্র ") + (hit.title || hit.url));
+        }
+        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n");
         const via = hit.via || (/wbxpress\.com|\.gov\.in/.test(hit.url || "") ? "orders" : "web");
-        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via });
+        pages.push({ title: one.title || hit.title, url: one.url || hit.url, text, via, opened: snippet.length < 240 });
         ai.log[ai.log.length - 1] += text.length > 80 ? (settings.lang === "en" ? " — read" : " — পড়া হয়েছে") : (settings.lang === "en" ? " — little text" : " — লেখা কম");
         if (officeTopic(job)) (one.more || []).forEach(extra => { if (extra && extra.url && !seen.has(extra.url) && pages.length + queue.length < cap) queue.push(extra); });
         ai.pages = snap();
@@ -3069,48 +3075,40 @@ async function runBiswasAgent(job) {
       }
     }
     mark(t("ag_search"));
-    const bits = String(job).split(/\?|\n|;\s+|\s+\band\b\s+|\s+\bthen\b\s+/i).map(s => s.replace(/\s+/g, " ").trim()).filter(s => s.length > 12 && s.length < 160);
-    let queries = [job].concat(bits).filter((q, i, a) => a.findIndex(x => x.toLowerCase() === q.toLowerCase()) === i).slice(0, 4);
-    if (!writerOff) try {
-      mark(settings.lang === "en" ? "Deciding which searches to run" : "কী কী খুঁজব, ঠিক করছি");
-      const planQ = await aiRun([{ role: "user", content: job }], { fast: true, signal: ctl.signal, system: `Reply with JSON only: {"queries":[]}. Split the user's question into every part they asked. Write up to 6 short English web searches, one part each, plus the whole question. Keep the same subject. Do not add a place, an office, or a scheme the user did not name. No other text.` });
-      const jq = JSON.parse((planQ.text.match(/\{[\s\S]*\}/) || ["{}"])[0]);
-      if (Array.isArray(jq.queries)) {
-        const next = jq.queries.map(s => String(s || "").replace(/\s+/g, " ").trim().slice(0, 160)).filter(Boolean).slice(0, 6)
-          .map(s => {
-            let q = s;
-            if (officeTopic(job) && /\bDCRB\b/i.test(q) && !/death-cum-retirement/i.test(q)) q = q.replace(/\bDCRB\b/gi, "West Bengal Death-cum-Retirement Benefit");
-            return q.slice(0, 180);
-          })
-          .filter(q => !driftedQuery(q, job));
-        queries = [job].concat(bits).concat(next).filter((q, i, a) => q && a.findIndex(x => x.toLowerCase() === q.toLowerCase()) === i).slice(0, 6);
-      }
-    } catch (e) { if (e && (e.code === "rate_limited" || e.code === "all_failed")) writerOff = true; }
     const useGoogle = googleOn;
-    async function searchOne(q) {
-      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + ": " + q + (useGoogle ? (settings.lang === "en" ? " · Google on" : " · গুগল চালু") : ""));
+    let ask = job;
+    const asked = new Set();
+    for (let round = 0; round < 3 && pages.length < 24; round++) {
+      const q = String(ask || job).replace(/\s+/g, " ").trim().slice(0, 220);
+      if (!q || asked.has(q.toLowerCase())) break;
+      asked.add(q.toLowerCase());
+      mark((settings.lang === "en" ? "Search " : "খোঁজ ") + (round + 1) + ": " + q);
       try {
         const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q, list: true, google: useGoogle }), signal: ctl ? ctl.signal : undefined });
         const data = rr.ok ? await rr.json() : {};
-        const orders = Array.isArray(data.hits) ? data.hits : [];
-        const ghits = Array.isArray(data.google) ? data.google : [];
         const more = Array.isArray(data.more) ? data.more : [];
-        if (more.length) await readRound(more, Math.min(16, pages.length + 4));
-        if (useGoogle && ghits.length) await readRound(ghits, Math.min(16, pages.length + 2));
-        if (officeTopic(job) && orders.length) await readRound(orders, Math.min(16, pages.length + 2));
-      } catch (e) { /* the next search still runs */ }
+        const ghits = Array.isArray(data.google) ? data.google : [];
+        const orders = Array.isArray(data.hits) ? data.hits : [];
+        if (more.length) await readRound(more, 24);
+        if (useGoogle && ghits.length) await readRound(ghits, 24);
+        if (officeTopic(job) && orders.length) await readRound(orders, 24);
+      } catch (e) { /* next round still runs */ }
+      mark(settings.lang === "en" ? "Asking the free AIs the whole question" : "পুরো প্রশ্নটা ফ্রি AI-কে জিজ্ঞাসা করছি");
+      let rows = [];
+      try { rows = await askPanel(job, pages); } catch (e) { rows = []; }
+      const seenP = new Set((ai.panel || []).map(a => a.provider + "|" + (a.text || "").slice(0, 80)));
+      ai.panel = (ai.panel || []).concat(rows.filter(a => a && !seenP.has(a.provider + "|" + (a.text || "").slice(0, 80))));
+      renderAgentView();
+      const blob = pages.map(p => ((p.title || "") + " " + (p.text || "")).toLowerCase()).join(" ");
+      const hole = rows.map(a => String(a && a.text || "")).join(" ").match(/(?:not mentioned|do not contain|not in the pages|no information about)\s+([^.]{6,80})/i);
+      const words = String(job).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 4 && !blob.includes(w));
+      if (!hole && words.length < 2) break;
+      const extra = (hole && hole[1] ? hole[1] : words.slice(0, 6).join(" ")).replace(/\s+/g, " ").trim();
+      if (!extra || driftedQuery(extra, job)) break;
+      ask = (job + " " + extra).slice(0, 220);
+      mark(settings.lang === "en" ? "A part is still missing. Searching again." : "একটা অংশ এখনো নেই। আবার খুঁজছি।");
     }
-    for (let i = 0; i < queries.length; i++) await searchOne(queries[i]);
-    const covered = pages.map(p => ((p.title || "") + " " + (p.text || "")).toLowerCase()).join(" ");
-    const again = queries.filter(q => {
-      const words = q.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 5);
-      return words.length >= 2 && !words.some(w => covered.includes(w));
-    }).slice(0, 2);
-    for (const q of again) await searchOne(q);
-    mark(settings.lang === "en" ? "Asking the free AIs the whole question" : "পুরো প্রশ্নটা ফ্রি AI-কে জিজ্ঞাসা করছি");
-    try { ai.panel = await askPanel(job, pages); } catch (e) { ai.panel = []; }
-    renderAgentView();
-    const notes = (ai.panel || []).filter(a => a && a.text && !a.error).map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + a.text).join("\n\n").slice(0, 7000);
+    const notes = (ai.panel || []).filter(a => a && a.text && !a.error).map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + a.text).join("\n\n").slice(0, 8000);
     if (writerOff) {
       const best = (ai.panel || []).filter(a => a && a.text && !/not mentioned|do not contain|was not mentioned/i.test(a.text)).sort((a, b) => b.text.length - a.text.length)[0];
       ai.pages = snap();
