@@ -441,15 +441,137 @@ async function searchInstant(q) {
     return [{ title: String(j.Heading || j.AbstractSource || url).slice(0, 160), url, via: "duck", text: String(j.AbstractText).slice(0, 900) }];
   } catch (e) { return []; }
 }
+async function searchTavily(q) {
+  const key = (process.env.TAVILY_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.tavily.com/search", {
+      method: "POST", signal: AbortSignal.timeout(10000),
+      headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
+      body: JSON.stringify({ query: String(q).slice(0, 200), max_results: 3, include_answer: false })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).slice(0, 3).map(row => ({
+      title: String(row.title || row.url || "").slice(0, 160),
+      url: safeHttpUrl(row.url),
+      via: "tavily",
+      text: String(row.content || "").slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
+async function searchExa(q) {
+  const key = (process.env.EXA_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.exa.ai/search", {
+      method: "POST", signal: AbortSignal.timeout(10000),
+      headers: { "x-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ query: String(q).slice(0, 200), numResults: 3, useAutoprompt: true })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).slice(0, 3).map(row => ({
+      title: String(row.title || row.url || "").slice(0, 160),
+      url: safeHttpUrl(row.url),
+      via: "exa",
+      text: String(row.text || row.snippet || "").slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
+async function searchFirecrawl(q) {
+  const key = (process.env.FIRECRAWL_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.firecrawl.dev/v2/search", {
+      method: "POST", signal: AbortSignal.timeout(12000),
+      headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
+      body: JSON.stringify({ query: String(q).slice(0, 200), limit: 3 })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const rows = (j.data && j.data.web) || j.data || [];
+    return rows.slice(0, 3).map(row => ({
+      title: String(row.title || row.url || "").slice(0, 160),
+      url: safeHttpUrl(row.url),
+      via: "firecrawl",
+      text: String(row.description || row.snippet || "").slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
+async function searchSerper(q) {
+  const key = (process.env.SERPER_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://google.serper.dev/search", {
+      method: "POST", signal: AbortSignal.timeout(10000),
+      headers: { "x-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ q: String(q).slice(0, 200), num: 3 })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.organic || []).slice(0, 3).map(row => ({
+      title: String(row.title || row.link || "").slice(0, 160),
+      url: safeHttpUrl(row.link),
+      via: "serper",
+      text: String(row.snippet || "").slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
+async function searchParallelKey(q) {
+  const key = (process.env.PARALLEL_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.parallel.ai/v1/search", {
+      method: "POST", signal: AbortSignal.timeout(14000),
+      headers: { "x-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ objective: "Current public pages for: " + String(q).slice(0, 180), search_queries: [String(q).slice(0, 180)] })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).slice(0, 3).map(row => ({
+      title: String(row.title || row.url || "").slice(0, 160),
+      url: safeHttpUrl(row.url),
+      via: "parallel-key",
+      text: ((row.excerpts || []).map(x => String(x || "")).join(" ")).slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
+async function searchKeiro(q) {
+  const key = (process.env.KEIRO_API_KEY || "").trim();
+  if (!key) return [];
+  try {
+    const r = await fetch("https://api.keirolabs.cloud/api/v2/search/fast", {
+      method: "POST", signal: AbortSignal.timeout(10000),
+      headers: { "authorization": "Bearer " + key, "content-type": "application/json" },
+      body: JSON.stringify({ query: String(q).slice(0, 200), maxResults: 3 })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.results || []).slice(0, 3).map(row => ({
+      title: String(row.title || row.url || "").slice(0, 160),
+      url: safeHttpUrl(row.url),
+      via: "keiro",
+      text: String(row.snippet || row.description || "").slice(0, 700)
+    })).filter(x => x.url);
+  } catch (e) { return []; }
+}
 async function searchMore(q) {
-  const [par, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
-    searchParallel(q), searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
+  const [par, parKey, tavily, exa, fire, serper, keiro, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
+    searchParallel(q), searchParallelKey(q), searchTavily(q), searchExa(q), searchFirecrawl(q), searchSerper(q), searchKeiro(q),
+    searchBing(q), searchMsn(q), searchYahoo(q), searchDuck(q), searchInstant(q), searchWiki(q)
   ]);
   const out = [];
-  const push = row => { if (row && row.url && out.length < 8 && !out.some(x => x.url === row.url)) out.push(row); };
-  par.slice(0, 2).forEach(push);
-  bing.slice(0, 2).forEach(push);
-  msn.slice(0, 2).forEach(push);
+  const push = row => { if (row && row.url && out.length < 10 && !out.some(x => x.url === row.url)) out.push(row); };
+  tavily.slice(0, 2).forEach(push);
+  exa.slice(0, 2).forEach(push);
+  serper.slice(0, 2).forEach(push);
+  fire.slice(0, 2).forEach(push);
+  parKey.slice(0, 2).forEach(push);
+  keiro.slice(0, 1).forEach(push);
+  par.slice(0, 1).forEach(push);
+  bing.slice(0, 1).forEach(push);
+  msn.slice(0, 1).forEach(push);
   yahoo.slice(0, 1).forEach(push);
   wiki.slice(0, 1).forEach(push);
   duck.slice(0, 1).forEach(push);
