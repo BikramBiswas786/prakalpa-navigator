@@ -19,6 +19,10 @@ if (fs.existsSync(envFile)) {
 }
 
 const chat = await import("./api/chat.js");
+const pd = await import("./api/pendrive.js");
+pd.useChat(chat);
+// Non-secret AI Pendrive status for /healthz/pendrive (no keys, no bucket name).
+const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "none", cors: pd.storage && pd.storage.provider ? "pending" : "n/a" };
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 const FAVICON = fs.readFileSync(path.join(DIR, "favicon.svg"));
@@ -40,7 +44,7 @@ const PAGE_HEADERS = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
-    "connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com",
+    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${pd.storage && pd.storage.origin ? " " + pd.storage.origin : ""}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data:",
     "object-src 'none'",
@@ -55,6 +59,7 @@ const PAGE_HEADERS = {
 
 import dns from "node:dns/promises";
 import net from "node:net";
+import { ensureCors, corsOrigins } from "./api/bucket-cors.js";
 // Blocks private, loopback, link-local, CGNAT and metadata ranges after DNS lookup.
 function privateIp(ip) {
   if (net.isIPv6(ip)) { const v = ip.toLowerCase(); if (v.startsWith("::ffff:")) return privateIp(v.slice(7)); return v === "::1" || v === "::" || /^f[cd]|^fe[89ab]/.test(v); }
@@ -793,6 +798,27 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
+    if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
+    if (url.pathname.startsWith("/api/pd/")) {
+      const sendJson = (status, obj) => { res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }).end(JSON.stringify(obj)); };
+      if (req.method !== "POST") { sendJson(405, { error: "method" }); return; }
+      const origin = req.headers.origin;
+      if (origin) { let ok = false; try { ok = new URL(origin).host === req.headers.host; } catch (e) { ok = false; } if (!ok) { sendJson(403, { error: "forbidden" }); return; } }
+      const op = url.pathname.slice(8);
+      if ((op === "open" || op === "create") && limited(req, "pd-open", 10, 60 * 1000)) { tooMany(res); return; }
+      if (op === "ai" && limited(req, "pd-ai", 10, 60 * 1000)) { tooMany(res); return; }
+      if (limited(req, "pd", 600, 60 * 1000)) { tooMany(res); return; }
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 8 * 1024 * 1024) { sendJson(413, { error: "too_large" }); return; } chunks.push(c); }
+      let body = {};
+      try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") || {}; } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      try { await pd.handle(req, res, url, body, sendJson); }
+      catch (e) {
+        if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
+        else { console.error("pendrive:", e.message); if (!res.headersSent) sendJson(500, { error: "server" }); else res.end(); }
+      }
+      return;
+    }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
     if (url.pathname === "/" || url.pathname === "/index.html") {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
@@ -870,7 +896,11 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v100"); return; }
+    if (url.pathname === "/healthz/pendrive") {
+      // Non-secret status: is storage configured, which provider, and did the boot-time CORS check pass.
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(PD_STATUS)); return;
+    }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v101"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
@@ -890,5 +920,17 @@ server.listen(PORT, async () => {
   // Names only, never values.
   const search = [["tavily", "TAVILY_API_KEY"], ["exa", "EXA_API_KEY"], ["serper", "SERPER_API_KEY"], ["firecrawl", "FIRECRAWL_API_KEY"], ["parallel", "PARALLEL_API_KEY"], ["keiro", "KEIRO_API_KEY"]]
     .filter(([, k]) => (process.env[k] || "").trim()).map(([n]) => n);
+  if (pd.storage && pd.storage.provider) {
+    // Apply the bucket CORS rule in the background; never blocks or crashes startup.
+    PD_STATUS.cors = "checking";
+    ensureCors(pd.storage, corsOrigins()).then(r => {
+      PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString();
+      if (r.state === "already") console.log("AI Pendrive: bucket CORS already correct");
+      else if (r.state === "applied") console.log("AI Pendrive: bucket CORS applied");
+      else if (r.state === "native_rules") console.log("AI Pendrive: bucket CORS NOT applied: the B2 bucket has native CORS rules (set 'CORS Rules' to 'Do not share' in the B2 web UI, then restart, or run scripts/set-b2-cors.js --native)");
+      else console.log(`AI Pendrive: bucket CORS check failed: ${r.detail || "unknown"}`);
+    }).catch(e => { PD_STATUS.cors = "failed"; console.log("AI Pendrive: bucket CORS check failed"); });
+  }
+  console.log(`AI Pendrive storage: ${pd.storage ? pd.storage.constructor.name + (pd.storage.provider ? ` (${pd.storage.provider}, ${pd.storage.origin})` : "") : "not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)"}`);
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });
