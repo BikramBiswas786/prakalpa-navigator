@@ -454,7 +454,7 @@ textarea.paper { white-space: pre-wrap; }
       </div>
       <div class="composer">
         <div class="inner">
-          <div class="hint"><button class="btn small" type="button" id="d-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="d-save" data-t="d_savechat"></button> <button class="btn small" type="button" id="d-new" data-t="newchat"></button></div>
+          <div class="hint"><button class="btn small" type="button" id="d-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="d-save" data-t="d_savechat"></button> <button class="btn small" type="button" id="d-new" data-t="newchat"></button> <button class="btn small" type="button" id="d-deep" data-t="deep_btn"></button></div>
         </div>
       </div>
     </section>
@@ -473,7 +473,7 @@ textarea.paper { white-space: pre-wrap; }
           <button class="btn small primary" type="button" id="t-xlsx">Excel</button>
           <button class="btn small" type="button" id="t-pdf">PDF</button>
           <button class="btn small" type="button" id="t-copy" data-t="t_copy"></button>
-          <button class="btn small" type="button" id="t-clear" data-t="d_clear"></button>
+          <button class="btn small" type="button" id="t-deep" data-t="deep_btn"></button>
         </div>
         <p class="lead" data-t="t_note"></p>
         <div class="gridwrap"><table id="t-grid"></table></div>
@@ -613,7 +613,7 @@ textarea.paper { white-space: pre-wrap; }
             </button>
             <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-browser" data-t="browse_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-browser" data-t="browse_btn"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -869,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v88", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v89", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -892,7 +892,7 @@ const STR = {
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
     rail_files: "ফাইল দিন", files_help: "GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (ক্লিপ বোতাম)। AI পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।",
-    status: "AI অবস্থা পরীক্ষা", browse_btn: "ব্রাউজারে খুঁজুন", browse_need: "আগে একটি প্রশ্ন লিখুন।",
+    status: "AI অবস্থা পরীক্ষা", browse_btn: "ব্রাউজারে খুঁজুন", browse_need: "আগে একটি প্রশ্ন লিখুন।", deep_btn: "গভীর কাজ", deep_need: "আগে ফাইল যোগ করুন — Word, Excel, PDF বা লেখা।", deep_done: "ফাইল পড়া হয়েছে। Word বা PDF এখান থেকে নামান। টেবিল থাকলে Excel ট্যাবেও আছে।",
     w_office_h: "অফিসের কাজে সাহায্য", w_office_p: "নোটশিট, খসড়া, নোটিশ, রিপোর্ট লিখিয়ে নিন; GO বা সার্কুলার সংযুক্ত করে মূল কথা জেনে নিন। উত্তর Word, PDF বা Excel-এ নামান। যেকোনো সাধারণ প্রশ্নও করতে পারেন।",
     w_public_h: "সরকারি পরিষেবা ও প্রকল্প", w_public_p: "কোন সার্টিফিকেট লাগবে, কোথায় আবেদন করবেন, কোন প্রকল্পে যোগ্য — বাংলায় জিজ্ঞাসা করুন। সরকারি পরিষেবা বিনামূল্যে, দালালকে টাকা দেবেন না।",
     see_schemes: "সব প্রকল্পের তালিকা দেখুন",
@@ -943,7 +943,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v88", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v89", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -966,7 +966,7 @@ const STR = {
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
     rail_files: "Attach files", files_help: "Attach a GO, letter or form as PDF, Word, Excel or a photo (clip button). The AI reads it, summarises it or writes a note.",
-    status: "Check AI status", browse_btn: "Browser research", browse_need: "Type a question first.",
+    status: "Check AI status", browse_btn: "Browser research", browse_need: "Type a question first.", deep_btn: "Deep research", deep_need: "Attach the file first — Word, Excel, PDF or text.", deep_done: "The file was read. Save Word or PDF from here. A table, if any, is also on the Excel tab.",
     w_office_h: "Help with office work", w_office_p: "Get notesheets, drafts, notices and reports written; attach a GO or circular to get its main points. Save answers as Word, PDF or Excel. General questions are welcome too.",
     w_public_h: "Government services and schemes", w_public_p: "Ask which certificate you need, where to apply, and which schemes you may get. Government services are free; do not pay touts.",
     see_schemes: "See all schemes",
@@ -1867,22 +1867,23 @@ function load(name) {
 
 /* ---------------- reading attachments ---------------- */
 const MAX_DOC_CHARS = 60000;
-async function readFile(f) {
+async function readFile(f, opts) {
   const name = f.name; const ext = (name.split(".").pop() || "").toLowerCase();
+  const cap = opts && opts.deep ? 100000 : MAX_DOC_CHARS;
+  const pack = (row) => Object.assign(row, { src: f, chars: String(row.text || "").length });
   if (f.type.startsWith("image/")) {
     if (!imageLimits) throw new Error(t("no_image_view"));
-    return { name, kind: "image", images: [f] };
+    return pack({ name, kind: "image", images: [f], text: "" });
   }
   if (ext === "pdf") {
     await load("pdfworker"); await load("pdfjs");
     const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
     let text = "";
-    for (let p = 1; p <= pdf.numPages && text.length < MAX_DOC_CHARS; p++) {
+    for (let p = 1; p <= pdf.numPages && text.length < cap; p++) {
       const c = await (await pdf.getPage(p)).getTextContent();
-      text += `\n[Page ${p}]\n` + c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("");
+      text += `\n[Page ${p} of ${pdf.numPages}]\n` + c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("");
     }
-    if (text.replace(/\[Page \d+\]|\s/g, "").length > 80) return { name, kind: "pdf", text: text.slice(0, MAX_DOC_CHARS), pages: pdf.numPages };
-    // scanned PDF: send page pictures instead
+    if (text.replace(/\[Page[^\]]*\]|\s/g, "").length > 80) return pack({ name, kind: "pdf", text: text.slice(0, cap), pages: pdf.numPages });
     if (!imageLimits) throw new Error(t("scanned_pdf"));
     const imgs = [];
     for (let p = 1; p <= Math.min(pdf.numPages, imageLimits.maxCount || 4); p++) {
@@ -1891,20 +1892,23 @@ async function readFile(f) {
       await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
       imgs.push(await new Promise(r => cv.toBlob(r, "image/jpeg", 0.85)));
     }
-    return { name, kind: "scan", images: imgs, pages: pdf.numPages };
+    return pack({ name, kind: "scan", images: imgs, pages: pdf.numPages, text: "" });
   }
   if (ext === "docx") {
     await load("mammoth");
     const r = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
-    return { name, kind: "docx", text: r.value.slice(0, MAX_DOC_CHARS) };
+    return pack({ name, kind: "docx", text: r.value.slice(0, cap) });
   }
   if (["xlsx", "xls", "csv"].includes(ext)) {
     await load("xlsx");
     const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
-    const text = wb.SheetNames.map(n => `[Sheet: ${n}]\n` + window.XLSX.utils.sheet_to_csv(wb.Sheets[n])).join("\n\n");
-    return { name, kind: "sheet", text: text.slice(0, MAX_DOC_CHARS) };
+    const text = wb.SheetNames.map(n => {
+      const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: "" });
+      return `[Sheet: ${n}] ${rows.length} rows\n` + rows.map(r => r.map(c => String(c)).join("\t")).join("\n");
+    }).join("\n\n");
+    return pack({ name, kind: "sheet", text: text.slice(0, cap) });
   }
-  if (["txt", "md"].includes(ext) || f.type.startsWith("text/")) return { name, kind: "text", text: (await f.text()).slice(0, MAX_DOC_CHARS) };
+  if (["txt", "md"].includes(ext) || f.type.startsWith("text/")) return pack({ name, kind: "text", text: (await f.text()).slice(0, cap) });
   throw new Error(t("bad_type", name));
 }
 
@@ -2447,7 +2451,7 @@ function renderDraftForm() {
   $("#d-lang").value = draft.lang || settings.lang;
   ["to", "sub", "ref", "facts"].forEach(k => { const el = $("#d-" + k); if (el.value !== draft[k]) el.value = draft[k] || ""; });
   if ($("#d-paper").value !== draft.text) $("#d-paper").value = draft.text || "";
-  $("#d-files").innerHTML = draftFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-dunpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
+  $("#d-files").innerHTML = draftFiles.map((f, k) => `<span class="file">${esc(f.name)}${f.chars ? " · " + f.chars : ""}<button type="button" data-dunpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
   const revBox = $("#d-rev-files"); if (revBox) revBox.innerHTML = draftRevFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-drevpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
   $("#d-fmt").innerHTML = settings.sampleText ? esc(t("d_fmt_on") + settings.sampleName) : `${esc(t("d_fmt_off"))}<button type="button" id="d-fmt-btn">${esc(t("give_sample"))}</button>`;
   $("#d-toggle").textContent = t(draftPreview ? "d_editmode" : "d_preview");
@@ -2462,7 +2466,7 @@ function renderDraftForm() {
   draftPainting = false;
 }
 function draftStatus(text) { $("#d-status").textContent = text || ""; }
-async function runDraft(turns, images) {
+async function runDraft(turns, images, opt) {
   if (draftBusy) return toast(errText("busy"));
   const caseId = draft._id;
   const caseType = draft.type;
@@ -2476,10 +2480,12 @@ async function runDraft(turns, images) {
   }, 1000);
   draftPreview = false; renderDraftForm(); draftStatus(draftFiles.length ? t("d_reading") : t("d_writing"));
   try {
-    const r = await aiRun(turns, { images, signal: draftBusy.signal, onText: ({ text }) => { if (draft._id === caseId) $("#d-paper").value = text; } });
+    const r = await aiRun(turns, { images, signal: draftBusy.signal, system: (opt && opt.system) || (draftFiles.length ? deepSystem() : undefined), fast: false, maxOut: (opt && opt.maxOut) || (draftFiles.length ? 4096 : undefined), onText: ({ text }) => { if (draft._id === caseId) $("#d-paper").value = text; } });
     if (draft._id !== caseId || draft.type !== caseType) return;
     draft.prev = before; draft.text = r.text; saveDraft();
-    draftStatus(`${t("answered_by")}${t("brand")}${r.truncated ? " · " + errText("cut") : ""}`);
+    const tb = parseMd(r.text).find(b => b.t === "table");
+    if (tb) { grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); }
+    draftStatus(`${t("answered_by")}${t("brand")}${r.truncated ? " · " + errText("cut") : ""}${tb ? " · Excel" : ""}`);
   } catch (e) {
     if (draft._id !== caseId) return;
     if (e && e.text) { draft.prev = before; draft.text = e.text; saveDraft(); }
@@ -2489,19 +2495,73 @@ async function runDraft(turns, images) {
 }
 function draftRequest() {
   const lang = draft.lang === "en" ? "English" : "Bengali";
-  return `Write the following office document.
+  const files = attachText(draftFiles);
+  const read = draftFiles.length ? `The attachment is already extracted below (${draftFiles.map(f => f.name + " " + (f.chars || (f.text || "").length) + " characters").join("; ")}). Use that text. Do not say the file was not attached.\n\n${files}` : "";
+  return `${read}
+Write the following office document.
 Type: ${DOC_TYPES[draft.type]}
 Language: ${lang}
 To / addressee: ${draft.to || "______"}
-Subject: ${draft.sub || "(take it from the facts)"}
+Subject: ${draft.sub || "(take it from the facts or the file)"}
 Reference / PUC: ${draft.ref || "—"}
 Facts and instructions:
 ${draft.facts || "(see attached file)"}
-${attachText(draftFiles)}
 ${settings.sampleText ? "Office sample already saved:\n" + settings.sampleText.slice(0, 4000) : ""}
-Be flexible. Follow this type, but if the facts, or an attached letter, show another order, a shorter paper, a list of people, or a different close, follow that. Do not pad.
-${draftFiles.length || settings.sampleText ? "Read every attached page before you write. Copy that letter's opening lines, numbering and close. The Ashoka emblem and any ward logo are already printed on the screen, so do not draw them and do not write the words [letterhead]. Write the words of the paper only." : "The screen already prints the office letterhead, the Ashoka emblem and any ward logo. Start at the memo number. Do not write the words [letterhead]."}
+Be flexible. Follow this type, but if the facts, or an attached letter, show another order, a shorter paper, a list of people, or a different close, follow that. If the file is a spreadsheet, keep its rows. Do not invent a figure that is not in the file.
+${draftFiles.length || settings.sampleText ? "Copy the attached letter's opening lines, numbering and close when the task is a letter. The Ashoka emblem and any ward logo are already printed on the screen, so do not draw them and do not write the words [letterhead]. Write the words of the paper only." : "The screen already prints the office letterhead, the Ashoka emblem and any ward logo. Start at the memo number. Do not write the words [letterhead]."}
 Output only the document in Markdown, ready to print. No preface and no notes after it.`;
+}
+function deepSystem() {
+  const lang = (draft && draft.lang === "en") || settings.lang === "en"
+    ? "Reply in English unless the file is in Bengali and the instruction does not ask for English."
+    : "Reply in colloquial Bengali (Bengali script) unless the file or the instruction is in English.";
+  const where = mode === "public"
+    ? "The person is a member of the public in West Bengal. Explain the file and do what they asked. Write an application only if they asked for one."
+    : mode === "office"
+      ? "The person is a dealing assistant in an SDO office. Write the paper, the revised draft, or the table they asked for."
+      : "Answer from the file. Do not turn the task into a scheme note unless they asked about a scheme.";
+  return `You are reading an office file that has already been extracted. The text below is the file. Do not say you cannot see an attachment.
+${lang}
+${where}
+Every name, date, amount, section and row must come from the file or the instruction. If it is not there, write ______.
+If they ask for a letter, notesheet, order or report, write that paper in Markdown and match the attached letter's layout.
+If they ask for a table, a statement, or the file is a spreadsheet, reply with one Markdown table and keep the rows from the file. Do not invent rows.
+No preface.`;
+}
+async function deepen(list) {
+  const out = [];
+  for (const item of list || []) {
+    if (item && item.src) out.push(await readFile(item.src, { deep: true }));
+    else if (item) out.push(item);
+  }
+  return out;
+}
+function fileBlock(files) {
+  return (files || []).map(f => `--- ${f.name} (${f.chars || String(f.text || "").length} characters, ${f.kind || "file"}) ---\n${f.text || "(This file had no readable text. If it is a scan, the page image is attached.)"}`).join("\n\n").slice(0, 90000);
+}
+async function deepDraft() {
+  if (!draftFiles.length && !draftRevFiles.length) return toast(t("deep_need"));
+  toast(t("d_reading"));
+  try {
+    const main = await deepen(draftFiles);
+    const extra = await deepen(draftRevFiles);
+    draftFiles = main.length ? main : extra;
+    renderDraftForm();
+    const how = ($("#d-rev") && $("#d-rev").value || "").trim();
+    const task = `Type: ${DOC_TYPES[draft.type] || draft.type}
+To: ${draft.to || "______"}
+Subject: ${draft.sub || ""}
+Reference: ${draft.ref || ""}
+Instructions: ${draft.facts || ""}
+${how ? "Change requested: " + how : ""}
+Read the file below and carry out the task. If the current paper should change, revise it.
+Current paper:
+${draft.text || "(empty)"}
+
+${fileBlock(main.concat(extra))}`;
+    await runDraft([{ role: "user", content: task }], attachImages(main.concat(extra)), { system: deepSystem(), maxOut: 4096 });
+    toast(t("deep_done"));
+  } catch (e) { toast((e && e.message) || t("dl_fail")); }
 }
 
 /* ---------------- OFFICE: table / Excel ---------------- */
@@ -3087,7 +3147,7 @@ function renderChat() {
 }
 const render = renderChat;
 function renderPending() {
-  $("#pending").innerHTML = pendingFiles.map((f, k) => `<span class="file">${esc(f.name)}${f.kind === "scan" ? esc(t("scan")) : ""}<button type="button" data-unpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
+  $("#pending").innerHTML = pendingFiles.map((f, k) => `<span class="file">${esc(f.name)}${f.chars ? " · " + f.chars : ""}${f.kind === "scan" ? esc(t("scan")) : ""}<button type="button" data-unpend="${k}" aria-label="${esc(t("remove"))}">✕</button></span>`).join("");
 }
 function updateAt(k) { const el = document.querySelector(`.msg.ai[data-k="${k}"]`); if (el) el.outerHTML = msgHtml(messages[k], k); else renderChat(); }
 const updateLast = () => updateAt(messages.length - 1);
@@ -3986,6 +4046,60 @@ async function browseLatest() {
     ai.done = true; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist();
   }
 }
+async function deepChat() {
+  if (!engine) return toast(t("no_ai"));
+  if (!pendingFiles.length) return toast(t("deep_need"));
+  const typed = ($("#q") && $("#q").value || "").trim();
+  if ($("#q")) { $("#q").value = ""; autosize(); }
+  toast(t("d_reading"));
+  let files = [];
+  try { files = await deepen(pendingFiles); } catch (e) { return toast((e && e.message) || t("dl_fail")); }
+  pendingFiles = [];
+  renderPending();
+  if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* a deeper read replaces it */ } }
+  const mine = new AbortController();
+  chatCtl = mine;
+  const names = files.map(f => f.name + " (" + (f.chars || 0) + ")").join(", ");
+  const shown = (settings.lang === "en" ? "Deep research: " : "গভীর কাজ: ") + (typed || names);
+  const box = messages;
+  box.push({ role: "user", content: `Instruction: ${typed || "Read the file and carry out the task. If it is a letter or an Act, follow it. If it is a spreadsheet, keep the rows."}\n\n${fileBlock(files)}`, shown, files: files.map(f => f.name), done: true });
+  const ai = { role: "assistant", content: "", done: false, started: Date.now() };
+  box.push(ai);
+  renderChat(); scrollDown();
+  setBusy(true);
+  const live = () => box === messages && chatCtl === mine;
+  try {
+    const r = await aiRun([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem(), fast: false, maxOut: 4096, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    ai.content = r.text; ai.via = r.via;
+    const tb = parseMd(r.text).find(b => b.t === "table");
+    if (tb && mode === "office") { grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); }
+    if (r.truncated) ai.error = errText("cut");
+  } catch (e) {
+    if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (!ai.content) ai.content = t("stopped"); }
+    else ai.error = aiFailed(e);
+  } finally {
+    if (chatCtl === mine) chatCtl = null;
+    ai.done = true; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist();
+  }
+}
+async function deepTable() {
+  if (!engine) return toast(t("no_ai"));
+  const src = ($("#t-src") && $("#t-src").value || "").trim();
+  const csv = grid.map(r => r.join("\t")).join("\n").slice(0, 80000);
+  if (!src && csv.replace(/\s/g, "").length < 8) return toast(t("deep_need"));
+  if (tableBusy) return toast(errText("busy"));
+  tableBusy = true;
+  $("#t-status").textContent = t("d_reading");
+  try {
+    const r = await aiRun([{ role: "user", content: `Instruction: ${src || "Read this office sheet and return one accurate Markdown table. Keep every row that has a value. Do not invent a row."}\n\n${csv}` }], { system: deepSystem(), fast: false, maxOut: 4096 });
+    const tb = parseMd(r.text).find(b => b.t === "table");
+    if (!tb) throw { code: "no_table" };
+    grid = tb.rows.map(row => row.map(c => plain(c)));
+    saveGrid(); renderGrid();
+    $("#t-status").textContent = t("deep_done");
+  } catch (err) { $("#t-status").textContent = err && err.code === "no_table" ? t("t_bad") : aiFailed(err); }
+  finally { tableBusy = false; }
+}
 let bannerText = null;
 function showBanner(make) { bannerText = make; $("#banner-text").textContent = make(); $("#banner").hidden = false; }
 
@@ -4428,6 +4542,9 @@ document.addEventListener("click", e => {
   if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#new-person") || el("#switch-user")) { closeRail(); return showGate(true); }
   if (el("#open-browser")) return browseLatest();
+  if (el("#open-deep")) return deepChat();
+  if (el("#d-deep")) return deepDraft();
+  if (el("#t-deep")) return deepTable();
   if (el("#open-status")) return openStatus();
   if (el("#status-close")) return $("#status").close();
   if (el("#open-settings")) {
