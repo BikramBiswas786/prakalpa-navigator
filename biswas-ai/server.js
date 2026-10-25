@@ -56,6 +56,21 @@ const PAGE_HEADERS = {
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY"
 };
+// v113: share-link receiver page (own CSP: bucket origins for previews, never indexed, no referrer so the link id doesn't leak)
+const share = await import("./api/share.js");
+const SHARE_PAGE = fs.readFileSync(path.join(DIR, "share.html"));
+const PD_ZIP_JS = (() => { // the v106 ZIP writer + download sinks, cut from index.html so the share page reuses the same code
+  const html = fs.readFileSync(PAGE, "utf8"); const a = html.indexOf("/* ---- v106: store-only ZIP"), b = html.indexOf("// keys: \"f:<id>\"", a);
+  return a > 0 && b > a ? html.slice(a, b) : "";
+})();
+const POOL_ORIGINS = [...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].join(" ");
+const SHARE_HEADERS = {
+  "content-security-policy": [
+    "default-src 'self'", "script-src 'self' https://cdn.sheetjs.com", "style-src 'self' 'unsafe-inline'", `img-src 'self' data: blob: ${POOL_ORIGINS}`, `media-src 'self' blob: ${POOL_ORIGINS}`,
+    `connect-src 'self' https://cdn.sheetjs.com ${POOL_ORIGINS}`, `frame-src 'self' blob: ${POOL_ORIGINS}`, "worker-src 'self' blob:", "object-src 'none'", "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'"
+  ].join("; "),
+  "x-content-type-options": "nosniff", "referrer-policy": "no-referrer", "x-frame-options": "DENY", "x-robots-tag": "noindex, nofollow"
+};
 
 import dns from "node:dns/promises";
 import net from "node:net";
@@ -799,6 +814,28 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
+    // v113: share links. /s/<id> is the receiver page; /api/s/<op> its API (no login); /api/pd/share/* the owner's ops.
+    if (/^\/s\/[a-f0-9]{32}\/?$/.test(url.pathname)) { res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...SHARE_HEADERS }).end(SHARE_PAGE); return; }
+    if (url.pathname === "/share.js" || url.pathname === "/pd-zip.js") {
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" }).end(url.pathname === "/share.js" ? fs.readFileSync(path.join(DIR, "share.js")) : PD_ZIP_JS); return;
+    }
+    if (url.pathname.startsWith("/api/s/") || url.pathname.startsWith("/api/pd/share/")) {
+      const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "x-robots-tag": "noindex" }).end(JSON.stringify(obj)); };
+      if (req.method !== "POST") { sendJson(405, { error: "method" }); return; }
+      const origin = req.headers.origin;
+      if (origin) { let ok = false; try { ok = new URL(origin).host === req.headers.host; } catch (e) { ok = false; } if (!ok) { sendJson(403, { error: "forbidden" }); return; } }
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 1024 * 1024) { sendJson(413, { error: "too_large" }); return; } chunks.push(c); }
+      let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") || {}; } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      try {
+        if (url.pathname.startsWith("/api/pd/")) await share.owner(req, url.pathname.slice(8), body, sendJson);
+        else await share.receiver(req, res, url.pathname.slice(7), body, sendJson);
+      } catch (e) {
+        if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
+        else { console.error("share:", e.message); if (!res.headersSent) sendJson(500, { error: "server" }); else res.end(); }
+      }
+      return;
+    }
     if (url.pathname.startsWith("/api/pd/")) {
       const sendJson = (status, obj) => { res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }).end(JSON.stringify(obj)); };
       if (req.method !== "POST") { sendJson(405, { error: "method" }); return; }
@@ -915,7 +952,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v112"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v113"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;

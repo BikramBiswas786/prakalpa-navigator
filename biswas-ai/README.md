@@ -190,5 +190,23 @@ If the browser cannot reach a storage host at all (firewall or blocked port: a n
 - The progress bar shows speed (MB/s), the ETA, and how many files still need text read.
 - Tests: `tests/pendrive-v110.mjs`, and `tests/pendrive-upload-profile.mjs` (100 small docs plus a 200 MB file, `BASE=... TAG=... UPDIR=... BIG=...`, zz-test pendrives only).
 
+## v113: share links and upload-request links
+
+- **Share a file, a folder or a multi-select** from AI Pendrive (🔗 Share link). The link is `/s/<128-bit id>`. Options: expiry (1 day, 7 days, 30 days, never), maximum downloads, an optional password (scrypt-hashed, 5 wrong tries lock the link for 15 minutes) and "Allow AI questions" (off by default). **🔗 My links** lists every link with its state, download count, bytes, a "Downloaded / Uploaded" activity list, Copy and Revoke.
+- **Receiver page** (no login, `noindex`, `no-referrer`, its own CSP): the folder tree as shared, previews for PDF (iframe of a 5-minute presigned URL), images, video/audio, text/code, DOCX (small built-in parser: headings, lists, tables), XLSX (SheetJS, pinned + SRI), single-file download and "Download all (ZIP)" with the same v106 ZIP/ZIP64 writer (served as `/pd-zip.js`, cut from index.html at start-up). When AI is allowed, questions are answered only from the shared files, with no write actions and with link-relative paths.
+- **📥 Request files**: an upload-only link into one folder (default `Received`) with a file-count limit, a per-file size limit, optional password and expiry. Files of 16 MB or more go multipart and resume after a reload (state kept in the browser's localStorage). Name clashes become `name (2).ext`; path separators are flattened.
+- **Guards**: per-IP rate limits (open 20/min, downloads 60/min, AI 6/min), short-lived presigned URLs, receiver tokens (HMAC, 2 h) bound to the link and its password, a per-pendrive daily share-download cap (`SHARE_PD_DAILY_BYTES`, default 2 GB), a daily AI-question budget per link (`SHARE_AI_DAILY`, default 30) and per-backend daily egress budgets. When a budget is used up the page says "Link busy, try later" (HTTP 503 `busy`).
+- **Egress budgets** (checked 26 Oct 2026; override with `SHARE_EGRESS_<BACKEND>` in bytes):
+
+| Backend | Free egress | Daily budget used here |
+|---|---|---|
+| Backblaze B2 | free up to 3× the average stored data per month | 1 GB |
+| Filebase (free) | 5 GB per month, then requests are refused | 160 MB |
+| Tigris | egress free (free tier: 5 GB storage, 100k reads/month) | 5 GB |
+| Coritan | egress free (10M reads/month) | 5 GB |
+
+- **Delete reliability**: one failing storage call no longer fails a whole delete with "server". Each object delete is retried; if a backend still refuses, the key is parked and removed by the next delete.
+- Tests: `tests/share-v113.mjs` (API lifecycle for share and upload-request links, budgets with `SHARE_EGRESS_LOCAL=300`), `tests/share-ui-v113.mjs` (headless owner + receiver), `tests/pendrive-del-v113.mjs` (delete with a backend down).
+
 ## v112 — fast bulk delete
 - Deleting many files at once removes the stored objects 8 at a time and rewrites the search index once, instead of four storage calls in a row per file. On the live pool, deleting 5 or more files at once used to fail with a server error.
