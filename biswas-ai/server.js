@@ -928,12 +928,13 @@ server.listen(PORT, async () => {
     if (!b.st.provider) continue;
     b.cors = "checking"; if (b.id === "1") PD_STATUS.cors = "checking";
     ensureCors(b.st, corsOrigins()).then(r => {
-      b.cors = r.state; if (b.id === "1") { PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString(); }
+      b.cors = r.state; if (r.detail) b.corsDetail = String(r.detail).split(" ").slice(0, 3).join(" ").slice(0, 60); // op, HTTP status, S3 error code only
+      if (b.id === "1") { PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString(); }
       if (r.state === "already") console.log(`AI Pendrive [${b.name}]: bucket CORS already correct`);
       else if (r.state === "applied") console.log(`AI Pendrive [${b.name}]: bucket CORS applied`);
       else if (r.state === "native_rules") console.log(`AI Pendrive [${b.name}]: bucket CORS NOT applied: the B2 bucket has native CORS rules (set 'CORS Rules' to 'Do not share' in the B2 web UI, then restart, or run scripts/set-b2-cors.js --native)`);
       else console.log(`AI Pendrive [${b.name}]: bucket CORS check failed: ${r.detail || "unknown"}`);
-    }).catch(() => { b.cors = "failed"; console.log(`AI Pendrive [${b.name}]: bucket CORS check failed`); });
+    }).catch(() => { b.cors = "failed"; b.corsDetail = "exception"; console.log(`AI Pendrive [${b.name}]: bucket CORS check failed`); });
   }
   // Reconcile per-backend usage by listing each bucket a few times a day (B2 list = class C, cheap).
   if (pd.pool.some(b => b.st.sumPrefix)) { setTimeout(() => pd.reconcile().catch(() => {}), 60 * 1000).unref(); setInterval(() => pd.reconcile().catch(() => {}), 6 * 3600 * 1000).unref(); }

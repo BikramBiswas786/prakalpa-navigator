@@ -125,8 +125,9 @@ export async function reconcile() {
 }
 export async function poolStatus() {
   const use = await backendUse().catch(() => ({}));
-  return pool.map(b => ({ name: b.name, cors: b.cors || (b.st.provider ? "pending" : "n/a"), used: use[b.id] || 0, cap: b.cap, healthy: !(b.badUntil > Date.now()), ...(b.listed ? { listedAt: new Date(b.listed.t).toISOString() } : {}) }));
+  return pool.map(b => ({ name: b.name, cors: b.cors || (b.st.provider ? "pending" : "n/a"), used: use[b.id] || 0, cap: b.cap, healthy: !(b.badUntil > Date.now()), placement: placeable(b), ...(b.corsDetail ? { corsDetail: b.corsDetail } : {}), ...(b.listed ? { listedAt: new Date(b.listed.t).toISOString() } : {}) }));
 }
+const placeable = b => !(b.badUntil > Date.now()) && !["failed", "native_rules", "checking"].includes(b.cors);
 const netOrAuth = e => /fetch failed|timeout|abort|ECONN|ENOTFOUND|EAI_AGAIN|certificate| 40[13]\b| 5\d\d\b/i.test(String(e && (e.message + " " + (e.cause && e.cause.code || "")) || e));
 async function totalUse(exceptId) {
   const st = (await cget("stats/usage.json")) || { by: {} };
@@ -272,7 +273,8 @@ export async function handle(req, res, url, body, send) {
   if (op === "list") {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
     const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text }) => ({ id, path, size, type, mtime, text }));
-    return send(200, { ...publicMeta(m), files, folders: ix.folders.slice().sort() });
+    const pending = Object.entries(m.pending || {}).map(([fileId, v]) => ({ fileId, path: v.path, size: v.size, t: v.t }));
+    return send(200, { ...publicMeta(m), files, folders: ix.folders.slice().sort(), pending });
   }
   if (op === "download") {
     const ix = await index(id); const f = ix.files[String(body.id)];
@@ -302,7 +304,8 @@ export async function handle(req, res, url, body, send) {
       // Placement: the healthy backend with the most free room that can hold the whole file.
       // Test-only override: ?backend=<name> with header x-admin-token = ADMIN_TOKEN.
       const use = await backendUse();
-      let cands = pool.filter(b => !(b.badUntil > Date.now()) && b.cap - (use[b.id] || 0) >= size).sort((a, b) => (b.cap - (use[b.id] || 0)) - (a.cap - (use[a.id] || 0)));
+      // Browsers PUT straight to the bucket, so a backend whose CORS rule isn't in place (cors "failed"/"native_rules") is skipped.
+      let cands = pool.filter(b => placeable(b) && b.cap - (use[b.id] || 0) >= size).sort((a, b) => (b.cap - (use[b.id] || 0)) - (a.cap - (use[a.id] || 0)));
       const force = url && url.searchParams.get("backend");
       if (force) {
         const tok = String(req.headers["x-admin-token"] || "");
