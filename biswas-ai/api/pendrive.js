@@ -313,6 +313,10 @@ export async function handle(req, res, url, body, send) {
       const use = await backendUse();
       // Browsers PUT straight to the bucket, so a backend whose CORS rule isn't in place (cors "failed"/"native_rules") is skipped.
       let cands = pool.filter(b => placeable(b) && b.cap - (use[b.id] || 0) >= size).sort((a, b) => (b.cap - (use[b.id] || 0)) - (a.cap - (use[a.id] || 0)));
+      // v107: the browser says it can't reach these storage hosts (e.g. a firewall blocks the port): use the others when they can hold the file
+      const avoid = new Set((Array.isArray(body.avoid) ? body.avoid : []).slice(0, 10).map(h => String(h).toLowerCase()));
+      const hostOf = b => { try { return new URL(b.st.origin).host.toLowerCase(); } catch (e) { return ""; } };
+      if (avoid.size) { const rest = cands.filter(b => !avoid.has(hostOf(b))); if (rest.length) cands = rest; }
       const force = url && url.searchParams.get("backend");
       if (force) {
         const tok = String(req.headers["x-admin-token"] || "");

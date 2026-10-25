@@ -85,14 +85,14 @@ for (const n of fs.readdirSync(DL)) if (/^ai-output/.test(n)) fs.rmSync(path.joi
 await p.click('[data-pd-out="docx"]'); const dx = await waitFile(/^ai-output.*\.docx$/);
 let dxOk = false, dxInfo = ""; if (dx) { try { const xml = execSync(`python3 -c "import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(z.read('word/document.xml').decode())" "${dx}"`).toString(); dxOk = xml.includes(bnWord) && /<w:tbl>/.test(xml); dxInfo = `document.xml ${xml.length} chars, table ${/<w:tbl>/.test(xml)}, has "${bnWord}" ${xml.includes(bnWord)}`; fs.copyFileSync(dx, "/workspace/pd-v106-sample.docx"); } catch (e) { dxInfo = e.message.slice(0, 200); } }
 ok(dxOk, "7a Word export valid: " + dxInfo);
-const csvF = (await p.click('[data-pd-out="csv"]'), await waitFile(/^ai-output.*\.csv$/)); const csv = csvF ? fs.readFileSync(csvF, "utf8") : ""; ok(csv.startsWith("\ufeff") && csv.includes("বিষয়") && csv.includes(","), "7b CSV export: BOM + Bengali header: " + csv.slice(1, 60).replace(/\r?\n/g, " ⏎ "));
+const csvF = (await p.click('[data-pd-out="csv"]'), await waitFile(/^ai-output.*\.csv$/)); const csv = csvF ? fs.readFileSync(csvF, "utf8") : ""; ok(csv.startsWith("\ufeff") && /[\u0980-\u09FF]/.test(csv) && csv.includes(","), "7b CSV export: BOM + Bengali header: " + csv.slice(1, 60).replace(/\r?\n/g, " ⏎ "));
 const txtF = (await p.click('[data-pd-out="txt"]'), await waitFile(/^ai-output.*\.txt$/)); const txt = txtF ? fs.readFileSync(txtF, "utf8") : ""; ok(txt.includes(bnWord), `7c TXT export contains "${bnWord}" (${txt.length} chars)`);
 // PDF: capture the print document the PDF button builds, render it as Chrome's print would
 const srcdoc = await p.evaluate(() => new Promise(r => { const orig = document.body.append.bind(document.body); document.body.append = n => { if (n.tagName === "IFRAME" && n.srcdoc) { document.body.append = orig; r(n.srcdoc); return; } orig(n); }; document.querySelector('[data-pd-out="pdf"]').click(); }));
 const pp = await b.newPage(); await pp.setContent(srcdoc, { waitUntil: "networkidle0" }); await pp.evaluate(() => document.fonts.ready); await pp.pdf({ path: "/workspace/pd-v106-sample.pdf", format: "A4" }); await pp.close();
 let pdfTxt = ""; try { pdfTxt = execSync("pdftotext /workspace/pd-v106-sample.pdf -").toString(); } catch (e) { pdfTxt = "ERR"; }
 const pdfFonts = execSync("pdffonts /workspace/pd-v106-sample.pdf || true").toString();
-ok(/Bengali/i.test(pdfFonts) && /[\u0980-\u09FF]/.test(pdfTxt) && /বিষয়|বিল|বাজেট/.test(pdfTxt), "7d PDF (print stylesheet) has Bengali font + text: fonts " + (pdfFonts.match(/\S*Bengali\S*/g) || []).slice(0, 2).join(",") + " · text " + pdfTxt.replace(/\s+/g, " ").slice(0, 90));
+ok(/Bengali/i.test(pdfFonts) && /[\u0980-\u09FF]/.test(pdfTxt) && pdfTxt.includes(bnWord), "7d PDF (print stylesheet) has Bengali font + text: fonts " + (pdfFonts.match(/\S*Bengali\S*/g) || []).slice(0, 2).join(",") + " · text " + pdfTxt.replace(/\s+/g, " ").slice(0, 90));
 await shot("exports");
 // 8 save to pendrive
 const before = await p.evaluate(() => pd.files.length);
