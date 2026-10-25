@@ -2051,7 +2051,9 @@ function mdToHtml(src) {
     if (b.t === "h") return `<h${Math.min(b.level + 1, 4)}>${inlineHtml(b.text)}</h${Math.min(b.level + 1, 4)}>`;
     if (b.t === "p") return `<p>${inlineHtml(b.text)}</p>`;
     if (b.t === "hr") return "<hr>";
-    if (b.t === "code") return window.BA && b.info && BA.isAtt(b.info) ? BA.cardHtml(b.info, b.text) : `<pre${b.info ? ` data-lang="${esc(b.info.split(/\s/)[0])}"` : ""}><code>${esc(b.text)}</code></pre>`; // v109: attachment blocks become file cards
+    const lifted = b.t === "code" && window.BA && BA.lift ? BA.lift(b.info, b.text) : null;
+    if (lifted) return BA.cardHtml(lifted.info, lifted.text);
+    if (b.t === "code") return `<pre${b.info ? ` data-lang="${esc(b.info.split(/\s/)[0])}"` : ""}><code>${esc(b.text)}</code></pre>`; // v109: attachment blocks become file cards
     if (b.t === "ul") return `<ul>${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ul>`;
     if (b.t === "ol") return `<ol start="${b.start}">${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ol>`;
     if (b.t === "table") {
@@ -6071,6 +6073,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=111" defer></script>
+<script src="/attach.js?v=114" defer></script>
 </body>
 </html>
