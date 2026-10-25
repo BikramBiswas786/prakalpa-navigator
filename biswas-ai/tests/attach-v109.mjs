@@ -78,6 +78,10 @@ attachment name="nested.json" type="json"
 {"n":1}
 \`\`\`
 
+attachment name="bare.json" type="json"
+{"bare":true}
+\`\`\`
+
 \`\`\`python
 print("plain code stays code")
 \`\`\``;
@@ -90,8 +94,8 @@ const r = await p.evaluate(async md => {
   const fence = BA.attInfo('attach name="x.xlsx"'), loose = BA.attInfo('file: report.pdf'), none = BA.attInfo("python");
   return { names: parsed.atts.map(a => a.name), cards: (html.match(/class="ba-att/g) || []).length, plainCode: /<pre[^>]*><code>print/.test(html), out, fence: fence && fence.type, loose: loose && loose.type, none: !none, add: BA.addendum("excel").length, skills: Object.keys(BA.SKILLS || {}) };
 }, answer);
-ok(r.names.join() === "chithi.docx,chithi.pdf,hisab.xlsx,sum.py,data.json,chart.png,chart.svg,data.csv,nested.json", "parsed attachments " + r.names.join());
-ok(r.cards === 9, "file cards rendered " + r.cards);
+ok(r.names.join() === "chithi.docx,chithi.pdf,hisab.xlsx,sum.py,data.json,chart.png,chart.svg,data.csv,nested.json,bare.json", "parsed attachments " + r.names.join());
+ok(r.cards === 10, "file cards rendered " + r.cards);
 ok(r.plainCode, "ordinary code block stays code");
 ok(r.fence === "xlsx" && r.loose === "pdf" && r.none, "tolerant fence parser");
 ok(r.add > 200 && r.skills.length === 7, "skills " + r.skills.join());
