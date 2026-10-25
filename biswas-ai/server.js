@@ -753,6 +753,20 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ hits: hits.filter(keep), google: (Array.isArray(google) ? google : []).filter(keep), more: more.filter(keep), googleWhy: google.why || "" }));
         return;
       }
+      if (body.fast) {
+        const links = Array.isArray(body.links) ? body.links.slice(0, 2) : [];
+        const pages = (await Promise.all(links.map(async raw => {
+          const safe = safeHttpUrl(String(raw || ""));
+          if (!safe) return null;
+          if (wb && dropBangladesh({ url: safe, title: "", text: "" })) return null;
+          let text = "";
+          try { text = await readPage(safe); } catch (e) { text = ""; }
+          return { title: safe.replace(/^https?:\/\//, "").slice(0, 90), url: safe, text: String(text || "").slice(0, 900), via: "official" };
+        }))).filter(Boolean);
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ pages }));
+        return;
+      }
       let pages = q ? await research(rawQ, { wb }) : [];
       if (body.google && q) {
         try {
@@ -779,7 +793,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v85"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v86"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
