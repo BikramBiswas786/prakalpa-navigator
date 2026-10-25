@@ -75,6 +75,8 @@ BA.attInfo = function (info) {
   return { name, type, types, base, chart, template: (a.template || "").toLowerCase(), title: a.title || "" };
 };
 BA.isAtt = info => !!BA.attInfo(info);
+// v114: a code block whose first line is "attachment name=..." is an attachment too.
+BA.lift = (info, text) => { if (info && BA.attInfo(info)) return { info, text }; const L = String(text || "").split("\n"); const f = (L[0] || "").trim(); return /^(attachment|attach|file)\b/i.test(f) && BA.attInfo(f) ? { info: f, text: L.slice(1).join("\n") } : null; };
 // Re-attach blocks after a text clean-up step (so cleaners never damage file content).
 BA.join = (text, atts) => { const seen = new Set(); return String(text || "") + atts.filter(a => !seen.has(a.info + a.content) && seen.add(a.info + a.content)).map(a => "\n\n```" + a.info + "\n" + a.content + "\n```").join(""); };
 BA.protect = (fn, s) => { const p = BA.parse(s); return p.atts.length ? BA.join(fn(p.text), p.atts) : fn(s); };
@@ -82,7 +84,8 @@ BA.parse = function (src) {
   const L = String(src || "").replace(/\r/g, "").split("\n"); const keep = []; const atts = [];
   for (let i = 0; i < L.length; i++) {
     const m = L[i].match(/^\s*(`{3,}|~{3,})(.*)$/);
-    const info = m && BA.attInfo(m[2]);
+    let info = m && BA.attInfo(m[2]);
+    if (m && !info && L[i + 1] && /^\s*(attachment|attach|file)\b/i.test(L[i + 1]) && BA.attInfo(L[i + 1].trim())) { i++; m[2] = L[i].trim(); info = BA.attInfo(m[2]); } // v114: ```json + "attachment name=..." on the next line
     if (!info) { keep.push(L[i]); continue; }
     const fence = m[1]; const buf = []; i++;
     while (i < L.length && !new RegExp("^\\s*" + fence[0] + "{" + fence.length + ",}\\s*$").test(L[i])) buf.push(L[i++]);
