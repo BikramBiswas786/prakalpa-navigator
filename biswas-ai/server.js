@@ -22,6 +22,35 @@ const chat = await import("./api/chat.js");
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 const MAX_BODY = 12 * 1024 * 1024;
+// Security headers for the app page. The page has one inline <script>; it is allowed by its
+// sha256 hash (computed at start), not by 'unsafe-inline'. Styles need 'unsafe-inline'
+// (inline <style> blocks, style="" attributes and styles set from JS).
+import crypto from "node:crypto";
+const inlineHashes = (() => {
+  try {
+    const html = fs.readFileSync(PAGE, "utf8");
+    return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash("sha256").update(m[1], "utf8").digest("base64")}'`).join(" ");
+  } catch (e) { return ""; }
+})();
+const PAGE_HEADERS = {
+  "content-security-policy": [
+    "default-src 'self'",
+    `script-src 'self' ${inlineHashes} https://cdn.jsdelivr.net https://cdn.sheetjs.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob:",
+    "connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com",
+    "worker-src 'self' blob:",
+    "frame-src 'self' blob: data:",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'"
+  ].join("; "),
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-frame-options": "DENY"
+};
 
 import dns from "node:dns/promises";
 import net from "node:net";
@@ -765,7 +794,7 @@ const server = http.createServer(async (req, res) => {
     }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
       fs.createReadStream(PAGE).pipe(res);
       return;
     }
@@ -840,7 +869,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v98"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v99"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);

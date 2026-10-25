@@ -903,7 +903,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v98", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v99", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -977,7 +977,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v98", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v99", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1882,17 +1882,27 @@ function mdToHtml(src) {
 /* ---------------- lazy libraries (jsDelivr, pinned) ---------------- */
 const LIBS = {
   jszip: "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
-  xlsx: "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+  xlsx: "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js",
   html2pdf: "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js",
   pdfjs: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
   pdfworker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
   mammoth: "https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js",
   pdflib: "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"
 };
+// Subresource Integrity: the browser refuses a library whose bytes changed on the CDN.
+const SRI = {
+  jszip: "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG",
+  xlsx: "sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT",
+  html2pdf: "sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc",
+  pdfjs: "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e",
+  pdfworker: "sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2",
+  mammoth: "sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz",
+  pdflib: "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI"
+};
 const loaded = {};
 function load(name) {
   if (!loaded[name]) loaded[name] = new Promise((res, rej) => {
-    const s = document.createElement("script"); s.src = LIBS[name]; s.onload = res;
+    const s = document.createElement("script"); s.src = LIBS[name]; if (SRI[name]) { s.integrity = SRI[name]; s.crossOrigin = "anonymous"; } s.onload = res;
     s.onerror = () => { delete loaded[name]; rej(new Error(t("lib_fail"))); };
     document.head.append(s);
   });

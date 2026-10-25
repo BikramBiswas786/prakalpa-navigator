@@ -11,7 +11,6 @@
 //   MISTRAL_API_KEY      Mistral "Experiment" plan (free, phone verification)
 //   OPENROUTER_API_KEY   OpenRouter ":free" models: Kimi, Llama
 //   CLOUDFLARE_ACCOUNT_ID + CLOUDFLARE_API_TOKEN   Cloudflare Workers AI (free daily allowance): Llama
-//   GITHUB_MODELS_TOKEN  GitHub Models (free with a GitHub account)
 //   SAMBANOVA_API_KEY    SambaNova free tier: Llama (about 20 requests/day per model)
 //   ZAI_API_KEY          Z.ai GLM Flash models priced at $0 (tight concurrency)
 //   COHERE_API_KEY       Cohere trial (about 1,000 calls/month; not for production)
@@ -27,9 +26,7 @@
 //   TOGETHER_API_KEY     Together (prepaid)
 //   FIREWORKS_API_KEY    Fireworks (small starter credit, then paid)
 //
-// GitHub Models (GITHUB_MODELS_TOKEN) was shut down on 30 July 2026. The
-// provider remains so an old PROVIDER_ORDER can still name it; it is not tried
-// unless you put "github" in PROVIDER_ORDER.
+// GitHub Models was shut down on 30 July 2026 and has been removed.
 //
 // Optional: PROVIDER_ORDER="gemini,nvidia,groq,..." and <NAME>_MODELS
 // (comma-separated) to change models without touching code.
@@ -51,7 +48,6 @@ const PROVIDERS = {
   sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
   zai: { key: "ZAI_API_KEY", alt: "Z_AI", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
   cohere: { key: "COHERE_API_KEY", kind: "openai", url: "https://api.cohere.ai/compatibility/v1/chat/completions", models: list("COHERE_MODELS", "command-a-plus-05-2026") },
-  github: { key: "GITHUB_MODELS_TOKEN", kind: "openai", vision: true, url: "https://models.github.ai/inference/chat/completions", models: list("GITHUB_MODELS", "openai/gpt-4.1-mini,openai/gpt-4o-mini") },
   cerebras: { key: "CEREBRAS_API_KEY", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", models: list("CEREBRAS_MODELS", "gpt-oss-120b") },
   sarvam: { key: "SARVAM_API_KEY", kind: "openai", url: "https://api.sarvam.ai/v1/chat/completions", auth: "api-subscription-key", models: list("SARVAM_MODELS", "sarvam-105b") },
   kimi: { key: "KIMI_API_KEY", kind: "openai", url: "https://api.moonshot.ai/v1/chat/completions", models: list("KIMI_MODELS", "kimi-k3") },
