@@ -869,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v86", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v87", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -943,7 +943,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v86", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v87", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -1569,18 +1569,29 @@ function knowledge() {
       const hay = t.toLowerCase();
       return words.filter(w => hay.includes(w)).length >= 2;
     });
+    if (schemes) {
+      const d = parts.find(t => t.trim().startsWith("D."));
+      if (d) keep.push(d);
+    }
     return keep.join("\n").slice(0, 3500);
   }
-  const keep = parts.filter(t => {
+  if (mode === "ai") {
+    const about = schemes || /certificate|শংসাপত্র|প্রকল্প|যোজনা|sdo|মহকুমা/i.test(said);
+    if (!about) return "";
+    const hit = [];
+    const d = parts.find(t => t.trim().startsWith("D."));
+    if (d) hit.push(d);
+    const s = findScheme(said);
+    if (s) hit.push(serviceFacts(s.id));
+    return hit.join("\n").slice(0, 4500);
+  }
+  const d = parts.find(t => t.trim().startsWith("D.")) || "";
+  const named = findScheme(said);
+  const bits = [d, named ? serviceFacts(named.id) : (schemeOpen ? serviceFacts(schemeOpen) : "")].concat(parts.filter(t => {
     const sec = t.trim().charAt(0);
-    if (sec === "D") return false;            // replaced by the live catalogue below
-    if (sec === "E") return mode === "office";
-    if (mode === "public" && sec === "E") return false;
-    return mode === "public" || mode === "office";
-  });
-  if (mode === "public" && schemeOpen) keep.push("This chat is only about one scheme. Do not answer as if it were another scheme. If they ask about a different scheme, tell them to open that scheme's own page.\n" + serviceFacts(schemeOpen));
-  else if (mode === "public") keep.push(catalogueText());
-  return keep.join("\n");
+    return sec !== "D" && sec !== "E" && sec !== "F";
+  }));
+  return bits.filter(Boolean).join("\n").slice(0, 5500);
 }
 
 function yearLine() {
@@ -1719,15 +1730,14 @@ How this office works (follow it):
 - Put ______ for any fact you were not given. Never make up names, numbers or dates.
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
-  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal, India. Bengali in this section means West Bengal, not Bangladesh. Never answer from Bangladesh, a .bd website, Dhaka, or the Bangladesh Fire Service. A fire licence here is the West Bengal Fire and Emergency Services licence, or the municipal fire-safety certificate. Ignore a page that is about another country.
-First answer, and only when they ask how to apply: short steps, the office, the portal named in the catalogue, the documents, any fee that is written down, and the time if it is written down. Use the current scheme name, with the old name in brackets. Government camps and offices do not charge a tout's fee.
-If they ask for more detail, an analysis, a review, features, each point, or any new rule: do not send that application card again. Do not pad it with longer sentences.
-Write four short parts instead.
-1. On record. Only a fact that is in the catalogue note or in a page opened below. Name where it is written.
-2. Not on record. Say plainly what is not known: the amount, how many years of practice, a training course, an exhibition, a new rule, a processing time. Leave it unknown. Do not write "usually" or "may vary" to hide a guess.
-3. Reading. What the scheme name is for, which office is named, and what a person should check next. Compare it with another scheme only when that other scheme is in the knowledge base.
-4. What would confirm a new rule. The real portal or office already named. Do not invent a web address. Do not turn a district page into a state-wide rule.
-Never invent a URL, an amount, a year, a certificate, or a programme. A link is allowed only if it is written in the catalogue or in a page below.` + (schemeOpen ? " This conversation belongs to one scheme only. Do not mix in other schemes. A follow-up still has to add a new point, not repeat the card." : "");
+  const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal, India. Bengali means West Bengal, not Bangladesh. Never answer from Bangladesh or a .bd website.
+No browser is used. Think from the catalogue and the knowledge base, then answer the question that was typed.
+If they ask for an application, a petition or a letter, write that application now. Leave blanks for the name, address, mobile and date. Use only scheme facts that are written below. Do not tell them to pick a scheme instead of writing it.
+If they ask how to apply, who is eligible, which papers, or the current status, answer those points from the record.
+If they ask which certificate, name the certificate and the office.
+If they give age, sex, income or category, compare those details with the schemes below.
+Do not say that this reply does not open the web. Do not say you are opening pages.
+Never invent an amount, a fee, a year or an order number that is not written below. Say "reported — please verify" for items marked reported. A link is allowed only if it is written below.` + (schemeOpen ? " This conversation belongs to one scheme. Do not mix in another scheme." : "");
   const simple = "";
   if (mode === "public") {
     return yearLine() + `\nYou are the public helper for a resident of West Bengal, India. You are not Biswas AI chat, not the research agent, and not the office notesheet desk. Do not write a notesheet or an office letter unless the person asks for one.
@@ -3819,6 +3829,9 @@ function findScheme(text) {
     for (const n of names) {
       const k = String(n).toLowerCase().trim();
       if (k.length > 3 && q.includes(k) && k.length > score) { score = k.length; best = s; }
+      for (const w of k.split(/[^a-z0-9\u0980-\u09ff]+/)) {
+        if (w.length >= 6 && !/^(yojana|yojna|scheme|west|bengal|prakalpa|kendra|bangla|certificate)$/.test(w) && q.includes(w) && w.length > score) { score = w.length; best = s; }
+      }
     }
   }
   return best;
@@ -3883,8 +3896,7 @@ function publicDeskCard() {
 }
 async function ask(text) {
   const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
-  const firstPublic = mode === "public" && !greet && !(pendingFiles && pendingFiles.length) && !((messages || []).some(m => m.role === "user"));
-  if (!engine && !firstPublic) return toast(t("no_ai"));
+  if (!engine) return toast(t("no_ai"));
   if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* the new prompt replaces it */ } }
   const mine = new AbortController();
   chatCtl = mine;
@@ -3904,28 +3916,6 @@ async function ask(text) {
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
   renderChat(); scrollDown();
-  if (firstPublic) {
-    ai.content = publicFirstAnswer(text);
-    ai.done = true;
-    ai.via = "card";
-    ai.browse = false;
-    updateAt(box.indexOf(ai));
-    persist();
-    if (chatCtl === mine) chatCtl = null;
-    return;
-  }
-  const known = knownAnswer(text);
-  if (known) {
-    ai.content = known;
-    ai.done = true;
-    ai.via = "note";
-    ai.panel = [];
-    updateAt(box.indexOf(ai));
-    persist();
-    if (chatCtl === mine) chatCtl = null;
-    askPanel(text).then(rows => { ai.panel = rows; if (box === messages) updateAt(box.indexOf(ai)); persist(); });
-    return;
-  }
   setBusy(true);
   let turns = box.slice(0, -1).filter(m => m.content && (m.role === "user" || m.done)).map(m => ({ role: m.role, content: m.content }));
   while (turns.length > 1 && JSON.stringify(turns).length > (mode === "office" ? 24000 : 180000)) turns.shift();
@@ -3933,56 +3923,12 @@ async function ask(text) {
   while (turns.length && turns[0].role !== "user") turns.shift();
   const live = () => box === messages && chatCtl === mine;
   const agent = mode === "office";
-  const greetSeen = greet;
-  let researchNote = "";
-  if (mode === "ai" && String(text || "").trim().length > 8 && !greetSeen) {
-    ai.browse = true;
-    if (live()) updateAt(box.indexOf(ai));
-    try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: false }), signal: chatCtl.signal });
-      const data = rr.ok ? await rr.json() : { pages: [] };
-      const foreign = () => false;
-      const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && !foreign(p)).slice(0, 4);
-      ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
-      ai.browseAt = 0;
-      researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
-    } catch (e) {
-      if (e && e.name === "AbortError") { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
-      ai.pages = [];
-    }
-    if (live()) updateAt(box.indexOf(ai));
-  }
-  if (mode === "public" && String(text || "").trim().length > 8 && !greetSeen) {
-    const scheme = findScheme(text);
-    const links = scheme && scheme.links ? scheme.links.map(l => l[2]).filter(Boolean).slice(0, 2) : [];
-    ai.browse = true;
-    if (live()) updateAt(box.indexOf(ai));
-    try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), fast: true, wb: !/bangladesh|বাংলাদেশ/i.test(text), links }), signal: chatCtl.signal });
-      const data = rr.ok ? await rr.json() : { pages: [] };
-      const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url).slice(0, 2);
-      ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
-      ai.browseAt = 0;
-      researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
-    } catch (e) {
-      if (e && e.name === "AbortError") { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
-      ai.pages = [];
-    }
-    if (live()) updateAt(box.indexOf(ai));
-  }
-  let thought = "";
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
-    const pagesNote = researchNote ? "\n\nOfficial page:\n" + researchNote.slice(0, 2500) : "\n\nNo official page text was read.";
-    const card = mode === "public" ? publicFirstAnswer(text).slice(0, 3500) : "";
-    const publicSys = `You are the public helper for one West Bengal, India scheme. Bengali means West Bengal, not Bangladesh. Reply in ${settings.lang === "en" ? "English" : "colloquial Bengali"}. The person already received the catalogue card. This is a follow-up. Do not repeat the whole card. Add only what their question asks. Use the card and the official page. If the page does not say it, say it is not on the page. Do not invent an amount, a fee, a date, or a URL.\n\nCARD:\n${card}${pagesNote}`;
-    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? publicSys : rules() + bikramRules();
-    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: mode === "office" || mode === "public", maxOut: mode === "public" ? 800 : mode === "office" ? 2400 : undefined, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const think = "\nNo browser is used. Think from the knowledge below, then answer the question that was asked. Do not say you are opening pages. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
+    const system = mode === "public" ? rules() : mode === "office" ? rules() + bikramRules() : shortRules() + law + think + (knowledge() || "");
+    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: true, maxOut: mode === "office" ? 2400 : mode === "public" ? 1400 : 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
-    if (mode !== "public" && /couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
-      ai.panel = [];
-      askPanel(text).then(rows => { ai.panel = rows; if (live()) updateAt(box.indexOf(ai)); persist(); });
-    }
     if (agent) {
       const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
       // the AI forgot the document markers: treat the whole answer as the document
