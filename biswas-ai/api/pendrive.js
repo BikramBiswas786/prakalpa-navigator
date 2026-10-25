@@ -685,7 +685,17 @@ async function aiJob(req, res, id, body) {
       answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
-      const r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote);
+      let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote);
+      // v120: a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
+      const transform = /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
+      const picked = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
+      if (r.notFound && transform && picked) {
+        emit({ type: "progress", msg: "transform" });
+        let left = JOB.askChars; const parts = [];
+        for (const f of withText.slice(0, 12)) { if (left <= 200) break; const t = (await read(f)).slice(0, left); left -= t.length; parts.push(`[FILE: ${f.path}]\n${t}`); }
+        const ans = await askAI(SYSX(lang), `Selected files (full text):\n\n${parts.join("\n\n")}\n\nUse only these files. Keep every number exactly.\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
+        r = { answer: ans, sources: withText.slice(0, parts.length).map(f => f.path), cites: [] };
+      }
       if (r.notFound) { emit({ type: "answer", text: NOT_FOUND[lang], sources: [], cites: [], actions: [], noText, notFound: true, scanned }); return res.end(); }
       ({ answer, sources, cites } = r);
     }

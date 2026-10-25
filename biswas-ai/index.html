@@ -4051,7 +4051,7 @@ function renderAgentView() {
         if (msgs[i].role !== "user") continue;
         jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
       }
-      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
       const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
     }
   }
@@ -4296,9 +4296,16 @@ async function runBiswasAgent(job) {
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
       : `You are the editor. ${lang} The note must answer every part of the job. Keep facts that the pages support. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Delete a line that says a fact is missing when another page states it. Do not invent a score. Return only the corrected note.`;
     const draftParts = window.BA ? BA.parse(draft.text) : { text: draft.text, atts: [] }; // v109: files skip the editor pass, then come back
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draftParts.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys });
+    // v120: code, JSON and table blocks are kept verbatim; the editor and cleaners only see a placeholder.
+    const kept = [];
+    draftParts.text = draftParts.text.replace(/^([ \t]*(```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*\2[ \t]*$)|((?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})|(^[ \t]*[\[{][ \t]*\n[\s\S]*?\n[ \t]*[\]}][ \t]*$)/gm, m => { kept.push(m.replace(/\n$/, "")); return "[[KEEP" + kept.length + "]]\n"; });
+    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draftParts.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys + (kept.length ? " Lines like [[KEEP1]] are code, JSON or table blocks: copy each one unchanged on its own line. Only check prose; if a prose claim is not on the pages, add (unverified) after it instead of deleting numbers." : "") });
     ai.pages = snap();
-    ai.content = hideAudit(dropCutoff(cleanAgent(checked.text || draftParts.text), job));
+    let edited = checked.text || draftParts.text;
+    const lost = kept.map((_, k) => k + 1).filter(n => !edited.includes("[[KEEP" + n + "]]"));
+    if (lost.length) edited += "\n\n" + lost.map(n => "[[KEEP" + n + "]]").join("\n\n");
+    const segs = edited.split(/(\[\[KEEP\d+\]\])/);
+    ai.content = segs.map(sg => { const m = sg.match(/^\[\[KEEP(\d+)\]\]$/); return m ? "\n" + (kept[Number(m[1]) - 1] || "") + "\n" : sg.trim() ? hideAudit(dropCutoff(cleanAgent(sg), job)) : sg; }).join("").replace(/\n{3,}/g, "\n\n").trim();
     if (draftParts.atts.length) ai.content = BA.join(ai.content, draftParts.atts);
     mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
     ai.done = true;
@@ -6122,6 +6129,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=118" defer></script>
+<script src="/attach.js?v=120" defer></script>
 </body>
 </html>
