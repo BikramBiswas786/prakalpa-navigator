@@ -416,6 +416,13 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 .pd-preview img, .pd-preview canvas { max-width: 100%; height: auto; display: block; margin: 0 auto 8px; }
 .pd-preview pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; margin: 0; }
 .pd-preview table { border-collapse: collapse; font-size: .8rem; }
+.pd-cite { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 0 5px; margin: 0 1px; font-size: .78em; cursor: pointer; color: inherit; vertical-align: baseline; }
+.pd-cite:hover, .pd-cite:focus-visible { background: #fff3b0; }
+.pd-cites { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pd-cite-box { background: #fffbe6; border: 1px solid #f0d36b; border-radius: 8px; padding: 6px 8px; margin: 6px 0; font-size: .85rem; }
+.pd-preview mark, .pd-cite-box mark { background: #ffe066; color: inherit; }
+.pd-hl-row td, .pd-hl-row th { background: #fff3b0; }
+.pd-notfound { border-left: 3px solid #d08700; padding-left: 8px; }
 .pd-preview td { border: 1px solid var(--line); padding: 2px 5px; }
 .pd-progress { font-size: .82rem; color: var(--muted); display: grid; gap: 2px; }
 .pd-answer { display: grid; gap: 8px; }
@@ -5149,7 +5156,7 @@ Object.assign(STR.bn, {
   pd_confirm_del: n => `${n}টা জিনিস মুছে ফেলবেন? এটা ফেরানো যাবে না।`, pd_pick: "আগে বাঁদিকের ঘরে টিক দিয়ে বাছুন।", pd_pick_one: "একটাই বাছুন।",
   pd_up_wait: "অপেক্ষায়", pd_up_go: "তুলছি", pd_up_read: "লেখা পড়ছি", pd_up_done: "হয়ে গেছে", pd_up_fail: "আটকে গেছে", pd_up_cancel: "বাতিল", pd_retry: "আবার চেষ্টা", pd_cancel: "বাতিল",
   pd_no_text: "লেখা নেই (স্ক্যান? OCR এখনও নেই)", pd_preview_big: "ফাইল বড়, দেখতে ডাউনলোড করুন।", pd_preview_none: "এই ফাইল এখানে দেখা যায় না, ডাউনলোড করুন।",
-  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই (স্ক্যান করা ছবি পড়তে OCR লাগে, এখনও নেই)।`,
+  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_scanned: "স্ক্যান করা, লেখা নেই", pd_cites: "প্রমাণ", pd_notfound_hint: "প্রশ্নটা অন্যভাবে লিখে দেখুন, বা ঠিক ফাইলগুলো বেছে নিন।", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই (স্ক্যান করা ছবি পড়তে OCR লাগে, এখনও নেই)।`,
   pd_leave: "ফাইল তোলা চলছে। সত্যিই পাতা ছাড়বেন?"
 });
 Object.assign(STR.en, {
@@ -5177,7 +5184,7 @@ Object.assign(STR.en, {
   pd_confirm_del: n => `Delete ${n} item(s)? This can't be undone.`, pd_pick: "Tick items in the left column first.", pd_pick_one: "Pick just one.",
   pd_up_wait: "Waiting", pd_up_go: "Uploading", pd_up_read: "Reading text", pd_up_done: "Done", pd_up_fail: "Stopped", pd_up_cancel: "Cancelled", pd_retry: "Retry", pd_cancel: "Cancel",
   pd_no_text: "No text (scan? OCR not supported yet)", pd_preview_big: "Large file: download it to view.", pd_preview_none: "This file can't be shown here; download it.",
-  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_no_text_files: n => `${n} file(s) have no readable text (scanned images need OCR, not supported yet).`,
+  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_scanned: "scanned, no text", pd_cites: "Evidence", pd_notfound_hint: "Try rephrasing, or pick the right files for the AI.", pd_no_text_files: n => `${n} file(s) have no readable text (scanned images need OCR, not supported yet).`,
   pd_leave: "Uploads are running. Leave the page anyway?"
 });
 const pd = { token: "", name: "", files: [], folders: [], cwd: "", sel: new Set(), quota: 0, used: 0, ups: [], running: 0 };
@@ -5240,7 +5247,7 @@ function renderPdList() {
   renderPdChips();
   const { folders, files } = pdChildren();
   const rows = [...folders.sort((a, b) => a.name.localeCompare(b.name)), ...files.sort((a, b) => a.name.localeCompare(b.name))];
-  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t("pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
+  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t(r.note === "scanned" ? "pd_scanned" : "pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
   $("#pd-all").checked = rows.length > 0 && rows.every(r => pd.sel.has(r.key));
 }
 /* ---- v113: share links + upload-request links (owner side) ---- */
@@ -5502,10 +5509,25 @@ function pdNormTables(md) {
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-function pdOutAdd(md, sources) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pdOutSave(); renderPdOut(); }
+function pdOutAdd(md, sources, cites) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pdOutSave(); renderPdOut(); }
+// v115: [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
+function pdLocLabel(l) { if (!l) return ""; const en = settings.lang === "en"; if (l.page) return (en ? "p. " : "পৃ. ") + l.page; if (l.sheet) return `${l.sheet} ${en ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}`; if (l.h) return l.h.split(" › ").pop(); return ""; }
+function pdChipify(root, cites) {
+  const have = new Set(cites.map(c => c.n)); const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = [];
+  while (w.nextNode()) if (/\[\d{1,2}\]/.test(w.currentNode.nodeValue) && !w.currentNode.parentElement.closest("button,code,pre")) nodes.push(w.currentNode);
+  for (const n of nodes) { const frag = document.createDocumentFragment(); const parts = n.nodeValue.split(/(\[\d{1,2}\])/);
+    for (const part of parts) { const m = part.match(/^\[(\d{1,2})\]$/); if (m && have.has(Number(m[1]))) { const b = document.createElement("button"); b.type = "button"; b.className = "pd-cite"; b.dataset.pdCite = m[1]; b.textContent = part; const c = cites.find(x => x.n === Number(m[1])); b.title = c.path + (pdLocLabel(c.loc) ? " · " + pdLocLabel(c.loc) : ""); frag.append(b); } else if (part) frag.append(part); }
+    n.replaceWith(frag); }
+}
+function pdMarked(text, quote) {
+  const i = quote ? text.indexOf(quote) : -1;
+  if (i < 0) return esc(text);
+  return esc(text.slice(0, i)) + `<mark id="pd-hl">${esc(quote)}</mark>` + esc(text.slice(i + quote.length));
+}
 function renderPdOut() {
   const doc = $("#pd-out-doc"); if (!doc) return; const o = pd.outs[pd.outCur];
   doc.innerHTML = o ? mdToHtml(o.md) + (o.sources && o.sources.length ? `<p class="src pd-used"><b>${esc(t("pd_ai_used"))} (${o.sources.length}):</b> ${o.sources.map(s => "📄 " + esc(s)).join(" · ")}</p>` : "") : `<p class="hint">${esc(t("pd_out_empty"))}</p>`;
+  if (o && o.cites && o.cites.length) pdChipify(doc, o.cites);
   const hasTable = !!(o && parseMd(o.md).some(b => b.t === "table")); const c = $("#pd-out-csv"); c.disabled = !hasTable; c.title = hasTable ? "" : t("pd_out_notable");
   document.querySelectorAll("[data-pd-out]").forEach(b => { if (b.dataset.pdOut !== "csv") b.disabled = !o; });
   $("#pd-out-list").innerHTML = pd.outs.map((x, i) => `<button type="button" data-pd-outh="${i}" ${i === pd.outCur ? 'aria-current="true"' : ""}>${esc(new Date(x.at).toLocaleString())} · ${esc(x.q || x.md.slice(0, 60))}</button>`).join("");
@@ -5712,6 +5734,7 @@ function pdTextPump() {
         catch (e) { try { text = await pdExtract(it.file); } catch (x) { text = ""; } }
       }
       if (text) pdTextOut.push({ id: it.id, text });
+      else if (/\.pdf$/i.test(it.file.name) && it.file.size <= 150 * 1024 * 1024) pdTextOut.push({ id: it.id, text: "", note: "scanned" }); // v115: scanned PDF, no text layer
     })().finally(() => {
       pdTextBusy--; pd.textLeft = pdTextQ.length + pdTextBusy;
       clearTimeout(pdTextT); if (pdTextOut.length >= 25 || !pd.textLeft) pdTextFlush(); else pdTextT = setTimeout(pdTextFlush, 1500);
@@ -5871,8 +5894,12 @@ async function pdExtract(f) {
   if (ext === "docx") { await load("mammoth"); return String((await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() })).value || "").slice(0, PD_TEXT); }
   if (["xlsx", "xls", "ods"].includes(ext)) {
     await load("xlsx");
-    const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
-    return wb.SheetNames.map(n => `[Sheet: ${n}]\n` + window.XLSX.utils.sheet_to_csv(wb.Sheets[n], { FS: "\t" })).join("\n\n").slice(0, PD_TEXT);
+    const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array", cellDates: true });
+    // v115: "[Sheet: name @firstRow]" + tab rows; dates as yyyy-mm-dd and plain numbers so the server can do exact maths
+    const iso = d => { const x = new Date(d.getTime() + 12 * 3600e3); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+    return wb.SheetNames.map(n => { const ws = wb.Sheets[n]; const r0 = ws["!ref"] ? window.XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
+      const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "", blankrows: true });
+      return `[Sheet: ${n} @${r0}]\n` + rows.map(r => r.map(c => c instanceof Date ? iso(c) : String(c).replace(/[\t\n]+/g, " ")).join("\t")).join("\n"); }).join("\n\n").slice(0, PD_TEXT);
   }
   return "";
 }
@@ -5903,17 +5930,20 @@ $("#pd-file-in").addEventListener("change", e => { pdOffer([...e.target.files].m
 $("#pd-folder-in").addEventListener("change", e => { pdOffer([...e.target.files].map(f => ({ file: f, path: pdTarget(f.webkitRelativePath || f.name) }))); e.target.value = ""; });
 
 /* preview */
-async function pdPreview(id) {
+async function pdPreview(id, hi) {
   const f = pd.files.find(x => x.id === id); if (!f) return;
   const box = $("#pd-preview"); box.hidden = false;
-  const head = `<div class="row tools"><b>${esc(f.path)}</b> <button class="btn small" type="button" data-pd-dl="${esc(f.id)}">${esc(t("pd_download"))}</button> <button class="btn small" type="button" data-pd-close-prev>✕</button></div>`;
+  const loc = (hi && hi.loc) || {};
+  const head = `<div class="row tools"><b>${esc(f.path)}</b> <button class="btn small" type="button" data-pd-dl="${esc(f.id)}">${esc(t("pd_download"))}</button> <button class="btn small" type="button" data-pd-close-prev>✕</button></div>`
+    + (hi ? `<div class="pd-cite-box" id="pd-cite-box"><b>[${hi.n}] ${esc(pdLocLabel(loc))}</b>${hi.quote ? ` <mark>${esc(hi.quote)}</mark>` : ""}</div>` : "");
   box.innerHTML = head + `<p class="hint">…</p>`;
   const ext = (f.path.split(".").pop() || "").toLowerCase();
+  const focus = () => { const m = box.querySelector("#pd-hl, .pd-hl-row, #pd-cite-box"); (m || box).scrollIntoView({ block: "center" }); };
   try {
     if (f.size > 40 * 1024 * 1024) { box.innerHTML = head + `<p class="hint">${esc(t("pd_preview_big"))}</p>`; return; }
     const viewable = ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "md", "csv", "json", "log", "xlsx", "xls", "docx"].includes(ext);
     if (!viewable) { box.innerHTML = head + `<p class="hint">${esc(t("pd_preview_none"))}</p>`; return; }
-    if (ext === "docx" && f.text) { const { text } = await pdApi("text-get", { id }); box.innerHTML = head + `<pre>${esc(text)}</pre>`; return; }
+    if (ext === "docx" && f.text) { const { text } = await pdApi("text-get", { id }); box.innerHTML = head + `<pre>${pdMarked(text.replace(/^#{1,6} /gm, ""), hi && hi.quote)}</pre>`; focus(); return; }
     const { url } = await pdApi("download", { id, inline: true });
     const blob = await (await fetch(url)).blob();
     if (["png", "jpg", "jpeg", "gif", "webp"].includes(ext)) { const src = URL.createObjectURL(blob); box.innerHTML = head; const img = new Image(); img.alt = f.path; img.src = src; box.append(img); return; }
@@ -5921,17 +5951,32 @@ async function pdPreview(id) {
       await load("pdfworker"); await load("pdfjs");
       const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
       box.innerHTML = head + `<p class="hint">${pdf.numPages} pages</p>`;
-      for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) { const page = await pdf.getPage(p); const vp = page.getViewport({ scale: 1.3 }); const cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise; box.append(cv); }
+      const want = loc.page && loc.page <= pdf.numPages ? [loc.page] : [];
+      const list = want.length ? want : Array.from({ length: Math.min(pdf.numPages, 5) }, (_, i) => i + 1);
+      const words = hi && hi.quote ? new Set(hi.quote.toLowerCase().split(/\s+/).filter(w => w.length > 2)) : null;
+      for (const p of list) {
+        const page = await pdf.getPage(p); const vp = page.getViewport({ scale: 1.3 }); const cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height; cv.dataset.page = p;
+        await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+        if (words && words.size) { const ctx = cv.getContext("2d"); ctx.fillStyle = "rgba(255,220,0,.38)"; const tc = await page.getTextContent();
+          for (const it of tc.items) { const ws = it.str.toLowerCase().split(/\s+/).filter(w => w.length > 2); if (!ws.length || ws.filter(w => words.has(w)).length / ws.length < 0.5) continue;
+            const tx = window.pdfjsLib.Util.transform(vp.transform, it.transform); const h = Math.hypot(tx[2], tx[3]); ctx.fillRect(tx[4], tx[5] - h, it.width * vp.scale, h * 1.2); cv.classList.add("pd-hl-page"); } }
+        box.append(cv);
+      }
+      if (want.length) { const c = box.querySelector("canvas"); if (c) c.scrollIntoView({ block: "start" }); }
       return;
     }
     if (["xlsx", "xls"].includes(ext)) {
       await load("xlsx");
       const wb = window.XLSX.read(new Uint8Array(await blob.arrayBuffer()), { type: "array" });
-      const rows = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" }).slice(0, 300);
-      box.innerHTML = head + `<p class="hint">${esc(wb.SheetNames.join(", "))}</p><table>${rows.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table>`;
-      return;
+      const name = loc.sheet && wb.SheetNames.includes(loc.sheet) ? loc.sheet : wb.SheetNames[0]; const ws = wb.Sheets[name];
+      const r0 = ws["!ref"] ? window.XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
+      const all = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: true });
+      const mark = new Set(loc.rows || (loc.r1 ? Array.from({ length: Math.min(500, loc.r2 - loc.r1 + 1) }, (_, i) => loc.r1 + i) : []));
+      const end = Math.max(300, (loc.r2 || 0) - r0 + 20);
+      box.innerHTML = head + `<p class="hint">${wb.SheetNames.map(n => n === name ? `<b>${esc(n)}</b>` : esc(n)).join(", ")}</p><table>${all.slice(0, end).map((r, i) => `<tr${mark.has(r0 + i) ? ' class="pd-hl-row"' : ""}><th>${r0 + i}</th>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table>`;
+      focus(); return;
     }
-    box.innerHTML = head + `<pre>${esc((await blob.slice(0, 300000).text()))}</pre>`;
+    box.innerHTML = head + `<pre>${pdMarked(await blob.slice(0, 300000).text(), hi && hi.quote)}</pre>`; if (hi) focus();
   } catch (e) { box.innerHTML = head + `<p class="hint">${esc(pdErrText(e))}</p>`; }
 }
 async function pdDownload(id) { const { url } = await pdApi("download", { id }); const a = document.createElement("a"); a.href = url; a.rel = "noopener"; document.body.append(a); a.click(); a.remove(); }
@@ -5963,8 +6008,11 @@ function pdAiEvent(ev) {
   if (ev.type !== "answer") return;
   prog.innerHTML = "";
   pd.actions = ev.actions || [];
-  pdOutAdd(ev.text || "", ev.sources || []);
+  pd.cites = ev.cites || [];
+  pdOutAdd(ev.text || "", ev.sources || [], pd.cites);
   out.innerHTML = ""
+    + (ev.notFound ? `<div class="src pd-notfound"><b>${esc(ev.text)}</b> ${esc(t("pd_notfound_hint"))}</div>` : "")
+    + (pd.cites.length ? `<div class="src pd-cites"><b>${esc(t("pd_cites"))}:</b> ${pd.cites.map(c => `<button type="button" class="pd-cite" data-pd-cite="${c.n}" title="${esc(c.quote || "")}">[${c.n}] ${esc(c.path.split("/").pop())}${pdLocLabel(c.loc) ? " · " + esc(pdLocLabel(c.loc)) : ""}</button>`).join(" ")}</div>` : "")
     + (ev.sources && ev.sources.length ? `<div class="src pd-used"><b>${esc(t("pd_ai_used"))} (${ev.sources.length}):</b> ${ev.sources.map(s => "📄 " + esc(s)).join(" · ")}</div>` : "")
     + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "")
     + pd.actions.map((a, i) => `<div class="pd-act"><b>${esc(t("pd_save_as"))} (${esc(a.format)})</b><input data-pd-act-path="${i}" value="${esc(a.path)}" aria-label="Path"><button class="btn small primary" type="button" data-pd-act="${i}">${esc(t("pd_save_as"))}</button></div>`).join("");
@@ -6002,6 +6050,7 @@ document.addEventListener("click", async e => {
     if (el("#pd-up")) { pdUp(); return; }
     if (el("#pd-back")) { if (history.state && history.state.pdDepth > 0) history.back(); return; }
     if ((x = el("[data-pd-cd]"))) { if (x.hasAttribute("aria-current")) return; pdCd(x.dataset.pdCd); return; }
+    if ((x = el("[data-pd-cite]"))) { const o = pd.outs[pd.outCur] || {}; const list = (x.closest("#pd-out-doc") ? o.cites : pd.cites) || pd.cites || []; const c = list.find(y => y.n === Number(x.dataset.pdCite)); if (c) pdPreview(c.id, c); return; }
     if ((x = el("[data-pd-view]"))) return pdPreview(x.dataset.pdView);
     if ((x = el("[data-pd-dl]"))) return pdDownload(x.dataset.pdDl);
     if (el("[data-pd-close-prev]")) { $("#pd-preview").hidden = true; return; }

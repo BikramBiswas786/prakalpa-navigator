@@ -173,7 +173,7 @@ export async function receiver(req, res, op, body, send) {
 // The AI answers only from the shared files; any pendrive-write actions are dropped and paths are shown relative to the link.
 async function shareAi(req, res, pid, body, names) {
   const fake = { write: s => { for (const line of String(s).split("\n")) { if (!line) continue; let o; try { o = JSON.parse(line); } catch (e) { continue; }
-    if (o.type === "answer") { o.actions = []; o.sources = (o.sources || []).map(p => names.get(p) || "").filter(Boolean); o.noText = (o.noText || []).map(p => names.get(p) || "").filter(Boolean); let t = String(o.text || ""); for (const [p, r] of names) t = t.split(p).join(r); o.text = t; }
+    if (o.type === "answer") { o.actions = []; o.sources = (o.sources || []).map(p => names.get(p) || "").filter(Boolean); o.noText = (o.noText || []).map(p => names.get(p) || "").filter(Boolean); o.scanned = (o.scanned || []).map(p => names.get(p) || "").filter(Boolean); o.cites = (o.cites || []).filter(c => names.has(c.path)).map(c => ({ ...c, path: names.get(c.path) })); let t = String(o.text || ""); for (const [p, r] of names) t = t.split(p).join(r); o.text = t; }
     if (o.type === "progress") o = { type: "progress" };
     res.write(JSON.stringify(o) + "\n"); } }, end: () => res.end(), writeHead: (...a) => res.writeHead(...a), get headersSent() { return res.headersSent; } };
   return X.aiJob(req, fake, pid, body);

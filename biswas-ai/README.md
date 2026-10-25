@@ -210,3 +210,30 @@ If the browser cannot reach a storage host at all (firewall or blocked port: a n
 
 ## v112 — fast bulk delete
 - Deleting many files at once removes the stored objects 8 at a time and rewrites the search index once, instead of four storage calls in a row per file. On the live pool, deleting 5 or more files at once used to fail with a server error.
+
+## v115 — cited answers
+
+Pendrive "ask" answers now come with numbered evidence. Each `[n]` in the answer is a chip that opens the file at the cited
+page, sheet rows or section, with the passage highlighted. This works on the owner's page and on share links.
+
+- **Chunking** (`api/rag.js`): PDF text is split into per-page chunks. Lines repeated at the top or bottom of at least half of
+  the pages are removed, along with "Page n of N" lines. A PDF with no text layer is marked "scanned, no text"; OCR is not
+  included. DOCX headings come out of the text worker as `#` lines, so each chunk keeps its heading path, for example
+  "Annual Report › Sales › March". Each XLSX sheet becomes row chunks with the header repeated and the row range kept. Dates
+  are written as yyyy-mm-dd. Chunks are 400–800 tokens with about 15% overlap and are stored in `c/<fileId>.json`. BM25
+  indexes the chunks (`bm25.json` v2). Older pendrives are re-indexed the first time someone asks a question.
+- **Retrieval:** BM25 runs over a query expanded with Bengali ⇄ English synonyms and month names, keeping the top 40. The
+  candidates are then reranked by term coverage, BM25 and proximity, and the top 6 go to the model as numbered extracts. If
+  `COHERE_API_KEY` is set, Cohere's multilingual rerank is blended in. Otherwise, if `GEMINI_API_KEY` is set, Gemini
+  embeddings are blended in. Both are optional and fail silently; `PD_RAG_REMOTE=0` turns them off.
+- **Exact spreadsheet maths:** a safe aggregate engine handles questions like "total sales in March" or "মার্চে মোট বিক্রি কত?".
+  It parses the question and never evaluates code. It supports sum, average, count, max and min, filters by month/year and by
+  text values, and picks the column from the headers. The result goes to the model as an exact COMPUTED fact cited to the
+  rows it used.
+- **Strict "not found":** if no chunk covers enough of the question, the answer is "Not found in your files" and no model call
+  is made. The same happens when the model replies `NOT_FOUND`. Overview questions such as "summarise these files" are not
+  gated.
+- **Share links:** the AI sees only the shared files. Cite paths are the paths the link shows. The v113 rate limit and daily
+  budget still apply.
+- **Tests:** `tests/rag-v115.mjs` covers the API and the pure functions. `tests/rag-ui-v115.mjs` is a headless run with real
+  pdf, docx and xlsx files.

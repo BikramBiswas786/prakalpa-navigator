@@ -19,7 +19,7 @@ if (process.env.PDNAME) { await p.type("#pd-o-name", name).catch(() => {}); }
 if (!(await p.$("#pd-main:not([hidden])"))) { await p.type("#pd-c-name", name); await p.type("#pd-c-pin", process.env.PDPIN || "482915"); await p.type("#pd-c-pin2", process.env.PDPIN || "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit()); }
 await p.waitForSelector("#pd-main", { visible: true }); await sl(800); ok(true, "1 zz-test pendrive " + name);
 const idle = async () => { for (let i = 0; i < 300; i++) { await sl(500); if (!(await p.evaluate(() => (pd.textLeft || pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state)))))) return; } };
-await (await p.$("#pd-folder-in")).uploadFile(SRC); await p.waitForSelector("#pd-confirm:not([hidden])", { timeout: 20000 }); await p.click("[data-pd-sum-go]"); await idle(); await sl(1500);
+await (await p.$("#pd-folder-in")).uploadFile(SRC); await p.waitForSelector("#pd-confirm:not([hidden])", { timeout: 20000 }); await p.click("[data-pd-sum-go]"); await p.waitForFunction(() => pd.files.length >= 5 && !pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state)), { timeout: 180000 }).catch(() => {}); await idle(); await sl(1500);
 const n0 = await p.evaluate(() => pd.files.length); ok(n0 === 5, `2 uploaded 5 fixture files (${n0})`);
 // 3 share the folder with AI on
 await p.$$eval("#pd-rows tr", trs => trs.find(t => t.dataset.pdKey === "d:share").querySelector("[data-pd-sel]").click());

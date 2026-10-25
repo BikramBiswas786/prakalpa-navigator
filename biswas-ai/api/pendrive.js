@@ -9,6 +9,7 @@
 // Renames and moves only change index.json; the stored bytes never move.
 import crypto from "node:crypto";
 import { makePool } from "./storage.js";
+import * as rag from "./rag.js";
 
 const env = process.env;
 let SECRET = env.PENDRIVE_SECRET || "";
@@ -35,7 +36,6 @@ if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES
 const SESSION_MS = 12 * 3600 * 1000;
 const LOCK_TRIES = 5, LOCK_MS = 15 * 60 * 1000;
 const TEXT_MAX = 2 * 1024 * 1024;           // per-file extracted text kept for the AI
-const CHUNK = 1500;
 const JOB = { maxFiles: 40, mapChars: 12000, maxMapCalls: 10, askChars: 14000 };
 
 /* ---------- helpers ---------- */
@@ -159,22 +159,41 @@ export function tokens(text) {
   }
   return out;
 }
-const chunksOf = text => { const out = []; for (let i = 0; i < text.length && out.length < 2000; i += CHUNK) out.push(text.slice(i, i + CHUNK + 200)); return out; };
-async function bm(id) { return (await cget(`${P(id)}/bm25.json`)) || { df: {}, n: 0, len: 0, files: {} }; }
-function bmRemove(x, fileId) {
-  const f = x.files[fileId]; if (!f) return;
-  for (const c of f) { for (const t of Object.keys(c.tf)) { x.df[t] -= 1; if (x.df[t] <= 0) delete x.df[t]; } x.n -= 1; x.len -= c.l; }
-  delete x.files[fileId];
+async function bm(id) { return (await cget(`${P(id)}/bm25.json`)) || { v: 2, df: {}, n: 0, len: 0, files: {} }; }
+// v115: chunks with locations (page / heading path / sheet rows) live in c/<fid>.json; bm25 indexes those chunks.
+const cKey = (id, fid) => `${P(id)}/c/${fid}.json`;
+async function putChunks(id, fid, text) { const built = rag.build(text); await storage.putText(cKey(id, fid), JSON.stringify(built)); return built; }
+async function loadChunks(id, f) {
+  try { const t = await storage.getText(cKey(id, f.id)); if (t) return JSON.parse(t); } catch (e) { /* rebuild below */ }
+  return rag.build((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
 }
-function bmAdd(x, fileId, text) {
+function bmAddChunks(x, fileId, chunks) {
   bmRemove(x, fileId);
-  x.files[fileId] = chunksOf(text).map(c => {
-    const tf = {}; const tk = tokens(c);
+  x.files[fileId] = chunks.map(c => {
+    const tf = {}; const tk = tokens(rag.searchText(c));
     for (const t of tk) tf[t] = (tf[t] || 0) + 1;
     for (const t of Object.keys(tf)) x.df[t] = (x.df[t] || 0) + 1;
     x.n += 1; x.len += tk.length;
     return { tf, l: tk.length };
   });
+}
+// Lazy migration of pre-v115 pendrives: rebuild chunk files + bm25 once, the first time someone asks.
+async function ragIndex(id, all, emit) {
+  let x = await bm(id); if (x.v === 2) return x;
+  return withLock("bm:" + id, async () => {
+    x = await bm(id); if (x.v === 2) return x;
+    const nx = { v: 2, df: {}, n: 0, len: 0, files: {} }; const files = all.filter(f => f.text);
+    emit && emit({ type: "progress", msg: `index ${files.length}` });
+    for (let i = 0; i < files.length; i += 8) await Promise.all(files.slice(i, i + 8).map(async f => {
+      try { const built = await putChunks(id, f.id, (await storage.getText(`${P(id)}/t/${f.id}.txt`)) || ""); bmAddChunks(nx, f.id, built.chunks); } catch (e) { console.warn("pendrive: reindex", e.message); }
+    }));
+    await cset(`${P(id)}/bm25.json`, nx); return nx;
+  });
+}
+function bmRemove(x, fileId) {
+  const f = x.files[fileId]; if (!f) return;
+  for (const c of f) { for (const t of Object.keys(c.tf)) { x.df[t] -= 1; if (x.df[t] <= 0) delete x.df[t]; } x.n -= 1; x.len -= c.l; }
+  delete x.files[fileId];
 }
 export function bmSearch(x, q, allowed, k = 8) {
   const qt = [...new Set(tokens(q))]; const avg = x.len / Math.max(1, x.n); const hits = [];
@@ -211,6 +230,7 @@ function mockAI(system, user) {
   if (/^Rewrite this answer/.test(user)) return "Reshaped:\n\n| ফাইল | বিষয় |\n| --- | --- |\n| [x.txt] | পুনর্গঠিত |";
   if (/prose/i.test(user.split("QUESTION:").pop() || "")) return `MOCK prose answer from ${files.length} source(s).`;
   let out = `MOCK answer from ${files.length} source(s): ${files.join(", ")}`;
+  if (/^Numbered file extracts/.test(user)) { const c = user.match(/COMPUTED: .*? = (-?[\d.]+) \(/); const ns = [...user.matchAll(/^\[(\d+)\] \[FILE:/gm)].map(m => `[${m[1]}]`); out = (c ? `MOCK computed ${c[1]} [1]. ` : "") + out + " " + ns.join(""); }
   if (/table|টেবিল/i.test(user.split("QUESTION:").pop() || "")) out += "\n\n## সারসংক্ষেপ\n\n| ফাইল | বিষয় |\n| --- | --- |\n" + files.map(f => `| ${f} | বাজেট ও বিল |`).join("\n") + "\n\nমোট ফাইল: " + files.length;
   if (/write|লিখ|report|নোট/i.test(user.split("QUESTION:").pop() || "")) out += '\n```pendrive-write\n{"path":"Reports/summary.md","format":"md","content":"# Summary\\n\\nFrom: ' + files.join(", ") + '"}\n```';
   return out;
@@ -291,7 +311,7 @@ export async function handle(req, res, url, body, send) {
   const id = req.pdAs || session(req); // v113: share upload-request links act on the owner's pendrive with a fixed op set
   if (op === "list") {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
-    const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text }) => ({ id, path, size, type, mtime, text }));
+    const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text, note }) => ({ id, path, size, type, mtime, text, ...(note ? { note } : {}) }));
     const pending = Object.entries(m.pending || {}).map(([fileId, v]) => ({ fileId, path: v.path, size: v.size, t: v.t }));
     return send(200, { ...publicMeta(m), files, folders: ix.folders.slice().sort(), pending });
   }
@@ -313,9 +333,13 @@ export async function handle(req, res, url, body, send) {
   }
 
   const writeTexts = async (ix, list) => { // v110: text sidecars in parallel, one bm25 write
-    const x = await bm(id); const ok = list.filter(t => ix.files[String(t.id)]);
+    let x = await bm(id); const ok = list.filter(t => ix.files[String(t.id)]);
     for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(t => storage.putText(`${P(id)}/t/${String(t.id)}.txt`, String(t.text || "").slice(0, TEXT_MAX))));
-    for (const t of ok) { const f = ix.files[String(t.id)]; const text = String(t.text || "").slice(0, TEXT_MAX); bmAdd(x, f.id, text); f.text = text.length > 0; f.note = String(t.note || "").slice(0, 80); }
+    const built = {};
+    for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(async t => { built[String(t.id)] = await putChunks(id, String(t.id), String(t.text || "").slice(0, TEXT_MAX)); }));
+    if (x.v !== 2) { x = await ragIndex(id, Object.values(ix.files).filter(f => f.state === "ok" && f.text && !built[f.id]), null); }
+    for (const t of ok) { const f = ix.files[String(t.id)]; const text = String(t.text || "").slice(0, TEXT_MAX); const b = built[f.id];
+      bmAddChunks(x, f.id, b.chunks); f.text = text.length > 0 && b.chunks.length > 0; f.note = String(t.note || (b.scanned ? "scanned" : "")).slice(0, 80); if (b.pages) f.pages = b.pages; }
     if (ok.length) await cset(`${P(id)}/bm25.json`, x);
     return ok.length;
   };
@@ -550,7 +574,7 @@ async function dropFiles(id, ix, list) {
   // v113: one flaky storage call used to fail the whole delete with "server" (objects gone, index unchanged).
   // Now each object delete is retried; if a backend still refuses, the key is parked in ix.gc and retried by the next delete.
   const keys = [];
-  for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }); }
+  for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text || ix.files[fid].note) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }, { b: null, k: cKey(id, fid) }); }
   const old = (ix.gc || []).slice(0, 50); ix.gc = (ix.gc || []).slice(50);
   await delKeys(ix, [...keys, ...old]);
   if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); }
@@ -568,13 +592,51 @@ async function delKeys(ix, keys) {
 async function dropFile(id, ix, fid) {
   await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
   if (ix.files[fid] && ix.files[fid].text) {
-    await storage.del(`${P(id)}/t/${fid}.txt`);
+    await storage.del(`${P(id)}/t/${fid}.txt`); await storage.del(cKey(id, fid)).catch(() => {});
     const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x);
   }
   delete ix.files[fid];
 }
 
-// Streams NDJSON: {type:"progress"} lines, then {type:"answer", text, sources, actions}.
+const NOT_FOUND = { en: "Not found in your files. The selected files don't contain enough evidence to answer this, so I won't guess.", bn: "আপনার ফাইলে পাওয়া যায়নি। বেছে নেওয়া ফাইলগুলোতে এর উত্তরের যথেষ্ট প্রমাণ নেই, তাই আন্দাজে কিছু বলছি না।" };
+const locLabel = l => !l ? "" : l.page ? `page ${l.page}` : l.sheet ? `sheet "${l.sheet}" rows ${l.r1}–${l.r2}` : l.h ? `section: ${l.h}` : "";
+// v115: retrieval for "ask": expanded BM25 (top 40) → optional embeddings/reranker → lexical rerank → top 6, numbered [n].
+// Spreadsheet maths is computed here (rag.aggregate, no eval) and handed to the model as an exact, citable fact.
+async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote) {
+  const x = await ragIndex(id, all, emit);
+  const allowed = new Set(withText.map(f => f.id)); const ex = rag.expand(q, tokens);
+  const hits = bmSearch(x, [...ex.base, ...ex.extra].join(" "), allowed, 40);
+  const cache = {}; const getC = async fid => (cache[fid] = cache[fid] || await loadChunks(id, ix.files[fid]));
+  const cands = [];
+  for (const h of hits) { const c = (await getC(h.fid)).chunks[h.i]; if (c) cands.push({ ...h, chunk: c }); }
+  const overview = rag.OVERVIEW.test(q);
+  if (overview) for (const f of withText.slice(0, 8)) if (!cands.some(c => c.fid === f.id)) { const c = (await getC(f.id)).chunks[0]; if (c) cands.push({ fid: f.id, i: 0, s: 0, chunk: c }); }
+  const how = await rag.remoteScores(q, cands.slice(0, 30));
+  rag.lexRerank(q, cands, tokens);
+  let agg = null;
+  if (rag.numericQuestion(q)) {
+    const sheetFiles = [];
+    for (const f of withText.filter(f => /\.(xlsx|xls|ods)$/i.test(f.path)).slice(0, 20)) { const c = await getC(f.id); if (c.sheets) sheetFiles.push({ id: f.id, path: f.path, sheets: c.sheets }); }
+    agg = rag.aggregate(q, sheetFiles, tokens);
+  }
+  const need = ex.base.length >= 3 ? 0.34 : ex.base.length === 2 ? 0.5 : 1;
+  const strong = cands.filter(c => c.cov >= need || (c.emb || 0) >= 0.62);
+  emit({ type: "progress", msg: `chunks ${cands.length} → ${strong.length}${how ? " · " + how : ""}${agg ? " · computed" : ""}` });
+  if (!overview && !agg && !strong.length) return { notFound: true };
+  const ev = []; let left = JOB.askChars;
+  if (agg) { const t = rag.aggText(agg); ev.push({ fid: agg.fid, loc: { sheet: agg.sheet, r1: agg.rows[0] || 0, r2: agg.rows[agg.rows.length - 1] || 0, rows: agg.rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
+  for (const c of (overview ? cands : strong).slice(0, agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
+  const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
+  const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else.`;
+  let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
+  if (/^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
+  answer = answer.replace(/\bNOT_FOUND\b/g, "");
+  const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
+  const cites = ev.map((e, i) => ({ n: i + 1, id: e.fid, path: ix.files[e.fid].path, loc: e.loc, quote: e.quote })).filter(c => !used.size || used.has(c.n));
+  return { answer, cites, sources: [...new Set(cites.map(c => c.path))] };
+}
+
+// Streams NDJSON: {type:"progress"} lines, then {type:"answer", text, sources, cites, actions}.
 async function aiJob(req, res, id, body) {
   const q = String(body.question || "").slice(0, 2000).trim();
   if (!q) fail(400, "no_question");
@@ -593,13 +655,14 @@ async function aiJob(req, res, id, body) {
   const emit = o => res.write(JSON.stringify(o) + "\n");
   const noText = inScope.filter(f => !f.text).map(f => f.path);
   const withText = inScope.filter(f => f.text);
+  const scanned = inScope.filter(f => f.note === "scanned").map(f => f.path);
   try {
     if (!withText.length) {
-      emit({ type: "answer", text: lang === "en" ? "None of the selected files has readable text. Scanned images need OCR, which isn't supported yet." : "বেছে নেওয়া ফাইলে পড়ার মতো লেখা নেই। স্ক্যান করা ছবি পড়তে OCR লাগে, সেটা এখনও নেই।", sources: [], actions: [], noText });
+      emit({ type: "answer", text: lang === "en" ? "None of the selected files has readable text. Scanned images need OCR, which isn't supported yet." : "বেছে নেওয়া ফাইলে পড়ার মতো লেখা নেই। স্ক্যান করা ছবি পড়তে OCR লাগে, সেটা এখনও নেই।", sources: [], cites: [], actions: [], noText, scanned });
       return res.end();
     }
     const read = async f => ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
-    let answer, sources;
+    let answer, sources, cites;
     if (body.mode === "analyse") {
       const files = withText.slice(0, JOB.maxFiles);
       emit({ type: "progress", msg: `files ${files.length}/${withText.length}` });
@@ -622,26 +685,16 @@ async function aiJob(req, res, id, body) {
       answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
-      const x = await bm(id);
-      let hits = bmSearch(x, q, new Set(withText.map(f => f.id)), 10);
-      if (!hits.length) hits = withText.slice(0, 4).map(f => ({ fid: f.id, i: 0 })); // nothing matched: start of each file
-      emit({ type: "progress", msg: `chunks ${hits.length}` });
-      const texts = {}; let ctx = "", left = JOB.askChars;
-      for (const h of hits) {
-        const f = ix.files[h.fid]; if (!f || left <= 0) continue;
-        texts[h.fid] = texts[h.fid] ?? await read(f);
-        const part = texts[h.fid].slice(h.i * CHUNK, h.i * CHUNK + CHUNK + 200).slice(0, left);
-        ctx += `[FILE: ${f.path}]\n${part}\n\n`; left -= part.length;
-      }
-      sources = [...new Set(hits.map(h => ix.files[h.fid] && ix.files[h.fid].path).filter(Boolean))];
-      answer = await askAI(SYSX(lang), `File extracts:\n\n${ctx}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
+      const r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote);
+      if (r.notFound) { emit({ type: "answer", text: NOT_FOUND[lang], sources: [], cites: [], actions: [], noText, notFound: true, scanned }); return res.end(); }
+      ({ answer, sources, cites } = r);
     }
     if (wantsTable(q, fmt) && !hasMdTable(answer)) { // v108: the model ignored the format: ask once more to reshape its own answer
       emit({ type: "progress", msg: "table" });
       try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block and any \`\`\`attachment block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
     const { text, actions } = parseActions(answer);
-    emit({ type: "answer", text, sources, actions, noText });
+    emit({ type: "answer", text, sources, cites: cites || [], actions, noText, scanned });
   } catch (e) {
     emit({ type: "error", error: e.code || "ai_failed" });
   }

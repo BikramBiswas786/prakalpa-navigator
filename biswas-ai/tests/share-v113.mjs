@@ -8,7 +8,8 @@ const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) process
 const put = async (url, bytes) => (await fetch(url.startsWith("http") ? url : B + url, { method: "PUT", body: bytes })).headers.get("etag");
 const up = async (path, text) => { const b = new TextEncoder().encode(text); const i = (await api("upload/init", { path, size: b.length, type: "text/plain" })).j; const r = await api("upload/complete", { fileId: i.fileId, uploadId: i.uploadId, parts: [{ n: 1, etag: await put(i.urls[1], b) }] }); await api("text-batch", { items: [{ id: r.j.id, text }] }); return r.j; };
 
-let r = await api("create", { name: "zz-test-share-" + Date.now(), pin: "482915" }); tok = r.j.token;
+const PDN = "zz-test-share-" + Date.now(); console.log("pendrive " + PDN);
+let r = await api("create", { name: PDN, pin: "482915" }); tok = r.j.token;
 const a = await up("Reports/2026/march.txt", "March sales total 4200 taka. গোপন নয়।");
 await up("Reports/2026/april.txt", "April sales 3100");
 await up("Reports/notes.md", "# notes\nhello");
@@ -29,10 +30,10 @@ ok(r.j.files.some(f => f.path === "Reports/2026/march.txt") && r.j.folders.inclu
 ok(!JSON.stringify(r.j).includes("zz-test-share"), "receiver never sees the pendrive name");
 const fm = r.j.files.find(f => f.path.endsWith("march.txt"));
 r = await s("url", { sid, token: T, id: secret.id }); ok(r.status === 404, "file outside the link → 404");
-r = await s("url", { sid, token: T, id: fm.id, inline: 1 }); let body = await (await fetch(B + r.j.url)).text();
+r = await s("url", { sid, token: T, id: fm.id, inline: 1 }); let body = await (await fetch(r.j.url.startsWith("http") ? r.j.url : B + r.j.url)).text();
 ok(r.status === 200 && body.includes("March sales"), "inline preview url works");
 r = await api("share/get", { sid }); ok(r.j.dl === 0, "preview doesn't count as a download");
-r = await s("url", { sid, token: T, id: fm.id }); const dres = await fetch(B + r.j.url);
+r = await s("url", { sid, token: T, id: fm.id }); const dres = await fetch(r.j.url.startsWith("http") ? r.j.url : B + r.j.url);
 ok(r.status === 200 && /attachment/.test(dres.headers.get("content-disposition") || ""), "download url (attachment)");
 r = await s("zip", { sid, token: T }); ok(r.status === 200 && Object.keys(r.j.urls).length === 3, "zip: urls for all 3 files");
 r = await api("share/get", { sid }); ok(r.j.dl === 2 && r.j.events.filter(e => e.a === "download" || e.a === "zip").length === 2, `stats: 2 downloads + activity events (${r.j.dl})`);

@@ -27,9 +27,20 @@ async function entry(file, want) {
   }
   throw new Error("no " + want);
 }
+// v115: headings become "#", "##"… lines (Heading1..6 / Title / outline level) so answers can cite the section path.
 async function docx(file) {
   const xml = await entry(file, "word/document.xml");
   const ent = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
-  return xml.replace(/<w:tab\/>/g, "\t").replace(/<w:br\/>/g, "\n").replace(/<\/w:p>/g, "\n").replace(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g, (_, t) => "\u0001" + t + "\u0002")
-    .replace(/<[^>]+>/g, "").replace(/\u0001([^\u0002]*)\u0002/g, (_, t) => ent(t)).replace(/\n{3,}/g, "\n\n").trim();
+  const body = (xml.match(/<w:body[\s\S]*<\/w:body>/) || [xml])[0];
+  const out = [];
+  for (const p of body.split(/<\/w:p>/)) {
+    const st = (p.match(/<w:pStyle w:val="([^"]+)"/) || [])[1] || ""; const ol = (p.match(/<w:outlineLvl w:val="(\d)"/) || [])[1];
+    const m = st.match(/^(?:heading|berschrift|titre|titolo)\s?(\d)$/i) || st.match(/^Heading(\d)/i);
+    const level = m ? Math.min(6, +m[1]) : /^title$/i.test(st) ? 1 : ol != null && +ol < 6 ? +ol + 1 : 0;
+    const text = p.replace(/<w:tab\/>/g, "\t").replace(/<w:br\/>/g, "\n").replace(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>/g, (_, t) => "\u0001" + t + "\u0002")
+      .replace(/<[^>]+>/g, "").replace(/\u0001([^\u0002]*)\u0002/g, (_, t) => ent(t)).trim();
+    if (!text) continue;
+    out.push(level ? "\n" + "#".repeat(level) + " " + text.replace(/\n/g, " ") : text);
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
