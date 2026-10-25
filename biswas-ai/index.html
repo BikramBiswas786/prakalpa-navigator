@@ -5989,7 +5989,7 @@ async function pdAsk() {
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
-    const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang, skillNote: window.BA ? BA.addendum() : "" }) });
+    const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang, skillNote: window.BA ? (BA.lastPdQ = String(($("#pd-q") || {}).value || ""), BA.addendum()) : "" }) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); const e = new Error(j.error || "http_" + r.status); e.info = j; throw e; }
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
@@ -6122,6 +6122,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=116" defer></script>
+<script src="/attach.js?v=118" defer></script>
 </body>
 </html>
