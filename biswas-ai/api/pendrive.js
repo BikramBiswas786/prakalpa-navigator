@@ -486,6 +486,9 @@ async function aiJob(req, res, id, body) {
   if (!q) fail(400, "no_question");
   const lang = body.lang === "en" ? "en" : "bn";
   const fmt = ["auto", "table", "report", "letter"].includes(body.format) ? body.format : "auto";
+  // v109: optional skill + attachment note from the shared client module (plain text, capped).
+  const skillNote = String(body.skillNote || "").replace(/[\u0000-\u0008]/g, "").slice(0, 4000);
+  const SYSX = l => SYS(l) + skillNote;
   const ix = await index(id);
   const all = Object.values(ix.files).filter(f => f.state === "ok");
   const scope = body.scope || {};
@@ -522,7 +525,7 @@ async function aiJob(req, res, id, body) {
       }
       emit({ type: "progress", step: used.length + 1, of: used.length + 1, msg: "combine" });
       const skipped = withText.length - used.flat().length;
-      answer = await askAI(SYS(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, 2000);
+      answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
       const x = await bm(id);
@@ -537,11 +540,11 @@ async function aiJob(req, res, id, body) {
         ctx += `[FILE: ${f.path}]\n${part}\n\n`; left -= part.length;
       }
       sources = [...new Set(hits.map(h => ix.files[h.fid] && ix.files[h.fid].path).filter(Boolean))];
-      answer = await askAI(SYS(lang), `File extracts:\n\n${ctx}\nQUESTION: ${q}${fmtRule(q, fmt)}`, 1800);
+      answer = await askAI(SYSX(lang), `File extracts:\n\n${ctx}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
     }
     if (wantsTable(q, fmt) && !hasMdTable(answer)) { // v108: the model ignored the format: ask once more to reshape its own answer
       emit({ type: "progress", msg: "table" });
-      try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
+      try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block and any \`\`\`attachment block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
     const { text, actions } = parseActions(answer);
     emit({ type: "answer", text, sources, actions, noText });
