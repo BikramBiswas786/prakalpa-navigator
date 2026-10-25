@@ -18,7 +18,7 @@ const hmac = (k, s) => crypto.createHmac("sha256", k).update(s).digest();
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 const encPath = p => p.split("/").map(enc).join("/");
 // Keys are built only by api/pendrive.js from hex ids; refuse anything else.
-const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$/;
+const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$|^stats\/usage\.json$/;
 function checkKey(key) { if (!SAFE_KEY.test(key) || key.includes("..")) throw new Error("bad key"); return key; }
 
 /* ---------------- Any S3-compatible store (Backblaze B2, Cloudflare R2, versitygw, MinIO) ---------------- */
