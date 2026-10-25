@@ -908,7 +908,7 @@ const server = http.createServer(async (req, res) => {
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v107"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v108"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;

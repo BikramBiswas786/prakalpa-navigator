@@ -176,3 +176,8 @@ For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.
 
 ## v107 — upload backend fallback
 If the browser cannot reach a storage host at all (firewall or blocked port: a network error, or no progress for 25 s, before any part finishes), the upload aborts its reservation, remembers that host for the session (`sessionStorage pd:avoid`), and re-runs `upload/init` with `avoid: [hosts]`. The server then places the file on another backend that has room. Up to 3 moves per file. Test: `tests/pendrive-ui-v107.mjs` (blocks one backend with CDP).
+
+## v108 — tables on request
+- When a question asks for a table, list, comparison or summary table (English, or Bengali টেবিল/সারণি/তালিকা/তুলনা/ছক), or the new **Output format** selector (Auto / Table / Report / Letter) is set to Table, the prompt makes a GitHub markdown table mandatory. The map step keeps one line per item, and the reduce step must keep every row. If the model still answers in prose, the server asks it once more to reshape its own answer into a table.
+- The output panel normalises any table it gets: markdown tables, pipe rows without a separator or outer pipes, tab-separated rows, and HTML `<table>`. Word, PDF and CSV exports all use the normalised table.
+- Tests: `tests/pendrive-v108.mjs` (API, mock), `tests/pendrive-ui-v108.mjs` (parser, 8 cases).

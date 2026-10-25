@@ -203,6 +203,8 @@ async function askAI(system, user, maxOut = 1600) {
 // Test-only stand-in (PENDRIVE_MOCK_AI=1): cites the sources it was given and echoes a write request.
 function mockAI(system, user) {
   const files = [...new Set([...user.matchAll(/\[FILE: ([^\]]+)\]/g)].map(m => m[1]))];
+  if (/^Rewrite this answer/.test(user)) return "Reshaped:\n\n| ফাইল | বিষয় |\n| --- | --- |\n| [x.txt] | পুনর্গঠিত |";
+  if (/prose/i.test(user.split("QUESTION:").pop() || "")) return `MOCK prose answer from ${files.length} source(s).`;
   let out = `MOCK answer from ${files.length} source(s): ${files.join(", ")}`;
   if (/table|টেবিল/i.test(user.split("QUESTION:").pop() || "")) out += "\n\n## সারসংক্ষেপ\n\n| ফাইল | বিষয় |\n| --- | --- |\n" + files.map(f => `| ${f} | বাজেট ও বিল |`).join("\n") + "\n\nমোট ফাইল: " + files.length;
   if (/write|লিখ|report|নোট/i.test(user.split("QUESTION:").pop() || "")) out += '\n```pendrive-write\n{"path":"Reports/summary.md","format":"md","content":"# Summary\\n\\nFrom: ' + files.join(", ") + '"}\n```';
@@ -224,6 +226,17 @@ export function parseActions(text) {
     return "";
   });
   return { text: body.trim(), actions };
+}
+// v108: output format rules. A table request (any language) must produce a GitHub markdown table.
+export const TABLE_RE = /\b(table|tables|tabular|tabulate|list|listing|compar\w*|matrix|spreadsheet|csv|excel|columns?|rows?)\b|টেবিল|সারণি|সারণী|তালিকা|তুলনা|ছক|কলাম|এক্সেল/i;
+export const wantsTable = (q, format) => format === "table" || (format !== "letter" && TABLE_RE.test(String(q || "")));
+export const hasMdTable = t => /^\s*\|.*\|\s*\n\s*\|?\s*:?-{2,}/m.test(String(t || ""));
+export function fmtRule(q, format) {
+  const r = [];
+  if (wantsTable(q, format)) r.push("OUTPUT FORMAT (mandatory): the answer MUST contain a GitHub-style markdown table: a header row, then a separator row like | --- | --- |, then one row per item, every row starting and ending with |. Use short cell text, keep [file] citations in a 'File'/'ফাইল' column. Do not use HTML, tabs or code blocks for the table. A one-line intro before the table and short notes after it are fine.");
+  if (format === "report") r.push("OUTPUT FORMAT: a structured report in markdown: a # title, ## sections (Summary, Details, Conclusion), bullet points, and a markdown table where data fits.");
+  if (format === "letter") r.push("OUTPUT FORMAT: a formal office letter/notesheet: To, Subject, salutation, body paragraphs, closing and signature lines. No tables unless asked.");
+  return r.length ? "\n\n" + r.join("\n") : "";
 }
 const SYS = lang => `You are Biswas AI working inside the user's AI Pendrive (a shared office folder). Answer ONLY from the file extracts given. Cite the file name in square brackets for every fact, like [Folder/file.pdf]. If the extracts do not contain the answer, say so. ${lang === "en" ? "Reply in English." : "Reply in colloquial West Bengal Bengali, in Bengali script."}
 If the user asks you to write, save or create a file (notesheet, report, table, summary), add ONE block at the end exactly like:
@@ -472,6 +485,7 @@ async function aiJob(req, res, id, body) {
   const q = String(body.question || "").slice(0, 2000).trim();
   if (!q) fail(400, "no_question");
   const lang = body.lang === "en" ? "en" : "bn";
+  const fmt = ["auto", "table", "report", "letter"].includes(body.format) ? body.format : "auto";
   const ix = await index(id);
   const all = Object.values(ix.files).filter(f => f.state === "ok");
   const scope = body.scope || {};
@@ -504,11 +518,11 @@ async function aiJob(req, res, id, body) {
       for (let g = 0; g < used.length; g++) {
         emit({ type: "progress", step: g + 1, of: used.length + 1, msg: used[g].map(x => x.f.path).join(", ") });
         const ctx = used[g].map(x => `[FILE: ${x.f.path}]\n${x.text}`).join("\n\n");
-        notes.push(await askAI(SYS("en"), `Make short factual notes for this task, keeping file names in [brackets].\nTASK: ${q}\n\n${ctx}\n\nQUESTION: notes only`, 900));
+        notes.push(await askAI(SYS("en"), `Make short factual notes for this task, keeping file names in [brackets].${wantsTable(q, fmt) ? " The final answer will be a table: give one line per item as 'item | field | field | [file]' so every value is kept." : ""}\nTASK: ${q}\n\n${ctx}\n\nQUESTION: notes only`, 900));
       }
       emit({ type: "progress", step: used.length + 1, of: used.length + 1, msg: "combine" });
       const skipped = withText.length - used.flat().length;
-      answer = await askAI(SYS(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}`, 2000);
+      answer = await askAI(SYS(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
       const x = await bm(id);
@@ -523,7 +537,11 @@ async function aiJob(req, res, id, body) {
         ctx += `[FILE: ${f.path}]\n${part}\n\n`; left -= part.length;
       }
       sources = [...new Set(hits.map(h => ix.files[h.fid] && ix.files[h.fid].path).filter(Boolean))];
-      answer = await askAI(SYS(lang), `File extracts:\n\n${ctx}\nQUESTION: ${q}`, 1800);
+      answer = await askAI(SYS(lang), `File extracts:\n\n${ctx}\nQUESTION: ${q}${fmtRule(q, fmt)}`, 1800);
+    }
+    if (wantsTable(q, fmt) && !hasMdTable(answer)) { // v108: the model ignored the format: ask once more to reshape its own answer
+      emit({ type: "progress", msg: "table" });
+      try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
     const { text, actions } = parseActions(answer);
     emit({ type: "answer", text, sources, actions, noText });
