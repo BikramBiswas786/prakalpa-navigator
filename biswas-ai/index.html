@@ -1079,7 +1079,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ · v108", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ · v110", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1153,7 +1153,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job · v108", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job · v110", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -5129,7 +5129,7 @@ Object.assign(STR.bn, {
   pd_sum: (n, sz, d) => `${n}টি ফাইল, ${sz}, ${d}টি ফোল্ডারে। তুলবেন?`, pd_sum_skip: n => `${n}টি খালি বা সিস্টেম ফাইল (.DS_Store, Thumbs.db, desktop.ini…) বাদ।`,
   pd_sum_same: n => `${n}টি ফাইল আগেই আছে (একই নাম ও সাইজ), বাদ।`, pd_sum_diff: n => `একই নামে ${n}টি আলাদা ফাইল আছে: বদলে দিন`, pd_sum_go: "তুলুন", pd_sum_no: "বাতিল",
   pd_sum_full: (need, free) => `জায়গা কম: লাগবে ${need}, খালি ${free}।`, pd_sum_none: "নতুন কিছু তোলার নেই।", pd_scanning: n => `ফাইল গোনা হচ্ছে… ${n}`,
-  pd_batch: (d, n, b, tb) => `${d}/${n} ফাইল · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/সে · বাকি ${eta}`, pd_failed_n: n => `${n}টি আটকে গেছে`, pd_more: n => `আরও ${n}টি অপেক্ষায়…`,
+  pd_batch: (d, n, b, tb) => `${d}/${n} ফাইল · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/সে · বাকি ${eta}`, pd_failed_n: n => `${n}টি আটকে গেছে`, pd_text_left: n => `AI-র জন্য লেখা পড়া বাকি: ${n}`, pd_more: n => `আরও ${n}টি অপেক্ষায়…`,
   pd_resume: n => `আগের ${n}টি বড় ফাইল পুরো তোলা হয়নি। একই ফাইল/ফোল্ডার আবার বাছলে যেখানে থেমেছিল সেখান থেকে চলবে:`, pd_resumed: "আগের জায়গা থেকে",
   pd_exists: p => `"${p}" আগেই আছে। বদলে নতুনটা রাখবেন? (পুরনোটা মুছে যাবে)`, pd_newfolder: "নতুন ফোল্ডারের নাম", pd_newname: "নতুন নাম", pd_move_to: "কোন ফোল্ডারে সরাবেন? (খালি রাখলে মূল জায়গা)",
   pd_confirm_del: n => `${n}টা জিনিস মুছে ফেলবেন? এটা ফেরানো যাবে না।`, pd_pick: "আগে বাঁদিকের ঘরে টিক দিয়ে বাছুন।", pd_pick_one: "একটাই বাছুন।",
@@ -5153,7 +5153,7 @@ Object.assign(STR.en, {
   pd_sum: (n, sz, d) => `${n} files, ${sz} in ${d} folders. Upload?`, pd_sum_skip: n => `${n} empty or system files (.DS_Store, Thumbs.db, desktop.ini…) skipped.`,
   pd_sum_same: n => `${n} files are already there (same name and size), skipped.`, pd_sum_diff: n => `${n} different files with the same name exist: replace them`, pd_sum_go: "Upload", pd_sum_no: "Cancel",
   pd_sum_full: (need, free) => `Not enough space: needs ${need}, free ${free}.`, pd_sum_none: "Nothing new to upload.", pd_scanning: n => `Counting files… ${n}`,
-  pd_batch: (d, n, b, tb) => `${d}/${n} files · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/s · ${eta} left`, pd_failed_n: n => `${n} stopped`, pd_more: n => `${n} more waiting…`,
+  pd_batch: (d, n, b, tb) => `${d}/${n} files · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/s · ${eta} left`, pd_failed_n: n => `${n} stopped`, pd_text_left: n => `reading text for AI: ${n} left`, pd_more: n => `${n} more waiting…`,
   pd_resume: n => `${n} large file(s) from earlier didn't finish. Pick the same files or folder again to continue where it stopped:`, pd_resumed: "resumed",
   pd_exists: p => `"${p}" already exists. Replace it with the new one? (The old one will be deleted.)`, pd_newfolder: "New folder name", pd_newname: "New name", pd_move_to: "Move to which folder? (leave empty for the top level)",
   pd_confirm_del: n => `Delete ${n} item(s)? This can't be undone.`, pd_pick: "Tick items in the left column first.", pd_pick_one: "Pick just one.",
@@ -5496,7 +5496,7 @@ let PD_RESTORED = false;
 pdRestore(0);
 /* uploads: the browser sends parts straight to storage with presigned URLs.
    A queue with limited concurrency handles folders with thousands of files; big files resume after a reload (IndexedDB). */
-const PD_PARALLEL_PARTS = 4, PD_PARALLEL_FILES = 3;
+const PD_PARALLEL_PARTS = 6, PD_PARALLEL_FILES = 8, PD_SINGLE = 16 * 1024 * 1024; // v110
 const PD_SKIP = /^(\.ds_store|thumbs\.db|ehthumbs\.db|desktop\.ini|\.localized|\.directory|icon\r)$|^\._|^~\$/i;
 const PD_SKIP_DIR = /(^|\/)(__MACOSX|\.Trashes|\.Spotlight-V100|\.fseventsd|\$RECYCLE\.BIN|System Volume Information)(\/|$)/i;
 pd.batch = { files: 0, bytes: 0, doneFiles: 0, doneBytes: 0, failed: 0, t0: 0, last: 0, lastSent: 0, speed: 0 };
@@ -5591,6 +5591,85 @@ function pdPump() {
   renderPdUploadsSoon();
 }
 const pdAvoid = new Set((() => { try { return JSON.parse(sessionStorage.getItem("pd:avoid") || "[]"); } catch (e) { return []; } })());
+/* v110: fast path for many small files.
+   - probe: at the first upload of the session, try each storage host (4 s); hosts that don't answer go on the avoid list at once
+   - pdPlan: one upload/batch-init call reserves up to 50 small files (each gets a single presigned PUT)
+   - pdCommit: finished small files are committed 25 at a time (upload/batch-complete: one index/meta write)
+   - text for the AI is read after the upload, in a Web Worker for txt/docx, and sent with text-batch */
+let pdProbeP = null;
+function pdProbe() {
+  if (pdProbeP) return pdProbeP;
+  pdProbeP = (async () => {
+    let hosts = []; try { hosts = (await pdApi("hosts", {})).hosts || []; } catch (e) { return; }
+    pd.probe = {};
+    await Promise.all(hosts.map(async o => {
+      const h = new URL(o).host; const t0 = performance.now(); const c = new AbortController(); const tm = setTimeout(() => c.abort(), 4000);
+      try { await fetch(o + "/", { mode: "no-cors", cache: "no-store", signal: c.signal }); pd.probe[h] = Math.round(performance.now() - t0); }
+      catch (e) { pd.probe[h] = -1; pdAvoid.add(h); try { sessionStorage.setItem("pd:avoid", JSON.stringify([...pdAvoid])); } catch (x) { /* ignore */ } }
+      finally { clearTimeout(tm); }
+    }));
+  })();
+  return pdProbeP;
+}
+let pdPlanQ = null;
+function pdPlan(u) {
+  if (u.plan) return Promise.resolve(u.plan);
+  if (!pdPlanQ) pdPlanQ = (async () => {
+    await Promise.race([pdProbe(), new Promise(r => setTimeout(r, 4500))]);
+    await new Promise(r => setTimeout(r, 20));
+    const want = x => !x.plan && !x.fileId && !x.noBatch && x.file.size < PD_SINGLE;
+    const list = [...pd.ups.filter(x => x.state === "go" && want(x)), ...pd.ups.filter(x => x.state === "wait" && want(x))].slice(0, 50);
+    pdPlanQ = null;
+    if (!list.length) return;
+    try {
+      const r = await pdApi("upload/batch-init", { files: list.map(x => ({ path: x.path, size: x.file.size, type: x.file.type || "application/octet-stream", overwrite: !!x.overwrite })), avoid: [...pdAvoid] });
+      list.forEach((x, i) => { x.plan = r.files[i] || { error: "no_plan" }; });
+    } catch (e) { list.forEach(x => { x.noBatch = true; }); }
+  })();
+  return pdPlanQ.then(() => u.plan || (u.noBatch ? null : pdPlan(u)));
+}
+const pdCommitQ = []; let pdCommitT = 0;
+function pdCommit(item) {
+  return new Promise((res, rej) => {
+    pdCommitQ.push({ item, res, rej });
+    clearTimeout(pdCommitT);
+    if (pdCommitQ.length >= 25 || !pd.ups.some(x => x.state === "go" && !x.committing)) pdCommitFlush(); else pdCommitT = setTimeout(pdCommitFlush, 400);
+  });
+}
+async function pdCommitFlush() {
+  clearTimeout(pdCommitT); const q = pdCommitQ.splice(0, 100); if (!q.length) return;
+  try {
+    const r = await pdApi("upload/batch-complete", { items: q.map(x => x.item) });
+    pd.used = r.used ?? pd.used; pd.quota = r.quota || pd.quota;
+    q.forEach((x, i) => { const f = r.files[i] || {}; if (f.error) { const e = new Error(f.error); e.retry = f.retry; x.rej(e); } else x.res(f); });
+  } catch (e) { q.forEach(x => x.rej(e)); }
+}
+const pdTextQ = []; let pdTextBusy = 0, pdTextOut = [], pdTextT = 0, pdWorker = null, pdWorkerK = 0; const pdWorkerCb = new Map();
+const PD_WORKER_EXT = new Set(["txt", "md", "csv", "tsv", "json", "xml", "html", "htm", "log", "docx"]);
+function pdWorkerText(f) {
+  if (!pdWorker) { pdWorker = new Worker("/pd-text-worker.js"); pdWorker.onmessage = e => { const cb = pdWorkerCb.get(e.data.id); pdWorkerCb.delete(e.data.id); if (cb) e.data.error ? cb.rej(new Error(e.data.error)) : cb.res(e.data.text || ""); }; }
+  return new Promise((res, rej) => { const id = ++pdWorkerK; pdWorkerCb.set(id, { res, rej }); pdWorker.postMessage({ id, file: f, cap: PD_TEXT }); });
+}
+function pdTextLater(id, file, text) { pdTextQ.push({ id, file, text }); pd.textLeft = pdTextQ.length + pdTextBusy; pdTextPump(); }
+function pdTextPump() {
+  while (pdTextBusy < 2 && pdTextQ.length) {
+    const it = pdTextQ.shift(); pdTextBusy++;
+    (async () => {
+      let text = it.text;
+      if (text == null) {
+        const ext = (it.file.name.split(".").pop() || "").toLowerCase();
+        try { text = PD_WORKER_EXT.has(ext) || (it.file.type || "").startsWith("text/") ? await pdWorkerText(it.file) : await pdExtract(it.file); }
+        catch (e) { try { text = await pdExtract(it.file); } catch (x) { text = ""; } }
+      }
+      if (text) pdTextOut.push({ id: it.id, text });
+    })().finally(() => {
+      pdTextBusy--; pd.textLeft = pdTextQ.length + pdTextBusy;
+      clearTimeout(pdTextT); if (pdTextOut.length >= 25 || !pd.textLeft) pdTextFlush(); else pdTextT = setTimeout(pdTextFlush, 1500);
+      pdTextPump(); renderPdUploadsSoon();
+    });
+  }
+}
+async function pdTextFlush() { const items = pdTextOut.splice(0, 100); if (!items.length) return; try { await pdApi("text-batch", { items }); } catch (e) { /* the files are stored; the AI just can't read these yet */ } if (!pd.textLeft) pdRefreshSoon(); }
 function pdPut(u, url, blob, n) {
   return new Promise((res, rej) => {
     const x = new XMLHttpRequest(); u.xhrs.add(x);
@@ -5623,14 +5702,19 @@ async function pdUpload(u) {
   }
   if (!u.fileId) {
     let init;
-    try { init = await pdApi("upload/init", { path: u.path, size: u.file.size, type: u.file.type || "application/octet-stream", overwrite: !!u.overwrite, avoid: [...pdAvoid] }); }
+    try {
+      const pl = !u.noBatch && !u.overwrite && u.file.size < PD_SINGLE ? await pdPlan(u) : null; delete u.plan;
+      if (pl && pl.error) { const e = new Error(pl.error); e.info = pl; throw e; }
+      if (pl) init = pl;
+      else { await Promise.race([pdProbe(), new Promise(r => setTimeout(r, 4500))]); init = await pdApi("upload/init", { path: u.path, size: u.file.size, type: u.file.type || "application/octet-stream", overwrite: !!u.overwrite, avoid: [...pdAvoid], bps: Math.round(pd.batch.speed || 0) }); }
+    }
     catch (e) {
-      if (e.message === "exists" && !u.batch && e.info && e.info.id && !u.overwrite && confirm(t("pd_exists", u.path))) { u.overwrite = true; return pdUpload(u); }
+      if (e.message === "exists" && !u.batch && e.info && e.info.id && !u.overwrite && confirm(t("pd_exists", u.path))) { u.overwrite = true; u.noBatch = true; return pdUpload(u); }
       if (e.message === "exists") { u.state = "skip"; pd.batch.files--; pd.batch.bytes -= u.file.size; return; }
       throw e;
     }
-    Object.assign(u, { fileId: init.fileId, uploadId: init.uploadId, partSize: init.partSize, parts: init.parts, urls: init.urls || {} });
-    await pdSave(u);
+    Object.assign(u, { fileId: init.fileId, uploadId: init.uploadId, partSize: init.partSize, parts: init.parts, urls: init.urls || {}, single: !!init.single });
+    if (!u.single) await pdSave(u); // single PUTs are quick to redo; only multipart uploads are kept for resume
   }
   const todo = []; for (let n = 1; n <= u.parts; n++) if (!u.etags[n]) todo.push(n);
   u.done = Object.keys(u.etags).reduce((a, n) => a + Math.min(u.partSize, u.file.size - (n - 1) * u.partSize), 0);
@@ -5643,7 +5727,7 @@ async function pdUpload(u) {
         try {
           const url = await pdUrl(u, n, todo);
           u.etags[n] = await pdPut(u, url, u.file.slice((n - 1) * u.partSize, n * u.partSize), n);
-          pdSave(u);
+          if (!u.single) pdSave(u);
           break;
         } catch (e) {
           if (u.state === "cancel" || tries >= 3 || e.status === 404) throw e;
@@ -5660,17 +5744,16 @@ async function pdUpload(u) {
     if (!host || host === location.host) throw e; // another upload may already have marked it
     pdAvoid.add(host); try { sessionStorage.setItem("pd:avoid", JSON.stringify([...pdAvoid])); } catch (x) { /* ignore */ }
     pdApi("upload/abort", { fileId: u.fileId, uploadId: u.uploadId }).catch(() => {}); await pdForget(u);
-    for (const k of ["fileId", "uploadId", "partSize", "parts"]) delete u[k]; u.urls = {}; u.etags = {}; u.done = 0; u.moved = (u.moved || 0) + 1;
+    for (const k of ["fileId", "uploadId", "partSize", "parts", "single", "plan"]) delete u[k]; u.noBatch = true; u.urls = {}; u.etags = {}; u.done = 0; u.moved = (u.moved || 0) + 1;
     return pdUpload(u);
   }
-  const done = await pdApi("upload/complete", { fileId: u.fileId, uploadId: u.uploadId, parts: Object.entries(u.etags).map(([n, etag]) => ({ n: Number(n), etag })) });
+  const parts = Object.entries(u.etags).map(([n, etag]) => ({ n: Number(n), etag }));
+  let done;
+  if (u.single) { u.committing = true; try { done = await pdCommit({ fileId: u.fileId, uploadId: u.uploadId, parts }); } finally { u.committing = false; } }
+  else { done = await pdApi("upload/complete", { fileId: u.fileId, uploadId: u.uploadId, parts }); pd.used = done.used; pd.quota = done.quota || pd.quota; }
   pdForget(u);
-  u.state = "read"; u.path = done.path; renderPdUploadsSoon();
-  pd.used = done.used; pd.quota = done.quota || pd.quota;
-  try {
-    const text = u.text != null ? u.text : await pdExtract(u.file);
-    if (text) await pdApi("text", { id: done.id, text });
-  } catch (e) { /* the file is stored even if reading its text fails */ }
+  u.path = done.path;
+  pdTextLater(done.id, u.file, u.text); // v110: AI text is read after the upload, off the upload slots
   u.state = "done"; pd.batch.doneFiles++; pd.batch.doneBytes += u.file.size;
   u.file = { size: u.file.size, name: u.file.name }; // let the browser free the File
   pdRefreshSoon();
@@ -5679,6 +5762,7 @@ function pdCancel(u) {
   const was = u.state;
   u.state = "cancel"; for (const x of u.xhrs) x.abort();
   if (u.fileId) pdApi("upload/abort", { fileId: u.fileId, uploadId: u.uploadId }).catch(() => {});
+  else if (u.plan && u.plan.fileId) pdApi("upload/abort", { fileId: u.plan.fileId, uploadId: u.plan.uploadId }).catch(() => {});
   if (u.file && u.file.slice) pdForget(u);
   if (was === "fail") pd.batch.failed = Math.max(0, pd.batch.failed - 1);
   pd.batch.files--; pd.batch.bytes -= u.file.size;
@@ -5702,7 +5786,7 @@ function renderPdUploads() {
     const pct = b.bytes ? Math.min(100, sent / b.bytes * 100) : (b.doneFiles >= b.files ? 100 : 0);
     const eta = b.speed > 0 ? (b.bytes - sent) / b.speed : Infinity;
     box.innerHTML = `<div class="row"><b>${esc(t("pd_batch", b.doneFiles, b.files, pdSize(sent), pdSize(b.bytes)))}</b>
-      <span>${busy ? esc(t("pd_speed", pdSize(Math.max(0, b.speed)), pdTime(eta))) : esc(t("pd_up_done"))}${failed.length ? " · " + esc(t("pd_failed_n", failed.length)) : ""}
+      <span>${busy ? esc(t("pd_speed", pdSize(Math.max(0, b.speed)), pdTime(eta))) : esc(t("pd_up_done"))}${failed.length ? " · " + esc(t("pd_failed_n", failed.length)) : ""}${pd.textLeft ? " · " + esc(t("pd_text_left", pd.textLeft)) : ""}
       ${failed.length ? `<button class="btn small" type="button" data-pd-retry-all>${esc(t("pd_retry"))}</button>` : ""}
       ${busy ? `<button class="btn small" type="button" data-pd-cancel-all>${esc(t("pd_cancel"))}</button>` : ""}</span></div>
       <div class="pd-bar" role="progressbar" aria-valuenow="${pct.toFixed(0)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct.toFixed(1)}%"></i></div>`;

@@ -5,7 +5,7 @@ const mk = () => { let tok = ""; const api = async (op, body = {}) => { const r 
 const A = mk(), Bp = mk(), MB = 1024 * 1024;
 await A("create", { name: "cap A " + Date.now(), pin: "482915" }); await Bp("create", { name: "cap B " + Date.now(), pin: "482915" });
 let a = await A("upload/init", { path: "x/a.bin", size: 30 * MB });
-ok(a.status === 200 && a.j.parts === 3 && Object.keys(a.j.urls).length === 3, `init returns presigned URLs for the first parts (${a.j.parts} parts, ${Object.keys(a.j.urls || {}).length} urls)`);
+ok(a.status === 200 && a.j.parts === 2 && Object.keys(a.j.urls).length === 2, `init returns presigned URLs for the first parts (${a.j.parts} parts, ${Object.keys(a.j.urls || {}).length} urls)`);
 let b = await Bp("upload/init", { path: "b.bin", size: 30 * MB });
 ok(b.status === 507 && b.j.error === "total_cap", `global cap across pendrives: second pendrive refused ${b.status} ${b.j.error} (cap ${b.j.cap})`);
 let s = await A("upload/status", { fileId: a.j.fileId, uploadId: a.j.uploadId, size: 30 * MB }); ok(s.j.ok === true, "upload/status: resumable");

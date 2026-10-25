@@ -13,7 +13,7 @@ await p.type("#pd-c-name", name); await p.type("#pd-c-pin", "482915"); await p.t
 await p.waitForSelector("#pd-main", { visible: true }); await sl(800);
 await (await p.$("#pd-folder-in")).uploadFile("/tmp/pd105/Office");
 await p.waitForSelector("#pd-confirm:not([hidden])", { timeout: 20000 }); await p.click("[data-pd-sum-go]");
-for (let i = 0; i < 120; i++) { await sl(500); if (!(await p.evaluate(() => pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state))))) break; }
+for (let i = 0; i < 120; i++) { await sl(500); if (!(await p.evaluate(() => (pd.textLeft || pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state)))))) break; }
 await sl(1500);
 const crumbs = () => p.$eval("#pd-crumbs", e => e.innerText.replace(/\s+/g, " ").trim());
 const cwd = () => p.evaluate(() => pd.cwd);

@@ -17,7 +17,7 @@ const cdp = await p.target().createCDPSession(); await cdp.send("Network.enable"
 const t0 = Date.now();
 await (await p.$("#pd-file-in")).uploadFile("/tmp/pd107/a.txt", "/tmp/pd107/b.txt", "/tmp/pd107/c.txt"); await sl(800);
 if (await p.$("#pd-confirm:not([hidden]) [data-pd-sum-go]")) await p.click("[data-pd-sum-go]");
-for (let i = 0; i < 300; i++) { await sl(500); if (!(await p.evaluate(() => pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state))))) break; }
+for (let i = 0; i < 300; i++) { await sl(500); if (!(await p.evaluate(() => (pd.textLeft || pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state)))))) break; }
 const st = await p.evaluate(() => ({ done: pd.ups.filter(u => u.state === "done").length, avoid: [...pdAvoid] }));
 const hosts = await p.evaluate(async () => { const l = await pdApi("list", {}); return Promise.all(l.files.map(async f => new URL((await pdApi("download", { id: f.id, inline: true })).url, location.href).host)); });
 ok(blocked > 0, `blocked requests to ${BLOCK}: ${blocked} (${MODE})`);

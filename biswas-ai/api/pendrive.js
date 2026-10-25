@@ -26,6 +26,10 @@ const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 5 * 1024 ** 3);   
 const MAX_FILE = Math.max(1, Number(env.PENDRIVE_MAX_FILE_BYTES) || 5 * 1024 ** 3);   // per file
 // Safety cap across ALL pendrives, so we refuse uploads before hitting the storage plan's limit (B2 free tier: 10 GB).
 const TOTAL_CAP = Math.max(1, Number(env.PENDRIVE_TOTAL_CAP_BYTES) || pool.reduce((a, b) => a + b.cap, 0) || 9 * 1024 ** 3);
+const SINGLE = 16 * 1024 * 1024;           // v110: below this a file is one presigned PUT
+const MIB = 1024 * 1024;
+// v110: 16–64 MB parts: aim for ~10 s per part at 1/6 of the measured browser speed, and never more than 10,000 parts
+export const partSizeFor = (size, bps) => { let ps = bps > 0 ? Math.round(bps / 6 * 10 / MIB) * MIB : 16 * MIB; ps = Math.min(64 * MIB, Math.max(16 * MIB, ps, Math.ceil(size / 10000 / MIB) * MIB)); return ps; };
 const PART = 10 * 1024 * 1024;              // 10 MB parts; 5 GB = 512 parts (S3 allows 10,000)
 if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES needs more than 10,000 parts of 10 MB");
 const SESSION_MS = 12 * 3600 * 1000;
@@ -127,6 +131,7 @@ export async function poolStatus() {
   const use = await backendUse().catch(() => ({}));
   return pool.map(b => ({ name: b.name, cors: b.cors || (b.st.provider ? "pending" : "n/a"), used: use[b.id] || 0, cap: b.cap, healthy: !(b.badUntil > Date.now()), placement: placeable(b), ...(b.corsDetail ? { corsDetail: b.corsDetail } : {}), ...(b.listed ? { listedAt: new Date(b.listed.t).toISOString() } : {}) }));
 }
+const hostOf = b => { try { return new URL(b.st.origin).host.toLowerCase(); } catch (e) { return ""; } };
 const placeable = b => !(b.badUntil > Date.now()) && !["failed", "native_rules", "checking"].includes(b.cors);
 const netOrAuth = e => /fetch failed|timeout|abort|ECONN|ENOTFOUND|EAI_AGAIN|certificate| 40[13]\b| 5\d\d\b/i.test(String(e && (e.message + " " + (e.cause && e.cause.code || "")) || e));
 async function totalUse(exceptId) {
@@ -307,50 +312,87 @@ export async function handle(req, res, url, body, send) {
     return send(200, { text: ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "").slice(0, 200000) });
   }
 
-  if (op === "upload/init") {
-    const p = cleanPath(body.path); const size = Math.floor(Number(body.size));
+  const writeTexts = async (ix, list) => { // v110: text sidecars in parallel, one bm25 write
+    const x = await bm(id); const ok = list.filter(t => ix.files[String(t.id)]);
+    for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(t => storage.putText(`${P(id)}/t/${String(t.id)}.txt`, String(t.text || "").slice(0, TEXT_MAX))));
+    for (const t of ok) { const f = ix.files[String(t.id)]; const text = String(t.text || "").slice(0, TEXT_MAX); bmAdd(x, f.id, text); f.text = text.length > 0; f.note = String(t.note || "").slice(0, 80); }
+    if (ok.length) await cset(`${P(id)}/bm25.json`, x);
+    return ok.length;
+  };
+  // v110: placement + reservation shared by upload/init and upload/batch-init. Small files (< 16 MB) get one presigned PUT;
+  // big ones get a multipart upload with 16–64 MB parts sized from the browser's measured speed.
+  const planOne = async (m, ix, it, use, ctx) => {
+    const p = cleanPath(it.path); const size = Math.floor(Number(it.size));
     if (!(size >= 0) || size > MAX_FILE) fail(413, "file_too_big", { max: MAX_FILE });
-    const type = String(body.type || "application/octet-stream").slice(0, 100);
+    const type = String(it.type || "application/octet-stream").slice(0, 100);
+    const same = Object.values(ix.files).find(f => f.state === "ok" && f.path === p);
+    if (ix.folders.includes(p)) fail(409, "exists");
+    if (same && !it.overwrite) fail(409, "exists", { id: same.id });
+    const reserved = Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
+    const freed = same ? same.size : 0;
+    if (m.used - freed + reserved + size > quotaOf(m)) fail(413, "quota", { quota: quotaOf(m), used: m.used, reserved });
+    if (ctx.total + m.used - freed + reserved + size > TOTAL_CAP) fail(507, "total_cap", { cap: TOTAL_CAP });
+    const fileId = hex(12);
+    // Placement: healthy backends that can hold the file. Most free room first, but when free room is within 20% of the best,
+    // the backend with the lowest measured latency wins (v110). Browsers PUT straight to the bucket, so CORS must be in place.
+    let cands = pool.filter(b => placeable(b) && b.cap - (use[b.id] || 0) - (ctx.add[b.id] || 0) >= size);
+    const free = b => b.cap - (use[b.id] || 0) - (ctx.add[b.id] || 0);
+    const best = Math.max(0, ...cands.map(free));
+    cands.sort((x, y) => { const nx = free(x) >= best * 0.8, ny = free(y) >= best * 0.8; if (nx !== ny) return nx ? -1 : 1; if (nx && ny && (x.st.lat || 0) !== (y.st.lat || 0)) return (x.st.lat || 1e9) - (y.st.lat || 1e9); return free(y) - free(x); });
+    if (ctx.avoid.size) { const rest = cands.filter(b => !ctx.avoid.has(hostOf(b))); if (rest.length) cands = rest; }
+    if (ctx.force) { cands = pool.filter(b => b.name === ctx.force); if (!cands.length) fail(400, "no_backend"); }
+    if (!cands.length) fail(507, "total_cap", { cap: TOTAL_CAP });
+    const single = size < SINGLE && !it.multipart;
+    const partSize = single ? Math.max(1, size) : partSizeFor(size, Number(it.bps) || Number(ctx.bps) || 0);
+    let uploadId = "single", where = null, lastErr = null;
+    for (const b of cands) {
+      try { if (single) { if (b.st.alive && !(ctx.ok || (ctx.ok = new Set())).has(b.id)) { await b.st.alive(); ctx.ok.add(b.id); } } else uploadId = await b.st.createMultipart(`${P(id)}/f/${fileId}`, type); where = b; break; }
+      catch (e) { lastErr = e; if (netOrAuth(e) && !ctx.force) { b.badUntil = Date.now() + BAD_MS; console.warn(`storage backend ${b.name} unhealthy for 10 min: ${String(e.message || e).slice(0, 80)}`); } else if (ctx.force) break; }
+    }
+    if (!where) throw lastErr || new Error("storage unavailable");
+    ctx.add[where.id] = (ctx.add[where.id] || 0) + size;
+    m.pending = m.pending || {};
+    m.pending[fileId] = { size, t: Date.now(), uploadId, path: p, type, b: where.id, replaces: same && it.overwrite ? same.id : "", ...(single ? { single: true } : { partSize }),  };
+    const nParts = single ? 1 : Math.max(1, Math.ceil(size / partSize)), urls = {};
+    const key = `${P(id)}/f/${fileId}`;
+    if (single) urls[1] = await where.st.presignPut(key);
+    else for (let n = 1; n <= Math.min(nParts, ctx.urlsPer || 50); n++) urls[n] = await where.st.presignPart(key, uploadId, n);
+    return { fileId, uploadId, partSize, parts: nParts, urls, single, ...(ctx.force ? { backend: where.name } : {}) };
+  };
+  const planCtx = async () => {
+    const force = url && url.searchParams.get("backend");
+    if (force) {
+      const tok = String(req.headers["x-admin-token"] || "");
+      if (!env.ADMIN_TOKEN || tok.length !== env.ADMIN_TOKEN.length || !crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(env.ADMIN_TOKEN))) fail(403, "forbidden");
+    }
+    return { force, avoid: new Set((Array.isArray(body.avoid) ? body.avoid : []).slice(0, 10).map(h => String(h).toLowerCase())), add: {}, total: await totalUse(id), bps: Number(body.bps) || 0 };
+  };
+  const dropStale = m => { for (const [k, v] of Object.entries(m.pending || {})) if (Date.now() - v.t > 24 * 3600 * 1000) { (v.single ? bk(v.b).st.del(`${P(id)}/f/${k}`) : bk(v.b).st.abortMultipart(`${P(id)}/f/${k}`, v.uploadId)).catch(() => {}); delete m.pending[k]; } };
+  if (op === "upload/init") {
     return withLock(id, async () => {
       const [m, ix] = await Promise.all([meta(id), index(id)]);
-      const same = Object.values(ix.files).find(f => f.state === "ok" && f.path === p);
-      if (ix.folders.includes(p)) fail(409, "exists");
-      if (same && !body.overwrite) fail(409, "exists", { id: same.id });
-      const reserved = Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
-      const freed = same ? same.size : 0;
-      if (m.used - freed + reserved + size > quotaOf(m)) fail(413, "quota", { quota: quotaOf(m), used: m.used, reserved });
-      if ((await totalUse(id)) + m.used - freed + reserved + size > TOTAL_CAP) fail(507, "total_cap", { cap: TOTAL_CAP });
-      const fileId = hex(12);
-      // Placement: the healthy backend with the most free room that can hold the whole file.
-      // Test-only override: ?backend=<name> with header x-admin-token = ADMIN_TOKEN.
-      const use = await backendUse();
-      // Browsers PUT straight to the bucket, so a backend whose CORS rule isn't in place (cors "failed"/"native_rules") is skipped.
-      let cands = pool.filter(b => placeable(b) && b.cap - (use[b.id] || 0) >= size).sort((a, b) => (b.cap - (use[b.id] || 0)) - (a.cap - (use[a.id] || 0)));
-      // v107: the browser says it can't reach these storage hosts (e.g. a firewall blocks the port): use the others when they can hold the file
-      const avoid = new Set((Array.isArray(body.avoid) ? body.avoid : []).slice(0, 10).map(h => String(h).toLowerCase()));
-      const hostOf = b => { try { return new URL(b.st.origin).host.toLowerCase(); } catch (e) { return ""; } };
-      if (avoid.size) { const rest = cands.filter(b => !avoid.has(hostOf(b))); if (rest.length) cands = rest; }
-      const force = url && url.searchParams.get("backend");
-      if (force) {
-        const tok = String(req.headers["x-admin-token"] || "");
-        if (!env.ADMIN_TOKEN || tok.length !== env.ADMIN_TOKEN.length || !crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(env.ADMIN_TOKEN))) fail(403, "forbidden");
-        cands = pool.filter(b => b.name === force); if (!cands.length) fail(400, "no_backend");
-      }
-      if (!cands.length) fail(507, "total_cap", { cap: TOTAL_CAP });
-      let uploadId = "", where = null, lastErr = null;
-      for (const b of cands) {
-        try { uploadId = await b.st.createMultipart(`${P(id)}/f/${fileId}`, type); where = b; break; }
-        catch (e) { lastErr = e; if (netOrAuth(e) && !force) { b.badUntil = Date.now() + BAD_MS; console.warn(`storage backend ${b.name} unhealthy for 10 min: ${String(e.message || e).slice(0, 80)}`); } else if (force) break; }
-      }
-      if (!where) throw lastErr || new Error("storage unavailable");
-      m.pending = m.pending || {};
-      for (const [k, v] of Object.entries(m.pending)) if (Date.now() - v.t > 24 * 3600 * 1000) { bk(v.b).st.abortMultipart(`${P(id)}/f/${k}`, v.uploadId).catch(() => {}); delete m.pending[k]; } // stale reservations: free their parts too
-      m.pending[fileId] = { size, t: Date.now(), uploadId, path: p, type, b: where.id, replaces: same && body.overwrite ? same.id : "" };
+      const ctx = await planCtx(); dropStale(m);
+      const r = await planOne(m, ix, body, await backendUse(), ctx);
       await saveMeta(id, m);
-      const nParts = Math.max(1, Math.ceil(size / PART)), urls = {};
-      for (let n = 1; n <= Math.min(nParts, 50); n++) urls[n] = await where.st.presignPart(`${P(id)}/f/${fileId}`, uploadId, n);
-      return send(200, { fileId, uploadId, partSize: PART, parts: nParts, urls, ...(force ? { backend: where.name } : {}) });
+      return send(200, r);
     });
+  }
+  if (op === "upload/batch-init") { // v110: reserve up to 100 files in one call (one meta write); errors are per file
+    const items = (Array.isArray(body.files) ? body.files : []).slice(0, 100);
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      const ctx = await planCtx(); ctx.urlsPer = 12; dropStale(m);
+      const use = await backendUse(); const out = [];
+      for (const it of items) {
+        try { out.push(await planOne(m, ix, it, use, ctx)); }
+        catch (e) { if (!(e instanceof HttpError)) throw e; out.push({ error: e.code, ...(e.extra || {}) }); }
+      }
+      await saveMeta(id, m);
+      return send(200, { files: out });
+    });
+  }
+  if (op === "hosts") { // v110: storage origins the browser may upload to, so it can probe which ones it can reach
+    return send(200, { hosts: [...new Set(pool.filter(placeable).map(b => b.st.origin).filter(Boolean))] });
   }
   if (op === "upload/status") { // is this upload (saved in the browser's IndexedDB) still resumable?
     const m = await meta(id); const pend = (m.pending || {})[String(body.fileId)];
@@ -359,51 +401,80 @@ export async function handle(req, res, url, body, send) {
   if (op === "upload/parts") {
     const m = await meta(id); const pend = (m.pending || {})[String(body.fileId)];
     if (!pend || pend.uploadId !== body.uploadId) fail(404, "no_upload");
-    const total = Math.max(1, Math.ceil(pend.size / PART));
+    const total = pend.single ? 1 : Math.max(1, Math.ceil(pend.size / (pend.partSize || PART)));
     const ns = (Array.isArray(body.parts) ? body.parts : []).map(Number).filter(n => n >= 1 && n <= total).slice(0, 100);
     const urls = {};
-    for (const n of ns) urls[n] = await bk(pend.b).st.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
+    for (const n of ns) urls[n] = pend.single ? await bk(pend.b).st.presignPut(`${P(id)}/f/${body.fileId}`) : await bk(pend.b).st.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
     return send(200, { urls });
   }
+  // v110: finish one upload: bytes check, index entry. Network work is done before (finishBytes) so a batch can run it in parallel.
+  const finishBytes = async (m, it) => {
+    const fid = String(it.fileId); const pend = (m.pending || {})[fid];
+    if (!pend || pend.uploadId !== it.uploadId) return { fid, error: "no_upload" };
+    const key = `${P(id)}/f/${fid}`; const fst = bk(pend.b).st;
+    try {
+      if (!pend.single) { const parts = (Array.isArray(it.parts) ? it.parts : []).map(p => ({ n: Number(p.n), etag: String(p.etag || "") })).filter(p => p.n >= 1 && p.etag); await fst.completeMultipart(key, pend.uploadId, parts); }
+      const h = await fst.head(key);
+      if (!h || h.size !== pend.size) { await fst.del(key).catch(() => {}); delete m.pending[fid]; return { fid, error: "size_mismatch" }; }
+      return { fid, pend, h };
+    } catch (e) { return { fid, error: String(e.message || e).slice(0, 80), retry: true }; }
+  };
+  const finishIndex = async (m, ix, r) => {
+    const { fid, pend, h } = r; delete m.pending[fid];
+    let p = pend.path;
+    if (pend.replaces && ix.files[pend.replaces]) { m.used -= ix.files[pend.replaces].size; await dropFile(id, ix, pend.replaces); }
+    else if (pathTaken(ix, p)) { const dot = p.lastIndexOf("."); const stem = dot > p.lastIndexOf("/") ? p.slice(0, dot) : p; const ext = dot > p.lastIndexOf("/") ? p.slice(dot) : ""; let k = 2; while (pathTaken(ix, `${stem} (${k})${ext}`)) k++; p = `${stem} (${k})${ext}`; }
+    m.used += h.size;
+    ix.files[fid] = { id: fid, path: p, size: h.size, type: pend.type, mtime: Date.now(), text: false, state: "ok", ...(pend.b && pend.b !== "1" ? { b: pend.b } : {}) };
+    if (parentOf(p)) addFolders(ix, parentOf(p));
+    return { id: fid, path: p };
+  };
   if (op === "upload/complete") {
     return withLock(id, async () => {
       const [m, ix] = await Promise.all([meta(id), index(id)]);
-      const fid = String(body.fileId); const pend = (m.pending || {})[fid];
-      if (!pend || pend.uploadId !== body.uploadId) fail(404, "no_upload");
-      const parts = (Array.isArray(body.parts) ? body.parts : []).map(p => ({ n: Number(p.n), etag: String(p.etag || "") })).filter(p => p.n >= 1 && p.etag);
-      const key = `${P(id)}/f/${fid}`;
-      const fst = bk(pend.b).st;
-      await fst.completeMultipart(key, pend.uploadId, parts);
-      const h = await fst.head(key);
-      delete m.pending[fid];
-      if (!h || h.size !== pend.size) { await fst.del(key); await saveMeta(id, m); fail(400, "size_mismatch"); }
-      let p = pend.path;
-      if (pend.replaces && ix.files[pend.replaces]) { m.used -= ix.files[pend.replaces].size; await dropFile(id, ix, pend.replaces); }
-      else if (pathTaken(ix, p)) { const dot = p.lastIndexOf("."); const stem = dot > p.lastIndexOf("/") ? p.slice(0, dot) : p; const ext = dot > p.lastIndexOf("/") ? p.slice(dot) : ""; let k = 2; while (pathTaken(ix, `${stem} (${k})${ext}`)) k++; p = `${stem} (${k})${ext}`; }
-      m.used += h.size;
-      ix.files[fid] = { id: fid, path: p, size: h.size, type: pend.type, mtime: Date.now(), text: false, state: "ok", ...(pend.b && pend.b !== "1" ? { b: pend.b } : {}) };
-      if (parentOf(p)) addFolders(ix, parentOf(p));
+      const r = await finishBytes(m, body);
+      if (r.error === "no_upload") fail(404, "no_upload");
+      if (r.error === "size_mismatch") { await saveMeta(id, m); fail(400, "size_mismatch"); }
+      if (r.error) throw new Error(r.error);
+      const done = await finishIndex(m, ix, r);
       await saveIndex(id, ix); await saveMeta(id, m);
-      return send(200, { id: fid, path: p, ...publicMeta(m) });
+      return send(200, { ...done, ...publicMeta(m) });
+    });
+  }
+  if (op === "upload/batch-complete") { // v110: up to 100 finished uploads (+ their AI text) in one call: one index/meta/bm25 write
+    const items = (Array.isArray(body.items) ? body.items : []).slice(0, 100);
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      const rs = []; for (let i = 0; i < items.length; i += 8) rs.push(...await Promise.all(items.slice(i, i + 8).map(it => finishBytes(m, it))));
+      const out = []; const texts = [];
+      for (let i = 0; i < rs.length; i++) {
+        const r = rs[i];
+        if (r.error) { out.push({ fileId: r.fid, error: r.error, retry: !!r.retry }); continue; }
+        const d = await finishIndex(m, ix, r); out.push({ fileId: r.fid, ...d });
+        if (typeof items[i].text === "string") texts.push({ id: d.id, text: items[i].text, note: items[i].note });
+      }
+      if (texts.length) await writeTexts(ix, texts);
+      await saveIndex(id, ix); await saveMeta(id, m);
+      return send(200, { files: out, ...publicMeta(m) });
     });
   }
   if (op === "upload/abort") {
     return withLock(id, async () => {
       const m = await meta(id); const fid = String(body.fileId); const pend = (m.pending || {})[fid];
-      if (pend) { try { await bk(pend.b).st.abortMultipart(`${P(id)}/f/${fid}`, pend.uploadId); } catch (e) { /* ignore */ } delete m.pending[fid]; await saveMeta(id, m); }
+      if (pend) { try { if (pend.single) await bk(pend.b).st.del(`${P(id)}/f/${fid}`); else await bk(pend.b).st.abortMultipart(`${P(id)}/f/${fid}`, pend.uploadId); } catch (e) { /* ignore */ } delete m.pending[fid]; await saveMeta(id, m); }
       return send(200, { ok: true });
     });
   }
   if (op === "text") {
-    const text = String(body.text || "").slice(0, TEXT_MAX);
     return withLock(id, async () => {
-      const ix = await index(id); const f = ix.files[String(body.id)];
-      if (!f) fail(404, "not_found");
-      await storage.putText(`${P(id)}/t/${f.id}.txt`, text);
-      const x = await bm(id); bmAdd(x, f.id, text); await cset(`${P(id)}/bm25.json`, x);
-      f.text = text.length > 0; f.note = String(body.note || "").slice(0, 80); await saveIndex(id, ix);
+      const ix = await index(id); if (!ix.files[String(body.id)]) fail(404, "not_found");
+      await writeTexts(ix, [body]); await saveIndex(id, ix);
       return send(200, { ok: true });
     });
+  }
+  if (op === "text-batch") { // v110: AI text for many files in one call
+    const list = (Array.isArray(body.items) ? body.items : []).slice(0, 100);
+    return withLock(id, async () => { const ix = await index(id); const n = await writeTexts(ix, list); await saveIndex(id, ix); return send(200, { ok: true, n }); });
   }
   if (op === "mkdir") {
     const p = cleanPath(body.path);
