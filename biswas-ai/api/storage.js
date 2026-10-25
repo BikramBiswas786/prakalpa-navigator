@@ -85,7 +85,10 @@ export class S3Storage {
     h.authorization = `AWS4-HMAC-SHA256 Credential=${this.ak}/${this.scope(date)}, SignedHeaders=${names.join(";")}, Signature=${sig}`;
     delete h.host;
     const url = `${this.endpoint}${this.uri(key)}${cq ? "?" + cq : ""}`;
-    return fetch(url, { method, headers: h, body: method === "GET" || method === "HEAD" ? undefined : payload, signal: AbortSignal.timeout(30000) });
+    const t0 = Date.now();
+    const r = await fetch(url, { method, headers: h, body: method === "GET" || method === "HEAD" ? undefined : payload, signal: AbortSignal.timeout(this._to || 30000) });
+    const d = Date.now() - t0; this.okAt = Date.now(); this.lat = this.lat ? Math.round(this.lat * 0.7 + d * 0.3) : d; // v110: server→backend latency (EWMA), used for placement
+    return r;
   }
   async getText(key) {
     const r = await this.request("GET", key);
@@ -99,6 +102,11 @@ export class S3Storage {
     if (!r.ok) throw new Error(`storage put ${r.status}`);
   }
   putJson(key, obj) { return this.putText(key, JSON.stringify(obj), "application/json"); }
+  // v110: cheap liveness check before handing out a single presigned PUT (no server round-trip to the bucket otherwise).
+  alive() {
+    if (!this._alive) this._alive = (async () => { this._to = 4000; try { await this.request("HEAD", "stats/usage.json"); } finally { this._to = 0; this._alive = null; } })();
+    return this._alive;
+  }
   async head(key) {
     const r = await this.request("HEAD", key);
     if (r.status === 404) return null;
@@ -113,6 +121,7 @@ export class S3Storage {
     if (!r.ok || !id) throw new Error(`storage multipart ${r.status}`);
     return id;
   }
+  async presignPut(key) { return this.presign("PUT", key, {}, 3600); } // v110: one PUT for a small file
   async presignPart(key, uploadId, n) { return this.presign("PUT", key, { partNumber: String(n), uploadId }, 3600); }
   async completeMultipart(key, uploadId, parts) {
     const xml = `<CompleteMultipartUpload>${parts.map(p => `<Part><PartNumber>${Number(p.n)}</PartNumber><ETag>${String(p.etag).replace(/[<>&]/g, "")}</ETag></Part>`).join("")}</CompleteMultipartUpload>`;
@@ -161,6 +170,7 @@ export class LocalStorage {
   }
   async createMultipart(key) { const id = crypto.randomBytes(12).toString("hex"); await fs.promises.mkdir(this.file(key) + ".parts-" + id, { recursive: true }); return id; }
   async presignPart(key, uploadId, n) { return this.sign("put", key, `${uploadId}:${Number(n)}`); }
+  async presignPut(key) { return this.sign("put", key, "single"); }
   async completeMultipart(key, uploadId, parts) {
     const dir = this.file(key) + ".parts-" + uploadId;
     const out = fs.createWriteStream(this.file(key) + ".tmp");
@@ -180,6 +190,14 @@ export class LocalStorage {
   async serve(req, res, url) {
     let v; try { v = this.verify(url.searchParams); } catch (e) { v = null; }
     if (!v) { res.writeHead(403).end(); return; }
+    if (v.op === "put" && req.method === "PUT" && v.extra === "single") { // v110: small file in one PUT
+      const f = this.file(v.key); await fs.promises.mkdir(path.dirname(f), { recursive: true });
+      const md5 = crypto.createHash("md5"); const out = fs.createWriteStream(f + ".up"); let size = 0;
+      for await (const c of req) { size += c.length; if (size > 64 * 1024 * 1024) { out.destroy(); res.writeHead(413).end(); return; } md5.update(c); if (!out.write(c)) await new Promise(r => out.once("drain", r)); }
+      await new Promise(r => out.end(r)); await fs.promises.rename(f + ".up", f);
+      res.writeHead(200, { etag: '"' + md5.digest("hex") + '"', "access-control-expose-headers": "ETag" }).end();
+      return;
+    }
     if (v.op === "put" && req.method === "PUT") {
       const [id, n] = v.extra.split(":");
       const dir = this.file(v.key) + ".parts-" + id;

@@ -21,7 +21,7 @@ const name = process.env.PDNAME || "zz-test-v106-" + Date.now().toString(36);
 await p.type("#pd-c-name", name); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit());
 await p.waitForSelector("#pd-main", { visible: true }); await sl(800); ok(true, "1 create zz-test pendrive " + name); await shot("created");
 // 2 upload folder + loose files
-const idle = async () => { for (let i = 0; i < 240; i++) { await sl(500); if (!(await p.evaluate(() => pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state))))) return; } };
+const idle = async () => { for (let i = 0; i < 240; i++) { await sl(500); if (!(await p.evaluate(() => (pd.textLeft || pd.ups.some(u => !["done", "fail", "skip", "cancel"].includes(u.state)))))) return; } };
 await (await p.$("#pd-folder-in")).uploadFile(SRC + "/অফিস");
 await p.waitForSelector("#pd-confirm:not([hidden])", { timeout: 20000 }); await shot("folder-summary"); await p.click("[data-pd-sum-go]"); await idle();
 await (await p.$("#pd-file-in")).uploadFile(SRC + "/loose/notice.txt", SRC + "/loose/photo.jpg"); await sl(800);
@@ -73,7 +73,7 @@ await p.evaluate(() => pdCd("")); await sl(400); await shot("root");
 await p.$$eval("[data-pd-ai]", bs => bs.find(b => b.closest("tr").innerText.includes("অফিস")).click()); await sl(200);
 await p.$$eval("[data-pd-ai]", bs => bs.find(b => b.closest("tr").innerText.includes("notice.txt")).click()); await sl(200);
 const chips = await p.$eval("#pd-chips", e => e.innerText.replace(/\s+/g, " ")); ok(/অফিস/.test(chips) && /notice/.test(chips), "6a chips: " + chips); await shot("ai-selected");
-await p.$eval("#pd-q", e => { e.value = ""; }); await p.type("#pd-q", "সব ফাইলের সারসংক্ষেপ একটা টেবিল করে দিন (summary table)"); await p.click("#pd-ask");
+await p.$eval("#pd-q", e => { e.value = ""; }); await p.type("#pd-q", process.env.Q || "সব ফাইলের সারসংক্ষেপ একটা টেবিল করে দিন (summary table)"); await p.click("#pd-ask");
 await p.waitForFunction(() => pd.outs.length && document.querySelector("#pd-out-doc table, #pd-out-doc p"), { timeout: 120000 }); await sl(500);
 const outInfo = await p.evaluate(() => ({ html: document.querySelector("#pd-out-doc").innerText, table: !!document.querySelector("#pd-out-doc table"), used: [...document.querySelectorAll("#pd-out-doc .pd-used")].map(e => e.innerText).join(" ") }));
 const usedPaths = [...outInfo.used.matchAll(/📄 ([^·\n]+)/g)].map(m => m[1].trim());

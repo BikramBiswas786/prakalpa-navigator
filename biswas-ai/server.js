@@ -820,6 +820,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
+    if (url.pathname === "/pd-text-worker.js") { // v110: reads AI text off the main thread
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
+      fs.createReadStream(path.join(DIR, "pd-text-worker.js")).pipe(res);
+      return;
+    }
     if (url.pathname === "/pd-dl-sw.js") { // v106: service worker that streams a folder ZIP to the browser's downloads
       res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
       fs.createReadStream(path.join(DIR, "pd-dl-sw.js")).pipe(res);
@@ -910,7 +915,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v109"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v110"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;

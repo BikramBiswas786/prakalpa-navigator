@@ -181,3 +181,11 @@ If the browser cannot reach a storage host at all (firewall or blocked port: a n
 - When a question asks for a table, list, comparison or summary table (English, or Bengali টেবিল/সারণি/তালিকা/তুলনা/ছক), or the new **Output format** selector (Auto / Table / Report / Letter) is set to Table, the prompt makes a GitHub markdown table mandatory. The map step keeps one line per item, and the reduce step must keep every row. If the model still answers in prose, the server asks it once more to reshape its own answer into a table.
 - The output panel normalises any table it gets: markdown tables, pipe rows without a separator or outer pipes, tab-separated rows, and HTML `<table>`. Word, PDF and CSV exports all use the normalised table.
 - Tests: `tests/pendrive-v108.mjs` (API, mock), `tests/pendrive-ui-v108.mjs` (parser, 8 cases).
+
+## v110 — faster uploads
+- Files under 16 MB go up in one presigned PUT. Bigger files use multipart with adaptive 16–64 MB parts, sized from the measured speed.
+- The browser plans files in batches (`upload/batch-init`, up to 100 files) and commits them in batches (`upload/batch-complete`). Index, metadata and search-index writes happen once per batch instead of once per file. Up to 8 files and 6 parts per file are in flight at once.
+- Text extraction runs after the upload: txt-like files and docx are handled in a Web Worker (`pd-text-worker.js`), and the text is saved in batches (`text-batch`).
+- At session start the browser quickly checks that each storage host can be reached and skips hosts that can't. The server does a cheap liveness check before giving out a single-PUT URL. When backends have similar free space (within 20%), the one with the lowest measured latency is chosen.
+- The progress bar shows speed (MB/s), the ETA, and how many files still need text read.
+- Tests: `tests/pendrive-v109.mjs` (named before the version bump), and `tests/pendrive-upload-profile.mjs` (100 small docs plus a 200 MB file, `BASE=... TAG=... UPDIR=... BIG=...`, zz-test pendrives only).
