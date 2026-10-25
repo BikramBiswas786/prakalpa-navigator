@@ -122,5 +122,18 @@ ok(fs.readFileSync(OUT + "/chart.svg", "utf8").startsWith("<svg") || fs.readFile
 ok(JSON.parse(fs.readFileSync(OUT + "/data.json", "utf8")).b.length === 2, "json valid");
 ok(sh(`python3 ${OUT}/sum.py`).trim() === "6", "python file runs");
 ok(wellFormed("answer-export.docx", "word/document.xml") && xml("answer-export.docx", "word/document.xml").includes("শিরোনাম"), "toDocx fallback export");
+// v118: deterministic attachments when the model forgets the block
+const au = await p.evaluate(async () => {
+  const host = document.createElement("div"); host.innerHTML = `<div class="msg user"><div class="bubble">Make an Excel accounts sheet, a JSON, a bar chart and a Python script, and a letter to the BDO</div></div><div class="msg ai"><div class="doc">${mdToHtml("Here:\n\n| Item | Amount |\n| --- | --- |\n| Electricity | 1,200 |\n| Water | ৩০০ |\n\n```python\nprint(1)\n```")}</div><div class="actions"></div></div><div class="msg user"><div class="bubble">pendrive style</div></div>`;
+  document.body.append(host); BA.autoAtt(host);
+  const types = [...host.querySelectorAll(".ba-auto .ba-att")].map(x => x.dataset.type);
+  const xa = [...host.querySelectorAll('.ba-att[data-type="xlsx"]')][0]; const a = BA.reg.get(xa.dataset.baAtt);
+  const tsv = document.createElement("div"); tsv.innerHTML = `<div class="msg user"><div class="bubble">excel hisab</div></div><div class="msg ai"><div class="doc"><p>Item\tAmount</p><p>Tea\t400</p><p>Water\t300</p></div><div class="actions"></div></div>`; document.body.append(tsv); BA.autoAtt(tsv);
+  const tx = tsv.querySelector('.ba-att[data-type="xlsx"]');
+  return { types, xmd: a.content, tsv: tx ? BA.reg.get(tx.dataset.baAtt).content : "" };
+});
+ok(["xlsx", "png", "py", "json", "docx", "pdf"].every(x => au.types.includes(x)), "auto attachments " + au.types.join());
+ok(/=SUM\(B2:B3\)/.test(au.xmd) && /\| 300 \|/.test(au.xmd), "auto xlsx has numbers + SUM " + JSON.stringify(au.xmd));
+ok(/=SUM\(B2:B3\)/.test(au.tsv), "TAB-separated table -> xlsx " + JSON.stringify(au.tsv));
 ok(!errs.length, "no page errors " + errs.join(" | "));
 console.log(`${pass}/${pass + fail} passed`); await b.close(); process.exit(fail ? 1 : 0);
