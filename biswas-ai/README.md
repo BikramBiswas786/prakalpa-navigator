@@ -163,3 +163,8 @@ R2 alias (used only if the S3_* set is incomplete): `R2_ACCOUNT_ID`, `R2_ACCESS_
    instead (`s3_get`/`s3_put`/`s3_head`); `CORS_ORIGIN=a,b` changes the origins.
 
 For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.
+
+### v105 — pendrive folder navigation and AI scope
+- Breadcrumb (🏠 › 📁 Folder › 📁 Sub, each clickable), ⬆ Up and ← Back buttons, browser Back/Forward (one history entry per folder), Backspace = up, Alt+← = back, and the folder survives a reload (`#pd=` in the URL).
+- "Select for AI" on every file/folder row. A chip bar above the AI box shows what the AI will use (a folder counts all files under it), with ✕ per chip and Clear. With nothing selected it says the AI reads the whole pendrive. The answer lists the files the AI used; the server only reads `scope.ids`.
+- Tests: `tests/pendrive-v105.mjs` (API scope, mock AI) and `tests/pendrive-ui-v105.mjs` (headless Chrome, needs puppeteer-core).
