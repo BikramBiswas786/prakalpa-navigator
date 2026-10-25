@@ -17,9 +17,12 @@ if (!SECRET) {
   console.warn("PENDRIVE_SECRET is not set: using a random one, so pendrive sessions end when the server restarts.");
 }
 export const storage = makeStorage(env, SECRET);
-const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 2 * 1024 ** 3);
-const MAX_FILE = Math.max(1, Number(env.PENDRIVE_MAX_FILE_BYTES) || 2 * 1024 ** 3);
-const PART = 10 * 1024 * 1024;              // 10 MB parts; 2 GB = 205 parts (S3 allows 10,000)
+const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 5 * 1024 ** 3);       // per pendrive
+const MAX_FILE = Math.max(1, Number(env.PENDRIVE_MAX_FILE_BYTES) || 5 * 1024 ** 3);   // per file
+// Safety cap across ALL pendrives, so we refuse uploads before hitting the storage plan's limit (B2 free tier: 10 GB).
+const TOTAL_CAP = Math.max(1, Number(env.PENDRIVE_TOTAL_CAP_BYTES) || 9 * 1024 ** 3);
+const PART = 10 * 1024 * 1024;              // 10 MB parts; 5 GB = 512 parts (S3 allows 10,000)
+if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES needs more than 10,000 parts of 10 MB");
 const SESSION_MS = 12 * 3600 * 1000;
 const LOCK_TRIES = 5, LOCK_MS = 15 * 60 * 1000;
 const TEXT_MAX = 2 * 1024 * 1024;           // per-file extracted text kept for the AI
@@ -74,11 +77,36 @@ function session(req) {
 }
 
 /* ---------- meta + index ---------- */
-async function meta(id) { const m = await storage.getJson(`${P(id)}/meta.json`); if (!m) fail(404, "not_found"); return m; }
-async function index(id) { return (await storage.getJson(`${P(id)}/index.json`)) || { files: {}, folders: [] }; }
-const saveMeta = (id, m) => storage.putJson(`${P(id)}/meta.json`, m);
-const saveIndex = (id, x) => storage.putJson(`${P(id)}/index.json`, x);
-const publicMeta = m => ({ name: m.name, quota: m.quota, used: m.used, reserved: Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0) });
+// Small write-through cache for the JSON files (single Render instance): halves the storage round trips per call.
+const cache = new Map(); const CACHE_MAX = process.env.PENDRIVE_CACHE === "0" ? 0 : 300; /* tests that edit storage directly set PENDRIVE_CACHE=0 */
+async function cget(key) {
+  if (cache.has(key)) { const v = cache.get(key); cache.delete(key); cache.set(key, v); return v == null ? null : structuredClone(v); }
+  const v = await storage.getJson(key); cput(key, v); return v == null ? null : structuredClone(v);
+}
+function cput(key, v) { cache.delete(key); cache.set(key, v == null ? null : structuredClone(v)); while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value); }
+async function cset(key, v) { await storage.putJson(key, v); cput(key, v); }
+async function meta(id) { const m = await cget(`${P(id)}/meta.json`); if (!m) fail(404, "not_found"); return m; }
+async function index(id) { return (await cget(`${P(id)}/index.json`)) || { files: {}, folders: [] }; }
+const reservedOf = m => Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
+async function saveMeta(id, m) {
+  await cset(`${P(id)}/meta.json`, m);
+  // keep the cross-pendrive usage table in step (used + reserved per pendrive)
+  const u = { u: m.used || 0, r: reservedOf(m) };
+  await withLock("stats", async () => {
+    const st = (await cget("stats/usage.json")) || { by: {} };
+    const cur = st.by[id] || { u: 0, r: 0 };
+    if (cur.u === u.u && cur.r === u.r) return;
+    st.by[id] = u; st.t = Date.now(); await cset("stats/usage.json", st);
+  });
+}
+async function totalUse(exceptId) {
+  const st = (await cget("stats/usage.json")) || { by: {} };
+  return Object.entries(st.by).reduce((a, [k, v]) => k === exceptId ? a : a + v.u + v.r, 0);
+}
+const saveIndex = (id, x) => cset(`${P(id)}/index.json`, x);
+// Existing pendrives get the current default quota if it's bigger than the one stored at creation.
+const quotaOf = m => Math.max(Number(m.quota) || 0, QUOTA);
+const publicMeta = m => ({ name: m.name, quota: quotaOf(m), used: m.used, reserved: reservedOf(m), maxFile: MAX_FILE });
 function checkPin(pin) { if (!/^\d{4,8}$/.test(String(pin || ""))) fail(400, "bad_pin"); }
 function pathTaken(ix, p) { return Object.values(ix.files).some(f => f.state === "ok" && f.path === p) || ix.folders.includes(p); }
 function addFolders(ix, p) { const parts = p.split("/"); for (let i = 1; i <= parts.length; i++) { const f = parts.slice(0, i).join("/"); if (!ix.folders.includes(f)) ix.folders.push(f); } }
@@ -97,7 +125,7 @@ export function tokens(text) {
   return out;
 }
 const chunksOf = text => { const out = []; for (let i = 0; i < text.length && out.length < 2000; i += CHUNK) out.push(text.slice(i, i + CHUNK + 200)); return out; };
-async function bm(id) { return (await storage.getJson(`${P(id)}/bm25.json`)) || { df: {}, n: 0, len: 0, files: {} }; }
+async function bm(id) { return (await cget(`${P(id)}/bm25.json`)) || { df: {}, n: 0, len: 0, files: {} }; }
 function bmRemove(x, fileId) {
   const f = x.files[fileId]; if (!f) return;
   for (const c of f) { for (const t of Object.keys(c.tf)) { x.df[t] -= 1; if (x.df[t] <= 0) delete x.df[t]; } x.n -= 1; x.len -= c.l; }
@@ -239,21 +267,28 @@ export async function handle(req, res, url, body, send) {
       if (same && !body.overwrite) fail(409, "exists", { id: same.id });
       const reserved = Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
       const freed = same ? same.size : 0;
-      if (m.used - freed + reserved + size > m.quota) fail(413, "quota", { quota: m.quota, used: m.used, reserved });
+      if (m.used - freed + reserved + size > quotaOf(m)) fail(413, "quota", { quota: quotaOf(m), used: m.used, reserved });
+      if ((await totalUse(id)) + m.used - freed + reserved + size > TOTAL_CAP) fail(507, "total_cap", { cap: TOTAL_CAP });
       const fileId = hex(12);
       const uploadId = await storage.createMultipart(`${P(id)}/f/${fileId}`, type);
       m.pending = m.pending || {};
-      for (const [k, v] of Object.entries(m.pending)) if (Date.now() - v.t > 24 * 3600 * 1000) delete m.pending[k]; // stale reservations
+      for (const [k, v] of Object.entries(m.pending)) if (Date.now() - v.t > 24 * 3600 * 1000) { storage.abortMultipart(`${P(id)}/f/${k}`, v.uploadId).catch(() => {}); delete m.pending[k]; } // stale reservations: free their parts too
       m.pending[fileId] = { size, t: Date.now(), uploadId, path: p, type, replaces: same && body.overwrite ? same.id : "" };
       await saveMeta(id, m);
-      return send(200, { fileId, uploadId, partSize: PART, parts: Math.max(1, Math.ceil(size / PART)) });
+      const nParts = Math.max(1, Math.ceil(size / PART)), urls = {};
+      for (let n = 1; n <= Math.min(nParts, 50); n++) urls[n] = await storage.presignPart(`${P(id)}/f/${fileId}`, uploadId, n);
+      return send(200, { fileId, uploadId, partSize: PART, parts: nParts, urls });
     });
+  }
+  if (op === "upload/status") { // is this upload (saved in the browser's IndexedDB) still resumable?
+    const m = await meta(id); const pend = (m.pending || {})[String(body.fileId)];
+    return send(200, { ok: !!(pend && pend.uploadId === body.uploadId && pend.size === Number(body.size)) });
   }
   if (op === "upload/parts") {
     const m = await meta(id); const pend = (m.pending || {})[String(body.fileId)];
     if (!pend || pend.uploadId !== body.uploadId) fail(404, "no_upload");
     const total = Math.max(1, Math.ceil(pend.size / PART));
-    const ns = (Array.isArray(body.parts) ? body.parts : []).map(Number).filter(n => n >= 1 && n <= total).slice(0, 50);
+    const ns = (Array.isArray(body.parts) ? body.parts : []).map(Number).filter(n => n >= 1 && n <= total).slice(0, 100);
     const urls = {};
     for (const n of ns) urls[n] = await storage.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
     return send(200, { urls });
@@ -292,7 +327,7 @@ export async function handle(req, res, url, body, send) {
       const ix = await index(id); const f = ix.files[String(body.id)];
       if (!f) fail(404, "not_found");
       await storage.putText(`${P(id)}/t/${f.id}.txt`, text);
-      const x = await bm(id); bmAdd(x, f.id, text); await storage.putJson(`${P(id)}/bm25.json`, x);
+      const x = await bm(id); bmAdd(x, f.id, text); await cset(`${P(id)}/bm25.json`, x);
       f.text = text.length > 0; f.note = String(body.note || "").slice(0, 80); await saveIndex(id, ix);
       return send(200, { ok: true });
     });
@@ -367,7 +402,7 @@ async function dropFile(id, ix, fid) {
   await storage.del(`${P(id)}/f/${fid}`);
   if (ix.files[fid] && ix.files[fid].text) {
     await storage.del(`${P(id)}/t/${fid}.txt`);
-    const x = await bm(id); bmRemove(x, fid); await storage.putJson(`${P(id)}/bm25.json`, x);
+    const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x);
   }
   delete ix.files[fid];
 }

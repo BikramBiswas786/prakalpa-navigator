@@ -27,7 +27,7 @@ async function upload(path, bytes, text, extra = {}) {
 }
 const name = "Test Office " + Date.now();
 let r = await api("create", { name, pin: "1234" });
-ok(r.status === 200 && r.j.token, `create pendrive (status ${r.status}, quota ${r.j.quota})`);
+ok(r.status === 200 && r.j.token && r.j.quota === 5 * 1024 ** 3, `create pendrive (status ${r.status}, quota ${r.j.quota})`);
 r = await api("create", { name: name.toUpperCase(), pin: "5555" });
 ok(r.status === 409, `duplicate name (case-insensitive) rejected: ${r.status} ${r.j.error}`);
 tok = "";
@@ -35,7 +35,7 @@ for (let i = 1; i <= 5; i++) { r = await api("open", { name, pin: "0000" }); con
 ok(r.status === 423, "5 wrong PINs lock it");
 r = await api("open", { name, pin: "1234" });
 ok(r.status === 423 && r.j.retryAfter > 800, `right PIN refused while locked (retryAfter ${r.j.retryAfter}s)`);
-// test hook: clear the lock by editing meta on local disk
+// test hook: clear the lock by editing meta on local disk (run the server with PENDRIVE_CACHE=0)
 const fs = await import("node:fs"); const path = await import("node:path");
 const dir = process.env.PENDRIVE_LOCAL_DIR || "/tmp/pendrive-local";
 for (const id of fs.readdirSync(path.join(dir, "pendrives"))) { const f = path.join(dir, "pendrives", id, "meta.json"); const m = JSON.parse(fs.readFileSync(f)); if (m.name === name) { m.lockUntil = Date.now() - 1; fs.writeFileSync(f, JSON.stringify(m)); } }
@@ -71,9 +71,9 @@ r = await api("upload/init", { path: "../../etc/passwd", size: 1 }); ok(r.status
 r = await api("list"); ok(r.j.files.some(f => f.path === "Archive/README 2026.txt") && r.j.files.some(f => f.path === "Court Cases/2025/Ramesh Das case.pdf"), "list after rename/move shows new paths");
 r = await api("delete", { folders: ["Big"] }); ok(r.status === 400, "delete without confirm refused");
 r = await api("delete", { folders: ["Big"], confirm: true }); ok(r.status === 200 && r.j.deleted === 1, `delete folder (freed; used now ${r.j.used})`);
-// quota: default 2 GB; ask for more than is left
-r = await api("upload/init", { path: "huge.iso", size: 2 * 1024 ** 3 }); ok(r.status === 413 && r.j.error === "quota", `quota enforced: ${r.status} ${r.j.error}`);
-r = await api("upload/init", { path: "huge.iso", size: 3 * 1024 ** 3 }); ok(r.status === 413, `over max file size: ${r.j.error}`);
+// quota: default 5 GB per pendrive; ask for more than is left
+r = await api("upload/init", { path: "huge.iso", size: 5 * 1024 ** 3 }); ok(r.status === 413 && r.j.error === "quota", `quota enforced: ${r.status} ${r.j.error}`);
+r = await api("upload/init", { path: "huge.iso", size: 6 * 1024 ** 3 }); ok(r.status === 413 && r.j.error === "file_too_big", `over max file size: ${r.j.error}`);
 r = await api("upload/init", { path: "Court Cases/2025/notes.docx", size: 5 }); ok(r.status === 409, "same path without overwrite -> 409 exists (UI asks to confirm)");
 // AI
 const ask = async (question, extra = {}) => { const res = await api("ai", { question, lang: "en", ...extra }, true); const lines = (await res.text()).trim().split("\n").map(l => JSON.parse(l)); return lines; };

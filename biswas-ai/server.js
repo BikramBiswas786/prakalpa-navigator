@@ -807,7 +807,7 @@ const server = http.createServer(async (req, res) => {
       const op = url.pathname.slice(8);
       if ((op === "open" || op === "create") && limited(req, "pd-open", 10, 60 * 1000)) { tooMany(res); return; }
       if (op === "ai" && limited(req, "pd-ai", 10, 60 * 1000)) { tooMany(res); return; }
-      if (limited(req, "pd", 600, 60 * 1000)) { tooMany(res); return; }
+      if (limited(req, "pd", 1800, 60 * 1000)) /* folder imports: ~3 calls per small file */ { tooMany(res); return; }
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 8 * 1024 * 1024) { sendJson(413, { error: "too_large" }); return; } chunks.push(c); }
       let body = {};
@@ -900,7 +900,7 @@ const server = http.createServer(async (req, res) => {
       // Non-secret status: is storage configured, which provider, and did the boot-time CORS check pass.
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(PD_STATUS)); return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v101"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v102"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;

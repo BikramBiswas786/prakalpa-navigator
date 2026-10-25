@@ -369,7 +369,7 @@ textarea.paper { white-space: pre-wrap; }
 .pd-card h3, .pd-ai h3 { margin: 0; }
 .pd-top { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 .pd-usage { display: flex; gap: 8px; align-items: center; flex: 1; min-width: 180px; font-size: .82rem; color: var(--muted); }
-.pd-bar { flex: 1; max-width: 260px; height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
+.pd-bar { flex: 1; max-width: 280px; height: 10px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
 .pd-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
 .pd-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
 .pd-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; margin-bottom: 6px; }
@@ -377,7 +377,15 @@ textarea.paper { white-space: pre-wrap; }
 .pd-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .pd-drop { border: 1px dashed var(--line); border-radius: 12px; padding: 4px; min-height: 140px; }
 .pd-drop.over { border-color: var(--accent); background: var(--accent-soft); }
-.pd-drop-hint { text-align: center; margin: 8px; }
+.pd-import { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px; margin-bottom: 8px; border: 2px dashed var(--accent); border-radius: 12px; background: var(--accent-soft); }
+.pd-import.over { outline: 3px solid var(--accent); }
+.pd-big { font-size: 1rem; padding: 10px 16px; font-weight: 600; }
+.pd-drop-hint { flex: 1 1 200px; text-align: center; color: var(--muted); font-size: .9rem; }
+.pd-confirm, .pd-batch { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: grid; gap: 6px; font-size: .88rem; }
+.pd-confirm b { font-size: .98rem; }
+.pd-confirm .row, .pd-batch .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pd-batch .pd-bar { max-width: none; height: 10px; }
+.pd-bar.warn i { background: #c0392b; }
 .pd-list { width: 100%; border-collapse: collapse; font-size: .88rem; }
 .pd-list th, .pd-list td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .pd-list td:nth-child(3), .pd-list td:nth-child(4) { white-space: nowrap; color: var(--muted); font-size: .8rem; }
@@ -692,11 +700,17 @@ textarea.paper { white-space: pre-wrap; }
           <div class="pd-grid">
             <div class="pd-files">
               <nav class="pd-crumbs" id="pd-crumbs" aria-label="Folder"></nav>
-              <div class="tools pd-tools">
-                <button class="btn small primary" type="button" id="pd-up-files" data-t="pd_up_files"></button>
-                <button class="btn small" type="button" id="pd-up-folder" data-t="pd_up_folder"></button>
+              <div class="pd-import" id="pd-import">
+                <button class="btn primary pd-big" type="button" id="pd-up-folder"><span aria-hidden="true">📁</span> <span data-t="pd_up_folder"></span></button>
+                <button class="btn pd-big" type="button" id="pd-up-files"><span aria-hidden="true">📄</span> <span data-t="pd_up_files"></span></button>
+                <span class="pd-drop-hint" data-t="pd_drop"></span>
                 <input type="file" id="pd-file-in" multiple hidden>
                 <input type="file" id="pd-folder-in" webkitdirectory multiple hidden>
+              </div>
+              <div class="pd-confirm" id="pd-confirm" hidden role="dialog" aria-live="polite"></div>
+              <p class="hint pd-resume" id="pd-resume" hidden></p>
+              <div class="pd-batch" id="pd-batch" hidden></div>
+              <div class="tools pd-tools">
                 <button class="btn small" type="button" id="pd-mkdir" data-t="pd_mkdir"></button>
                 <button class="btn small" type="button" id="pd-rename" data-t="pd_rename"></button>
                 <button class="btn small" type="button" id="pd-move" data-t="pd_move"></button>
@@ -705,7 +719,6 @@ textarea.paper { white-space: pre-wrap; }
               </div>
               <div class="pd-drop" id="pd-drop">
                 <table class="pd-list"><thead><tr><th><input type="checkbox" id="pd-all" aria-label="All"></th><th data-t="pd_col_name"></th><th data-t="pd_col_size"></th><th data-t="pd_col_date"></th></tr></thead><tbody id="pd-rows"></tbody></table>
-                <p class="hint pd-drop-hint" data-t="pd_drop"></p>
               </div>
               <div id="pd-uploads"></div>
               <div class="pd-preview" id="pd-preview" hidden></div>
@@ -1007,7 +1020,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v101", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v102", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1081,7 +1094,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v101", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v102", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -5041,13 +5054,18 @@ Object.assign(STR.bn, {
   pd_tab: "এআই পেনড্রাইভ", pd_title: "এআই পেনড্রাইভ", pd_intro: "অফিসের ফাইল একটা জায়গায় রাখুন। নাম আর PIN জানলে যে কোনো কম্পিউটার বা ফোন থেকে খোলা যাবে। পাশেই AI ফাইলগুলো পড়ে কাজ করে দেবে।",
   pd_create_h: "নতুন পেনড্রাইভ বানান", pd_open_h: "পেনড্রাইভ খুলুন", pd_name: "পেনড্রাইভের নাম", pd_pin: "PIN (৪-৮ সংখ্যা)", pd_pin2: "PIN আরেকবার",
   pd_pin_hint: "৬ বা তার বেশি সংখ্যার PIN দিলে বেশি নিরাপদ।", pd_create: "বানান", pd_open: "খুলুন", pd_close: "বন্ধ করুন",
-  pd_up_files: "ফাইল তুলুন", pd_up_folder: "ফোল্ডার তুলুন", pd_mkdir: "নতুন ফোল্ডার", pd_rename: "নাম বদল", pd_move: "সরান", pd_download: "ডাউনলোড", pd_delete: "মুছুন",
-  pd_col_name: "নাম", pd_col_size: "সাইজ", pd_col_date: "তারিখ", pd_drop: "ফাইল বা পুরো ফোল্ডার এখানে টেনে আনুন।", pd_root: "পেনড্রাইভ", pd_empty: "এই ফোল্ডার খালি।",
+  pd_up_files: "ফাইল যোগ করুন", pd_up_folder: "ফোল্ডার যোগ করুন (ডেস্কটপ থেকে)", pd_mkdir: "নতুন ফোল্ডার", pd_rename: "নাম বদল", pd_move: "সরান", pd_download: "ডাউনলোড", pd_delete: "মুছুন",
+  pd_col_name: "নাম", pd_col_size: "সাইজ", pd_col_date: "তারিখ", pd_drop: "ফোল্ডার বা ফাইল এখানে টেনে আনুন", pd_root: "পেনড্রাইভ", pd_empty: "এই ফোল্ডার খালি।",
   pd_ai_h: "AI দিয়ে কাজ", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
   pd_mode: "কাজের ধরন", pd_mode_ask: "প্রশ্ন (দরকারি অংশ খুঁজে)", pd_mode_analyse: "সব ফাইল বিশ্লেষণ", pd_ask: "AI-কে বলুন", pd_q_ph: "যেমন: বারাসতের জমির মামলার শুনানি কবে? বা: সব ফাইলের সারাংশ করে একটা নোটশিট লিখুন।",
   pd_pin_mismatch: "দুটো PIN মিলছে না।", pd_bad_pin: "PIN ৪ থেকে ৮টা সংখ্যার হতে হবে।", pd_bad_name: "নাম ৩ থেকে ৬০ অক্ষরের হতে হবে।", pd_name_taken: "এই নামে পেনড্রাইভ আগেই আছে। অন্য নাম দিন।",
   pd_wrong: n => `নাম বা PIN ভুল।${n != null ? ` আর ${n} বার চেষ্টা করা যাবে।` : ""}`, pd_locked: m => `অনেকবার ভুল PIN। ${m} মিনিট পরে আবার চেষ্টা করুন।`, pd_expired: "সময় শেষ, আবার PIN দিয়ে খুলুন।",
-  pd_no_storage: "পেনড্রাইভের স্টোরেজ এখনও চালু হয়নি (R2 সেটিংস বাকি)।", pd_err: e => `হল না: ${e}`, pd_quota: "পেনড্রাইভে জায়গা নেই।", pd_too_big: "ফাইল খুব বড় (সর্বোচ্চ ২ GB)।",
+  pd_no_storage: "পেনড্রাইভের স্টোরেজ এখনও চালু হয়নি।", pd_err: e => `হল না: ${e}`, pd_quota: "পেনড্রাইভে জায়গা নেই।", pd_too_big: "ফাইল খুব বড় (সর্বোচ্চ ৫ GB)।", pd_total_cap: "অ্যাপের মোট জায়গা (সবার মিলিয়ে) ভরে গেছে। পুরনো ফাইল মুছুন বা অ্যাডমিনকে জানান।",
+  pd_sum: (n, sz, d) => `${n}টি ফাইল, ${sz}, ${d}টি ফোল্ডারে। তুলবেন?`, pd_sum_skip: n => `${n}টি খালি বা সিস্টেম ফাইল (.DS_Store, Thumbs.db, desktop.ini…) বাদ।`,
+  pd_sum_same: n => `${n}টি ফাইল আগেই আছে (একই নাম ও সাইজ), বাদ।`, pd_sum_diff: n => `একই নামে ${n}টি আলাদা ফাইল আছে: বদলে দিন`, pd_sum_go: "তুলুন", pd_sum_no: "বাতিল",
+  pd_sum_full: (need, free) => `জায়গা কম: লাগবে ${need}, খালি ${free}।`, pd_sum_none: "নতুন কিছু তোলার নেই।", pd_scanning: n => `ফাইল গোনা হচ্ছে… ${n}`,
+  pd_batch: (d, n, b, tb) => `${d}/${n} ফাইল · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/সে · বাকি ${eta}`, pd_failed_n: n => `${n}টি আটকে গেছে`, pd_more: n => `আরও ${n}টি অপেক্ষায়…`,
+  pd_resume: n => `আগের ${n}টি বড় ফাইল পুরো তোলা হয়নি। একই ফাইল/ফোল্ডার আবার বাছলে যেখানে থেমেছিল সেখান থেকে চলবে:`, pd_resumed: "আগের জায়গা থেকে",
   pd_exists: p => `"${p}" আগেই আছে। বদলে নতুনটা রাখবেন? (পুরনোটা মুছে যাবে)`, pd_newfolder: "নতুন ফোল্ডারের নাম", pd_newname: "নতুন নাম", pd_move_to: "কোন ফোল্ডারে সরাবেন? (খালি রাখলে মূল জায়গা)",
   pd_confirm_del: n => `${n}টা জিনিস মুছে ফেলবেন? এটা ফেরানো যাবে না।`, pd_pick: "আগে বাঁদিকের ঘরে টিক দিয়ে বাছুন।", pd_pick_one: "একটাই বাছুন।",
   pd_up_wait: "অপেক্ষায়", pd_up_go: "তুলছি", pd_up_read: "লেখা পড়ছি", pd_up_done: "হয়ে গেছে", pd_up_fail: "আটকে গেছে", pd_up_cancel: "বাতিল", pd_retry: "আবার চেষ্টা", pd_cancel: "বাতিল",
@@ -5059,13 +5077,18 @@ Object.assign(STR.en, {
   pd_tab: "AI Pendrive", pd_title: "AI Pendrive", pd_intro: "Keep office files in one place. Anyone with the name and PIN can open it from any computer or phone. The AI next to it reads the files and does the work.",
   pd_create_h: "Create a pendrive", pd_open_h: "Open a pendrive", pd_name: "Pendrive name", pd_pin: "PIN (4-8 digits)", pd_pin2: "PIN again",
   pd_pin_hint: "A PIN of 6 or more digits is stronger.", pd_create: "Create", pd_open: "Open", pd_close: "Close",
-  pd_up_files: "Upload files", pd_up_folder: "Upload folder", pd_mkdir: "New folder", pd_rename: "Rename", pd_move: "Move", pd_download: "Download", pd_delete: "Delete",
-  pd_col_name: "Name", pd_col_size: "Size", pd_col_date: "Date", pd_drop: "Drag files or whole folders here.", pd_root: "Pendrive", pd_empty: "This folder is empty.",
+  pd_up_files: "Add files", pd_up_folder: "Add folder from desktop", pd_mkdir: "New folder", pd_rename: "Rename", pd_move: "Move", pd_download: "Download", pd_delete: "Delete",
+  pd_col_name: "Name", pd_col_size: "Size", pd_col_date: "Date", pd_drop: "Drag folders or files here", pd_root: "Pendrive", pd_empty: "This folder is empty.",
   pd_ai_h: "Work with AI", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
   pd_mode: "Task", pd_mode_ask: "Question (finds the relevant parts)", pd_mode_analyse: "Analyse every file", pd_ask: "Ask the AI", pd_q_ph: "e.g. When is the hearing in the Barasat land case? Or: summarise all files and write a notesheet.",
   pd_pin_mismatch: "The two PINs don't match.", pd_bad_pin: "The PIN must be 4 to 8 digits.", pd_bad_name: "The name must be 3 to 60 characters.", pd_name_taken: "A pendrive with this name already exists. Pick another name.",
   pd_wrong: n => `Wrong name or PIN.${n != null ? ` ${n} tries left.` : ""}`, pd_locked: m => `Too many wrong PINs. Try again in ${m} minutes.`, pd_expired: "Session ended. Open it again with the PIN.",
-  pd_no_storage: "Pendrive storage isn't set up yet (R2 settings missing).", pd_err: e => `Failed: ${e}`, pd_quota: "The pendrive is full.", pd_too_big: "File too big (2 GB max).",
+  pd_no_storage: "Pendrive storage isn't set up yet.", pd_err: e => `Failed: ${e}`, pd_quota: "The pendrive is full.", pd_too_big: "File too big (5 GB max).", pd_total_cap: "The app's total storage (shared by everyone) is full. Delete old files or tell the admin.",
+  pd_sum: (n, sz, d) => `${n} files, ${sz} in ${d} folders. Upload?`, pd_sum_skip: n => `${n} empty or system files (.DS_Store, Thumbs.db, desktop.ini…) skipped.`,
+  pd_sum_same: n => `${n} files are already there (same name and size), skipped.`, pd_sum_diff: n => `${n} different files with the same name exist: replace them`, pd_sum_go: "Upload", pd_sum_no: "Cancel",
+  pd_sum_full: (need, free) => `Not enough space: needs ${need}, free ${free}.`, pd_sum_none: "Nothing new to upload.", pd_scanning: n => `Counting files… ${n}`,
+  pd_batch: (d, n, b, tb) => `${d}/${n} files · ${b} / ${tb}`, pd_speed: (sp, eta) => `${sp}/s · ${eta} left`, pd_failed_n: n => `${n} stopped`, pd_more: n => `${n} more waiting…`,
+  pd_resume: n => `${n} large file(s) from earlier didn't finish. Pick the same files or folder again to continue where it stopped:`, pd_resumed: "resumed",
   pd_exists: p => `"${p}" already exists. Replace it with the new one? (The old one will be deleted.)`, pd_newfolder: "New folder name", pd_newname: "New name", pd_move_to: "Move to which folder? (leave empty for the top level)",
   pd_confirm_del: n => `Delete ${n} item(s)? This can't be undone.`, pd_pick: "Tick items in the left column first.", pd_pick_one: "Pick just one.",
   pd_up_wait: "Waiting", pd_up_go: "Uploading", pd_up_read: "Reading text", pd_up_done: "Done", pd_up_fail: "Stopped", pd_up_cancel: "Cancelled", pd_retry: "Retry", pd_cancel: "Cancel",
@@ -5077,9 +5100,10 @@ const pd = { token: "", name: "", files: [], folders: [], cwd: "", sel: new Set(
 try { const s = JSON.parse(sessionStorage.getItem("pd:session") || "null"); if (s && s.token) { pd.token = s.token; pd.name = s.name; } } catch (e) { /* ignore */ }
 const pdSize = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : n < 1073741824 ? (n / 1048576).toFixed(1) + " MB" : (n / 1073741824).toFixed(2) + " GB";
 const pdDate = ms => new Date(ms).toLocaleString(settings.lang === "en" ? "en-IN" : "bn-IN", { dateStyle: "medium", timeStyle: "short" });
-async function pdApi(op, body = {}) {
+async function pdApi(op, body = {}, tries = 0) {
   const r = await fetch("/api/pd/" + op, { method: "POST", headers: { "content-type": "application/json", ...(pd.token ? { authorization: "Bearer " + pd.token } : {}) }, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({ error: "http_" + r.status }));
+  if (r.status === 429 && tries < 5 && op !== "open" && op !== "create") { await new Promise(res => setTimeout(res, 2000 * (tries + 1))); return pdApi(op, body, tries + 1); }
   if (r.status === 401 && /session/.test(j.error || "")) { pdLogout(); toast(t("pd_expired")); }
   if (!r.ok) { const e = new Error(j.error || "http_" + r.status); e.status = r.status; e.info = j; throw e; }
   return j;
@@ -5089,6 +5113,7 @@ function pdErrText(e) {
   if (c === "storage_not_configured") return t("pd_no_storage");
   if (c === "quota") return t("pd_quota");
   if (c === "file_too_big") return t("pd_too_big");
+  if (c === "total_cap") return t("pd_total_cap");
   if (c === "name_taken") return t("pd_name_taken");
   if (c === "bad_pin") return t("pd_bad_pin");
   if (c === "bad_name") return t("pd_bad_name");
@@ -5102,7 +5127,9 @@ function pdSession(j) {
   try { sessionStorage.setItem("pd:session", JSON.stringify({ token: j.token, name: j.name })); } catch (e) { /* ignore */ }
 }
 function pdLogout() { pd.token = ""; pd.files = []; pd.folders = []; pd.sel.clear(); try { sessionStorage.removeItem("pd:session"); } catch (e) { /* ignore */ } renderPendrive(); }
-async function pdRefresh() { const j = await pdApi("list"); pd.files = j.files; pd.folders = j.folders; pd.quota = j.quota; pd.used = j.used; pd.name = j.name; renderPdList(); }
+async function pdRefresh() { const j = await pdApi("list"); pd.files = j.files; pd.folders = j.folders; pd.quota = j.quota; pd.used = j.used; pd.maxFile = j.maxFile || 0; pd.name = j.name; renderPdList(); pdResumeHint(); }
+let pdRefreshT = 0;
+function pdRefreshSoon() { clearTimeout(pdRefreshT); pdRefreshT = setTimeout(() => { pdRefreshT = 0; pdRefresh().catch(() => {}); }, 1500); }
 function renderPendrive() {
   const on = !!pd.token;
   $("#pd-start").hidden = on; $("#pd-main").hidden = !on;
@@ -5120,7 +5147,8 @@ function renderPdList() {
   if (!pd.token) return;
   const pct = pd.quota ? Math.min(100, pd.used / pd.quota * 100) : 0;
   $("#pd-bar").style.width = pct.toFixed(1) + "%";
-  $("#pd-used").textContent = `${pdSize(pd.used)} / ${pdSize(pd.quota)}`;
+  $("#pd-bar").parentNode.classList.toggle("warn", pct >= 90);
+  $("#pd-used").innerHTML = `<b>${esc(pdSize(pd.used))}</b> / ${esc(pdSize(pd.quota))}`;
   const parts = pd.cwd ? pd.cwd.split("/") : [];
   $("#pd-crumbs").innerHTML = `<button type="button" data-pd-cd="">${esc(t("pd_root"))}</button>` + parts.map((p, i) => ` / <button type="button" data-pd-cd="${esc(parts.slice(0, i + 1).join("/"))}">${esc(p)}</button>`).join("");
   const { folders, files } = pdChildren();
@@ -5134,41 +5162,139 @@ function pdPicked() {
   return { ids, folders };
 }
 
-/* uploads: the browser sends parts straight to storage with presigned URLs */
-const PD_PARALLEL_PARTS = 4, PD_PARALLEL_FILES = 2;
+/* uploads: the browser sends parts straight to storage with presigned URLs.
+   A queue with limited concurrency handles folders with thousands of files; big files resume after a reload (IndexedDB). */
+const PD_PARALLEL_PARTS = 4, PD_PARALLEL_FILES = 3;
+const PD_SKIP = /^(\.ds_store|thumbs\.db|ehthumbs\.db|desktop\.ini|\.localized|\.directory|icon\r)$|^\._|^~\$/i;
+const PD_SKIP_DIR = /(^|\/)(__MACOSX|\.Trashes|\.Spotlight-V100|\.fseventsd|\$RECYCLE\.BIN|System Volume Information)(\/|$)/i;
+pd.batch = { files: 0, bytes: 0, doneFiles: 0, doneBytes: 0, failed: 0, t0: 0, last: 0, lastSent: 0, speed: 0 };
+let pdK = 0;
+
+/* IndexedDB: { fileId, uploadId, partSize, parts, etags } per pendrive + path + size + mtime */
+let pdDbP = null;
+function pdDb() {
+  if (!pdDbP) pdDbP = new Promise((res, rej) => { const r = indexedDB.open("pendrive-uploads", 1); r.onupgradeneeded = () => r.result.createObjectStore("u"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  return pdDbP;
+}
+async function pdIdb(mode, fn) {
+  try {
+    const db = await pdDb();
+    return await new Promise((res, rej) => { const tx = db.transaction("u", mode); const req = fn(tx.objectStore("u")); tx.oncomplete = () => res(req && req.result); tx.onerror = () => rej(tx.error); });
+  } catch (e) { return undefined; } // private mode etc.: resume just isn't available
+}
+function pdId() { try { return JSON.parse(atob(pd.token.split(".")[0].replace(/-/g, "+").replace(/_/g, "/"))).p; } catch (e) { return ""; } }
+const pdRKey = u => [pdId(), u.path, u.file.size, u.file.lastModified || 0].join("|");
+const pdSave = u => u.parts > 1 ? pdIdb("readwrite", st => st.put({ fileId: u.fileId, uploadId: u.uploadId, partSize: u.partSize, parts: u.parts, etags: u.etags, path: u.path, size: u.file.size, t: Date.now() }, pdRKey(u))) : null;
+const pdForget = u => pdIdb("readwrite", st => st.delete(pdRKey(u)));
+async function pdResumeHint() {
+  const id = pdId(); if (!id) return;
+  const keys = (await pdIdb("readonly", st => st.getAllKeys())) || [];
+  const mine = keys.filter(k => String(k).startsWith(id + "|") && !pd.ups.some(u => u.state !== "done" && pdRKey(u) === k));
+  const el = $("#pd-resume"); el.hidden = !mine.length;
+  if (mine.length) el.textContent = t("pd_resume", mine.length) + " " + mine.slice(0, 3).map(k => String(k).split("|")[1]).join(", ");
+}
+
+/* pick → summary → queue */
+function pdScanning(n) { const c = $("#pd-confirm"); c.hidden = false; c.innerHTML = `<span>${esc(t("pd_scanning", n))}</span>`; }
+async function pdOffer(items) {
+  if (pdRefreshT) { clearTimeout(pdRefreshT); pdRefreshT = 0; await pdRefresh().catch(() => {}); } // compare against the latest list
+  let skipped = 0, same = 0; const fresh = [], diff = [];
+  const byPath = new Map(pd.files.map(f => [f.path, f]));
+  const queued = new Set(pd.ups.filter(u => u.state !== "done" && u.state !== "cancel").map(u => u.path));
+  for (const it of items) {
+    const base = it.path.slice(it.path.lastIndexOf("/") + 1);
+    if (!it.file.size || PD_SKIP.test(base) || PD_SKIP_DIR.test(it.path)) { skipped++; continue; }
+    if (queued.has(it.path)) { same++; continue; }
+    const ex = byPath.get(it.path);
+    if (ex && ex.size === it.file.size) { same++; continue; }
+    (ex ? diff : fresh).push(it);
+  }
+  pd.offer = { fresh, diff };
+  renderPdOffer(skipped, same);
+}
+function renderPdOffer(skipped, same) {
+  const o = pd.offer, c = $("#pd-confirm"); c.hidden = false;
+  const repl = $("#pd-sum-repl") ? $("#pd-sum-repl").checked : false;
+  const list = o.fresh.concat(repl ? o.diff : []);
+  const bytes = list.reduce((a, it) => a + it.file.size, 0);
+  const dirs = new Set(list.map(it => it.path.includes("/") ? it.path.slice(0, it.path.lastIndexOf("/")) : "")).size;
+  const pending = pd.ups.filter(u => u.state === "wait" || u.state === "go").reduce((a, u) => a + u.file.size - u.done, 0);
+  const free = pd.quota ? Math.max(0, pd.quota - (pd.used || 0) - pending) : Infinity;
+  const tooBig = list.filter(it => pd.maxFile && it.file.size > pd.maxFile).length;
+  const full = bytes > free;
+  o.list = list;
+  c.innerHTML = `<b>${esc(list.length ? t("pd_sum", list.length, pdSize(bytes), dirs) : t("pd_sum_none"))}</b>
+    ${skipped ? `<span class="hint">${esc(t("pd_sum_skip", skipped))}</span>` : ""}
+    ${same ? `<span class="hint">${esc(t("pd_sum_same", same))}</span>` : ""}
+    ${o.diff.length ? `<label><input type="checkbox" id="pd-sum-repl" ${repl ? "checked" : ""}> ${esc(t("pd_sum_diff", o.diff.length))}</label>` : ""}
+    ${tooBig ? `<span class="hint">${esc(t("pd_too_big"))} (${tooBig})</span>` : ""}
+    ${full ? `<span class="hint" style="color:#c0392b">${esc(t("pd_sum_full", pdSize(bytes), pdSize(free)))}</span>` : ""}
+    <div class="row"><span class="hint">${pd.quota ? esc(pdSize(pd.used || 0) + " / " + pdSize(pd.quota)) : ""}</span><span>
+      <button class="btn small primary" type="button" data-pd-sum-go ${!list.length || full ? "disabled" : ""}>${esc(t("pd_sum_go"))}</button>
+      <button class="btn small" type="button" data-pd-sum-no>${esc(t("pd_sum_no"))}</button></span></div>`;
+  const cb = $("#pd-sum-repl"); if (cb) cb.onchange = () => renderPdOffer(skipped, same);
+}
+function pdOfferGo() {
+  const o = pd.offer; if (!o) return;
+  const diff = new Set(o.diff);
+  pdQueue(o.list.map(it => ({ ...it, overwrite: diff.has(it), batch: true })));
+  pd.offer = null; $("#pd-confirm").hidden = true;
+}
 function pdQueue(items) {
-  for (const it of items) pd.ups.push({ file: it.file, path: it.path, text: it.text, state: "wait", done: 0, etags: {}, xhrs: new Set() });
+  const b = pd.batch;
+  if (!pd.ups.some(u => u.state === "wait" || u.state === "go" || u.state === "read")) Object.assign(b, { files: 0, bytes: 0, doneFiles: 0, doneBytes: 0, failed: 0, t0: Date.now(), last: Date.now(), lastSent: 0, speed: 0 });
+  for (const it of items) {
+    pd.ups.push({ k: ++pdK, file: it.file, path: it.path, text: it.text, overwrite: !!it.overwrite, batch: !!it.batch, state: "wait", done: 0, etags: {}, urls: {}, xhrs: new Set() });
+    b.files++; b.bytes += it.file.size;
+  }
   renderPdUploads(); pdPump();
 }
 function pdPump() {
   while (pd.running < PD_PARALLEL_FILES) {
     const u = pd.ups.find(x => x.state === "wait"); if (!u) break;
     pd.running++; u.state = "go";
-    pdUpload(u).catch(e => { if (u.state !== "cancel") { u.state = "fail"; u.err = pdErrText(e); } }).finally(() => { pd.running--; renderPdUploads(); pdPump(); });
+    pdUpload(u).catch(e => { if (u.state !== "cancel" && u.state !== "skip") { u.state = "fail"; u.err = pdErrText(e); pd.batch.failed++; } })
+      .finally(() => { pd.running--; renderPdUploadsSoon(); pdPump(); });
   }
-  renderPdUploads();
+  renderPdUploadsSoon();
 }
 function pdPut(u, url, blob, n) {
   return new Promise((res, rej) => {
     const x = new XMLHttpRequest(); u.xhrs.add(x);
     let sent = 0;
     x.upload.onprogress = e => { u.done += e.loaded - sent; sent = e.loaded; renderPdUploadsSoon(); };
-    x.onload = () => { u.xhrs.delete(x); if (x.status >= 200 && x.status < 300 && x.getResponseHeader("ETag")) res(x.getResponseHeader("ETag")); else { u.done -= sent; rej(new Error("part " + n + ": " + x.status + (x.status && !x.getResponseHeader("ETag") ? " (no ETag: check bucket CORS)" : ""))); } };
+    x.onload = () => { u.xhrs.delete(x); if (x.status >= 200 && x.status < 300 && x.getResponseHeader("ETag")) res(x.getResponseHeader("ETag")); else { u.done -= sent; const e = new Error("part " + n + ": " + x.status + (x.status && !x.getResponseHeader("ETag") ? " (no ETag: check bucket CORS)" : "")); e.http = x.status; rej(e); } };
     x.onerror = () => { u.xhrs.delete(x); u.done -= sent; rej(new Error("part " + n + ": network")); };
     x.onabort = () => { u.xhrs.delete(x); u.done -= sent; rej(new Error("cancelled")); };
     x.open("PUT", url); x.send(blob);
   });
 }
+async function pdUrl(u, n, todo) {
+  if (!u.urls[n]) { // fetch presigned URLs for the next parts in one call (up to 100)
+    const want = todo.filter(m => m >= n && !u.etags[m]).slice(0, 100);
+    Object.assign(u.urls, (await pdApi("upload/parts", { fileId: u.fileId, uploadId: u.uploadId, parts: want })).urls);
+  }
+  const url = u.urls[n]; delete u.urls[n]; return url;
+}
 async function pdUpload(u) {
+  if (!u.fileId) {
+    const rec = await pdIdb("readonly", st => st.get(pdRKey(u)));
+    if (rec && rec.size === u.file.size) {
+      const st = await pdApi("upload/status", { fileId: rec.fileId, uploadId: rec.uploadId, size: rec.size }).catch(() => ({}));
+      if (st.ok) Object.assign(u, { fileId: rec.fileId, uploadId: rec.uploadId, partSize: rec.partSize, parts: rec.parts, etags: rec.etags || {}, resumed: true });
+      else await pdForget(u);
+    }
+  }
   if (!u.fileId) {
     let init;
     try { init = await pdApi("upload/init", { path: u.path, size: u.file.size, type: u.file.type || "application/octet-stream", overwrite: !!u.overwrite }); }
     catch (e) {
-      if (e.message === "exists" && e.info && e.info.id && !u.overwrite && confirm(t("pd_exists", u.path))) { u.overwrite = true; return pdUpload(u); }
-      if (e.message === "exists") { u.state = "cancel"; return; }
+      if (e.message === "exists" && !u.batch && e.info && e.info.id && !u.overwrite && confirm(t("pd_exists", u.path))) { u.overwrite = true; return pdUpload(u); }
+      if (e.message === "exists") { u.state = "skip"; pd.batch.files--; pd.batch.bytes -= u.file.size; return; }
       throw e;
     }
-    Object.assign(u, { fileId: init.fileId, uploadId: init.uploadId, partSize: init.partSize, parts: init.parts });
+    Object.assign(u, { fileId: init.fileId, uploadId: init.uploadId, partSize: init.partSize, parts: init.parts, urls: init.urls || {} });
+    await pdSave(u);
   }
   const todo = []; for (let n = 1; n <= u.parts; n++) if (!u.etags[n]) todo.push(n);
   u.done = Object.keys(u.etags).reduce((a, n) => a + Math.min(u.partSize, u.file.size - (n - 1) * u.partSize), 0);
@@ -5176,48 +5302,76 @@ async function pdUpload(u) {
   const worker = async () => {
     while (next < todo.length) {
       if (u.state === "cancel") throw new Error("cancelled");
-      const batch = todo.slice(next, next + 1); next += 1;
-      const n = batch[0];
+      const n = todo[next++];
       for (let tries = 0; ; tries++) {
         try {
-          const { urls } = await pdApi("upload/parts", { fileId: u.fileId, uploadId: u.uploadId, parts: [n] });
-          u.etags[n] = await pdPut(u, urls[n], u.file.slice((n - 1) * u.partSize, n * u.partSize), n);
+          const url = await pdUrl(u, n, todo);
+          u.etags[n] = await pdPut(u, url, u.file.slice((n - 1) * u.partSize, n * u.partSize), n);
+          pdSave(u);
           break;
         } catch (e) {
           if (u.state === "cancel" || tries >= 3 || e.status === 404) throw e;
-          await new Promise(r => setTimeout(r, 1000 * 2 ** tries)); // retry this part only
+          await new Promise(r => setTimeout(r, 1000 * 2 ** tries)); // retry this part only (with a fresh URL)
         }
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(PD_PARALLEL_PARTS, todo.length) }, worker));
   const done = await pdApi("upload/complete", { fileId: u.fileId, uploadId: u.uploadId, parts: Object.entries(u.etags).map(([n, etag]) => ({ n: Number(n), etag })) });
-  u.state = "read"; u.path = done.path; renderPdUploads();
-  pd.used = done.used;
+  pdForget(u);
+  u.state = "read"; u.path = done.path; renderPdUploadsSoon();
+  pd.used = done.used; pd.quota = done.quota || pd.quota;
   try {
     const text = u.text != null ? u.text : await pdExtract(u.file);
     if (text) await pdApi("text", { id: done.id, text });
   } catch (e) { /* the file is stored even if reading its text fails */ }
-  u.state = "done";
-  await pdRefresh();
+  u.state = "done"; pd.batch.doneFiles++; pd.batch.doneBytes += u.file.size;
+  u.file = { size: u.file.size, name: u.file.name }; // let the browser free the File
+  pdRefreshSoon();
 }
 function pdCancel(u) {
+  const was = u.state;
   u.state = "cancel"; for (const x of u.xhrs) x.abort();
   if (u.fileId) pdApi("upload/abort", { fileId: u.fileId, uploadId: u.uploadId }).catch(() => {});
-  renderPdUploads();
+  if (u.file && u.file.slice) pdForget(u);
+  if (was === "fail") pd.batch.failed = Math.max(0, pd.batch.failed - 1);
+  pd.batch.files--; pd.batch.bytes -= u.file.size;
+  renderPdUploadsSoon();
 }
 let pdUpTimer = 0;
-function renderPdUploadsSoon() { if (!pdUpTimer) pdUpTimer = setTimeout(() => { pdUpTimer = 0; renderPdUploads(); }, 250); }
+function renderPdUploadsSoon() { if (!pdUpTimer) pdUpTimer = setTimeout(() => { pdUpTimer = 0; renderPdUploads(); }, 300); }
+const pdTime = s => !isFinite(s) ? "…" : s < 60 ? Math.ceil(s) + "s" : s < 3600 ? Math.floor(s / 60) + "m " + Math.round(s % 60) + "s" : Math.floor(s / 3600) + "h " + Math.round(s % 3600 / 60) + "m";
 function renderPdUploads() {
-  pd.ups = pd.ups.filter((u, i) => !(u.state === "done" && pd.ups.length - i > 30));
-  const label = { wait: "pd_up_wait", go: "pd_up_go", read: "pd_up_read", done: "pd_up_done", fail: "pd_up_fail", cancel: "pd_up_cancel" };
-  $("#pd-uploads").innerHTML = pd.ups.map((u, i) => {
+  // drop finished rows (keep the last few) so thousands of files don't slow the page
+  const doneRows = pd.ups.filter(u => u.state === "done" || u.state === "cancel" || u.state === "skip");
+  if (doneRows.length > 8) { const drop = new Set(doneRows.slice(0, doneRows.length - 8)); pd.ups = pd.ups.filter(u => !drop.has(u)); }
+  const b = pd.batch, active = pd.ups.filter(u => u.state === "go" || u.state === "read");
+  const waiting = pd.ups.filter(u => u.state === "wait"), failed = pd.ups.filter(u => u.state === "fail");
+  const sent = b.doneBytes + pd.ups.filter(u => u.state === "go" || u.state === "read").reduce((a, u) => a + u.done, 0);
+  const now = Date.now();
+  if (now - b.last >= 1000) { const inst = (sent - b.lastSent) / ((now - b.last) / 1000); b.speed = b.speed ? b.speed * 0.7 + inst * 0.3 : inst; b.last = now; b.lastSent = sent; }
+  const box = $("#pd-batch"), busy = active.length || waiting.length;
+  box.hidden = !b.files || (!busy && !failed.length && b.doneFiles === 0);
+  if (!box.hidden) {
+    const pct = b.bytes ? Math.min(100, sent / b.bytes * 100) : (b.doneFiles >= b.files ? 100 : 0);
+    const eta = b.speed > 0 ? (b.bytes - sent) / b.speed : Infinity;
+    box.innerHTML = `<div class="row"><b>${esc(t("pd_batch", b.doneFiles, b.files, pdSize(sent), pdSize(b.bytes)))}</b>
+      <span>${busy ? esc(t("pd_speed", pdSize(Math.max(0, b.speed)), pdTime(eta))) : esc(t("pd_up_done"))}${failed.length ? " · " + esc(t("pd_failed_n", failed.length)) : ""}
+      ${failed.length ? `<button class="btn small" type="button" data-pd-retry-all>${esc(t("pd_retry"))}</button>` : ""}
+      ${busy ? `<button class="btn small" type="button" data-pd-cancel-all>${esc(t("pd_cancel"))}</button>` : ""}</span></div>
+      <div class="pd-bar" role="progressbar" aria-valuenow="${pct.toFixed(0)}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct.toFixed(1)}%"></i></div>`;
+  }
+  const label = { wait: "pd_up_wait", go: "pd_up_go", read: "pd_up_read", done: "pd_up_done", fail: "pd_up_fail", cancel: "pd_up_cancel", skip: "pd_sum_same" };
+  const shown = [...failed, ...active, ...waiting.slice(0, 12), ...pd.ups.filter(u => u.state === "done").slice(-3)];
+  $("#pd-uploads").innerHTML = shown.map(u => {
     const pct = u.file.size ? Math.min(100, u.done / u.file.size * 100) : (u.state === "done" ? 100 : 0);
-    return `<div class="pd-up"><div class="row"><span>${esc(u.path)} · ${pdSize(u.file.size)}</span><span>${esc(t(label[u.state]))}${u.state === "go" ? ` ${pct.toFixed(0)}%` : ""}${u.err ? " · " + esc(u.err) : ""}
-      ${u.state === "fail" ? `<button class="btn small" type="button" data-pd-retry="${i}">${esc(t("pd_retry"))}</button>` : ""}
-      ${u.state === "go" || u.state === "wait" || u.state === "fail" ? `<button class="btn small" type="button" data-pd-cancel="${i}">${esc(t("pd_cancel"))}</button>` : ""}</span></div>
+    return `<div class="pd-up"><div class="row"><span>${esc(u.path)} · ${pdSize(u.file.size)}${u.resumed ? ` · <i>${esc(t("pd_resumed"))}</i>` : ""}</span><span>${esc(u.state === "skip" ? "" : t(label[u.state]))}${u.state === "go" ? ` ${pct.toFixed(0)}%` : ""}${u.err ? " · " + esc(u.err) : ""}
+      ${u.state === "fail" ? `<button class="btn small" type="button" data-pd-retry="${u.k}">${esc(t("pd_retry"))}</button>` : ""}
+      ${u.state === "go" || u.state === "wait" || u.state === "fail" ? `<button class="btn small" type="button" data-pd-cancel="${u.k}">${esc(t("pd_cancel"))}</button>` : ""}</span></div>
       <div class="pd-bar"><i style="width:${u.state === "done" ? 100 : pct.toFixed(1)}%"></i></div></div>`;
-  }).join("");
+  }).join("") + (waiting.length > 12 ? `<p class="hint">${esc(t("pd_more", waiting.length - 12))}</p>` : "");
+  if (busy) renderPdUploadsSoon(); // keep speed/ETA ticking
+  if (!busy && b.doneFiles) renderPdList();
 }
 window.addEventListener("beforeunload", e => { if (pd.ups.some(u => u.state === "go" || u.state === "wait")) { e.preventDefault(); e.returnValue = t("pd_leave"); } });
 
@@ -5246,24 +5400,27 @@ async function pdExtract(f) {
 /* folder import: <input webkitdirectory> and drag-and-drop folders */
 function pdTarget(rel) { return (pd.cwd ? pd.cwd + "/" : "") + rel.replace(/^\/+/, ""); }
 async function pdWalk(entry, prefix, out) {
-  if (entry.isFile) { out.push({ file: await new Promise((res, rej) => entry.file(res, rej)), path: pdTarget(prefix + entry.name) }); return; }
+  if (entry.isFile) { out.push({ file: await new Promise((res, rej) => entry.file(res, rej)), path: pdTarget(prefix + entry.name) }); if (out.length % 200 === 0) pdScanning(out.length); return; }
   if (!entry.isDirectory) return;
   const reader = entry.createReader();
   for (;;) { const batch = await new Promise((res, rej) => reader.readEntries(res, rej)); if (!batch.length) break; for (const e of batch) await pdWalk(e, prefix + entry.name + "/", out); }
 }
-const pdDrop = $("#pd-drop");
-pdDrop.addEventListener("dragover", e => { if (!pd.token) return; e.preventDefault(); pdDrop.classList.add("over"); });
-pdDrop.addEventListener("dragleave", () => pdDrop.classList.remove("over"));
-pdDrop.addEventListener("drop", async e => {
-  if (!pd.token) return; e.preventDefault(); pdDrop.classList.remove("over");
-  const items = [...(e.dataTransfer.items || [])].map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
-  const out = [];
-  if (items.length) for (const en of items) await pdWalk(en, "", out);
-  else for (const f of e.dataTransfer.files) out.push({ file: f, path: pdTarget(f.name) });
-  pdQueue(out);
-});
-$("#pd-file-in").addEventListener("change", e => { pdQueue([...e.target.files].map(f => ({ file: f, path: pdTarget(f.name) }))); e.target.value = ""; });
-$("#pd-folder-in").addEventListener("change", e => { pdQueue([...e.target.files].map(f => ({ file: f, path: pdTarget(f.webkitRelativePath || f.name) }))); e.target.value = ""; });
+// The whole list and the import box both accept drops.
+for (const zone of [$("#pd-drop"), $("#pd-import")]) {
+  zone.addEventListener("dragover", e => { if (!pd.token) return; e.preventDefault(); zone.classList.add("over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", async e => {
+    if (!pd.token) return; e.preventDefault(); zone.classList.remove("over");
+    const items = [...(e.dataTransfer.items || [])].map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+    const out = [];
+    pdScanning(0);
+    if (items.length) for (const en of items) await pdWalk(en, "", out);
+    else for (const f of e.dataTransfer.files) out.push({ file: f, path: pdTarget(f.name) });
+    pdOffer(out);
+  });
+}
+$("#pd-file-in").addEventListener("change", e => { pdOffer([...e.target.files].map(f => ({ file: f, path: pdTarget(f.name) }))); e.target.value = ""; });
+$("#pd-folder-in").addEventListener("change", e => { pdOffer([...e.target.files].map(f => ({ file: f, path: pdTarget(f.webkitRelativePath || f.name) }))); e.target.value = ""; });
 
 /* preview */
 async function pdPreview(id) {
@@ -5362,8 +5519,12 @@ document.addEventListener("click", async e => {
     if ((x = el("[data-pd-view]"))) return pdPreview(x.dataset.pdView);
     if ((x = el("[data-pd-dl]"))) return pdDownload(x.dataset.pdDl);
     if (el("[data-pd-close-prev]")) { $("#pd-preview").hidden = true; return; }
-    if ((x = el("[data-pd-retry]"))) { const u = pd.ups[Number(x.dataset.pdRetry)]; if (u) { u.state = "wait"; u.err = ""; pdPump(); } return; }
-    if ((x = el("[data-pd-cancel]"))) { const u = pd.ups[Number(x.dataset.pdCancel)]; if (u) pdCancel(u); return; }
+    if ((x = el("[data-pd-retry]"))) { const u = pd.ups.find(v => v.k === Number(x.dataset.pdRetry)); if (u) { u.state = "wait"; u.err = ""; pd.batch.failed = Math.max(0, pd.batch.failed - 1); pdPump(); } return; }
+    if ((x = el("[data-pd-cancel]"))) { const u = pd.ups.find(v => v.k === Number(x.dataset.pdCancel)); if (u) pdCancel(u); return; }
+    if (el("[data-pd-retry-all]")) { for (const u of pd.ups) if (u.state === "fail") { u.state = "wait"; u.err = ""; } pd.batch.failed = 0; pdPump(); return; }
+    if (el("[data-pd-cancel-all]")) { for (const u of pd.ups) if (u.state === "wait" || u.state === "go" || u.state === "fail") pdCancel(u); return; }
+    if (el("[data-pd-sum-go]")) return pdOfferGo();
+    if (el("[data-pd-sum-no]")) { pd.offer = null; $("#pd-confirm").hidden = true; return; }
     if ((x = el("[data-pd-act]"))) return pdSaveAction(Number(x.dataset.pdAct));
     if (el("#pd-close")) { if (pd.ups.some(u => u.state === "go") && !confirm(t("pd_leave"))) return; pd.loaded = false; return pdLogout(); }
     if (el("#pd-up-files")) return $("#pd-file-in").click();

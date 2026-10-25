@@ -113,7 +113,7 @@ Open the app → **Menu** (on phones) → **AI status / AI অবস্থা �
 | `start-windows.bat`, `start.sh` | Start on an office computer |
 | `../render.yaml` | Render one-click Blueprint |
 
-## AI Pendrive (v101)
+## AI Pendrive (v101, folders and capacity v102)
 
 A shared folder opened with a name + PIN, stored in any S3-compatible bucket (Backblaze B2 by default,
 Cloudflare R2 also works). The browser uploads straight to the bucket with SigV4-presigned multipart URLs
@@ -121,7 +121,16 @@ Cloudflare R2 also works). The browser uploads straight to the bucket with SigV4
 
 **Env vars:** `S3_ENDPOINT` (e.g. `https://s3.us-west-004.backblazeb2.com`), `S3_REGION` (e.g. `us-west-004`),
 `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, plus `PENDRIVE_SECRET`. Optional: `S3_ADDRESSING=virtual`
-(default is path-style, `https://endpoint/bucket/key`), `PENDRIVE_QUOTA_BYTES` (default 2 GB).
+(default is path-style, `https://endpoint/bucket/key`), `PENDRIVE_QUOTA_BYTES` (default 5 GB per pendrive; max file 5 GB, 10 MB parts so at most 512 parts),
+`PENDRIVE_TOTAL_CAP_BYTES` (default 9 GB across all pendrives, below the B2 free 10 GB; uploads past it get a clear "total storage full" message).
+
+v102 import: "Add folder from desktop" (keeps subfolders) and "Add files" buttons, or drag folders/files onto the drop zone.
+Before uploading it shows "N files, X in Y folders"; empty files, `.DS_Store`, `Thumbs.db`, `desktop.ini` and system folders are skipped,
+and files already in the pendrive with the same path and size are skipped. Uploads run as a queue (3 files, 4 parts each) with an
+overall bar (files, bytes, speed, time left) plus per-file bars. Large files resume after a reload: the browser keeps the upload id
+and finished parts in IndexedDB, the server keeps the multipart upload for 24 h; pick the same file or folder again and it continues
+(browsers can't reopen a file without the user picking it). Metadata is cached in memory to keep B2 class B calls low.
+Tests: `tests/pendrive-e2e.mjs` (server with `PENDRIVE_CACHE=0`), `tests/pendrive-v102.mjs` (server with `PENDRIVE_TOTAL_CAP_BYTES=52428800`).
 R2 alias (used only if the S3_* set is incomplete): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
 
 **Backblaze B2 setup:**
