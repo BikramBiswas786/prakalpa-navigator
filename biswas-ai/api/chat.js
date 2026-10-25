@@ -62,7 +62,7 @@ const PROVIDERS = {
 };
 const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
 
-const LIMITS = { system: 80000, message: 120000, total: 300000, turns: 40, images: 4, imageB64: 7000000 };
+const LIMITS = { system: 80000, message: 160000, total: 360000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_OUT = 8192;
 const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 12000;
