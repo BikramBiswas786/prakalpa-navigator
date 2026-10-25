@@ -627,9 +627,9 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   if (agg) { const t = rag.aggText(agg); ev.push({ fid: agg.fid, loc: { sheet: agg.sheet, r1: agg.rows[0] || 0, r2: agg.rows[agg.rows.length - 1] || 0, rows: agg.rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
   for (const c of (overview ? cands : strong).slice(0, agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
   const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
-  const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else.`;
+  const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
   let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
-  if (/^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
+  if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
   answer = answer.replace(/\bNOT_FOUND\b/g, "");
   const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
   const cites = ev.map((e, i) => ({ n: i + 1, id: e.fid, path: ix.files[e.fid].path, loc: e.loc, quote: e.quote })).filter(c => !used.size || used.has(c.n));
