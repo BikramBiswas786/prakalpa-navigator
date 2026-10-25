@@ -747,6 +747,8 @@ let schemeChats = {};
 let schemeOpen = "";
 let publicThreads = [];
 let publicId = "";
+let writeThreads = [];
+let writeId = "";
 let schemeThreads = {};
 let schemeIds = {};
 let pubArch = false;
@@ -794,9 +796,15 @@ function seedOffice(row) {
   row.messages.push({ role: "user", content: choice[2], shown: choice[0], done: true, seed: true });
   row.messages.push({ role: "assistant", content: flow[settings.lang === "en" ? 2 : 1], done: true, via: "bikram" });
 }
-function currentPublicId() { return schemeOpen ? schemeIds[schemeOpen] || "" : publicId; }
-function publicList() { return schemeOpen ? (schemeThreads[schemeOpen] || []) : publicThreads; }
+function onWrite() { return mode === "public" && tabs.public === "write"; }
+function currentPublicId() { return onWrite() ? writeId : schemeOpen ? schemeIds[schemeOpen] || "" : publicId; }
+function publicList() { return onWrite() ? writeThreads : schemeOpen ? (schemeThreads[schemeOpen] || []) : publicThreads; }
 function ensurePublicThread() {
+  if (onWrite()) {
+    if (!writeThreads.length) writeThreads.push({ id: nid(), title: "", at: Date.now(), messages: [] });
+    if (!writeThreads.some(t => t.id === writeId)) writeId = writeThreads[0].id;
+    return writeThreads.find(t => t.id === writeId);
+  }
   if (schemeOpen) {
     if (!Array.isArray(schemeThreads[schemeOpen])) schemeThreads[schemeOpen] = [];
     const list = schemeThreads[schemeOpen];
@@ -812,6 +820,7 @@ function bindMessages() {
   if (mode === "public") {
     const row = ensurePublicThread();
     messages = row.messages;
+    if (onWrite()) return;
     if (schemeOpen) schemeChats[schemeOpen] = messages;
     else chats.public = messages;
     return;
@@ -864,7 +873,7 @@ const OWNER_NOTICE = "";
 /* ---------------- screen text, Bengali and English ---------------- */
 const STR = {
   bn: {
-    tab_draft: "লেখার টেবিল", tab_table: "টেবিল / Excel", tab_files: "ফাইল টুল", tab_chat: "AI চ্যাট", tab_catalog: "প্রকল্প ও পরিষেবা", tab_helper: "AI সহায়ক",
+    tab_draft: "লেখার টেবিল", tab_table: "টেবিল / Excel", tab_files: "ফাইল টুল", tab_chat: "AI চ্যাট", tab_catalog: "প্রকল্প ও পরিষেবা", tab_helper: "AI সহায়ক", tab_write: "AI অভিযোগ ও লেখা", write_p: "আবেদন, অভিযোগ, সরকারি চিঠির উত্তর বা যেকোনো প্রশ্ন এখানে লিখুন। সরকারি পরিষেবা বিনামূল্যে, দালালকে টাকা দেবেন না।", helper_p: "একটি প্রকল্প খুললে এই পাতায় সেই প্রকল্পের সাহায্য আসে। আবেদন বা অভিযোগ লিখতে AI অভিযোগ ও লেখা খুলুন।",
     d_title: "খসড়া তৈরি", d_type: "কী লিখবেন", d_lang: "ভাষা", d_to: "প্রাপক (যাকে পাঠানো হবে)", d_sub: "বিষয়", d_ref: "সূত্র / PUC", d_facts: "মূল তথ্য ও নির্দেশ", d_facts_ph: "যেমন: আবেদনকারী শ্রী … জাতি শংসাপত্রের আবেদন করেছেন; BDO-র রিপোর্ট পাওয়া গেছে; শুনানি ১৫.১১.২০২৬ তারিখে …",
     d_attach: "নমুনা চিঠি যোগ", d_files_h: "সংযুক্তি", d_files_p: "একটি পুরনো চিঠি বা নমুনা যোগ করুন। ডেস্ক আগে পুরোটা পড়বে, তারপর লিখবে।", d_logo: "ওয়ার্ডের ছবি", d_logo_x: "ছবি সরান", d_emblem: "অশোকস্তম্ভ", d_reading: "সংযুক্ত চিঠি পড়ছি…", d_savechat: "চ্যাট সেভ", d_saved: "কথোপকথনে নতুন বক্স সেভ হয়েছে", d_write: "AI দিয়ে লিখুন", d_paper_ph: "এখানে খসড়া আসবে। নিজেও লিখতে বা বদলাতে পারেন।", d_preview: "ছাপার রূপ", d_editmode: "সম্পাদনা", d_undo: "আগের লেখা", d_clear: "মুছুন",
     d_rev_ph: "সংশোধনের নির্দেশ, যেমন: আরও সংক্ষিপ্ত করুন / ইংরেজিতে করুন / শেষে প্রতিলিপির তালিকা দিন", d_revise: "AI দিয়ে সংশোধন", d_writing: "লেখা হচ্ছে…", d_need: "আগে মূল তথ্য লিখুন বা একটি ফাইল যোগ করুন।", d_empty: "কাগজ ফাঁকা।", d_cleared: "মুছে ফেলা হয়েছে", d_fmt_on: "অফিসের নমুনা চিঠির ফরম্যাট চালু: ", d_fmt_off: "নমুনা চিঠি দেওয়া নেই, লেটারহেড ফাঁকা থাকবে। ",
@@ -887,7 +896,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v93", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v94", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -938,7 +947,7 @@ const STR = {
     lib_fail: "দরকারি অংশ লোড হয়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।", no_image_view: "এখন ছবি পাঠানো যাচ্ছে না। PDF বা Word দিন।", scanned_pdf: "এটি স্ক্যান করা PDF, লেখা পড়া যাচ্ছে না। পাতার ছবি তুলে দিন।", bad_type: n => `${n}: এই ধরনের ফাইল পড়া যায় না। PDF, Word (.docx), Excel বা ছবি দিন।`
   },
   en: {
-    tab_draft: "Drafting desk", tab_table: "Table / Excel", tab_files: "File tools", tab_chat: "AI chat", tab_catalog: "Schemes and services", tab_helper: "AI helper",
+    tab_draft: "Drafting desk", tab_table: "Table / Excel", tab_files: "File tools", tab_chat: "AI chat", tab_catalog: "Schemes and services", tab_helper: "AI helper", tab_write: "AI Grievance and Writing", write_p: "Write an application, a complaint, a reply to a Government letter, or any question here. Government services are free; do not pay touts.", helper_p: "Open a scheme and the help for that scheme opens here. For an application or a complaint, open AI Grievance and Writing.",
     d_title: "Create a draft", d_type: "What to write", d_lang: "Language", d_to: "To (addressee)", d_sub: "Subject", d_ref: "Reference / PUC", d_facts: "Main facts and instructions", d_facts_ph: "e.g. Sri … applied for a caste certificate; BDO's report received; hearing on 15.11.2026 …",
     d_attach: "Add a demo letter", d_files_h: "Attachments", d_files_p: "Add an old letter or a sample. The desk reads all of it before it writes.", d_logo: "Ward logo", d_logo_x: "Remove logo", d_emblem: "Ashoka Stambha", d_reading: "Reading the attached letter…", d_savechat: "Save chat", d_saved: "Saved as a new conversation", d_write: "Write with AI", d_paper_ph: "The draft appears here. You can also type or change it yourself.", d_preview: "Print view", d_editmode: "Edit", d_undo: "Previous version", d_clear: "Clear",
     d_rev_ph: "Revision instruction, e.g. make it shorter / translate to Bengali / add a copy-to list", d_revise: "Revise with AI", d_writing: "Writing…", d_need: "Write the main facts or add a file first.", d_empty: "The page is empty.", d_cleared: "Cleared", d_fmt_on: "Office sample-letter format in use: ", d_fmt_off: "No sample letter, so the letterhead stays blank. ",
@@ -961,7 +970,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v93", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v94", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2156,13 +2165,13 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "grammar"] };
-const TAB_LABEL = { draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab" };
+const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"] };
+const TAB_LABEL = { draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", write: "tab_write" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
-  const items = [["home", "", "home"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"]];
+  const items = [["home", "", "home"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
   const nav = $("#rail-nav"); if (!nav) return;
   nav.innerHTML = items.map(([sec, id, key]) => {
     const on = key === "home" ? mode === "ai" && tab === "chat" : key === "nav_grammar" ? tab === "grammar" : key === "word_h" ? tab === "word" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
@@ -2182,7 +2191,7 @@ function showView() {
   $("#open-settings").hidden = mode !== "office";
   $("#subnav").hidden = false;
   $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
-  const shown = tab === "deskchat" ? "chat" : tab;
+  const shown = tab === "deskchat" || tab === "write" ? "chat" : tab;
   ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
@@ -3143,11 +3152,20 @@ function welcomeHtml() {
   if (office && tabs.office === "deskchat" && !officeOpen) return bikramWelcome();
   if (office && tabs.office === "deskchat") return `<div class="welcome"><h2>${esc(officeWorkName(officeOpen))}</h2><p>${esc(t("office_only"))}</p></div>`;
   if (office) return `<div class="welcome"><h2>${esc(t("tab_bikram"))}</h2><p>${esc(t("w_office_p"))}</p></div>`;
+  if (mode === "public" && tabs.public === "write") return `<div class="welcome">
+    <h2>${esc(t("tab_write"))}</h2>
+    <p>${esc(t("write_p"))}</p>
+    <div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>
+    <div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>
+  </div>`;
+  if (mode === "public" && !schemeOpen) return `<div class="welcome">
+    <h2>${esc(t("tab_helper"))}</h2>
+    <p>${esc(t("helper_p"))}</p>
+    <div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>
+  </div>`;
   return `<div class="welcome">
     <h2>${esc(schemeOpen ? ((SERVICES.find(x => x.id === schemeOpen) || {})[settings.lang] || {}).n || t("w_public_h") : t("w_public_h"))}</h2>
-    <p>${esc(schemeOpen ? t("scheme_only") : t("w_public_p"))}</p>
-    ${schemeOpen ? "" : `<div><button class="btn primary big" type="button" data-go-catalog>${esc(t("see_schemes"))}</button></div>`}
-    ${schemeOpen ? "" : `<div class="starters">${tasks().map((x, k) => `<button class="starter" type="button" data-task="${k}"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></button>`).join("")}</div>`}
+    <p>${esc(t("scheme_only"))}</p>
   </div>`;
 }
 function thinkingHtml(m) {
@@ -3189,7 +3207,7 @@ function schemeBar() {
 function renderChat() {
   const head = schemeBar();
   $("#thread").innerHTML = messages.length ? head + messages.map(msgHtml).join("") : head + welcomeHtml();
-  $("#q").placeholder = mode === "office" && tabs.office === "deskchat" && officeOpen ? officeWorkName(officeOpen) : schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
+  $("#q").placeholder = mode === "public" && tabs.public === "write" ? t("tab_write") : mode === "office" && tabs.office === "deskchat" && officeOpen ? officeWorkName(officeOpen) : schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
   $("#open-memory").hidden = mode !== "office";
   renderPending();
 }
@@ -3233,8 +3251,9 @@ function setConvHead() {
   const b = document.querySelector("#hist-sheet .sheet-top b");
   if (!b) return;
   let name = t("ai_h");
-  if (mode === "public") {
-    const s = schemeOpen && SERVICES.find(x => x.id === schemeOpen);
+  if (mode === "public" && tabs.public === "write") name = t("tab_write");
+  else if (mode === "public") {
+    const s = schemeOpen && !onWrite() && SERVICES.find(x => x.id === schemeOpen);
     name = s ? ((s[settings.lang] || s.bn || {}).n || t("tab_helper")) : t("tab_helper");
   } else if (mode === "office" && tabs.office === "draft") name = t("tab_draft");
   else if (mode === "office" && tabs.office === "deskchat") name = officeOpen ? officeWorkName(officeOpen) : t("tab_deskchat");
@@ -3273,7 +3292,7 @@ function refreshHistory() {
   if (mode === "ai" && tabs.ai === "chat") return renderConv();
   if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return renderOfficeConv();
   if (mode === "office" && tabs.office === "draft") return;
-  if (mode === "public" && tabs.public === "chat") return renderPublicConv();
+  if (mode === "public" && (tabs.public === "chat" || tabs.public === "write")) return renderPublicConv();
   const side = $("#chat-conv"); if (side) side.innerHTML = "";
 }
 function openHistory() {
@@ -3285,7 +3304,7 @@ function openHistory() {
   const s = $("#hist-sheet"); if (!s) return;
   s.hidden = false;
   const b = $("#sheet-save"); if (b) b.hidden = !(mode === "office" && tabs.office === "draft");
-  if (mode === "public" && tabs.public === "chat") return renderPublicConv();
+  if (mode === "public" && (tabs.public === "chat" || tabs.public === "write")) return renderPublicConv();
   if (mode === "office" && tabs.office === "draft") return renderDraftConv();
   if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return renderOfficeConv();
   if (mode === "office" && tabs.office === "word") return renderWordConv();
@@ -3322,6 +3341,11 @@ function loadVault() {
   if (!publicThreads.length) publicThreads = [{ id: nid(), title: "", at: Date.now(), messages: [] }];
   publicId = publicThreads[0].id;
   chats.public = publicThreads[0].messages;
+  writeThreads = vaultGet("writeThreads", []);
+  if (!Array.isArray(writeThreads)) writeThreads = [];
+  writeThreads.forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+  if (!writeThreads.length) writeThreads = [{ id: nid(), title: "", at: Date.now(), messages: [] }];
+  writeId = writeThreads[0].id;
   schemeChats = vaultGet("schemeChats", {});
   if (!schemeChats || typeof schemeChats !== "object" || Array.isArray(schemeChats)) schemeChats = {};
   schemeThreads = vaultGet("schemeThreads", {});
@@ -3420,7 +3444,7 @@ function touchPublic() {
   if ((messages || []).length) row.at = Date.now();
 }
 function renderPublicConv() {
-  if (mode !== "public" || tabs.public !== "chat") return;
+  if (mode !== "public" || (tabs.public !== "chat" && tabs.public !== "write")) return;
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = publicList().filter(t => (t.messages || []).some(m => m.role === "user") && !!t.archived === pubArch && (!q || String(t.title || "").toLowerCase().includes(q)));
   const html = rows.length ? rows.map(t => convCard(t, "pub")).join("") : `<p class="lead">${esc(pubArch ? t("arch_empty") : t("conv_empty"))}</p>`;
@@ -3431,12 +3455,13 @@ function renderPublicConv() {
 function newPublicChat() {
   if (chatCtl) chatCtl.abort();
   touchPublic();
-  const list = schemeOpen ? (schemeThreads[schemeOpen] = schemeThreads[schemeOpen] || []) : publicThreads;
+  const list = onWrite() ? (writeThreads = writeThreads || []) : schemeOpen ? (schemeThreads[schemeOpen] = schemeThreads[schemeOpen] || []) : publicThreads;
   const cur = list.find(t => t.id === currentPublicId());
   if (cur && !(cur.messages || []).some(m => m.role === "user")) { bindMessages(); pendingFiles = []; showView(); return; }
   const row = { id: nid(), title: "", at: Date.now(), archived: false, messages: [] };
   list.unshift(row);
-  if (schemeOpen) schemeIds[schemeOpen] = row.id;
+  if (onWrite()) writeId = row.id;
+  else if (schemeOpen) schemeIds[schemeOpen] = row.id;
   else publicId = row.id;
   pendingFiles = [];
   bindMessages();
@@ -3447,7 +3472,8 @@ function newPublicChat() {
 function openPublicChat(id) {
   touchPublic();
   const row = publicList().find(t => t.id === id); if (!row) return;
-  if (schemeOpen) schemeIds[schemeOpen] = row.id;
+  if (onWrite()) writeId = row.id;
+  else if (schemeOpen) schemeIds[schemeOpen] = row.id;
   else publicId = row.id;
   pendingFiles = [];
   bindMessages();
@@ -3456,13 +3482,15 @@ function openPublicChat(id) {
 }
 function deletePublicChat(id) {
   let list = publicList().filter(t => t.id !== id);
-  if (schemeOpen) schemeThreads[schemeOpen] = list;
+  if (onWrite()) writeThreads = list;
+  else if (schemeOpen) schemeThreads[schemeOpen] = list;
   else publicThreads = list;
   if (currentPublicId() === id || !list.some(t => t.id === currentPublicId())) {
     const next = list.find(t => !t.archived) || null;
     const row = next || { id: nid(), title: "", at: Date.now(), messages: [] };
     if (!next) list.unshift(row);
-    if (schemeOpen) { schemeThreads[schemeOpen] = list; schemeIds[schemeOpen] = row.id; }
+    if (onWrite()) { writeThreads = list; writeId = row.id; }
+    else if (schemeOpen) { schemeThreads[schemeOpen] = list; schemeIds[schemeOpen] = row.id; }
     else { publicThreads = list; publicId = row.id; }
   }
   delAsk = "";
@@ -3477,7 +3505,7 @@ function togglePublicArch(id) {
   delAsk = "";
   if (row.archived && currentPublicId() === id) {
     const next = publicList().find(t => t.id !== id && !t.archived);
-    if (next) { if (schemeOpen) schemeIds[schemeOpen] = next.id; else publicId = next.id; }
+    if (next) { if (onWrite()) writeId = next.id; else if (schemeOpen) schemeIds[schemeOpen] = next.id; else publicId = next.id; }
     else newPublicChat();
   }
   bindMessages();
@@ -3641,6 +3669,7 @@ const persist = () => {
   vaultSet("chat:public", slimMsgs(chats.public));
   const packThread = t => ({ id: t.id, title: t.title || "", at: t.at || Date.now(), archived: !!t.archived, messages: slimMsgs(t.messages) });
   vaultSet("publicThreads", publicThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(packThread));
+  vaultSet("writeThreads", writeThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 40).map(packThread));
   const schemePackedThreads = {};
   Object.keys(schemeThreads || {}).forEach(id => {
     const rows = (schemeThreads[id] || []).filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 20).map(packThread);
@@ -4089,7 +4118,7 @@ async function ask(text) {
   if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* the new prompt replaces it */ } }
   const mine = new AbortController();
   chatCtl = mine;
-  if (tabs[mode] !== "chat" && !(mode === "office" && tabs.office === "deskchat")) go(mode, "chat");
+  if (tabs[mode] !== "chat" && !(mode === "office" && tabs.office === "deskchat") && !(mode === "public" && tabs.public === "write")) go(mode, "chat");
   if (mode === "office" && tabs.office === "chat") { ensureOfficeThread(); bindMessages(); }
   else if (mode === "office" && tabs.office === "deskchat" && !officeOpen) { officeOpen = "ask"; ensureOfficeThread(); bindMessages(); }
   const files = pendingFiles; pendingFiles = [];
@@ -4509,7 +4538,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-nav]"))) {
     closeRail();
     if (x.dataset.nav === "home") return go("ai", "chat");
-    if (x.dataset.nav.startsWith("grammar")) return go(mode === "public" ? "public" : "office", "grammar");
+    if (x.dataset.nav.startsWith("grammar")) return go("office", "grammar");
     const parts = x.dataset.nav.split(":");
     return go(parts[0], parts[1]);
   }
@@ -4563,7 +4592,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
   if (el("#switch-user")) { closeRail(); return showGate(true); }
 function startSectionChat() {
-  if (mode === "public" && tabs.public === "chat") return newPublicChat();
+  if (mode === "public" && (tabs.public === "chat" || tabs.public === "write")) return newPublicChat();
   if (mode === "office" && tabs.office === "draft") return newDraftCase();
   if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return newOfficeChat();
   if (mode === "ai" && tabs.ai === "chat") return newThread();
