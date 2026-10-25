@@ -913,6 +913,6 @@ server.listen(PORT, async () => {
   // Names only, never values.
   const search = [["tavily", "TAVILY_API_KEY"], ["exa", "EXA_API_KEY"], ["serper", "SERPER_API_KEY"], ["firecrawl", "FIRECRAWL_API_KEY"], ["parallel", "PARALLEL_API_KEY"], ["keiro", "KEIRO_API_KEY"]]
     .filter(([, k]) => (process.env[k] || "").trim()).map(([n]) => n);
-  console.log(`AI Pendrive storage: ${pd.storage ? pd.storage.constructor.name : "not configured (set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET)"}`);
+  console.log(`AI Pendrive storage: ${pd.storage ? pd.storage.constructor.name + (pd.storage.provider ? ` (${pd.storage.provider}, ${pd.storage.origin})` : "") : "not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)"}`);
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });

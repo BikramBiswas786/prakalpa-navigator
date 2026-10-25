@@ -21,17 +21,31 @@ const encPath = p => p.split("/").map(enc).join("/");
 const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$/;
 function checkKey(key) { if (!SAFE_KEY.test(key) || key.includes("..")) throw new Error("bad key"); return key; }
 
-/* ---------------- Cloudflare R2 (any S3-compatible endpoint) ---------------- */
-export class R2Storage {
+/* ---------------- Any S3-compatible store (Backblaze B2, Cloudflare R2, versitygw, MinIO) ---------------- */
+// Config: S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET (optional S3_ADDRESSING=path|virtual).
+// Fallback alias: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET (endpoint built from the account id, region "auto").
+export function s3Config(env) {
+  if (env.S3_ENDPOINT && env.S3_BUCKET && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY) {
+    const endpoint = env.S3_ENDPOINT.replace(/\/+$/, "");
+    // B2 endpoints look like https://s3.<region>.backblazeb2.com; derive the region if it isn't given.
+    const region = env.S3_REGION || ((endpoint.match(/s3\.([a-z0-9-]+)\.backblazeb2\.com/) || [])[1]) || "us-east-1";
+    return { provider: /backblazeb2\.com/.test(endpoint) ? "b2" : "s3", endpoint, region, bucket: env.S3_BUCKET, ak: env.S3_ACCESS_KEY_ID, sk: env.S3_SECRET_ACCESS_KEY, addressing: env.S3_ADDRESSING === "virtual" ? "virtual" : "path" };
+  }
+  if (env.R2_BUCKET && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && (env.R2_ACCOUNT_ID || env.R2_ENDPOINT)) {
+    return { provider: "r2", endpoint: (env.R2_ENDPOINT || `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`).replace(/\/+$/, ""), region: env.R2_REGION || "auto", bucket: env.R2_BUCKET, ak: env.R2_ACCESS_KEY_ID, sk: env.R2_SECRET_ACCESS_KEY, addressing: "path" };
+  }
+  return null;
+}
+export class S3Storage {
   constructor(env) {
-    this.bucket = env.R2_BUCKET;
-    this.ak = env.R2_ACCESS_KEY_ID;
-    this.sk = env.R2_SECRET_ACCESS_KEY;
-    this.region = env.R2_REGION || "auto";
-    // R2_ENDPOINT is only for testing against MinIO; production builds it from the account id.
-    this.endpoint = (env.R2_ENDPOINT || `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`).replace(/\/+$/, "");
-    this.origin = new URL(this.endpoint).origin;
-    this.host = new URL(this.endpoint).host;
+    const c = env.endpoint ? env : s3Config(env);
+    if (!c) throw new Error("S3 storage not configured");
+    Object.assign(this, { provider: c.provider, region: c.region, bucket: c.bucket, ak: c.ak, sk: c.sk, addressing: c.addressing });
+    const u = new URL(c.endpoint);
+    if (this.addressing === "virtual") u.host = `${this.bucket}.${u.host}`;
+    this.endpoint = u.origin + u.pathname.replace(/\/+$/, "");
+    this.origin = u.origin;   // what the browser connects to (CSP connect-src)
+    this.host = u.host;
   }
   scope(date) { return `${date.slice(0, 8)}/${this.region}/s3/aws4_request`; }
   signingKey(date) {
@@ -40,10 +54,15 @@ export class R2Storage {
   }
   static amzDate(d = new Date()) { return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); }
   canonicalQuery(q) { return Object.keys(q).sort().map(k => `${enc(k)}=${enc(String(q[k]))}`).join("&"); }
-  uri(key) { return `/${enc(this.bucket)}/${encPath(checkKey(key))}`; }
+  // key "" = the bucket itself (used by scripts/set-b2-cors.js)
+  uri(key) {
+    if (key === "") return this.addressing === "virtual" ? "/" : `/${enc(this.bucket)}`;
+    const k = encPath(checkKey(key));
+    return this.addressing === "virtual" ? `/${k}` : `/${enc(this.bucket)}/${k}`;
+  }
 
   presign(method, key, query = {}, expires = 3600) {
-    const date = R2Storage.amzDate();
+    const date = S3Storage.amzDate();
     const q = { ...query, "X-Amz-Algorithm": "AWS4-HMAC-SHA256", "X-Amz-Credential": `${this.ak}/${this.scope(date)}`, "X-Amz-Date": date, "X-Amz-Expires": String(expires), "X-Amz-SignedHeaders": "host" };
     const cq = this.canonicalQuery(q);
     const creq = [method, this.uri(key), cq, `host:${this.host}\n`, "host", "UNSIGNED-PAYLOAD"].join("\n");
@@ -52,7 +71,7 @@ export class R2Storage {
     return `${this.endpoint}${this.uri(key)}?${cq}&X-Amz-Signature=${sig}`;
   }
   async request(method, key, query = {}, body = null, headers = {}) {
-    const date = R2Storage.amzDate();
+    const date = S3Storage.amzDate();
     const payload = body == null ? Buffer.alloc(0) : Buffer.isBuffer(body) ? body : Buffer.from(body);
     const ph = sha256hex(payload);
     const h = { host: this.host, "x-amz-content-sha256": ph, "x-amz-date": date, ...Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), String(v)])) };
@@ -105,6 +124,7 @@ export class R2Storage {
     return this.presign("GET", key, q, 900);
   }
 }
+export const R2Storage = S3Storage; // old name
 
 /* ---------------- Local disk (development and tests only) ---------------- */
 // Presigned URLs point back at this server (/api/pd/blob), signed with an HMAC.
@@ -170,6 +190,6 @@ export class LocalStorage {
 
 export function makeStorage(env, secret) {
   if (env.PENDRIVE_STORAGE === "local") return new LocalStorage(env.PENDRIVE_LOCAL_DIR || "/tmp/pendrive-local", secret);
-  if (env.R2_BUCKET && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && (env.R2_ACCOUNT_ID || env.R2_ENDPOINT)) return new R2Storage(env);
+  if (s3Config(env)) return new S3Storage(env);
   return null;
 }

@@ -1,7 +1,10 @@
 // S3 SigV4 adapter test against a local S3 server (versitygw/MinIO). Run: node tests/pendrive-s3.mjs
 import crypto from "node:crypto";
-import { R2Storage } from "../api/storage.js";
-const s = new R2Storage({ R2_ENDPOINT: process.env.S3_ENDPOINT || "http://127.0.0.1:9100", R2_BUCKET: process.env.S3_BUCKET || "pdtest", R2_ACCESS_KEY_ID: process.env.S3_KEY || "testkey", R2_SECRET_ACCESS_KEY: process.env.S3_SECRET || "testsecret123", R2_REGION: "us-east-1" });
+import { S3Storage, s3Config } from "../api/storage.js";
+// Uses the server's env vars (S3_* or the R2_* alias); defaults to a local versitygw.
+const env = s3Config(process.env) ? process.env : { S3_ENDPOINT: "http://127.0.0.1:9100", S3_REGION: "us-east-1", S3_BUCKET: "pdtest", S3_ACCESS_KEY_ID: "testkey", S3_SECRET_ACCESS_KEY: "testsecret123" };
+const s = new S3Storage(env);
+console.log(`adapter: ${s.provider} ${s.addressing} ${s.origin}`);
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) process.exitCode = 1; };
 const id = crypto.randomBytes(12).toString("hex"), key = `pendrives/${id}/f/${crypto.randomBytes(12).toString("hex")}`;
 await s.putJson(`pendrives/${id}/meta.json`, { a: 1, bn: "বাংলা" });

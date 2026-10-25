@@ -115,8 +115,28 @@ Open the app → **Menu** (on phones) → **AI status / AI অবস্থা �
 
 ## AI Pendrive (v101)
 
-A shared folder opened with a name + PIN, stored in Cloudflare R2. The browser uploads straight to R2 with
-presigned multipart URLs (10 MB parts, 4 at a time), so big files never pass through the server.
-Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `PENDRIVE_SECRET`
-(optional: `PENDRIVE_QUOTA_BYTES`, default 2 GB). The bucket needs a CORS rule allowing PUT/GET from the
-app's origin and exposing `ETag`. For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.
+A shared folder opened with a name + PIN, stored in any S3-compatible bucket (Backblaze B2 by default,
+Cloudflare R2 also works). The browser uploads straight to the bucket with SigV4-presigned multipart URLs
+(10 MB parts, 4 at a time), so big files never pass through the server.
+
+**Env vars:** `S3_ENDPOINT` (e.g. `https://s3.us-west-004.backblazeb2.com`), `S3_REGION` (e.g. `us-west-004`),
+`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_BUCKET`, plus `PENDRIVE_SECRET`. Optional: `S3_ADDRESSING=virtual`
+(default is path-style, `https://endpoint/bucket/key`), `PENDRIVE_QUOTA_BYTES` (default 2 GB).
+R2 alias (used only if the S3_* set is incomplete): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`.
+
+**Backblaze B2 setup:**
+1. B2 → Buckets → Create a Bucket, **Private**. Note the *Endpoint* shown on the bucket (`s3.<region>.backblazeb2.com`).
+2. Application Keys → Add a New Application Key, access to that bucket only, Read and Write. Copy the keyID
+   (`S3_ACCESS_KEY_ID`) and applicationKey (`S3_SECRET_ACCESS_KEY`). It's shown once.
+3. Leave the bucket's CORS Rules in the web UI as "Do not share". Then set the upload CORS rule with the
+   script (Node built-ins only, prints no secrets):
+   ```
+   cd biswas-ai
+   S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com S3_REGION=us-west-004 S3_BUCKET=<bucket> \
+   S3_ACCESS_KEY_ID=<keyID> S3_SECRET_ACCESS_KEY=<applicationKey> node scripts/set-b2-cors.js
+   ```
+   It applies S3 `PutBucketCors` (origin `https://biswas-ai-for-office.onrender.com`, GET/PUT/HEAD, headers `*`,
+   expose `ETag`, max age 3600) and reads it back. `--show` only reads; `--native` uses B2's `b2_update_bucket`
+   instead (`s3_get`/`s3_put`/`s3_head`); `CORS_ORIGIN=a,b` changes the origins.
+
+For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.

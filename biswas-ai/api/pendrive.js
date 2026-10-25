@@ -1,9 +1,9 @@
-// AI Pendrive: a shared folder that anyone with its name + PIN can open, stored in R2.
+// AI Pendrive: a shared folder that anyone with its name + PIN can open, stored in an S3-compatible bucket (B2/R2).
 // No database: everything is JSON in the bucket.
 //   names/<sha256(normalized name)>.json  -> { id }
 //   pendrives/<id>/meta.json   name, scrypt PIN hash + salt, quota, used bytes, lockout
 //   pendrives/<id>/index.json  files (by id, with their path) and empty folders
-//   pendrives/<id>/f/<fileId>  file bytes (uploaded by the browser straight to R2)
+//   pendrives/<id>/f/<fileId>  file bytes (uploaded by the browser straight to the bucket)
 //   pendrives/<id>/t/<fileId>.txt  text extracted in the browser
 //   pendrives/<id>/bm25.json   keyword index over text chunks
 // Renames and moves only change index.json; the stored bytes never move.

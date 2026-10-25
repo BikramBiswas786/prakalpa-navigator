@@ -1,4 +1,4 @@
-// Run: PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 PORT=3997 node server.js, then node tests/pendrive-e2e.mjs
+// Run: PENDRIVE_STORAGE=local (or S3_* vars + PENDRIVE_LOCAL_DIR=<versitygw posix dir>/<bucket> for this script) PENDRIVE_MOCK_AI=1 PORT=3997 node server.js, then node tests/pendrive-e2e.mjs
 // End-to-end API test for AI Pendrive (simulates the browser).
 const B = process.env.BASE || "http://localhost:3997";
 let tok = "";
