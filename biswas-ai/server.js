@@ -96,10 +96,10 @@ async function safeFetch(url, opts) {
   return null;
 }
 // Small per-IP limiter (in memory; resets on restart). Render's proxy puts the real
-// client IP as the FIRST entry of X-Forwarded-For; fall back to the socket address.
+// client IP: the rightmost X-Forwarded-For entry (added by Render's proxy), not the spoofable first one; fall back to the socket address.
 const rateHits = new Map();
 function clientIp(req) {
-  const xff = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const xff = String(req.headers["x-forwarded-for"] || "").split(",").map(x => x.trim()).filter(Boolean).pop() || ""; // v119: rightmost hop = what Render's proxy saw; client-supplied entries sit to the left
   return xff || String(req.headers["x-real-ip"] || "").trim() || String(req.socket.remoteAddress || "unknown");
 }
 function limited(req, bucket, max, windowMs) {
@@ -952,7 +952,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v118"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v119"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
@@ -987,6 +987,8 @@ server.listen(PORT, async () => {
     }).catch(() => { b.cors = "failed"; b.corsDetail = "exception"; console.log(`AI Pendrive [${b.name}]: bucket CORS check failed`); });
   }
   // Reconcile per-backend usage by listing each bucket a few times a day (B2 list = class C, cheap).
+  { const gc = () => pd.gcTestPendrives({ minAgeMs: Number(process.env.PENDRIVE_TEST_GC_AGE_MS || 30 * 60 * 1000) }).then(r => { if (r.length) console.log("pendrive: emptied test pendrives", JSON.stringify(r)); }).catch(e => console.warn("pendrive: test gc", e.message));
+    if (process.env.PENDRIVE_TEST_GC !== "0") { setTimeout(gc, Number(process.env.PENDRIVE_TEST_GC_DELAY_MS || 90 * 1000)).unref(); setInterval(gc, 3600 * 1000).unref(); } }
   if (pd.pool.some(b => b.st.sumPrefix)) { setTimeout(() => pd.reconcile().catch(() => {}), 60 * 1000).unref(); setInterval(() => pd.reconcile().catch(() => {}), 6 * 3600 * 1000).unref(); }
   console.log(pd.pool.length ? `AI Pendrive storage: ${pd.pool.map(b => `${b.name} (${b.st.origin || "local"}, cap ${(b.cap / 1024 ** 3).toFixed(1)} GiB)`).join(", ")}` : "AI Pendrive storage: not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)");
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);

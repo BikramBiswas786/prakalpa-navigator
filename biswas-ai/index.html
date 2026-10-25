@@ -5676,7 +5676,7 @@ function pdProbe() {
     pd.probe = {};
     await Promise.all(hosts.map(async o => {
       const h = new URL(o).host; const t0 = performance.now(); const c = new AbortController(); const tm = setTimeout(() => c.abort(), 4000);
-      try { await fetch(o + "/", { mode: "no-cors", cache: "no-store", signal: c.signal }); pd.probe[h] = Math.round(performance.now() - t0); }
+      try { await fetch(o + "/pd-probe-" + Date.now().toString(36), { mode: "no-cors", cache: "no-store", signal: c.signal }); pd.probe[h] = Math.round(performance.now() - t0); }
       catch (e) { pd.probe[h] = -1; pdAvoid.add(h); try { sessionStorage.setItem("pd:avoid", JSON.stringify([...pdAvoid])); } catch (x) { /* ignore */ } }
       finally { clearTimeout(tm); }
     }));
