@@ -613,7 +613,7 @@ textarea.paper { white-space: pre-wrap; }
             </button>
             <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-browser" data-t="browse_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -869,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v87", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v88", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -892,7 +892,7 @@ const STR = {
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
     rail_format: "অফিসের ফরম্যাট", format_on: "চালু: ", format_off: "এখনও নমুনা চিঠি দেওয়া হয়নি, তাই লেটারহেডের জায়গা ফাঁকা থাকবে।", give_sample: "নমুনা চিঠি দিন",
     rail_files: "ফাইল দিন", files_help: "GO, চিঠি বা ফর্মের PDF, Word, Excel অথবা ছবি সংযুক্ত করুন (ক্লিপ বোতাম)। AI পড়ে উত্তর দেবে, সারাংশ করবে বা নোটশিট লিখে দেবে।",
-    status: "AI অবস্থা পরীক্ষা",
+    status: "AI অবস্থা পরীক্ষা", browse_btn: "ব্রাউজারে খুঁজুন", browse_need: "আগে একটি প্রশ্ন লিখুন।",
     w_office_h: "অফিসের কাজে সাহায্য", w_office_p: "নোটশিট, খসড়া, নোটিশ, রিপোর্ট লিখিয়ে নিন; GO বা সার্কুলার সংযুক্ত করে মূল কথা জেনে নিন। উত্তর Word, PDF বা Excel-এ নামান। যেকোনো সাধারণ প্রশ্নও করতে পারেন।",
     w_public_h: "সরকারি পরিষেবা ও প্রকল্প", w_public_p: "কোন সার্টিফিকেট লাগবে, কোথায় আবেদন করবেন, কোন প্রকল্পে যোগ্য — বাংলায় জিজ্ঞাসা করুন। সরকারি পরিষেবা বিনামূল্যে, দালালকে টাকা দেবেন না।",
     see_schemes: "সব প্রকল্পের তালিকা দেখুন",
@@ -943,7 +943,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v87", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v88", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -966,7 +966,7 @@ const STR = {
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
     rail_format: "Office format", format_on: "In use: ", format_off: "No sample letter yet, so the letterhead is left blank.", give_sample: "Add sample letter",
     rail_files: "Attach files", files_help: "Attach a GO, letter or form as PDF, Word, Excel or a photo (clip button). The AI reads it, summarises it or writes a note.",
-    status: "Check AI status",
+    status: "Check AI status", browse_btn: "Browser research", browse_need: "Type a question first.",
     w_office_h: "Help with office work", w_office_p: "Get notesheets, drafts, notices and reports written; attach a GO or circular to get its main points. Save answers as Word, PDF or Excel. General questions are welcome too.",
     w_public_h: "Government services and schemes", w_public_p: "Ask which certificate you need, where to apply, and which schemes you may get. Government services are free; do not pay touts.",
     see_schemes: "See all schemes",
@@ -1731,7 +1731,7 @@ How this office works (follow it):
 - When asked for a draft or note, output it first with no preamble. After it, a line "---" and at most three short lines on what to fill in or verify.
 - Tables only for reports and statements, in Markdown (they are exported to Excel).${fmt}`;
   const pub = `MODE: PUBLIC. The user is a member of the public in West Bengal, India. Bengali means West Bengal, not Bangladesh. Never answer from Bangladesh or a .bd website.
-No browser is used. Think from the catalogue and the knowledge base, then answer the question that was typed.
+No browser is used for a normal question. Think from the catalogue and the knowledge base, then answer the question that was typed. Pages are opened only when the person uses Browser research.
 If they ask for an application, a petition or a letter, write that application now. Leave blanks for the name, address, mobile and date. Use only scheme facts that are written below. Do not tell them to pick a scheme instead of writing it.
 If they ask how to apply, who is eligible, which papers, or the current status, answer those points from the record.
 If they ask which certificate, name the certificate and the office.
@@ -3925,7 +3925,7 @@ async function ask(text) {
   const agent = mode === "office";
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
-    const think = "\nNo browser is used. Think from the knowledge below, then answer the question that was asked. Do not say you are opening pages. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
+    const think = "\nThis is a normal answer. Do not say you are opening pages. Think from the knowledge below. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
     const system = mode === "public" ? rules() : mode === "office" ? rules() + bikramRules() : shortRules() + law + think + (knowledge() || "");
     const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: true, maxOut: mode === "office" ? 2400 : mode === "public" ? 1400 : 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
@@ -3940,6 +3940,46 @@ async function ask(text) {
     ai.content = code === "refused" ? "" : ((e && e.text) || ai.content);
     if (code === "cancelled") { if (!ai.content) ai.content = t("stopped"); }
     else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
+    else ai.error = aiFailed(e);
+  } finally {
+    if (chatCtl === mine) chatCtl = null;
+    ai.done = true; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist();
+  }
+}
+async function browseLatest() {
+  if (!engine) return toast(t("no_ai"));
+  const typed = ($("#q") && $("#q").value || "").trim();
+  const last = [...(messages || [])].reverse().find(m => m.role === "user");
+  const topic = typed || String((last && (last.shown || last.content)) || "").replace(/\s+/g, " ").trim().slice(0, 500);
+  if (!topic) return toast(t("browse_need"));
+  if ($("#q")) { $("#q").value = ""; autosize(); }
+  if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* a new check replaces it */ } }
+  const mine = new AbortController();
+  chatCtl = mine;
+  const shown = settings.lang === "en" ? "Browser research: " + topic : "ব্রাউজার খোঁজ: " + topic;
+  const box = messages;
+  box.push({ role: "user", content: shown, shown, done: true });
+  const ai = { role: "assistant", content: "", done: false, started: Date.now(), browse: true, pages: [] };
+  box.push(ai);
+  renderChat(); scrollDown();
+  setBusy(true);
+  const live = () => box === messages && chatCtl === mine;
+  let researchNote = "";
+  try {
+    const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: topic.slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(topic) }), signal: mine.signal });
+    const data = rr.ok ? await rr.json() : { pages: [] };
+    const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
+    const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && !foreign(p)).slice(0, 4);
+    ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
+    ai.browseAt = 0;
+    researchNote = pages.filter(p => p.text && String(p.text).length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
+    if (live()) updateAt(box.indexOf(ai));
+    const system = (mode === "public" ? rules() : mode === "office" ? rules() : shortRules() + (knowledge() || "")) + "\n\nThe person pressed Browser research. Use the pages below. Say what they add to the earlier answer. If a page does not contain the new fact, say it is not on that page. Do not invent an amount, a fee, or an order number.\n\nPAGES:\n" + (researchNote || "No readable page came back.");
+    const r = await aiRun([{ role: "user", content: topic }], { signal: mine.signal, system, fast: true, maxOut: 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    ai.content = dropCutoff(r.text, topic); ai.via = r.via;
+  } catch (e) {
+    if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (!ai.content) ai.content = t("stopped"); }
+    else if (fromPages(ai.pages)) { ai.content = fromPages(ai.pages); }
     else ai.error = aiFailed(e);
   } finally {
     if (chatCtl === mine) chatCtl = null;
@@ -4387,6 +4427,7 @@ document.addEventListener("click", e => {
   }
   if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
   if (el("#new-person") || el("#switch-user")) { closeRail(); return showGate(true); }
+  if (el("#open-browser")) return browseLatest();
   if (el("#open-status")) return openStatus();
   if (el("#status-close")) return $("#status").close();
   if (el("#open-settings")) {
