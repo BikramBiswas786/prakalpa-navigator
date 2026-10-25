@@ -188,4 +188,7 @@ If the browser cannot reach a storage host at all (firewall or blocked port: a n
 - Text extraction runs after the upload: txt-like files and docx are handled in a Web Worker (`pd-text-worker.js`), and the text is saved in batches (`text-batch`).
 - At session start the browser quickly checks that each storage host can be reached and skips hosts that can't. The server does a cheap liveness check before giving out a single-PUT URL. When backends have similar free space (within 20%), the one with the lowest measured latency is chosen.
 - The progress bar shows speed (MB/s), the ETA, and how many files still need text read.
-- Tests: `tests/pendrive-v109.mjs` (named before the version bump), and `tests/pendrive-upload-profile.mjs` (100 small docs plus a 200 MB file, `BASE=... TAG=... UPDIR=... BIG=...`, zz-test pendrives only).
+- Tests: `tests/pendrive-v110.mjs`, and `tests/pendrive-upload-profile.mjs` (100 small docs plus a 200 MB file, `BASE=... TAG=... UPDIR=... BIG=...`, zz-test pendrives only).
+
+## v112 — fast bulk delete
+- Deleting many files at once removes the stored objects 8 at a time and rewrites the search index once, instead of four storage calls in a row per file. On the live pool, deleting 5 or more files at once used to fail with a server error.

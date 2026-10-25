@@ -527,7 +527,10 @@ export async function handle(req, res, url, body, send) {
       const folders = (body.folders || []).map(s => cleanPath(s));
       for (const f of Object.values(ix.files)) if (folders.some(d => under(f.path, d))) ids.add(f.id);
       let freed = 0;
-      for (const fid of ids) { const f = ix.files[fid]; if (!f) continue; freed += f.size; await dropFile(id, ix, fid); }
+      // v111: delete objects 8 at a time and rewrite the search index once (was 4 sequential storage calls per file)
+      const list = [...ids].filter(fid => ix.files[fid]);
+      for (const fid of list) freed += ix.files[fid].size;
+      await dropFiles(id, ix, list);
       ix.folders = ix.folders.filter(p => !folders.some(d => under(p, d)));
       m.used = Math.max(0, m.used - freed);
       await saveIndex(id, ix); await saveMeta(id, m);
@@ -541,6 +544,15 @@ function moveTree(ix, old, np) {
   for (const f of Object.values(ix.files)) if (under(f.path, old)) f.path = np + f.path.slice(old.length);
   ix.folders = ix.folders.map(p => under(p, old) ? np + p.slice(old.length) : p);
   addFolders(ix, np);
+}
+async function dropFiles(id, ix, list) {
+  const withText = list.filter(fid => ix.files[fid].text);
+  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async fid => {
+    await bk(ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
+    if (ix.files[fid].text) await storage.del(`${P(id)}/t/${fid}.txt`);
+  }));
+  if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); }
+  for (const fid of list) delete ix.files[fid];
 }
 async function dropFile(id, ix, fid) {
   await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
