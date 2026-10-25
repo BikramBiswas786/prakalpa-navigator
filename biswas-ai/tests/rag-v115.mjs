@@ -8,7 +8,7 @@ let tok = "";
 const post = async (p, body = {}, h = {}) => { const r = await fetch(B + p, { method: "POST", headers: { "content-type": "application/json", ...h }, body: JSON.stringify(body) }); return { status: r.status, r, j: r.headers.get("content-type")?.includes("json") ? await r.json().catch(() => ({})) : null }; };
 const api = (op, body) => post("/api/pd/" + op, body, tok ? { authorization: "Bearer " + tok } : {});
 const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) process.exitCode = 1; };
-const put = async (url, bytes) => (await fetch(url.startsWith("http") ? url : B + url, { method: "PUT", body: bytes })).headers.get("etag");
+const put = async (url, bytes) => { for (let i = 0; ; i++) { try { return (await fetch(url.startsWith("http") ? url : B + url, { method: "PUT", body: bytes, signal: AbortSignal.timeout(30000) })).headers.get("etag"); } catch (e) { if (i >= 3) throw e; await new Promise(r => setTimeout(r, 2000)); } } };
 const up = async (p, text, note) => { const b = new TextEncoder().encode(text || "x"); const i = (await api("upload/init", { path: p, size: b.length, type: "application/octet-stream" })).j; const r = await api("upload/complete", { fileId: i.fileId, uploadId: i.uploadId, parts: [{ n: 1, etag: await put(i.urls[1], b) }] }); await api("text-batch", { items: [{ id: r.j.id, text: text || "", note }] }); return r.j; };
 const ask = async (question, scope = {}, lang = "en") => { const r = await fetch(`${B}/api/pd/ai`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ question, lang, mode: "ask", scope }) }); const ev = (await r.text()).trim().split("\n").map(l => JSON.parse(l)); return { ...(ev.find(e => e.type === "answer") || ev.find(e => e.type === "error") || {}), ev }; };
 const sum = a => `${(a.text || a.error || "").slice(0, 90).replace(/\n/g, " ")} | cites ${JSON.stringify((a.cites || []).map(c => [c.n, c.path, c.loc]))}`;
@@ -66,7 +66,7 @@ a = await ask("What is the population of Mars?"); console.log("   " + sum(a));
 ok(a.notFound === true && !(a.cites || []).length && /not found/i.test(a.text), "weak evidence → strict \"not found in your files\"");
 a = await ask("মঙ্গল গ্রহের জনসংখ্যা কত?", {}, "bn"); ok(a.notFound === true && /পাওয়া যায়নি/.test(a.text), "Bengali not-found");
 a = await ask("casual leave", { ids: [fN.id] }); ok(a.notFound === true, "scope respected: the right passage outside the scope → not found");
-a = await ask("summarise these files"); ok(!a.notFound && (a.cites || []).length >= 2, `overview questions are not gated (${(a.cites || []).length} cites)`);
+a = await ask("summarise these files"); console.log("   overview " + sum(a), JSON.stringify(a.ev.filter(e => e.type !== "answer")).slice(0, 300)); ok(!a.notFound && (a.cites || []).length >= 2, `overview questions are not gated (${(a.cites || []).length} cites)`);
 a = await ask("what does it say?", { ids: [fScan.id] }); ok((a.noText || []).length === 1 && (a.scanned || []).length === 1, "AI on a scanned-only scope explains there is no text");
 
 /* lazy migration of an old (pre-v115) index — local storage only */
@@ -84,7 +84,7 @@ r = await api("share/create", { kind: "share", folders: ["Docs"], expiry: "1d", 
 const ip = { "x-forwarded-for": "10.7.6." + (Date.now() % 200) };
 const T = (await post("/api/s/open", { sid }, ip)).j.token;
 const sask = async (sid, token, question) => { const x = await fetch(B + "/api/s/ai", { method: "POST", headers: { "content-type": "application/json", ...ip }, body: JSON.stringify({ sid, token, question, lang: "en" }) }); const ev = (await x.text()).trim().split("\n").filter(Boolean).map(l => JSON.parse(l)); return ev.find(e => e.type === "answer") || ev.find(e => e.type === "error") || { status: x.status }; };
-a = await sask(sid, T, "total sales in March"); console.log("   share " + sum(a));
+a = await sask(sid, T, "total sales in March"); console.log("   share " + sum(a), JSON.stringify(a).slice(0, 300));
 const tree = new Set(((await post("/api/s/tree", { sid, token: T }, ip)).j.files || []).map(f => f.path));
 ok(/4200/.test(a.text) && a.cites && a.cites[0].id === fX.id && a.cites.every(c => tree.has(c.path)), `share AI: cited answer, cite paths as the link shows them (${[...tree].slice(0, 3)})`);
 r = await api("share/create", { kind: "share", ids: [fPdf.id], expiry: "1d", ai: true }); const sid2 = r.j.sid; const T2 = (await post("/api/s/open", { sid: sid2 }, ip)).j.token;
