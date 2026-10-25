@@ -703,3 +703,27 @@ async function aiJob(req, res, id, body) {
 export { HttpError };
 // v113: helpers for api/share.js (share links, upload-request links)
 export const internals = { session, meta, index, cget, cset, withLock, bk, P, hex, scrypt, cleanPath, under, fail, aiJob, limitedKey: null };
+
+// v119: empty leftover automated-test pendrives. Only names starting "zz-test-" that are over 30 minutes old;
+// every other pendrive is skipped before its files are read. Files and reservations go; the empty pendrive stays.
+export async function gcTestPendrives({ minAgeMs = 30 * 60 * 1000 } = {}) {
+  const st = (await cget("stats/usage.json")) || { by: {} }; const out = [];
+  for (const [id, v] of Object.entries(st.by)) {
+    if (!(v.u + v.r > 0)) continue;
+    const m0 = await cget(`${P(id)}/meta.json`).catch(() => null);
+    if (!m0 || !/^zz-test-/i.test(String(m0.name || "")) || Date.now() - (m0.created || 0) < minAgeMs) continue;
+    try {
+      await withLock(id, async () => {
+        const [m, ix] = await Promise.all([meta(id), index(id)]);
+        if (!/^zz-test-/i.test(String(m.name || ""))) return;
+        for (const [k, p] of Object.entries(m.pending || {})) { try { await (p.single ? bk(p.b).st.del(`${P(id)}/f/${k}`) : bk(p.b).st.abortMultipart(`${P(id)}/f/${k}`, p.u)); } catch (e) { /* stale */ } }
+        m.pending = {}; const n = Object.keys(ix.files).length;
+        await dropFiles(id, ix, Object.keys(ix.files));
+        ix.folders = []; m.used = 0;
+        await saveIndex(id, ix); await saveMeta(id, m);
+        out.push({ name: m.name, files: n });
+      });
+    } catch (e) { out.push({ name: m0.name, error: String(e.message || e).slice(0, 80) }); }
+  }
+  return out;
+}

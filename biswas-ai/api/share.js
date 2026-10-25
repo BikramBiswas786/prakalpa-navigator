@@ -25,7 +25,7 @@ const hex = n => crypto.randomBytes(n).toString("hex");
 const day = () => new Date().toISOString().slice(0, 10);
 const SKEY = sid => `shares/${sid}.json`;
 const ipHash = req => crypto.createHmac("sha256", SECRET).update(clientIp(req)).digest("hex").slice(0, 8);
-function clientIp(req) { return String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || String(req.socket && req.socket.remoteAddress || "?"); }
+function clientIp(req) { return (String(req.headers["x-forwarded-for"] || "").split(",").map(x => x.trim()).filter(Boolean).pop() || "") || String(req.socket && req.socket.remoteAddress || "?"); }
 
 /* ---------- rate limits (per IP, in memory) ---------- */
 const hits = new Map();

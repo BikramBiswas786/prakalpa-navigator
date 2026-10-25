@@ -237,3 +237,8 @@ page, sheet rows or section, with the passage highlighted. This works on the own
   budget still apply.
 - **Tests:** `tests/rag-v115.mjs` covers the API and the pure functions. `tests/rag-ui-v115.mjs` is a headless run with real
   pdf, docx and xlsx files.
+
+## v119: probe, rate-limit IP and test cleanup
+- The upload-speed probe now requests a missing key (`/pd-probe-…`) instead of the bucket root, which on Tigris redirects to tigrisdata.com and was blocked by the page CSP (so Tigris was wrongly avoided).
+- Rate limits use the rightmost `X-Forwarded-For` entry (the one Render's proxy adds) instead of the first, which a client can set.
+- Leftover automated-test pendrives (names starting `zz-test-`, older than 30 minutes) are emptied 90 s after start and then hourly. No other pendrive is touched. `PENDRIVE_TEST_GC=0` turns it off. Test: `tests/gc-v119.mjs`.
