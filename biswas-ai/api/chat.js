@@ -19,10 +19,10 @@
 //   SARVAM_API_KEY       Sarvam AI (Indian; strong Bengali; signup credit)
 //   KIMI_API_KEY         Moonshot Kimi API, official Kimi K3 (paid)
 //
-// Paid, off unless named in PROVIDER_ORDER (a key alone does not spend money):
+// Paid, off unless named in PROVIDER_ORDER (a key alone does not spend money), except OpenAI:
 //   DEEPSEEK_API_KEY     DeepSeek (no free tier; cheapest volume)
 //   DASHSCOPE_API_KEY    Alibaba Model Studio, Singapore (1M-token grant, then it bills)
-//   OPENAI_API_KEY       OpenAI (prepaid)
+//   OPENAI_API_KEY       OpenAI (prepaid): ON by default as the LAST provider (gpt-6-luna)
 //   XAI_API_KEY          xAI Grok (prepaid)
 //   TOGETHER_API_KEY     Together (prepaid)
 //   FIREWORKS_API_KEY    Fireworks (small starter credit, then paid)
@@ -35,6 +35,8 @@
 // (comma-separated) to change models without touching code.
 
 const env = name => (process.env[name] || "").trim();
+// A provider key may also be set under an older/alternate name (Render has Z_AI).
+const keyOf = p => env(p.key) || (p.alt ? env(p.alt) : "");
 const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.trim()).filter(Boolean);
 
 const PROVIDERS = {
@@ -47,7 +49,7 @@ const PROVIDERS = {
   openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free") },
   cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
   sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
-  zai: { key: "ZAI_API_KEY", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
+  zai: { key: "ZAI_API_KEY", alt: "Z_AI", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
   cohere: { key: "COHERE_API_KEY", kind: "openai", url: "https://api.cohere.ai/compatibility/v1/chat/completions", models: list("COHERE_MODELS", "command-a-plus-05-2026") },
   github: { key: "GITHUB_MODELS_TOKEN", kind: "openai", vision: true, url: "https://models.github.ai/inference/chat/completions", models: list("GITHUB_MODELS", "openai/gpt-4.1-mini,openai/gpt-4o-mini") },
   cerebras: { key: "CEREBRAS_API_KEY", kind: "openai", url: "https://api.cerebras.ai/v1/chat/completions", models: list("CEREBRAS_MODELS", "gpt-oss-120b") },
@@ -55,12 +57,14 @@ const PROVIDERS = {
   kimi: { key: "KIMI_API_KEY", kind: "openai", url: "https://api.moonshot.ai/v1/chat/completions", models: list("KIMI_MODELS", "kimi-k3") },
   deepseek: { key: "DEEPSEEK_API_KEY", kind: "openai", url: "https://api.deepseek.com/chat/completions", models: list("DEEPSEEK_MODELS", "deepseek-flash") },
   qwen: { key: "DASHSCOPE_API_KEY", kind: "openai", url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", models: list("QWEN_MODELS", "qwen-flash") },
-  openai: { key: "OPENAI_API_KEY", kind: "openai", vision: true, url: "https://api.openai.com/v1/chat/completions", models: list("OPENAI_MODELS", "gpt-4.1-mini") },
+  openai: { key: "OPENAI_API_KEY", kind: "openai", vision: true, url: "https://api.openai.com/v1/chat/completions", models: list("OPENAI_MODELS", "gpt-6-luna").slice(0, 1), paid: true },
   xai: { key: "XAI_API_KEY", kind: "openai", url: "https://api.x.ai/v1/chat/completions", models: list("XAI_MODELS", "grok-4.7") },
   together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
   fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
-const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi").filter(id => PROVIDERS[id]);
+const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi,openai").filter(id => PROVIDERS[id]);
+// OpenAI is paid, so it is always the very last resort: it is tried only after
+// every free provider above has failed. PROVIDER_ORDER still overrides all of this.
 
 const LIMITS = { system: 80000, message: 160000, total: 360000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -73,7 +77,7 @@ const outTokens = body => {
   return Number.isFinite(n) ? Math.max(256, Math.min(MAX_OUT, Math.floor(n))) : MAX_OUT;
 };
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
-const configured = () => ORDER.filter(id => env(PROVIDERS[id].key) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
+const configured = () => ORDER.filter(id => keyOf(PROVIDERS[id]) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
 const coolUntil = new Map();
 const cooled = id => (coolUntil.get(id) || 0) > Date.now();
 const cool = (id, ms) => coolUntil.set(id, Date.now() + ms);
@@ -147,6 +151,12 @@ function openaiRequest(p, model, key, body, signal) {
     last.content = [{ type: "text", text: last.content }, ...body.images.map(im => ({ type: "image_url", image_url: { url: `data:${im.mime};base64,${im.data}` } }))];
   }
   const payload = { model, messages, stream: true, temperature: 0.3, max_tokens: outTokens(body) };
+  if (p === PROVIDERS.openai) {
+    // GPT-6 models are reasoning models: they take max_completion_tokens, not max_tokens or temperature.
+    delete payload.max_tokens; delete payload.temperature;
+    payload.max_completion_tokens = outTokens(body);
+    payload.reasoning_effort = "none";
+  }
   if (/gpt-oss/.test(model) && p !== PROVIDERS.openrouter) payload.reasoning_effort = "low";
   const headers = { "content-type": "application/json" };
   if (p.auth) headers[p.auth] = key; else headers.authorization = `Bearer ${key}`;
@@ -189,7 +199,7 @@ async function attempt(p, model, body, signal, firstMs = FIRST_TEXT_MS) {
   let upstream;
   try {
     upstream = await Promise.race([
-      (p.kind === "gemini" ? geminiRequest : openaiRequest)(p, model, env(p.key), body, ctl.signal),
+      (p.kind === "gemini" ? geminiRequest : openaiRequest)(p, model, keyOf(p), body, ctl.signal),
       timeout(firstMs, "no response in time")
     ]);
   } catch (e) { return fail(0, e.message || "network error"); }

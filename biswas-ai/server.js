@@ -793,7 +793,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v95"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v96"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
@@ -806,4 +806,8 @@ server.listen(PORT, async () => {
   const { providers } = await (await chat.GET()).json();
   console.log(`Biswas AI for Office is running: http://localhost:${PORT}`);
   console.log(providers.length ? `AI providers: ${providers.join(", ")}` : "No AI keys found. Add them to .env (see .env.example).");
+  // Names only, never values.
+  const search = [["tavily", "TAVILY_API_KEY"], ["exa", "EXA_API_KEY"], ["serper", "SERPER_API_KEY"], ["firecrawl", "FIRECRAWL_API_KEY"], ["parallel", "PARALLEL_API_KEY"], ["keiro", "KEIRO_API_KEY"]]
+    .filter(([, k]) => (process.env[k] || "").trim()).map(([n]) => n);
+  console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });
