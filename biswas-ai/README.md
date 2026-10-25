@@ -128,7 +128,10 @@ R2 alias (used only if the S3_* set is incomplete): `R2_ACCOUNT_ID`, `R2_ACCESS_
 1. B2 → Buckets → Create a Bucket, **Private**. Note the *Endpoint* shown on the bucket (`s3.<region>.backblazeb2.com`).
 2. Application Keys → Add a New Application Key, access to that bucket only, Read and Write. Copy the keyID
    (`S3_ACCESS_KEY_ID`) and applicationKey (`S3_SECRET_ACCESS_KEY`). It's shown once.
-3. Leave the bucket's CORS Rules in the web UI as "Do not share". Then set the upload CORS rule with the
+3. Leave the bucket's CORS Rules in the web UI as "Do not share". **The server applies the CORS rule itself at
+   startup** (GetBucketCors → PutBucketCors only if different, in the background, `CORS_ORIGIN` overrides the
+   origin) and reports it at `/healthz/pendrive`, e.g. `{"storage":"b2","cors":"applied"}`
+   (`already` / `applied` / `native_rules` / `failed` / `n/a`). To do it by hand instead, run the
    script (Node built-ins only, prints no secrets):
    ```
    cd biswas-ai
