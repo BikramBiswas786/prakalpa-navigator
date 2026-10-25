@@ -119,6 +119,19 @@ export class S3Storage {
     if (!r.ok || /<Error>/.test(text)) throw new Error(`storage complete ${r.status} ${(text.match(/<Code>([^<]+)/) || [])[1] || ""}`);
   }
   async abortMultipart(key, uploadId) { await this.request("DELETE", key, { uploadId }); }
+  // Sum of object sizes under a prefix (ListObjectsV2; used to reconcile usage counters a few times a day).
+  async sumPrefix(prefix, keep = /./) {
+    let total = 0, count = 0, token = "";
+    for (let page = 0; page < 200; page++) {
+      const q = { "list-type": "2", prefix, "max-keys": "1000", ...(token ? { "continuation-token": token } : {}) };
+      const r = await this.request("GET", "", q); const t = await r.text();
+      if (!r.ok) throw new Error(`storage list ${r.status}`);
+      for (const c of t.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)) { const k = (c[1].match(/<Key>([^<]*)</) || [])[1] || ""; if (!keep.test(k)) continue; total += Number((c[1].match(/<Size>(\d+)</) || [])[1] || 0); count++; }
+      token = (t.match(/<NextContinuationToken>([^<]+)</) || [])[1] || "";
+      if (!/<IsTruncated>true/.test(t) || !token) break;
+    }
+    return { total, count };
+  }
   async presignGet(key, filename) {
     const q = filename ? { "response-content-disposition": `attachment; filename*=UTF-8''${enc(filename)}` } : {};
     return this.presign("GET", key, q, 900);
@@ -188,6 +201,33 @@ export class LocalStorage {
   }
 }
 
+/* ---------------- Pool of S3-compatible backends (v103) ----------------
+ * Backend "1" is the primary (S3_* vars, also holds all pendrive metadata). Extra backends: S3_<n>_NAME, _ENDPOINT, _REGION,
+ * _BUCKET, _ACCESS_KEY_ID, _SECRET_ACCESS_KEY (n = 2..6), optional _ADDRESSING=path|virtual and _CAP_BYTES.
+ * A backend with any required var missing is skipped. Default caps stay under each provider's free tier. */
+const GiB = 1024 ** 3;
+export const DEFAULT_CAPS = { b2: 9 * GiB, coritan: 9 * GiB, tigris: 4.5 * GiB, vatora: 4.5 * GiB, internetport: 9 * GiB, filebase: 4.5 * GiB };
+export const OTHER_CAP = 4 * GiB;
+const capFor = (name, override) => { const o = Number(override); return o > 0 ? o : (DEFAULT_CAPS[String(name).toLowerCase()] ?? OTHER_CAP); };
+export function backendConfigs(env) {
+  const out = [];
+  const c1 = s3Config(env);
+  if (c1) { const name = (env.S3_NAME || c1.provider).toLowerCase(); out.push({ id: "1", name, cfg: c1, cap: capFor(name, env.S3_CAP_BYTES) }); }
+  for (let n = 2; n <= 6; n++) {
+    const g = k => env[`S3_${n}_${k}`];
+    if (!(g("NAME") && g("ENDPOINT") && g("BUCKET") && g("ACCESS_KEY_ID") && g("SECRET_ACCESS_KEY"))) continue;
+    const name = g("NAME").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 20) || `s3_${n}`;
+    const endpoint = g("ENDPOINT").replace(/\/+$/, "");
+    out.push({ id: String(n), name, cap: capFor(name, g("CAP_BYTES")), cfg: { provider: name, endpoint, region: g("REGION") || "auto", bucket: g("BUCKET"), ak: g("ACCESS_KEY_ID"), sk: g("SECRET_ACCESS_KEY"), addressing: g("ADDRESSING") === "virtual" ? "virtual" : "path" } });
+  }
+  return out;
+}
+export function makePool(env, secret) {
+  if (env.PENDRIVE_STORAGE === "local") { const st = new LocalStorage(env.PENDRIVE_LOCAL_DIR || "/tmp/pendrive-local", secret); return [{ id: "1", name: "local", st, cap: capFor("local", env.S3_CAP_BYTES) }]; }
+  const list = [];
+  for (const b of backendConfigs(env)) { try { list.push({ id: b.id, name: b.name, cap: b.cap, st: new S3Storage(b.cfg) }); } catch (e) { console.warn(`storage backend ${b.id} skipped: ${e.message}`); } }
+  return list;
+}
 export function makeStorage(env, secret) {
   if (env.PENDRIVE_STORAGE === "local") return new LocalStorage(env.PENDRIVE_LOCAL_DIR || "/tmp/pendrive-local", secret);
   if (s3Config(env)) return new S3Storage(env);

@@ -113,7 +113,18 @@ Open the app → **Menu** (on phones) → **AI status / AI অবস্থা �
 | `start-windows.bat`, `start.sh` | Start on an office computer |
 | `../render.yaml` | Render one-click Blueprint |
 
-## AI Pendrive (v101, folders and capacity v102)
+## AI Pendrive (v101, folders and capacity v102, storage pool v103)
+
+v103 storage pool: file bytes are spread over several free S3-compatible buckets. The primary is the `S3_*` set (B2; it also
+keeps all metadata). Extra backends: `S3_<n>_NAME`, `S3_<n>_ENDPOINT`, `S3_<n>_REGION`, `S3_<n>_BUCKET`, `S3_<n>_ACCESS_KEY_ID`,
+`S3_<n>_SECRET_ACCESS_KEY` for n = 2..6 (gaps allowed; a backend with a missing var is skipped), optional `S3_<n>_ADDRESSING=virtual`
+and `S3_<n>_CAP_BYTES`. Default caps by name (GiB): b2 9, coritan 9, tigris 4.5, filebase 4.5, internetport 9, vatora 4.5, others 4.
+Each new file goes to the healthy backend with the most free room that fits it whole (recorded per file); a backend that fails
+with a network/auth error is skipped for 10 min. `PENDRIVE_TOTAL_CAP_BYTES` defaults to the sum of the caps. CORS is applied on
+every backend at boot, every endpoint origin is in the CSP, usage is reconciled by listing every 6 h, and `/healthz/pendrive`
+lists each backend's name, cors, used, cap and health. Test-only placement: `POST /api/pd/upload/init?backend=<name>` with header
+`x-admin-token: $ADMIN_TOKEN`. Test: `tests/pendrive-pool.mjs`.
+
 
 A shared folder opened with a name + PIN, stored in any S3-compatible bucket (Backblaze B2 by default,
 Cloudflare R2 also works). The browser uploads straight to the bucket with SigV4-presigned multipart URLs

@@ -44,7 +44,7 @@ const PAGE_HEADERS = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
-    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${pd.storage && pd.storage.origin ? " " + pd.storage.origin : ""}`,
+    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${[...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].map(o => " " + o).join("")}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data:",
     "object-src 'none'",
@@ -898,9 +898,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/healthz/pendrive") {
       // Non-secret status: is storage configured, which provider, and did the boot-time CORS check pass.
-      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(PD_STATUS)); return;
+      // v103: one row per storage backend (name, cors, used, cap, healthy); never keys, endpoints' secrets or bucket names.
+      const backends = await pd.poolStatus();
+      const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v102"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v103"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
@@ -920,17 +923,20 @@ server.listen(PORT, async () => {
   // Names only, never values.
   const search = [["tavily", "TAVILY_API_KEY"], ["exa", "EXA_API_KEY"], ["serper", "SERPER_API_KEY"], ["firecrawl", "FIRECRAWL_API_KEY"], ["parallel", "PARALLEL_API_KEY"], ["keiro", "KEIRO_API_KEY"]]
     .filter(([, k]) => (process.env[k] || "").trim()).map(([n]) => n);
-  if (pd.storage && pd.storage.provider) {
-    // Apply the bucket CORS rule in the background; never blocks or crashes startup.
-    PD_STATUS.cors = "checking";
-    ensureCors(pd.storage, corsOrigins()).then(r => {
-      PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString();
-      if (r.state === "already") console.log("AI Pendrive: bucket CORS already correct");
-      else if (r.state === "applied") console.log("AI Pendrive: bucket CORS applied");
-      else if (r.state === "native_rules") console.log("AI Pendrive: bucket CORS NOT applied: the B2 bucket has native CORS rules (set 'CORS Rules' to 'Do not share' in the B2 web UI, then restart, or run scripts/set-b2-cors.js --native)");
-      else console.log(`AI Pendrive: bucket CORS check failed: ${r.detail || "unknown"}`);
-    }).catch(e => { PD_STATUS.cors = "failed"; console.log("AI Pendrive: bucket CORS check failed"); });
+  // Apply the bucket CORS rule on every backend in the background; one failing backend never blocks the others or startup.
+  for (const b of pd.pool) {
+    if (!b.st.provider) continue;
+    b.cors = "checking"; if (b.id === "1") PD_STATUS.cors = "checking";
+    ensureCors(b.st, corsOrigins()).then(r => {
+      b.cors = r.state; if (b.id === "1") { PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString(); }
+      if (r.state === "already") console.log(`AI Pendrive [${b.name}]: bucket CORS already correct`);
+      else if (r.state === "applied") console.log(`AI Pendrive [${b.name}]: bucket CORS applied`);
+      else if (r.state === "native_rules") console.log(`AI Pendrive [${b.name}]: bucket CORS NOT applied: the B2 bucket has native CORS rules (set 'CORS Rules' to 'Do not share' in the B2 web UI, then restart, or run scripts/set-b2-cors.js --native)`);
+      else console.log(`AI Pendrive [${b.name}]: bucket CORS check failed: ${r.detail || "unknown"}`);
+    }).catch(() => { b.cors = "failed"; console.log(`AI Pendrive [${b.name}]: bucket CORS check failed`); });
   }
-  console.log(`AI Pendrive storage: ${pd.storage ? pd.storage.constructor.name + (pd.storage.provider ? ` (${pd.storage.provider}, ${pd.storage.origin})` : "") : "not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)"}`);
+  // Reconcile per-backend usage by listing each bucket a few times a day (B2 list = class C, cheap).
+  if (pd.pool.some(b => b.st.sumPrefix)) { setTimeout(() => pd.reconcile().catch(() => {}), 60 * 1000).unref(); setInterval(() => pd.reconcile().catch(() => {}), 6 * 3600 * 1000).unref(); }
+  console.log(pd.pool.length ? `AI Pendrive storage: ${pd.pool.map(b => `${b.name} (${b.st.origin || "local"}, cap ${(b.cap / 1024 ** 3).toFixed(1)} GiB)`).join(", ")}` : "AI Pendrive storage: not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)");
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });

@@ -54,7 +54,8 @@ services:
       # AI Pendrive storage: any S3-compatible bucket (default: Backblaze B2).
       # e.g. S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com, S3_REGION=us-west-004.
       # Optional: S3_ADDRESSING=virtual, PENDRIVE_QUOTA_BYTES (default 5 GB per pendrive),
-      # PENDRIVE_TOTAL_CAP_BYTES (default 9 GB across all pendrives).
+      # PENDRIVE_TOTAL_CAP_BYTES (default: sum of backend caps).
+      # v103 extra backends: S3_<n>_NAME/ENDPOINT/REGION/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY (n=2..6), optional _ADDRESSING, _CAP_BYTES.
       # Fallback alias for Cloudflare R2: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET.
       - key: S3_ENDPOINT
         sync: false
