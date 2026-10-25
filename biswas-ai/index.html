@@ -372,8 +372,23 @@ textarea.paper { white-space: pre-wrap; }
 .pd-bar { flex: 1; max-width: 280px; height: 10px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; }
 .pd-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
 .pd-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 14px; align-items: start; }
-.pd-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; margin-bottom: 6px; }
-.pd-crumbs button { border: 0; background: none; color: var(--accent); cursor: pointer; font-weight: 600; padding: 2px 4px; }
+.pd-nav { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.pd-nav .pd-navbtn { min-width: 40px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg, #fff); color: var(--accent); font-size: 18px; font-weight: 700; cursor: pointer; }
+.pd-nav .pd-navbtn:disabled { opacity: .35; cursor: default; }
+.pd-crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; min-width: 0; flex: 1; font-size: 15px; }
+.pd-crumbs button { border: 0; background: none; color: var(--accent); cursor: pointer; font-weight: 600; padding: 4px 6px; border-radius: 6px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-crumbs button:hover { background: rgba(0,0,0,.06); }
+.pd-crumbs button[aria-current] { color: inherit; cursor: default; }
+.pd-crumbs .sep { color: var(--muted, #888); }
+.pd-aisel { border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; font-size: 12px; padding: 2px 6px; margin-left: 6px; color: var(--accent); white-space: nowrap; }
+.pd-aisel.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
+.pd-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-radius: 10px; border: 1px dashed var(--accent); background: rgba(80, 60, 200, .05); font-size: 14px; }
+.pd-chips b { margin-right: 2px; }
+.pd-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 8px; border-radius: 999px; background: var(--accent); color: #fff; max-width: 100%; }
+.pd-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.pd-chip button { border: 0; background: rgba(255,255,255,.25); color: #fff; border-radius: 999px; width: 22px; height: 22px; cursor: pointer; }
+@media (max-width: 600px) { .pd-crumbs button { max-width: 120px; } .pd-aisel { display: block; margin: 4px 0 0; } }
 .pd-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .pd-drop { border: 1px dashed var(--line); border-radius: 12px; padding: 4px; min-height: 140px; }
 .pd-drop.over { border-color: var(--accent); background: var(--accent-soft); }
@@ -699,7 +714,7 @@ textarea.paper { white-space: pre-wrap; }
           </div>
           <div class="pd-grid">
             <div class="pd-files">
-              <nav class="pd-crumbs" id="pd-crumbs" aria-label="Folder"></nav>
+              <div class="pd-nav"><button type="button" class="pd-navbtn" id="pd-back" aria-label="Back" title="Back (Alt+←)">←</button><button type="button" class="pd-navbtn" id="pd-up" aria-label="Up" title="Up (Backspace)">⬆</button><nav class="pd-crumbs" id="pd-crumbs" aria-label="Folder path"></nav></div>
               <div class="pd-import" id="pd-import">
                 <button class="btn primary pd-big" type="button" id="pd-up-folder"><span aria-hidden="true">📁</span> <span data-t="pd_up_folder"></span></button>
                 <button class="btn pd-big" type="button" id="pd-up-files"><span aria-hidden="true">📄</span> <span data-t="pd_up_files"></span></button>
@@ -712,6 +727,7 @@ textarea.paper { white-space: pre-wrap; }
               <div class="pd-batch" id="pd-batch" hidden></div>
               <div class="tools pd-tools">
                 <button class="btn small" type="button" id="pd-mkdir" data-t="pd_mkdir"></button>
+                <button class="btn small" type="button" id="pd-ai-add" data-t="pd_ai_add"></button>
                 <button class="btn small" type="button" id="pd-rename" data-t="pd_rename"></button>
                 <button class="btn small" type="button" id="pd-move" data-t="pd_move"></button>
                 <button class="btn small" type="button" id="pd-download" data-t="pd_download"></button>
@@ -725,7 +741,8 @@ textarea.paper { white-space: pre-wrap; }
             </div>
             <form class="pd-ai" id="pd-ai-form">
               <h3 data-t="pd_ai_h"></h3>
-              <div class="field"><label for="pd-scope" data-t="pd_scope"></label>
+              <div class="pd-chips" id="pd-chips" aria-live="polite"></div>
+              <div class="field" hidden><label for="pd-scope" data-t="pd_scope"></label>
                 <select id="pd-scope"><option value="sel" data-t="pd_scope_sel"></option><option value="folder" data-t="pd_scope_folder"></option><option value="all" data-t="pd_scope_all"></option></select></div>
               <div class="field"><label for="pd-mode" data-t="pd_mode"></label>
                 <select id="pd-mode"><option value="ask" data-t="pd_mode_ask"></option><option value="analyse" data-t="pd_mode_analyse"></option></select></div>
@@ -1020,7 +1037,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v104", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v105", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1094,7 +1111,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v104", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v105", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2304,6 +2321,7 @@ const attachImages = files => files.flatMap(f => f.images || []);
 const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
 const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", write: "tab_write" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
+const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // v105: folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
@@ -5023,7 +5041,7 @@ $("#gate-form").addEventListener("submit", e => {
   if (!signIn(name)) { $("#gate-msg").textContent = t("gate_need"); return; }
   $("#gate-msg").textContent = ""; $("#gate-name").value = "";
   showGate(false);
-  if (!booted) startApp(); else { mode = "ai"; messages = chats.ai; tabs.ai = "chat"; showView(); }
+  if (!booted) { startApp(); try { pdRestore(99); } catch (e) { /* not ready */ } } else { mode = "ai"; messages = chats.ai; tabs.ai = "chat"; showView(); }
 });
 $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFile(); });
 function sendAgent() {
@@ -5056,7 +5074,7 @@ Object.assign(STR.bn, {
   pd_pin_hint: "৬ বা তার বেশি সংখ্যার PIN দিলে বেশি নিরাপদ।", pd_create: "বানান", pd_open: "খুলুন", pd_close: "বন্ধ করুন",
   pd_up_files: "ফাইল যোগ করুন", pd_up_folder: "ফোল্ডার যোগ করুন (ডেস্কটপ থেকে)", pd_mkdir: "নতুন ফোল্ডার", pd_rename: "নাম বদল", pd_move: "সরান", pd_download: "ডাউনলোড", pd_delete: "মুছুন",
   pd_col_name: "নাম", pd_col_size: "সাইজ", pd_col_date: "তারিখ", pd_drop: "ফোল্ডার বা ফাইল এখানে টেনে আনুন", pd_root: "পেনড্রাইভ", pd_empty: "এই ফোল্ডার খালি।",
-  pd_ai_h: "AI দিয়ে কাজ", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
+  pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
   pd_mode: "কাজের ধরন", pd_mode_ask: "প্রশ্ন (দরকারি অংশ খুঁজে)", pd_mode_analyse: "সব ফাইল বিশ্লেষণ", pd_ask: "AI-কে বলুন", pd_q_ph: "যেমন: বারাসতের জমির মামলার শুনানি কবে? বা: সব ফাইলের সারাংশ করে একটা নোটশিট লিখুন।",
   pd_pin_mismatch: "দুটো PIN মিলছে না।", pd_bad_pin: "PIN ৪ থেকে ৮টা সংখ্যার হতে হবে।", pd_bad_name: "নাম ৩ থেকে ৬০ অক্ষরের হতে হবে।", pd_name_taken: "এই নামে পেনড্রাইভ আগেই আছে। অন্য নাম দিন।",
   pd_wrong: n => `নাম বা PIN ভুল।${n != null ? ` আর ${n} বার চেষ্টা করা যাবে।` : ""}`, pd_locked: m => `অনেকবার ভুল PIN। ${m} মিনিট পরে আবার চেষ্টা করুন।`, pd_expired: "সময় শেষ, আবার PIN দিয়ে খুলুন।",
@@ -5079,7 +5097,7 @@ Object.assign(STR.en, {
   pd_pin_hint: "A PIN of 6 or more digits is stronger.", pd_create: "Create", pd_open: "Open", pd_close: "Close",
   pd_up_files: "Add files", pd_up_folder: "Add folder from desktop", pd_mkdir: "New folder", pd_rename: "Rename", pd_move: "Move", pd_download: "Download", pd_delete: "Delete",
   pd_col_name: "Name", pd_col_size: "Size", pd_col_date: "Date", pd_drop: "Drag folders or files here", pd_root: "Pendrive", pd_empty: "This folder is empty.",
-  pd_ai_h: "Work with AI", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
+  pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
   pd_mode: "Task", pd_mode_ask: "Question (finds the relevant parts)", pd_mode_analyse: "Analyse every file", pd_ask: "Ask the AI", pd_q_ph: "e.g. When is the hearing in the Barasat land case? Or: summarise all files and write a notesheet.",
   pd_pin_mismatch: "The two PINs don't match.", pd_bad_pin: "The PIN must be 4 to 8 digits.", pd_bad_name: "The name must be 3 to 60 characters.", pd_name_taken: "A pendrive with this name already exists. Pick another name.",
   pd_wrong: n => `Wrong name or PIN.${n != null ? ` ${n} tries left.` : ""}`, pd_locked: m => `Too many wrong PINs. Try again in ${m} minutes.`, pd_expired: "Session ended. Open it again with the PIN.",
@@ -5123,11 +5141,11 @@ function pdErrText(e) {
   return t("pd_err", c);
 }
 function pdSession(j) {
-  pd.token = j.token; pd.name = j.name; pd.quota = j.quota; pd.used = j.used; pd.cwd = ""; pd.sel.clear();
+  pd.token = j.token; pd.name = j.name; pd.quota = j.quota; pd.used = j.used; pd.cwd = ""; pd.sel.clear(); pdAiLoad();
   try { sessionStorage.setItem("pd:session", JSON.stringify({ token: j.token, name: j.name })); } catch (e) { /* ignore */ }
 }
-function pdLogout() { pd.token = ""; pd.files = []; pd.folders = []; pd.sel.clear(); try { sessionStorage.removeItem("pd:session"); } catch (e) { /* ignore */ } renderPendrive(); }
-async function pdRefresh() { const j = await pdApi("list"); pd.files = j.files; pd.folders = j.folders; pd.quota = j.quota; pd.used = j.used; pd.maxFile = j.maxFile || 0; pd.name = j.name; renderPdList(); pdResumeHint(); }
+function pdLogout() { pd.aiSel = new Set(); pd.token = ""; pd.files = []; pd.folders = []; pd.sel.clear(); try { sessionStorage.removeItem("pd:session"); } catch (e) { /* ignore */ } renderPendrive(); }
+async function pdRefresh() { const j = await pdApi("list"); pd.files = j.files; pd.folders = j.folders; pd.quota = j.quota; pd.used = j.used; pd.maxFile = j.maxFile || 0; pd.name = j.name; pd.listed = true; if (pd.cwd && !pd.folders.includes(pd.cwd)) pdCd(pd.cwd, false); renderPdList(); pdResumeHint(); }
 let pdRefreshT = 0;
 function pdRefreshSoon() { clearTimeout(pdRefreshT); pdRefreshT = setTimeout(() => { pdRefreshT = 0; pdRefresh().catch(() => {}); }, 1500); }
 function renderPendrive() {
@@ -5150,10 +5168,13 @@ function renderPdList() {
   $("#pd-bar").parentNode.classList.toggle("warn", pct >= 90);
   $("#pd-used").innerHTML = `<b>${esc(pdSize(pd.used))}</b> / ${esc(pdSize(pd.quota))}`;
   const parts = pd.cwd ? pd.cwd.split("/") : [];
-  $("#pd-crumbs").innerHTML = `<button type="button" data-pd-cd="">${esc(t("pd_root"))}</button>` + parts.map((p, i) => ` / <button type="button" data-pd-cd="${esc(parts.slice(0, i + 1).join("/"))}">${esc(p)}</button>`).join("");
+  $("#pd-crumbs").innerHTML = `<button type="button" data-pd-cd="" ${parts.length ? "" : 'aria-current="page"'}>🏠 ${esc(t("pd_root"))}</button>` + parts.map((p, i) => `<span class="sep" aria-hidden="true">›</span><button type="button" data-pd-cd="${esc(parts.slice(0, i + 1).join("/"))}" ${i === parts.length - 1 ? 'aria-current="page"' : ""} title="${esc(p)}">📁 ${esc(p)}</button>`).join("");
+  $("#pd-up").disabled = !parts.length; $("#pd-back").disabled = !(history.state && history.state.pdDepth > 0);
+  $("#pd-up").setAttribute("aria-label", t("pd_up")); $("#pd-back").setAttribute("aria-label", t("pd_back"));
+  renderPdChips();
   const { folders, files } = pdChildren();
   const rows = [...folders.sort((a, b) => a.name.localeCompare(b.name)), ...files.sort((a, b) => a.name.localeCompare(b.name))];
-  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t("pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
+  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t("pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
   $("#pd-all").checked = rows.length > 0 && rows.every(r => pd.sel.has(r.key));
 }
 function pdPicked() {
@@ -5162,6 +5183,64 @@ function pdPicked() {
   return { ids, folders };
 }
 
+/* v105: folder navigation (breadcrumb, Up, browser Back/Forward, #pd=<folder> survives a reload) */
+function pdCd(path, push = true) {
+  path = path || ""; if (path && !pd.folders.includes(path) && pd.listed) { /* folder gone: go to the nearest existing parent */ while (path && !pd.folders.includes(path)) path = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""; }
+  const changed = path !== pd.cwd; pd.cwd = path; pd.sel.clear();
+  const hash = "#pd=" + encodeURIComponent(path);
+  try {
+    const depth = (history.state && history.state.pdDepth) || 0;
+    if (push && changed) history.pushState({ pd: path, pdDepth: depth + 1 }, "", hash);
+    else if (!history.state || history.state.pd !== path) history.replaceState({ pd: path, pdDepth: depth }, "", hash);
+  } catch (e) { /* ignore */ }
+  renderPdList();
+}
+function pdUp() { if (pd.cwd) pdCd(pd.cwd.includes("/") ? pd.cwd.slice(0, pd.cwd.lastIndexOf("/")) : ""); }
+window.addEventListener("popstate", e => { if (mode !== "pendrive" || !pd.token) return; const st = e.state; const path = st && typeof st.pd === "string" ? st.pd : ((location.hash.match(/^#pd=(.*)$/) || [])[1] != null ? decodeURIComponent(location.hash.slice(4)) : ""); pdCd(path, false); });
+document.addEventListener("keydown", e => {
+  if (mode !== "pendrive" || !pd.token || $("#pd-main").hidden) return;
+  const tag = (e.target.tagName || "").toLowerCase(); if (tag === "input" || tag === "textarea" || tag === "select" || e.target.isContentEditable) return;
+  if (e.key === "Backspace" && pd.cwd) { e.preventDefault(); pdUp(); }
+  else if (e.altKey && e.key === "ArrowLeft" && history.state && history.state.pdDepth > 0) { e.preventDefault(); history.back(); }
+});
+/* v105: what the AI reads. pd.aiSel: key -> true ("d:<folder>" or "f:<id>"); saved per pendrive for this tab. */
+pd.aiSel = pd.aiSel || new Set();
+const pdAiKey = () => "pd:ai:" + normalizeName(pd.name || "");
+function normalizeName(s) { return String(s).trim().toLowerCase(); }
+function pdAiSave() { try { sessionStorage.setItem(pdAiKey(), JSON.stringify([...pd.aiSel])); } catch (e) { /* ignore */ } }
+function pdAiLoad() { try { pd.aiSel = new Set(JSON.parse(sessionStorage.getItem(pdAiKey()) || "[]")); } catch (e) { pd.aiSel = new Set(); } }
+function pdAiFiles() { // the file ids the AI will read, folders expanded recursively; drops picks that no longer exist
+  const ids = new Set(), byId = new Map(pd.files.map(f => [f.id, f]));
+  for (const k of [...pd.aiSel]) {
+    if (k.startsWith("f:")) { if (byId.has(k.slice(2))) ids.add(k.slice(2)); else if (pd.listed) pd.aiSel.delete(k); }
+    else { const d = k.slice(2); if (pd.listed && !pd.folders.includes(d)) { pd.aiSel.delete(k); continue; } for (const f of pd.files) if (f.path.startsWith(d + "/")) ids.add(f.id); }
+  }
+  return [...ids];
+}
+function pdAiToggle(key, on) { if (on ?? !pd.aiSel.has(key)) pd.aiSel.add(key); else pd.aiSel.delete(key); pdAiSave(); renderPdList(); }
+function renderPdChips() {
+  const box = $("#pd-chips"); if (!box) return;
+  pdAiFiles();
+  if (!pd.aiSel.size) { box.innerHTML = `<span>🗂️ ${esc(t("pd_ai_whole", pd.files.length))}</span>`; box.dataset.scope = "all"; return; }
+  const byId = new Map(pd.files.map(f => [f.id, f]));
+  const chips = [...pd.aiSel].map(k => {
+    if (k.startsWith("f:")) { const f = byId.get(k.slice(2)); return f ? `<span class="pd-chip" title="${esc(f.path)}"><span>📄 ${esc(pdBase(f.path))}</span><button type="button" data-pd-ai-x="${esc(k)}" aria-label="✕ ${esc(f.path)}">✕</button></span>` : ""; }
+    const d = k.slice(2), n = pd.files.filter(f => f.path.startsWith(d + "/")).length;
+    return `<span class="pd-chip" title="${esc(d)}"><span>📁 ${esc(pdBase(d))} (${esc(t("pd_ai_nfiles", n))})</span><button type="button" data-pd-ai-x="${esc(k)}" aria-label="✕ ${esc(d)}">✕</button></span>`;
+  }).join("");
+  box.dataset.scope = "sel";
+  box.innerHTML = `<b>🤖 ${esc(t("pd_ai_uses"))}</b>${chips}<button type="button" class="btn small" data-pd-ai-clear>${esc(t("pd_ai_clear"))}</button>`;
+}
+function pdBase(p) { return p.slice(p.lastIndexOf("/") + 1); }
+if (pd.token) pdAiLoad();
+function pdRestore(n) { // v105: reopen the folder from #pd= after a reload, once the app has booted
+  if (PD_RESTORED || PD_BOOT_HASH == null || !pd.token) return;
+  if (typeof booted === "undefined" || !booted) { if (n < 40) setTimeout(() => pdRestore(n + 1), 150); return; }
+  try { pd.cwd = PD_BOOT_HASH; if (mode !== "pendrive") go("pendrive"); pdCd(PD_BOOT_HASH, false); } catch (e) { /* ignore */ }
+  PD_RESTORED = true;
+}
+let PD_RESTORED = false;
+pdRestore(0);
 /* uploads: the browser sends parts straight to storage with presigned URLs.
    A queue with limited concurrency handles folders with thousands of files; big files resume after a reload (IndexedDB). */
 const PD_PARALLEL_PARTS = 4, PD_PARALLEL_FILES = 3;
@@ -5459,13 +5538,8 @@ async function pdDownload(id) { const { url } = await pdApi("download", { id });
 /* AI over the pendrive */
 async function pdAsk() {
   const q = $("#pd-q").value.trim(); if (!q) return;
-  const scopeSel = $("#pd-scope").value; const scope = {};
-  if (scopeSel === "sel") {
-    const { ids, folders } = pdPicked();
-    for (const d of folders) for (const f of pd.files) if (f.path.startsWith(d + "/")) ids.push(f.id);
-    if (!ids.length) { toast(t("pd_pick")); return; }
-    scope.ids = ids;
-  } else if (scopeSel === "folder" && pd.cwd) scope.folder = pd.cwd;
+  const scope = {};
+  if (pd.aiSel.size) { const ids = pdAiFiles(); if (!ids.length) { toast(t("pd_ai_none_in")); return; } scope.ids = ids; } // else: whole pendrive
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
@@ -5489,7 +5563,7 @@ function pdAiEvent(ev) {
   prog.innerHTML = "";
   pd.actions = ev.actions || [];
   out.innerHTML = `<div class="doc">${mdToHtml(ev.text || "")}</div>`
-    + (ev.sources && ev.sources.length ? `<div class="src">${esc(t("pd_sources"))}: ${ev.sources.map(esc).join(" · ")}</div>` : "")
+    + (ev.sources && ev.sources.length ? `<div class="src pd-used"><b>${esc(t("pd_ai_used"))} (${ev.sources.length}):</b> ${ev.sources.map(s => "📄 " + esc(s)).join(" · ")}</div>` : "")
     + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "")
     + pd.actions.map((a, i) => `<div class="pd-act"><b>${esc(t("pd_save_as"))} (${esc(a.format)})</b><input data-pd-act-path="${i}" value="${esc(a.path)}" aria-label="Path"><button class="btn small primary" type="button" data-pd-act="${i}">${esc(t("pd_save_as"))}</button></div>`).join("");
 }
@@ -5515,7 +5589,13 @@ document.addEventListener("click", async e => {
   let x;
   if (!el("#v-pendrive")) return;
   try {
-    if ((x = el("[data-pd-cd]"))) { pd.cwd = x.dataset.pdCd; pd.sel.clear(); renderPdList(); return; }
+    if ((x = el("[data-pd-ai]"))) { pdAiToggle(x.dataset.pdAi); return; }
+    if ((x = el("[data-pd-ai-x]"))) { pdAiToggle(x.dataset.pdAiX, false); return; }
+    if (el("[data-pd-ai-clear]")) { pd.aiSel.clear(); pdAiSave(); renderPdList(); return; }
+    if (el("#pd-ai-add")) { if (!pd.sel.size) { toast(t("pd_pick")); return; } for (const k of pd.sel) pd.aiSel.add(k); pd.sel.clear(); pdAiSave(); renderPdList(); return; }
+    if (el("#pd-up")) { pdUp(); return; }
+    if (el("#pd-back")) { if (history.state && history.state.pdDepth > 0) history.back(); return; }
+    if ((x = el("[data-pd-cd]"))) { if (x.hasAttribute("aria-current")) return; pdCd(x.dataset.pdCd); return; }
     if ((x = el("[data-pd-view]"))) return pdPreview(x.dataset.pdView);
     if ((x = el("[data-pd-dl]"))) return pdDownload(x.dataset.pdDl);
     if (el("[data-pd-close-prev]")) { $("#pd-preview").hidden = true; return; }
