@@ -168,3 +168,8 @@ For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.
 - Breadcrumb (🏠 › 📁 Folder › 📁 Sub, each clickable), ⬆ Up and ← Back buttons, browser Back/Forward (one history entry per folder), Backspace = up, Alt+← = back, and the folder survives a reload (`#pd=` in the URL).
 - "Select for AI" on every file/folder row. A chip bar above the AI box shows what the AI will use (a folder counts all files under it), with ✕ per chip and Clear. With nothing selected it says the AI reads the whole pendrive. The answer lists the files the AI used; the server only reads `scope.ids`.
 - Tests: `tests/pendrive-v105.mjs` (API scope, mock AI) and `tests/pendrive-ui-v105.mjs` (headless Chrome, needs puppeteer-core).
+
+### v106 — downloads, bigger AI chat, output panel
+- ⬇ on every file and folder row, plus right-click menu. Files download from a presigned GET with `Content-Disposition: attachment` (ASCII fallback + RFC 5987 UTF-8 name). Folders and "⬇ Download selected" make one ZIP in the browser: store-only ZIP/ZIP64 writer (no libraries), files streamed from presigned URLs (`download-urls`), written via `showSaveFilePicker`, else the `/pd-dl-sw.js` service-worker stream, else a Blob (warns above 2 GB). Progress bar and Cancel.
+- Larger resizable question box; a right-side Output panel (stacks on mobile) with Copy, Word (.docx via the same ZIP writer), PDF (print stylesheet with Noto Serif Bengali), Excel/CSV (UTF-8 BOM, only when there is a table), .txt, .md, Share, Save to pendrive, and recent outputs.
+- Tests: `tests/pendrive-zip64.mjs` (plain + forced ZIP64 with Python zipfile/unzip) and `tests/pendrive-ui-v106.mjs` (headless Chrome, full flow).
