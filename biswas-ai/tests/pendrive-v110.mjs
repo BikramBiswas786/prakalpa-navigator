@@ -40,4 +40,8 @@ r = await api("text-batch", { items: [{ id: r.j.id, text: "hello world" }] }); o
 r = await api("upload/batch-complete", { items: [{ fileId: "nope", uploadId: "x" }] }); ok(r.j.files[0].error === "no_upload", "unknown upload in a batch → per-item error");
 r = await api("hosts"); ok(r.status === 200 && Array.isArray(r.j.hosts), `hosts op (${JSON.stringify(r.j.hosts)})`);
 console.log(`elapsed ${Date.now() - t0} ms`);
-await api("delete", { confirm: true, ids: l.map(f => f.id).concat(), folders: ["docs", "big"] });
+// v112: deleting many files in one call is fast and leaves nothing behind
+const td = Date.now();
+r = await api("delete", { confirm: true, ids: l.map(f => f.id), folders: ["docs", "big"] });
+const after = (await api("list")).j.files;
+ok(r.status === 200 && r.j.deleted >= 31 && after.length <= 1 && r.j.used <= 20, `bulk delete of 31 files in one call (${r.status}, ${Date.now() - td} ms, ${after.length} left)`);
