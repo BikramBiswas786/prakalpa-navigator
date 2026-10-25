@@ -51,3 +51,14 @@ services:
         sync: false
       - key: ADMIN_TOKEN
         sync: false
+      # AI Pendrive (Cloudflare R2). Optional: PENDRIVE_QUOTA_BYTES (default 2 GB per pendrive).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: PENDRIVE_SECRET
+        sync: false

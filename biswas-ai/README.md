@@ -112,3 +112,11 @@ Open the app → **Menu** (on phones) → **AI status / AI অবস্থা �
 | `Dockerfile` | Container image |
 | `start-windows.bat`, `start.sh` | Start on an office computer |
 | `../render.yaml` | Render one-click Blueprint |
+
+## AI Pendrive (v101)
+
+A shared folder opened with a name + PIN, stored in Cloudflare R2. The browser uploads straight to R2 with
+presigned multipart URLs (10 MB parts, 4 at a time), so big files never pass through the server.
+Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `PENDRIVE_SECRET`
+(optional: `PENDRIVE_QUOTA_BYTES`, default 2 GB). The bucket needs a CORS rule allowing PUT/GET from the
+app's origin and exposing `ETag`. For local testing: `PENDRIVE_STORAGE=local PENDRIVE_MOCK_AI=1 node server.js`.

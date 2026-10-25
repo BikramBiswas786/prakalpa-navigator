@@ -19,6 +19,8 @@ if (fs.existsSync(envFile)) {
 }
 
 const chat = await import("./api/chat.js");
+const pd = await import("./api/pendrive.js");
+pd.useChat(chat);
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 const FAVICON = fs.readFileSync(path.join(DIR, "favicon.svg"));
@@ -40,7 +42,7 @@ const PAGE_HEADERS = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
-    "connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com",
+    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${pd.storage && pd.storage.origin ? " " + pd.storage.origin : ""}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data:",
     "object-src 'none'",
@@ -793,6 +795,27 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
+    if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
+    if (url.pathname.startsWith("/api/pd/")) {
+      const sendJson = (status, obj) => { res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }).end(JSON.stringify(obj)); };
+      if (req.method !== "POST") { sendJson(405, { error: "method" }); return; }
+      const origin = req.headers.origin;
+      if (origin) { let ok = false; try { ok = new URL(origin).host === req.headers.host; } catch (e) { ok = false; } if (!ok) { sendJson(403, { error: "forbidden" }); return; } }
+      const op = url.pathname.slice(8);
+      if ((op === "open" || op === "create") && limited(req, "pd-open", 10, 60 * 1000)) { tooMany(res); return; }
+      if (op === "ai" && limited(req, "pd-ai", 10, 60 * 1000)) { tooMany(res); return; }
+      if (limited(req, "pd", 600, 60 * 1000)) { tooMany(res); return; }
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 8 * 1024 * 1024) { sendJson(413, { error: "too_large" }); return; } chunks.push(c); }
+      let body = {};
+      try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") || {}; } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      try { await pd.handle(req, res, url, body, sendJson); }
+      catch (e) {
+        if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
+        else { console.error("pendrive:", e.message); if (!res.headersSent) sendJson(500, { error: "server" }); else res.end(); }
+      }
+      return;
+    }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
     if (url.pathname === "/" || url.pathname === "/index.html") {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
@@ -870,7 +893,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v100"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v101"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
@@ -890,5 +913,6 @@ server.listen(PORT, async () => {
   // Names only, never values.
   const search = [["tavily", "TAVILY_API_KEY"], ["exa", "EXA_API_KEY"], ["serper", "SERPER_API_KEY"], ["firecrawl", "FIRECRAWL_API_KEY"], ["parallel", "PARALLEL_API_KEY"], ["keiro", "KEIRO_API_KEY"]]
     .filter(([, k]) => (process.env[k] || "").trim()).map(([n]) => n);
+  console.log(`AI Pendrive storage: ${pd.storage ? pd.storage.constructor.name : "not configured (set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET)"}`);
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });
