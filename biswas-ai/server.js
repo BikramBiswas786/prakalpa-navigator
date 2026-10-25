@@ -21,6 +21,7 @@ if (fs.existsSync(envFile)) {
 const chat = await import("./api/chat.js");
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
+const FAVICON = fs.readFileSync(path.join(DIR, "favicon.svg"));
 const MAX_BODY = 12 * 1024 * 1024;
 // Security headers for the app page. The page has one inline <script>; it is allowed by its
 // sha256 hash (computed at start), not by 'unsafe-inline'. Styles need 'unsafe-inline'
@@ -869,7 +870,11 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v99"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v100"); return; }
+    if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
+      // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
+      res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
+    }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);
