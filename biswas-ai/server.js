@@ -903,7 +903,7 @@ const server = http.createServer(async (req, res) => {
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v103"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v104"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
@@ -932,6 +932,7 @@ server.listen(PORT, async () => {
       if (b.id === "1") { PD_STATUS.cors = r.state; PD_STATUS.corsCheckedAt = new Date().toISOString(); }
       if (r.state === "already") console.log(`AI Pendrive [${b.name}]: bucket CORS already correct`);
       else if (r.state === "applied") console.log(`AI Pendrive [${b.name}]: bucket CORS applied`);
+      else if (r.state === "compatible") console.log(`AI Pendrive [${b.name}]: bucket CORS set by the owner already allows this site`);
       else if (r.state === "native_rules") console.log(`AI Pendrive [${b.name}]: bucket CORS NOT applied: the B2 bucket has native CORS rules (set 'CORS Rules' to 'Do not share' in the B2 web UI, then restart, or run scripts/set-b2-cors.js --native)`);
       else console.log(`AI Pendrive [${b.name}]: bucket CORS check failed: ${r.detail || "unknown"}`);
     }).catch(() => { b.cors = "failed"; b.corsDetail = "exception"; console.log(`AI Pendrive [${b.name}]: bucket CORS check failed`); });
