@@ -204,6 +204,7 @@ async function askAI(system, user, maxOut = 1600) {
 function mockAI(system, user) {
   const files = [...new Set([...user.matchAll(/\[FILE: ([^\]]+)\]/g)].map(m => m[1]))];
   let out = `MOCK answer from ${files.length} source(s): ${files.join(", ")}`;
+  if (/table|টেবিল/i.test(user.split("QUESTION:").pop() || "")) out += "\n\n## সারসংক্ষেপ\n\n| ফাইল | বিষয় |\n| --- | --- |\n" + files.map(f => `| ${f} | বাজেট ও বিল |`).join("\n") + "\n\nমোট ফাইল: " + files.length;
   if (/write|লিখ|report|নোট/i.test(user.split("QUESTION:").pop() || "")) out += '\n```pendrive-write\n{"path":"Reports/summary.md","format":"md","content":"# Summary\\n\\nFrom: ' + files.join(", ") + '"}\n```';
   return out;
 }
@@ -280,6 +281,12 @@ export async function handle(req, res, url, body, send) {
     const ix = await index(id); const f = ix.files[String(body.id)];
     if (!f || f.state !== "ok") fail(404, "not_found");
     return send(200, { url: await bk(f.b).st.presignGet(`${P(id)}/f/${f.id}`, body.inline ? "" : baseOf(f.path)) });
+  }
+  if (op === "download-urls") { // v106: short-lived GET links (no attachment header) so the browser can stream files into a ZIP
+    const ix = await index(id); const want = Array.isArray(body.ids) ? body.ids.slice(0, 500).map(String) : [];
+    const urls = {};
+    for (const fid of want) { const f = ix.files[fid]; if (f && f.state === "ok") urls[fid] = await bk(f.b).st.presignGet(`${P(id)}/f/${f.id}`, ""); }
+    return send(200, { urls });
   }
   if (op === "text-get") {
     const ix = await index(id); const f = ix.files[String(body.id)];

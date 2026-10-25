@@ -16,6 +16,8 @@ import path from "node:path";
 const sha256hex = b => crypto.createHash("sha256").update(b).digest("hex");
 const hmac = (k, s) => crypto.createHmac("sha256", k).update(s).digest();
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+// RFC 6266 / 5987: ASCII fallback plus the exact UTF-8 name (Bengali safe).
+export const disposition = name => `attachment; filename="${(String(name).normalize("NFKD").replace(/[^\x20-\x7e]/g, "_").replace(/["\\%]/g, "_").trim() || "download")}"; filename*=UTF-8''${enc(String(name))}`;
 const encPath = p => p.split("/").map(enc).join("/");
 // Keys are built only by api/pendrive.js from hex ids; refuse anything else.
 const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$|^stats\/usage\.json$/;
@@ -133,7 +135,7 @@ export class S3Storage {
     return { total, count };
   }
   async presignGet(key, filename) {
-    const q = filename ? { "response-content-disposition": `attachment; filename*=UTF-8''${enc(filename)}` } : {};
+    const q = filename ? { "response-content-disposition": disposition(filename) } : {};
     return this.presign("GET", key, q, 900);
   }
 }
@@ -194,7 +196,7 @@ export class LocalStorage {
       const f = this.file(v.key);
       if (!fs.existsSync(f)) { res.writeHead(404).end(); return; }
       const h = { "content-type": "application/octet-stream", "content-length": fs.statSync(f).size };
-      if (v.extra) h["content-disposition"] = `attachment; filename*=UTF-8''${encodeURIComponent(v.extra)}`;
+      if (v.extra) h["content-disposition"] = disposition(v.extra);
       res.writeHead(200, h); fs.createReadStream(f).pipe(res); return;
     }
     res.writeHead(405).end();

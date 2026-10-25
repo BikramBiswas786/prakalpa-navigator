@@ -820,6 +820,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
+    if (url.pathname === "/pd-dl-sw.js") { // v106: service worker that streams a folder ZIP to the browser's downloads
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
+      fs.createReadStream(path.join(DIR, "pd-dl-sw.js")).pipe(res);
+      return;
+    }
     if (url.pathname === "/" || url.pathname === "/index.html") {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
       fs.createReadStream(PAGE).pipe(res);
@@ -903,7 +908,7 @@ const server = http.createServer(async (req, res) => {
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v105"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v106"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;
