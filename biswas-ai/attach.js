@@ -80,7 +80,17 @@ BA.lift = (info, text) => { if (info && BA.attInfo(info)) return { info, text };
 // Re-attach blocks after a text clean-up step (so cleaners never damage file content).
 BA.join = (text, atts) => { const seen = new Set(); return String(text || "") + atts.filter(a => !seen.has(a.info + a.content) && seen.add(a.info + a.content)).map(a => "\n\n```" + a.info + "\n" + a.content + "\n```").join(""); };
 BA.protect = (fn, s) => { const p = BA.parse(s); return p.atts.length ? BA.join(fn(p.text), p.atts) : fn(s); };
+// v116: models sometimes drop the opening fence: a bare "attachment name=..." line followed by content and a closing ```.
+BA.fix = function (src) {
+  const L = String(src || "").replace(/\r/g, "").split("\n"); let inFence = false;
+  for (let i = 0; i < L.length; i++) {
+    if (/^\s*(```|~~~)/.test(L[i])) { inFence = !inFence; continue; }
+    if (!inFence && /^\s*(attachment|attach)\s+name\s*=/i.test(L[i]) && BA.attInfo(L[i].trim())) { L[i] = "```" + L[i].trim(); inFence = true; }
+  }
+  return L.join("\n");
+};
 BA.parse = function (src) {
+  src = BA.fix(src);
   const L = String(src || "").replace(/\r/g, "").split("\n"); const keep = []; const atts = [];
   for (let i = 0; i < L.length; i++) {
     const m = L[i].match(/^\s*(`{3,}|~{3,})(.*)$/);

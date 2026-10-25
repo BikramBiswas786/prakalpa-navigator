@@ -2054,7 +2054,7 @@ function inlineHtml(s) {
   }).join("");
 }
 function mdToHtml(src) {
-  return parseMd(src).map(b => {
+  return parseMd(window.BA && BA.fix ? BA.fix(src) : src).map(b => {
     if (b.t === "h") return `<h${Math.min(b.level + 1, 4)}>${inlineHtml(b.text)}</h${Math.min(b.level + 1, 4)}>`;
     if (b.t === "p") return `<p>${inlineHtml(b.text)}</p>`;
     if (b.t === "hr") return "<hr>";
@@ -6122,6 +6122,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=114" defer></script>
+<script src="/attach.js?v=116" defer></script>
 </body>
 </html>
