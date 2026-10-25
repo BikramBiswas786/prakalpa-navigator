@@ -8,7 +8,7 @@
 //   pendrives/<id>/bm25.json   keyword index over text chunks
 // Renames and moves only change index.json; the stored bytes never move.
 import crypto from "node:crypto";
-import { makeStorage } from "./storage.js";
+import { makePool } from "./storage.js";
 
 const env = process.env;
 let SECRET = env.PENDRIVE_SECRET || "";
@@ -16,11 +16,16 @@ if (!SECRET) {
   SECRET = crypto.randomBytes(32).toString("hex");
   console.warn("PENDRIVE_SECRET is not set: using a random one, so pendrive sessions end when the server restarts.");
 }
-export const storage = makeStorage(env, SECRET);
+// v103: a pool of S3-compatible backends. pool[0] is the primary: it holds all metadata (meta, index, text, bm25, stats);
+// file bytes go to whichever backend had the most free room when the file was uploaded (f.b / pending.b, default "1").
+export const pool = makePool(env, SECRET);
+export const storage = pool.length ? pool[0].st : null;
+const BAD_MS = 10 * 60 * 1000;
+const bk = bid => pool.find(b => b.id === String(bid || "1")) || pool[0];
 const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 5 * 1024 ** 3);       // per pendrive
 const MAX_FILE = Math.max(1, Number(env.PENDRIVE_MAX_FILE_BYTES) || 5 * 1024 ** 3);   // per file
 // Safety cap across ALL pendrives, so we refuse uploads before hitting the storage plan's limit (B2 free tier: 10 GB).
-const TOTAL_CAP = Math.max(1, Number(env.PENDRIVE_TOTAL_CAP_BYTES) || 9 * 1024 ** 3);
+const TOTAL_CAP = Math.max(1, Number(env.PENDRIVE_TOTAL_CAP_BYTES) || pool.reduce((a, b) => a + b.cap, 0) || 9 * 1024 ** 3);
 const PART = 10 * 1024 * 1024;              // 10 MB parts; 5 GB = 512 parts (S3 allows 10,000)
 if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES needs more than 10,000 parts of 10 MB");
 const SESSION_MS = 12 * 3600 * 1000;
@@ -90,15 +95,39 @@ async function index(id) { return (await cget(`${P(id)}/index.json`)) || { files
 const reservedOf = m => Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
 async function saveMeta(id, m) {
   await cset(`${P(id)}/meta.json`, m);
-  // keep the cross-pendrive usage table in step (used + reserved per pendrive)
-  const u = { u: m.used || 0, r: reservedOf(m) };
+  // keep the cross-pendrive usage table in step (used + reserved per pendrive, and bytes per backend)
+  const ix = await index(id); const ub = {};
+  for (const f of Object.values(ix.files)) if (f.state === "ok") ub[f.b || "1"] = (ub[f.b || "1"] || 0) + f.size;
+  for (const v of Object.values(m.pending || {})) ub[v.b || "1"] = (ub[v.b || "1"] || 0) + v.size;
+  const u = { u: m.used || 0, r: reservedOf(m), ub };
   await withLock("stats", async () => {
     const st = (await cget("stats/usage.json")) || { by: {} };
     const cur = st.by[id] || { u: 0, r: 0 };
-    if (cur.u === u.u && cur.r === u.r) return;
+    if (cur.u === u.u && cur.r === u.r && JSON.stringify(cur.ub || {}) === JSON.stringify(ub)) return;
     st.by[id] = u; st.t = Date.now(); await cset("stats/usage.json", st);
   });
 }
+// Bytes used (files + reservations) per backend, from the usage table; older rows without "ub" count on the primary.
+// A periodic bucket listing (reconcile) can only raise the number (orphaned parts/objects still cost space).
+async function backendUse() {
+  const st = (await cget("stats/usage.json")) || { by: {} }; const out = {};
+  for (const b of pool) out[b.id] = 0;
+  for (const v of Object.values(st.by)) { if (v.ub) for (const [k, n] of Object.entries(v.ub)) out[k] = (out[k] || 0) + n; else out["1"] = (out["1"] || 0) + v.u + v.r; }
+  for (const b of pool) if (b.listed && b.listed.total > out[b.id]) out[b.id] = b.listed.total;
+  return out;
+}
+export async function reconcile() {
+  for (const b of pool) {
+    if (!b.st.sumPrefix) continue;
+    try { b.listed = { ...(await b.st.sumPrefix("pendrives/", /^pendrives\/[a-f0-9]{24}\/f\/[a-f0-9]{24}$/)), t: Date.now() }; }
+    catch (e) { b.listErr = String(e.message || e).slice(0, 80); }
+  }
+}
+export async function poolStatus() {
+  const use = await backendUse().catch(() => ({}));
+  return pool.map(b => ({ name: b.name, cors: b.cors || (b.st.provider ? "pending" : "n/a"), used: use[b.id] || 0, cap: b.cap, healthy: !(b.badUntil > Date.now()), ...(b.listed ? { listedAt: new Date(b.listed.t).toISOString() } : {}) }));
+}
+const netOrAuth = e => /fetch failed|timeout|abort|ECONN|ENOTFOUND|EAI_AGAIN|certificate| 40[13]\b| 5\d\d\b/i.test(String(e && (e.message + " " + (e.cause && e.cause.code || "")) || e));
 async function totalUse(exceptId) {
   const st = (await cget("stats/usage.json")) || { by: {} };
   return Object.entries(st.by).reduce((a, [k, v]) => k === exceptId ? a : a + v.u + v.r, 0);
@@ -248,7 +277,7 @@ export async function handle(req, res, url, body, send) {
   if (op === "download") {
     const ix = await index(id); const f = ix.files[String(body.id)];
     if (!f || f.state !== "ok") fail(404, "not_found");
-    return send(200, { url: await storage.presignGet(`${P(id)}/f/${f.id}`, body.inline ? "" : baseOf(f.path)) });
+    return send(200, { url: await bk(f.b).st.presignGet(`${P(id)}/f/${f.id}`, body.inline ? "" : baseOf(f.path)) });
   }
   if (op === "text-get") {
     const ix = await index(id); const f = ix.files[String(body.id)];
@@ -270,14 +299,30 @@ export async function handle(req, res, url, body, send) {
       if (m.used - freed + reserved + size > quotaOf(m)) fail(413, "quota", { quota: quotaOf(m), used: m.used, reserved });
       if ((await totalUse(id)) + m.used - freed + reserved + size > TOTAL_CAP) fail(507, "total_cap", { cap: TOTAL_CAP });
       const fileId = hex(12);
-      const uploadId = await storage.createMultipart(`${P(id)}/f/${fileId}`, type);
+      // Placement: the healthy backend with the most free room that can hold the whole file.
+      // Test-only override: ?backend=<name> with header x-admin-token = ADMIN_TOKEN.
+      const use = await backendUse();
+      let cands = pool.filter(b => !(b.badUntil > Date.now()) && b.cap - (use[b.id] || 0) >= size).sort((a, b) => (b.cap - (use[b.id] || 0)) - (a.cap - (use[a.id] || 0)));
+      const force = url && url.searchParams.get("backend");
+      if (force) {
+        const tok = String(req.headers["x-admin-token"] || "");
+        if (!env.ADMIN_TOKEN || tok.length !== env.ADMIN_TOKEN.length || !crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(env.ADMIN_TOKEN))) fail(403, "forbidden");
+        cands = pool.filter(b => b.name === force); if (!cands.length) fail(400, "no_backend");
+      }
+      if (!cands.length) fail(507, "total_cap", { cap: TOTAL_CAP });
+      let uploadId = "", where = null, lastErr = null;
+      for (const b of cands) {
+        try { uploadId = await b.st.createMultipart(`${P(id)}/f/${fileId}`, type); where = b; break; }
+        catch (e) { lastErr = e; if (netOrAuth(e) && !force) { b.badUntil = Date.now() + BAD_MS; console.warn(`storage backend ${b.name} unhealthy for 10 min: ${String(e.message || e).slice(0, 80)}`); } else if (force) break; }
+      }
+      if (!where) throw lastErr || new Error("storage unavailable");
       m.pending = m.pending || {};
-      for (const [k, v] of Object.entries(m.pending)) if (Date.now() - v.t > 24 * 3600 * 1000) { storage.abortMultipart(`${P(id)}/f/${k}`, v.uploadId).catch(() => {}); delete m.pending[k]; } // stale reservations: free their parts too
-      m.pending[fileId] = { size, t: Date.now(), uploadId, path: p, type, replaces: same && body.overwrite ? same.id : "" };
+      for (const [k, v] of Object.entries(m.pending)) if (Date.now() - v.t > 24 * 3600 * 1000) { bk(v.b).st.abortMultipart(`${P(id)}/f/${k}`, v.uploadId).catch(() => {}); delete m.pending[k]; } // stale reservations: free their parts too
+      m.pending[fileId] = { size, t: Date.now(), uploadId, path: p, type, b: where.id, replaces: same && body.overwrite ? same.id : "" };
       await saveMeta(id, m);
       const nParts = Math.max(1, Math.ceil(size / PART)), urls = {};
-      for (let n = 1; n <= Math.min(nParts, 50); n++) urls[n] = await storage.presignPart(`${P(id)}/f/${fileId}`, uploadId, n);
-      return send(200, { fileId, uploadId, partSize: PART, parts: nParts, urls });
+      for (let n = 1; n <= Math.min(nParts, 50); n++) urls[n] = await where.st.presignPart(`${P(id)}/f/${fileId}`, uploadId, n);
+      return send(200, { fileId, uploadId, partSize: PART, parts: nParts, urls, ...(force ? { backend: where.name } : {}) });
     });
   }
   if (op === "upload/status") { // is this upload (saved in the browser's IndexedDB) still resumable?
@@ -290,7 +335,7 @@ export async function handle(req, res, url, body, send) {
     const total = Math.max(1, Math.ceil(pend.size / PART));
     const ns = (Array.isArray(body.parts) ? body.parts : []).map(Number).filter(n => n >= 1 && n <= total).slice(0, 100);
     const urls = {};
-    for (const n of ns) urls[n] = await storage.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
+    for (const n of ns) urls[n] = await bk(pend.b).st.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
     return send(200, { urls });
   }
   if (op === "upload/complete") {
@@ -300,15 +345,16 @@ export async function handle(req, res, url, body, send) {
       if (!pend || pend.uploadId !== body.uploadId) fail(404, "no_upload");
       const parts = (Array.isArray(body.parts) ? body.parts : []).map(p => ({ n: Number(p.n), etag: String(p.etag || "") })).filter(p => p.n >= 1 && p.etag);
       const key = `${P(id)}/f/${fid}`;
-      await storage.completeMultipart(key, pend.uploadId, parts);
-      const h = await storage.head(key);
+      const fst = bk(pend.b).st;
+      await fst.completeMultipart(key, pend.uploadId, parts);
+      const h = await fst.head(key);
       delete m.pending[fid];
-      if (!h || h.size !== pend.size) { await storage.del(key); await saveMeta(id, m); fail(400, "size_mismatch"); }
+      if (!h || h.size !== pend.size) { await fst.del(key); await saveMeta(id, m); fail(400, "size_mismatch"); }
       let p = pend.path;
       if (pend.replaces && ix.files[pend.replaces]) { m.used -= ix.files[pend.replaces].size; await dropFile(id, ix, pend.replaces); }
       else if (pathTaken(ix, p)) { const dot = p.lastIndexOf("."); const stem = dot > p.lastIndexOf("/") ? p.slice(0, dot) : p; const ext = dot > p.lastIndexOf("/") ? p.slice(dot) : ""; let k = 2; while (pathTaken(ix, `${stem} (${k})${ext}`)) k++; p = `${stem} (${k})${ext}`; }
       m.used += h.size;
-      ix.files[fid] = { id: fid, path: p, size: h.size, type: pend.type, mtime: Date.now(), text: false, state: "ok" };
+      ix.files[fid] = { id: fid, path: p, size: h.size, type: pend.type, mtime: Date.now(), text: false, state: "ok", ...(pend.b && pend.b !== "1" ? { b: pend.b } : {}) };
       if (parentOf(p)) addFolders(ix, parentOf(p));
       await saveIndex(id, ix); await saveMeta(id, m);
       return send(200, { id: fid, path: p, ...publicMeta(m) });
@@ -317,7 +363,7 @@ export async function handle(req, res, url, body, send) {
   if (op === "upload/abort") {
     return withLock(id, async () => {
       const m = await meta(id); const fid = String(body.fileId); const pend = (m.pending || {})[fid];
-      if (pend) { try { await storage.abortMultipart(`${P(id)}/f/${fid}`, pend.uploadId); } catch (e) { /* ignore */ } delete m.pending[fid]; await saveMeta(id, m); }
+      if (pend) { try { await bk(pend.b).st.abortMultipart(`${P(id)}/f/${fid}`, pend.uploadId); } catch (e) { /* ignore */ } delete m.pending[fid]; await saveMeta(id, m); }
       return send(200, { ok: true });
     });
   }
@@ -399,7 +445,7 @@ function moveTree(ix, old, np) {
   addFolders(ix, np);
 }
 async function dropFile(id, ix, fid) {
-  await storage.del(`${P(id)}/f/${fid}`);
+  await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
   if (ix.files[fid] && ix.files[fid].text) {
     await storage.del(`${P(id)}/t/${fid}.txt`);
     const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x);
