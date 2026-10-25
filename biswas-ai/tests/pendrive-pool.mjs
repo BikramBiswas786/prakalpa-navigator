@@ -25,8 +25,17 @@ const a = crypto.randomBytes(3 * MB + 7);
 let r = await upload("auto/a.bin", a); ok(r.status === 200, `auto upload with a dead backend in the pool still works (${r.status} ${r.j.error || ""})`);
 h = await (await fetch(B + "/healthz/pendrive")).json();
 const by = n => h.backends.find(b => b.name === n);
-ok(by("tigris") && by("tigris").healthy === false, "dead backend marked unhealthy");
+ok(by("tigris") && by("tigris").placement === false && by("tigris").cors === "failed", "backend whose CORS couldn't be set is left out of placement: " + JSON.stringify(by("tigris")));
 ok(by("coritan").used === a.length, `file placed on the backend with most free room (coritan used ${by("coritan").used})`);
+// 1b) a backend that dies after boot: marked unhealthy for 10 min, upload falls back to the next one
+let extra = 0;
+if (process.env.KILL) {
+  const { execSync } = await import("node:child_process"); execSync(process.env.KILL);
+  const b2 = crypto.randomBytes(2 * MB); r = await upload("auto/b.bin", b2); extra = 1;
+  h = await (await fetch(B + "/healthz/pendrive")).json();
+  ok(r.status === 200 && by("coritan").healthy === false && by("s3").used >= b2.length, `dead backend marked unhealthy, upload fell back to s3 (${r.status}, coritan healthy=${by("coritan").healthy}, s3 used ${by("s3").used})`);
+  execSync(process.env.REVIVE); await new Promise(r => setTimeout(r, 2000));
+}
 // 2) forced placement (admin only)
 const forced = await api("upload/init", { path: "x.bin", size: 10 }, "?backend=s3"); ok(forced.status === 403, "?backend= without admin token refused: " + forced.status);
 const files = {};
@@ -35,7 +44,7 @@ for (const n of (process.env.FORCE || "s3,coritan").split(",")) {
   ok(r.status === 200 && r.j.backend === n, `forced upload to ${n}: ${r.status} ${r.j.backend || r.j.error}`); files[n] = { id: r.j.id, fid: r.j.fileId, sha: sha(bytes), len: bytes.length };
 }
 // 3) downloads come from the file's own backend, byte-identical
-const list = (await api("list")).j.files; ok(list.length === 1 + Object.keys(files).length, "list shows all files: " + list.length);
+const list = (await api("list")).j.files; ok(list.length === 1 + extra + Object.keys(files).length, "list shows all files: " + list.length);
 for (const [n, f] of Object.entries(files)) {
   const d = await api("download", { id: f.id }); const u = d.j.url.startsWith("http") ? d.j.url : B + d.j.url;
   const buf = Buffer.from(await (await fetch(u)).arrayBuffer());
