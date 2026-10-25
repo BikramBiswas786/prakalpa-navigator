@@ -869,7 +869,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v85", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v86", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -943,7 +943,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v85", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v86", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -3806,8 +3806,85 @@ async function runBiswasAgent(job) {
     renderAgentView();
   }
 }
+function findScheme(text) {
+  if (schemeOpen) {
+    const open = SERVICES.find(x => x.id === schemeOpen);
+    if (open) return open;
+  }
+  const q = String(text || "").toLowerCase();
+  let best = null, score = 0;
+  for (const s of SERVICES) {
+    const d = s[settings.lang] || s.bn;
+    const names = [s.bn && s.bn.n, s.en && s.en.n, s.bn && s.bn.old, s.en && s.en.old, d && d.n, d && d.old].filter(Boolean);
+    for (const n of names) {
+      const k = String(n).toLowerCase().trim();
+      if (k.length > 3 && q.includes(k) && k.length > score) { score = k.length; best = s; }
+    }
+  }
+  return best;
+}
+function publicFirstAnswer(text) {
+  const s = findScheme(text);
+  if (!s) return publicDeskCard();
+  const en = settings.lang === "en";
+  const d = s[settings.lang] || s.bn;
+  const other = en ? s.bn : s.en;
+  const links = (s.links || []).map(l => `- [${l[en ? 1 : 0]}](${l[2]})`).join("\n");
+  const status = s.st === "ok"
+    ? (en ? "Listed as a current service in the October 2026 catalogue." : "অক্টোবর ২০২৬-এর তালিকায় এটি চলতি পরিষেবা।")
+    : s.st === "rep"
+      ? (en ? "Reported in 2026. Check the official page before you rely on an amount or a date." : "২০২৬-এ খবরে আছে। টাকা বা তারিখ ধরার আগে সরকারি পাতা দেখুন।")
+      : (en ? "The name is on a district list. No amount is written in this record. Match it on the official page. A district page is not, by itself, a new rule for the whole State." : "জেলার তালিকায় এই নাম আছে। এই রেকর্ডে টাকার অঙ্ক লেখা নেই। সরকারি পাতায় মিলিয়ে নিন। জেলার পাতা মানেই সারা রাজ্যের নতুন নিয়ম নয়।");
+  const bsk = String(s.id).startsWith("bsk-")
+    ? (en
+      ? "This is one named piece of work at a Bangla Sahayata Kendra. It does not have a separate portal of its own. The operator files it on the government site. The centre does not charge for the help. A government fee, if there is one, is printed on the form. Do not pay a tout or a look-alike website. The centres named in this app are at the District Magistrate, the Sub-Divisional Officer, the BDO, the gram panchayat, a health centre, a government-aided library and the municipality."
+      : "এটি বাংলা সহায়তা কেন্দ্রের একটি নাম করা কাজ। এর আলাদা পোর্টাল নেই। অপারেটর সরকারি সাইটে আবেদন জমা দেন। কেন্দ্র সাহায্যের জন্য টাকা নেয় না। সরকারি ফি থাকলে ফর্মে লেখা থাকে। দালালকে বা দেখতে একই রকম সাইটে টাকা দেবেন না। জেলাশাসক, মহকুমা শাসক, বিডিও, গ্রাম পঞ্চায়েত, স্বাস্থ্যকেন্দ্র, সরকারি সাহায্যপ্রাপ্ত লাইব্রেরি ও পুরসভায় কেন্দ্র আছে।")
+    : "";
+  const blob = String(d.b || "") + " " + String(d.x || "");
+  const missing = [];
+  if (!/\d/.test(blob)) missing.push(en ? "A rupee amount is not written in this record, so none is stated here." : "এই রেকর্ডে টাকার অঙ্ক নেই, তাই এখানে অঙ্ক বলা হচ্ছে না।");
+  if (!/20\d\d/.test(blob)) missing.push(en ? "No 2026 order number is written on this card." : "এই কার্ডে ২০২৬-এর কোনো আদেশের নম্বর লেখা নেই।");
+  missing.push(en ? "A processing time is not given unless the lines above state one." : "উপরের লাইনে সময় না থাকলে প্রক্রিয়ার সময় এখানে বলা হয়নি।");
+  return [
+    `## ${d.n}`,
+    d.old ? (en ? `Earlier name: ${d.old}` : `আগের নাম: ${d.old}`) : "",
+    other && other.n && other.n !== d.n ? (en ? `Also called: ${other.n}` : `এই নামেও: ${other.n}`) : "",
+    en ? "_October 2026 catalogue. This first reply is the record. It does not open the web._" : "_অক্টোবর ২০২৬-এর তালিকা। এই প্রথম উত্তর রেকর্ড থেকে। ওয়েব খোলা হয়নি।_",
+    en ? "### What you asked" : "### আপনি যা জানতে চেয়েছেন",
+    en
+      ? "The question asks five things: what it gives, who can get it, where and how to apply, which papers are needed, and the current status. Each one is answered only from this scheme's card."
+      : "প্রশ্নটি পাঁচটি জিনিস জানতে চেয়েছে: কী পাওয়া যায়, কারা পাবেন, কোথায় ও কীভাবে আবেদন, কী কাগজ লাগে, এবং এখন কী অবস্থা। প্রতিটি উত্তর শুধু এই প্রকল্পের কার্ড থেকে।",
+    en ? "### What it gives" : "### কী পাওয়া যায়",
+    d.b || (en ? "The card does not describe a cash amount." : "কার্ডে টাকার বিবরণ নেই।"),
+    bsk,
+    en ? "### Who can apply" : "### কারা আবেদন করতে পারেন",
+    (d.c || []).map(x => `- ${x}`).join("\n") || (en ? "- Not written on this card." : "- এই কার্ডে লেখা নেই।"),
+    en ? "### Documents" : "### যে কাগজ লাগে",
+    (d.d || []).map(x => `- ${x}`).join("\n") || (en ? "- Not written on this card." : "- এই কার্ডে লেখা নেই।"),
+    en ? "### Where and how to apply" : "### কোথায় ও কীভাবে আবেদন",
+    (d.s || []).map((x, i) => `${i + 1}. ${x}`).join("\n"),
+    links ? ((en ? "### Official page" : "### সরকারি পাতা") + "\n" + links) : "",
+    en ? "### Current status" : "### বর্তমান অবস্থা",
+    status,
+    d.x || "",
+    en ? "### Not in this record" : "### এই রেকর্ডে নেই",
+    missing.map(x => `- ${x}`).join("\n"),
+    en ? "### Next" : "### এরপর",
+    en
+      ? "Government camps and offices do not charge a tout. Ask a second question in this chat if you want the official page opened. That check stays on this scheme only."
+      : "সরকারি শিবির ও অফিস দালালের টাকা নেয় না। সরকারি পাতা খুলতে এই চ্যাটে দ্বিতীয় প্রশ্ন করুন। সেই খোঁজ শুধু এই প্রকল্পের।"
+  ].filter(Boolean).join("\n\n");
+}
+function publicDeskCard() {
+  const en = settings.lang === "en";
+  return en
+    ? "## Government services and schemes\n\nThis first reply does not open the web. Open one scheme from the list, or name it, and the card for that scheme is shown at once: what it gives, who can apply, the papers, where to apply, and what is not known.\n\nA second question in that chat can open the official page. Do not pay a tout. A government fee, if any, is printed on the form.\n\nBangla Sahayata Kendra: [bsk.wb.gov.in](https://bsk.wb.gov.in/)"
+    : "## সরকারি পরিষেবা ও প্রকল্প\n\nএই প্রথম উত্তর ওয়েব খোলে না। তালিকা থেকে একটি প্রকল্প খুলুন, বা তার নাম লিখুন। সেই প্রকল্পের কার্ড সাথে সাথে আসবে: কী পাওয়া যায়, কারা পাবেন, কী কাগজ, কোথায় আবেদন, এবং কী জানা নেই।\n\nসেই চ্যাটে দ্বিতীয় প্রশ্ন সরকারি পাতা খুলতে পারে। দালালকে টাকা দেবেন না। সরকারি ফি থাকলে ফর্মে লেখা থাকে।\n\nবাংলা সহায়তা কেন্দ্র: [bsk.wb.gov.in](https://bsk.wb.gov.in/)";
+}
 async function ask(text) {
-  if (!engine) return toast(t("no_ai"));
+  const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
+  const firstPublic = mode === "public" && !greet && !(pendingFiles && pendingFiles.length) && !((messages || []).some(m => m.role === "user"));
+  if (!engine && !firstPublic) return toast(t("no_ai"));
   if (chatCtl) { try { chatCtl.abort(); } catch (e) { /* the new prompt replaces it */ } }
   const mine = new AbortController();
   chatCtl = mine;
@@ -3827,6 +3904,16 @@ async function ask(text) {
   const ai = { role: "assistant", content: "", done: false, started: Date.now(), wantDoc };
   box.push(ai);
   renderChat(); scrollDown();
+  if (firstPublic) {
+    ai.content = publicFirstAnswer(text);
+    ai.done = true;
+    ai.via = "card";
+    ai.browse = false;
+    updateAt(box.indexOf(ai));
+    persist();
+    if (chatCtl === mine) chatCtl = null;
+    return;
+  }
   const known = knownAnswer(text);
   if (known) {
     ai.content = known;
@@ -3846,15 +3933,15 @@ async function ask(text) {
   while (turns.length && turns[0].role !== "user") turns.shift();
   const live = () => box === messages && chatCtl === mine;
   const agent = mode === "office";
-  const greet = /^(hi|hii|hello|hey|ok|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(String(text || "").trim());
+  const greetSeen = greet;
   let researchNote = "";
-  if ((mode === "ai" || mode === "public") && String(text || "").trim().length > 8 && !greet) {
+  if (mode === "ai" && String(text || "").trim().length > 8 && !greetSeen) {
     ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(text) }), signal: chatCtl.signal });
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), google: true, wb: false }), signal: chatCtl.signal });
       const data = rr.ok ? await rr.json() : { pages: [] };
-      const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
+      const foreign = () => false;
       const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && !foreign(p)).slice(0, 4);
       ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
       ai.browseAt = 0;
@@ -3865,38 +3952,34 @@ async function ask(text) {
     }
     if (live()) updateAt(box.indexOf(ai));
   }
-  let thought = "";
-  if (mode === "public" && String(text || "").trim().length > 8 && !greet) {
-    ai.think = settings.lang === "en" ? "Reading the record…" : "রেকর্ড পড়ছি…";
+  if (mode === "public" && String(text || "").trim().length > 8 && !greetSeen) {
+    const scheme = findScheme(text);
+    const links = scheme && scheme.links ? scheme.links.map(l => l[2]).filter(Boolean).slice(0, 2) : [];
+    ai.browse = true;
     if (live()) updateAt(box.indexOf(ai));
     try {
-      const note = await aiRun([{ role: "user", content: "Question:\n" + String(text).slice(0, 2000) }], {
-        fast: true, signal: chatCtl.signal,
-        system: `You are the reading step for a West Bengal, India service. Bengali does not mean Bangladesh. Ignore any page about Bangladesh, a .bd site, Dhaka, or the Bangladesh Fire Service. A fire licence is the West Bengal one. Do not write the answer the person will see. Read the dataset and the pages. Write a short analysis in ${settings.lang === "en" ? "English" : "colloquial Bengali"}.
-- Asked: how to apply, or more detail, or a new rule.
-- On record: only a line that is written in the dataset or a page. Name where it is written.
-- Not on record: the amount, a year of practice, a training course, an exhibition, a new rule, or a time, if they are absent. Do not fill them.
-- Reading: one paragraph. Use only the on-record lines. Say what the record supports and what it does not.
-Do not invent a URL, an amount, a year, or a programme.
-DATASET:\n${publicRecord(text).slice(0, 6000)}
-${researchNote ? "\nPAGES:\n" + researchNote.slice(0, 5000) : "\nPAGES:\nnone opened."}`
-      });
-      thought = String(note.text || "").slice(0, 4000);
-      ai.think = thought || ai.think;
-      if (live()) updateAt(box.indexOf(ai));
+      const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(text).slice(0, 180), fast: true, wb: !/bangladesh|বাংলাদেশ/i.test(text), links }), signal: chatCtl.signal });
+      const data = rr.ok ? await rr.json() : { pages: [] };
+      const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url).slice(0, 2);
+      ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
+      ai.browseAt = 0;
+      researchNote = pages.filter(p => p.text && p.text.length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
     } catch (e) {
-      if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
-      thought = "";
+      if (e && e.name === "AbortError") { if (chatCtl === mine) { ai.content = ai.content || t("stopped"); ai.done = true; chatCtl = null; setBusy(false); if (box === messages) updateAt(box.indexOf(ai)); persist(); } return; }
+      ai.pages = [];
     }
+    if (live()) updateAt(box.indexOf(ai));
   }
+  let thought = "";
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
-    const pagesNote = researchNote ? "\n\nPages opened for this question. A fact in your answer must come from these pages or from the catalogue. If a page does not contain the amount, the new rule, or the years of practice, say it is not on record. Do not invent a link.\n\n" + researchNote : "";
-    const readNote = thought ? "\n\nA reading of the dataset was done first. The person can see it. Write the reply from that reading, in clear paragraphs. Do not paste the reading again. If the reading says they asked for more detail or an analysis, do not send the application card. If the reading says a fact is not on record, do not state it.\n\nREADING:\n" + thought : "";
-    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? rules() + pagesNote + readNote : rules() + bikramRules();
-    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: mode === "office", maxOut: mode === "office" ? 2400 : undefined, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const pagesNote = researchNote ? "\n\nOfficial page:\n" + researchNote.slice(0, 2500) : "\n\nNo official page text was read.";
+    const card = mode === "public" ? publicFirstAnswer(text).slice(0, 3500) : "";
+    const publicSys = `You are the public helper for one West Bengal, India scheme. Bengali means West Bengal, not Bangladesh. Reply in ${settings.lang === "en" ? "English" : "colloquial Bengali"}. The person already received the catalogue card. This is a follow-up. Do not repeat the whole card. Add only what their question asks. Use the card and the official page. If the page does not say it, say it is not on the page. Do not invent an amount, a fee, a date, or a URL.\n\nCARD:\n${card}${pagesNote}`;
+    const system = mode === "ai" ? shortRules() + law + (researchNote ? "\n\nPages you opened in the browser. Use them. If they do not contain the answer, say so and name the page. Do not invent a fee, an order number or a date. Do not claim a 2021 cutoff.\n\n" + researchNote : "") : mode === "public" ? publicSys : rules() + bikramRules();
+    const r = await aiRun(turns, { images: imgs, signal: chatCtl.signal, agent, system, fast: mode === "office" || mode === "public", maxOut: mode === "public" ? 800 : mode === "office" ? 2400 : undefined, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = dropCutoff(r.text, text); ai.via = r.via;
-    if (/couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
+    if (mode !== "public" && /couldn.t find|no record|cannot confirm|cannot search|can't search|real time|not finding/i.test(ai.content)) {
       ai.panel = [];
       askPanel(text).then(rows => { ai.panel = rows; if (live()) updateAt(box.indexOf(ai)); persist(); });
     }
