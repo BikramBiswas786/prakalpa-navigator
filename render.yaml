@@ -10,6 +10,8 @@ services:
     startCommand: node server.js
     healthCheckPath: /healthz
     autoDeployTrigger: commit
+    # Only keys the code reads. Z.ai also accepts the older name Z_AI.
+    # Other providers in api/chat.js (sambanova, cerebras, sarvam, ...) still work if you add their key.
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -17,11 +19,11 @@ services:
         sync: false
       - key: NARA_API_KEY
         sync: false
+      - key: GROQ_API_KEY
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: NVIDIA_API_KEY
-        sync: false
-      - key: GROQ_API_KEY
         sync: false
       - key: MISTRAL_API_KEY
         sync: false
@@ -31,41 +33,21 @@ services:
         sync: false
       - key: CLOUDFLARE_API_TOKEN
         sync: false
-      - key: SAMBANOVA_API_KEY
-        sync: false
       - key: ZAI_API_KEY
         sync: false
-      - key: CEREBRAS_API_KEY
-        sync: false
-      - key: SARVAM_API_KEY
-        sync: false
-      - key: KIMI_API_KEY
-        sync: false
-      - key: COHERE_API_KEY
-        sync: false
-      - key: DEEPSEEK_API_KEY
-        sync: false
-      - key: DASHSCOPE_API_KEY
-        sync: false
       - key: OPENAI_API_KEY
-        sync: false
-      - key: XAI_API_KEY
-        sync: false
-      - key: TOGETHER_API_KEY
-        sync: false
-      - key: FIREWORKS_API_KEY
         sync: false
       - key: TAVILY_API_KEY
         sync: false
       - key: EXA_API_KEY
         sync: false
+      - key: SERPER_API_KEY
+        sync: false
       - key: FIRECRAWL_API_KEY
         sync: false
       - key: PARALLEL_API_KEY
         sync: false
-      - key: SERPER_API_KEY
-        sync: false
       - key: KEIRO_API_KEY
         sync: false
-      - key: GITHUB_MODELS_TOKEN
+      - key: ADMIN_TOKEN
         sync: false
