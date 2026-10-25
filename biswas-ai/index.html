@@ -391,8 +391,12 @@ textarea.paper { white-space: pre-wrap; }
       <nav class="tasks" id="rail-nav"></nav>
       <div class="railnote">
         <p data-t="priv_note"></p>
+        <p data-t="phone_only"></p>
         <input id="pin-new" type="password" inputmode="numeric" maxlength="8" autocomplete="new-password" aria-label="PIN">
         <div class="tools">
+          <button class="btn small" type="button" id="office-save" data-t="office_file_save"></button>
+          <button class="btn small" type="button" id="office-open" data-t="office_file_open"></button>
+          <input id="office-file" type="file" hidden accept=".json,application/json">
           <button class="btn small" type="button" id="pin-set" data-t="lock_set"></button>
           <button class="btn small" type="button" id="pin-clear" data-t="lock_clear"></button>
           <button class="btn small" type="button" id="new-person" data-t="new_person"></button>
@@ -896,7 +900,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v94", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v95", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -912,7 +916,7 @@ const STR = {
     conv_h: "কথোপকথন", conv_search: "কথোপকথন খুঁজুন", conv_empty: "নতুন কথা", archive: "আর্কাইভ", restore: "ফেরত আনুন", del_chat: "মুছুন", del_sure: "মুছে ফেলবেন?", show_arch: "আর্কাইভ", show_chats: "চ্যাট", arch_empty: "আর্কাইভে কিছু নেই।",
     word_h: "Word", word_note: "লেখা সেভ করুন। সেভ হওয়া ফাইল উপরে ফোল্ডারে থাকবে, Excel-এর উপরেও।", word_title_ph: "ফাইলের নাম", word_body_ph: "এখানে লিখুন", word_save: "সেভ", word_new: "নতুন পাতা", word_saved: "সেভ হয়েছে", word_empty: "আগে কিছু লিখুন।", word_untitled: "নামহীন", word_none: "এখনও কোনো ফাইল সেভ হয়নি।",
     new_person: "নতুন ব্যবহারকারী", new_person_done: "এই ফোনে নতুন ফাঁকা চ্যাট খোলা হয়েছে।",
-    priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।",
+    priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।", phone_only: "কাজ এই ফোনেই সেভ হয়। অন্য কম্পিউটারে নিতে অফিস ফাইল সেভ করুন, সেখানে খুলুন।", office_file_save: "অফিস ফাইল সেভ", office_file_open: "অফিস ফাইল খুলুন", office_file_ok: "অফিস ফাইল খোলা হয়েছে। আগের কাজ রয়ে গেছে।", office_file_bad: "এই ফাইল অফিসের ফাইল নয়।",
     home: "হোম", nav_chat: "অফিসের চ্যাট", nav_deskchat: "ড্রাফটিং ডেস্ক চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "এসডিওর কাগজ", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
     lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
@@ -970,7 +974,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v94", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v95", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -987,7 +991,7 @@ const STR = {
     word_h: "Word", word_note: "Save the writing. Saved files sit in the folder above, and above Excel too.", word_title_ph: "File name", word_body_ph: "Write here", word_save: "Save", word_new: "New page", word_saved: "Saved", word_empty: "Write something first.", word_untitled: "Untitled", word_none: "No file saved yet.",
     new_person: "New person", new_person_done: "A new blank chat is open on this phone.",
     home: "Home", nav_chat: "Office chat", nav_deskchat: "Drafting desk chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "SDO papers", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
-    priv_note: "Each phone has its own chat. Nothing is stored in the link, so another person who opens it cannot read yours. On a shared phone, tap New person.",
+    priv_note: "Each phone has its own chat. Nothing is stored in the link, so another person who opens it cannot read yours. On a shared phone, tap New person.", phone_only: "Work is saved on this phone only. Save the office file to open it on another computer.", office_file_save: "Save office file", office_file_open: "Open office file", office_file_ok: "Office file opened. Work already here was kept.", office_file_bad: "This is not an office file.",
     lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
     rail_office: "Office tasks", rail_public: "For the public", rail_schemes: "Schemes", all_schemes: "All scheme details",
@@ -3657,6 +3661,66 @@ function saveWordFile() {
   vaultSet("words", words.slice(0, 40));
   renderWord(); toast(t("word_saved"));
 }
+function mergeById(local, incoming) {
+  const map = new Map();
+  (local || []).forEach(t => { if (t && t.id) map.set(t.id, t); });
+  (incoming || []).forEach(t => {
+    if (!t || !t.id) return;
+    const old = map.get(t.id);
+    if (!old || (t.at || 0) >= (old.at || 0)) map.set(t.id, t);
+  });
+  return [...map.values()].sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+function mergeKeyed(local, incoming) {
+  const out = Object.assign({}, local || {});
+  Object.keys(incoming || {}).forEach(k => {
+    const rows = incoming[k];
+    if (Array.isArray(rows)) out[k] = mergeById(out[k], rows);
+  });
+  return out;
+}
+function saveOfficeFile() {
+  persist();
+  persistSaved();
+  saveDraft();
+  const pack = {
+    app: "Biswas AI office file",
+    v: 1,
+    at: Date.now(),
+    threads, agentThreads, officeThreads,
+    draftCases, draftSaved, draftIds,
+    words, publicThreads, writeThreads, schemeThreads, schemeChats,
+    memory, examples
+  };
+  offer(`biswas-office-${stamp()}.json`, new Blob([JSON.stringify(pack)], { type: "application/json" }));
+}
+function openOfficeFile(j) {
+  if (!j || j.app !== "Biswas AI office file") return toast(t("office_file_bad"));
+  threads = mergeById(threads, j.threads);
+  if (!threads.length) threads = [{ id: nid(), title: "", at: Date.now(), messages: [] }];
+  if (!threads.some(t => t.id === threadId)) threadId = threads[0].id;
+  chats.ai = (threads.find(t => t.id === threadId) || threads[0]).messages;
+  agentThreads = mergeById(agentThreads, j.agentThreads);
+  officeThreads = mergeKeyed(officeThreads, j.officeThreads);
+  draftCases = mergeKeyed(draftCases, j.draftCases);
+  draftSaved = mergeKeyed(draftSaved, j.draftSaved);
+  draftIds = Object.assign({}, j.draftIds || {}, draftIds);
+  words = mergeById(words, j.words);
+  publicThreads = mergeById(publicThreads, j.publicThreads);
+  writeThreads = mergeById(writeThreads, j.writeThreads);
+  schemeThreads = mergeKeyed(schemeThreads, j.schemeThreads);
+  schemeChats = Object.assign({}, j.schemeChats || {}, schemeChats);
+  (j.memory || []).forEach(m => { const text = m && (m.text || (typeof m === "string" ? m : "")); if (text) learn([text]); });
+  (j.examples || []).forEach(ex => { if (ex && ex.md && !examples.some(x => x.md === ex.md)) examples.push(ex); });
+  examples = examples.slice(-EX_MAX);
+  saveMemory();
+  persistSaved();
+  saveDraft();
+  persist();
+  bindMessages();
+  showView();
+  toast(t("office_file_ok"));
+}
 const persist = () => {
   if (!whoId) return;
   touchThread();
@@ -4464,6 +4528,10 @@ $("#mem-file").addEventListener("change", async e => {
     examples = examples.slice(-EX_MAX); saveMemory(); renderMemory(); toast(t("mem_imported"));
   } catch (err) { toast(t("dl_fail")); }
 });
+$("#office-file").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { openOfficeFile(JSON.parse(await f.text())); } catch (err) { toast(t("office_file_bad")); }
+});
 
 function deleteThread(id) {
   threads = threads.filter(t => t.id !== id);
@@ -4704,6 +4772,8 @@ function startSectionChat() {
   if ((x = el("[data-mem-del]"))) { memory.splice(+x.dataset.memDel, 1); saveMemory(); return renderMemory(); }
   if ((x = el("[data-ex-del]"))) { examples.splice(+x.dataset.exDel, 1); saveMemory(); return renderMemory(); }
   if (el("#mem-export")) return offer(`biswas-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI", memory, examples }, null, 2)], { type: "application/json" }));
+  if (el("#office-save")) return saveOfficeFile();
+  if (el("#office-open")) return $("#office-file").click();
   if (el("#mem-import")) return $("#mem-file").click();
   if (el("#mem-clear")) { memory = []; examples = []; saveMemory(); renderMemory(); return toast(t("mem_cleared")); }
   if ((x = el("[data-act]"))) {
