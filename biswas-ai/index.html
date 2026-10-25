@@ -765,7 +765,8 @@ function officeList() {
 }
 function officeBucket() {
   if (tabs.office === "chat") return "bikram";
-  return officeOpen || "";
+  if (tabs.office === "deskchat") return officeOpen || "";
+  return "";
 }
 function officeWorkName(id) {
   if (id === "saved") return t("office_saved");
@@ -886,7 +887,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v92", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v93", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -960,7 +961,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v92", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v93", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2155,7 +2156,7 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent", "grammar", "word"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "grammar"] };
+const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "grammar"] };
 const TAB_LABEL = { draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
@@ -2190,6 +2191,7 @@ function showView() {
   if (shown === "chat") { renderChat(); scrollDown(); }
   if (tab === "word" || tab === "table") renderWord();
   if (tab === "agent") renderAgentView();
+  refreshHistory();
   renderRail();
 }
 function go(section, tab) {
@@ -3236,10 +3238,62 @@ function setConvHead() {
     name = s ? ((s[settings.lang] || s.bn || {}).n || t("tab_helper")) : t("tab_helper");
   } else if (mode === "office" && tabs.office === "draft") name = t("tab_draft");
   else if (mode === "office" && tabs.office === "deskchat") name = officeOpen ? officeWorkName(officeOpen) : t("tab_deskchat");
-  else if (mode === "office") name = t("tab_bikram");
+  else if (mode === "office" && tabs.office === "chat") name = t("tab_bikram");
+  else if (mode === "office" && tabs.office === "word") name = t("word_h");
+  else if (mode === "office" && tabs.office === "table") name = t("tab_table");
+  else if (mode === "office" && tabs.office === "files") name = t("tab_files");
+  else if (mode === "office" && tabs.office === "grammar") name = t("nav_grammar");
+  else if (mode === "public" && tabs.public === "grammar") name = t("nav_grammar");
+  else if (mode === "public" && tabs.public !== "chat") name = t("tab_catalog");
   b.textContent = name;
 }
+function renderWordConv() {
+  const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
+  const rows = words.filter(w => !q || String(w.title || "").toLowerCase().includes(q));
+  const html = rows.length ? rows.map(w => `<div class="conv-item"><button class="conv${w.id === wordId ? " on" : ""}" type="button" data-word="${w.id}"><b>${esc(w.title || t("word_untitled"))}</b><small>${esc(whenLabel(w.at))}</small></button></div>`).join("") : `<p class="lead">${esc(t("word_none"))}</p>`;
+  const box = $("#sheet-list"); if (box) box.innerHTML = html;
+  setConvHead();
+}
+function renderOwnConv() {
+  const box = $("#sheet-list"); if (box) box.innerHTML = `<p class="lead">${esc(t("conv_empty"))}</p>`;
+  const side = $("#chat-conv"); if (side) side.innerHTML = "";
+  setConvHead();
+}
+function refreshHistory() {
+  const s = $("#hist-sheet");
+  const ag = $("#ag-sheet");
+  if (mode === "ai" && tabs.ai === "agent") {
+    if (s && !s.hidden) s.hidden = true;
+    if (ag && !ag.hidden) renderAgentList();
+    const side = $("#chat-conv"); if (side) side.innerHTML = "";
+    return;
+  }
+  if (ag && mode !== "ai") ag.hidden = true;
+  if (s && !s.hidden) return openHistory();
+  if (mode === "ai" && tabs.ai === "chat") return renderConv();
+  if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return renderOfficeConv();
+  if (mode === "office" && tabs.office === "draft") return;
+  if (mode === "public" && tabs.public === "chat") return renderPublicConv();
+  const side = $("#chat-conv"); if (side) side.innerHTML = "";
+}
+function openHistory() {
+  if (mode === "ai" && tabs.ai === "agent") {
+    const s = $("#ag-sheet"); if (s) { s.hidden = false; renderAgentList(); }
+    const h = $("#hist-sheet"); if (h) h.hidden = true;
+    return;
+  }
+  const s = $("#hist-sheet"); if (!s) return;
+  s.hidden = false;
+  const b = $("#sheet-save"); if (b) b.hidden = !(mode === "office" && tabs.office === "draft");
+  if (mode === "public" && tabs.public === "chat") return renderPublicConv();
+  if (mode === "office" && tabs.office === "draft") return renderDraftConv();
+  if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return renderOfficeConv();
+  if (mode === "office" && tabs.office === "word") return renderWordConv();
+  if (mode === "ai" && tabs.ai === "chat") return renderConv();
+  return renderOwnConv();
+}
 function renderConv() {
+  if (mode !== "ai" || tabs.ai !== "chat") return;
   const name = $("#who-name"); if (name) name.textContent = userName || "";
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = threads.filter(t => (t.messages || []).length && !!t.archived === convArch && (!q || String(t.title || "").toLowerCase().includes(q)));
@@ -3366,6 +3420,7 @@ function touchPublic() {
   if ((messages || []).length) row.at = Date.now();
 }
 function renderPublicConv() {
+  if (mode !== "public" || tabs.public !== "chat") return;
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = publicList().filter(t => (t.messages || []).some(m => m.role === "user") && !!t.archived === pubArch && (!q || String(t.title || "").toLowerCase().includes(q)));
   const html = rows.length ? rows.map(t => convCard(t, "pub")).join("") : `<p class="lead">${esc(pubArch ? t("arch_empty") : t("conv_empty"))}</p>`;
@@ -4454,7 +4509,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-nav]"))) {
     closeRail();
     if (x.dataset.nav === "home") return go("ai", "chat");
-    if (x.dataset.nav.startsWith("grammar")) return go(mode === "public" || mode === "office" ? mode : "ai", "grammar");
+    if (x.dataset.nav.startsWith("grammar")) return go(mode === "public" ? "public" : "office", "grammar");
     const parts = x.dataset.nav.split(":");
     return go(parts[0], parts[1]);
   }
@@ -4507,12 +4562,18 @@ document.addEventListener("click", e => {
   if ((x = el("[data-word]"))) { closeRail(); return openWord(x.dataset.word); }
   if ((x = el("[data-pick]"))) { const n = $("#gate-name"); if (n) n.value = x.dataset.pick; const f = $("#gate-form"); if (f) f.requestSubmit(); return; }
   if (el("#switch-user")) { closeRail(); return showGate(true); }
-  if (el("#conv-new") || el("#hist-new")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
+function startSectionChat() {
+  if (mode === "public" && tabs.public === "chat") return newPublicChat();
+  if (mode === "office" && tabs.office === "draft") return newDraftCase();
+  if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return newOfficeChat();
+  if (mode === "ai" && tabs.ai === "chat") return newThread();
+}
+  if (el("#conv-new") || el("#hist-new")) { closeRail(); return startSectionChat(); }
   if (el("#go-home")) { closeRail(); return go("ai", "chat"); }
   if (el("#sec-ai")) { closeRail(); return go("ai", "chat"); }
-  if (el("#show-convs")) { const s = $("#hist-sheet"); if (s) { s.hidden = false; const b = $("#sheet-save"); if (b) b.hidden = !(mode === "office" && tabs.office === "draft"); mode === "public" ? renderPublicConv() : mode === "office" && tabs.office === "draft" ? renderDraftConv() : mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat") ? renderOfficeConv() : renderConv(); } return; }
+  if (el("#show-convs")) return openHistory();
   if (el("#sheet-close")) { const s = $("#hist-sheet"); if (s) s.hidden = true; return; }
-  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return mode === "public" ? newPublicChat() : mode === "office" && tabs.office === "draft" ? newDraftCase() : mode === "office" ? newOfficeChat() : newThread(); }
+  if (el("#sheet-new") || el("#conv-new") || el("#hist-new")) { const s = $("#hist-sheet"); if (s) s.hidden = true; closeRail(); return startSectionChat(); }
   if (el("#nav-open")) { $("#rail").classList.add("open"); $("#scrim").hidden = false; return; }
   if (el("#scrim")) return closeRail();
   if (el("#lock-now")) {
@@ -4626,7 +4687,7 @@ document.addEventListener("click", e => {
     else save(act, m.content, x);
     return;
   }
-  if (el("#new-chat")) { closeRail(); return mode === "public" ? newPublicChat() : mode === "office" ? newOfficeChat() : newThread(); }
+  if (el("#new-chat")) { closeRail(); return startSectionChat(); }
   if (el("#new-person") || el("#switch-user")) { closeRail(); return showGate(true); }
   if (el("#open-browser")) return browseLatest();
   if (el("#open-deep")) return deepChat();
@@ -4737,7 +4798,7 @@ $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent();
 const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (chatCtl) chatCtl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });
-const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { mode === "public" ? renderPublicConv() : mode === "office" && tabs.office === "draft" ? renderDraftConv() : mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat") ? renderOfficeConv() : renderConv(); });
+const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { if ($("#hist-sheet") && !$("#hist-sheet").hidden) openHistory(); });
 function resume() {
   if (!isOpen()) { showLock(true); showGate(false); return; }
   showGate(true);
