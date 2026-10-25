@@ -29,7 +29,7 @@ let r = await api("create", { name, pin: "1234" }); tok = r.j.token;
 const u = await upload("অফিস/a.txt", new TextEncoder().encode("বাজেট ২০২৫"), "বাজেট ২০২৫ বিল");
 const ask = async (question, format, mode = "ask") => { const t = await (await api("ai", { question, format, mode, scope: {} }, true)).text(); return t.trim().split("\n").map(l => JSON.parse(l)).find(e => e.type === "answer"); };
 const hasT = s => /^\s*\|.*\|\s*\n\s*\|?\s*:?-{2,}/m.test(s || "");
-let a = await ask("prose table please", "auto"); ok(hasT(a.text) && /পুনর্গঠিত/.test(a.text), "prose answer to a table question is reshaped into a table");
+let a = await ask("বাজেট prose table please", "auto") /* v115: must match the file, or the strict not-found gate answers */; ok(hasT(a.text) && /পুনর্গঠিত/.test(a.text), "prose answer to a table question is reshaped into a table");
 a = await ask("prose সারণি দাও", "auto", "analyse"); ok(hasT(a.text), "Bengali সারণি (analyse/map-reduce) gets a table");
 a = await ask("prose summary", "table"); ok(hasT(a.text), "format=table forces a table");
 a = await ask("prose summary", "auto"); ok(!hasT(a.text), "plain question left alone");

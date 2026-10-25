@@ -103,7 +103,8 @@ async function preview(f, hi = "") {
   for (const el of document.querySelectorAll("#s-tree li > div.on")) el.classList.remove("on");
   const li = document.querySelector(`#s-tree li[data-id="${CSS.escape(f.id)}"] > div`); if (li) li.classList.add("on");
   const pv = $("#pv"); const e = ext(f.path); S.sel = f.id;
-  const top = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><b style="flex:1;word-break:break-all" id="pv-name">${esc(f.path)}</b><button class="btn small" type="button" id="pv-dl">⬇ ${esc(t("dl"))}</button></div>`;
+  const top = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><b style="flex:1;word-break:break-all" id="pv-name">${esc(f.path)}</b><button class="btn small" type="button" id="pv-dl">⬇ ${esc(t("dl"))}</button></div>`
+    + (hi && hi.n ? `<div class="cite-box" id="pv-cite"><b>[${Number(hi.n)}] ${esc(hi.label || "")}</b>${hi.text ? ` <mark>${esc(hi.text)}</mark>` : ""}</div>` : "");
   pv.innerHTML = top + `<p class="mute">…</p>`; $("#pv-dl").onclick = () => download(f);
   const body = h => { if (S.sel === f.id) { pv.innerHTML = top + h; $("#pv-dl").onclick = () => download(f); } };
   try {
@@ -166,7 +167,12 @@ function xlsxView(body, buf, hi) {
   const show = name => { const html = XLSX.utils.sheet_to_html(wb.Sheets[name], { header: "", footer: "" });
     body(`<div class="tabs" id="pv-tabs">${wb.SheetNames.map(n => `<button class="btn small${n === name ? " primary" : ""}" type="button" data-sheet="${esc(n)}">${esc(n)}</button>`).join("")}</div><div class="doc" id="pv-sheet">${clean(html)}</div>`);
     const tb = $("#pv-tabs"); if (tb) tb.onclick = ev => { const b = ev.target.closest("[data-sheet]"); if (b) show(b.dataset.sheet); };
-    const r = Number(hi && hi.row); if (r) { const tr = document.querySelectorAll("#pv-sheet tr")[r - 1]; if (tr) { tr.style.background = "#ffe58a"; tr.scrollIntoView({ block: "center" }); } }
+    // v115: highlight the cited rows (row numbers are the sheet's own, 1-based from its first used row)
+    const ws = wb.Sheets[name]; const r0 = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
+    const want = hi && name === (hi.sheet || name) ? (hi.rows && hi.rows.length ? hi.rows : hi.r1 ? Array.from({ length: Math.min(500, (hi.r2 || hi.r1) - hi.r1 + 1) }, (_, i) => hi.r1 + i) : Number(hi.row) ? [Number(hi.row)] : []) : [];
+    const trs = document.querySelectorAll("#pv-sheet tr"); let first = null;
+    for (const r of want) { const tr = trs[r - r0]; if (tr) { tr.classList.add("hl-row"); first = first || tr; } }
+    if (first) first.scrollIntoView({ block: "center" });
   };
   show(hi && hi.sheet && wb.SheetNames.includes(hi.sheet) ? hi.sheet : wb.SheetNames[0]);
 }
@@ -206,8 +212,17 @@ async function ask(q) {
       while ((k = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, k); buf = buf.slice(k + 1); if (!line) continue; let o; try { o = JSON.parse(line); } catch (e) { continue; }
         if (o.type === "answer") ans = o; else if (o.type === "error") throw new Error(o.error || o.message || "ai"); } }
     if (!ans) throw new Error("no answer");
-    out.innerHTML = esc(ans.text) + (ans.sources && ans.sources.length ? `<div class="mute" style="margin-top:8px">${esc(t("sources"))}: ${ans.sources.map((s, n) => `<button class="chip" type="button" data-src="${esc(s)}">[${n + 1}] ${esc(s)}</button>`).join(" ")}</div>` : "");
-    out.onclick = ev => { const b = ev.target.closest("[data-src]"); if (!b) return; const f = S.info.files.find(x => x.path === b.dataset.src || x.path.endsWith("/" + b.dataset.src)); if (f) preview(f); };
+    // v115: [n] markers become chips; each opens the file at the cited page / sheet rows / section with the passage highlighted
+    const cites = ans.cites || []; const byN = new Map(cites.map(c => [c.n, c]));
+    const label = l => !l ? "" : l.page ? (lang === "en" ? "p. " : "পৃ. ") + l.page : l.sheet ? `${l.sheet} ${lang === "en" ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}` : l.h ? l.h.split(" › ").pop() : "";
+    const chip = c => `<button class="chip cite" type="button" data-cite="${c.n}" title="${esc(c.path + (label(c.loc) ? " · " + label(c.loc) : ""))}">[${c.n}]</button>`;
+    const body = esc(ans.text).replace(/\[(\d{1,2})\]/g, (m, n) => byN.has(Number(n)) ? chip(byN.get(Number(n))) : m);
+    out.innerHTML = (ans.notFound ? `<div class="notfound" id="s-notfound">${body}</div>` : body)
+      + (cites.length ? `<div class="mute" style="margin-top:8px" id="s-cites">${esc(t("sources"))}: ${cites.map(c => `<button class="chip" type="button" data-cite="${c.n}">[${c.n}] ${esc(c.path)}${label(c.loc) ? " · " + esc(label(c.loc)) : ""}</button>`).join(" ")}</div>`
+        : ans.sources && ans.sources.length ? `<div class="mute" style="margin-top:8px">${esc(t("sources"))}: ${ans.sources.map((s, n) => `<button class="chip" type="button" data-src="${esc(s)}">[${n + 1}] ${esc(s)}</button>`).join(" ")}</div>` : "");
+    out.onclick = ev => { const b = ev.target.closest("[data-cite],[data-src]"); if (!b) return;
+      if (b.dataset.cite) { const c = byN.get(Number(b.dataset.cite)); const f = c && S.info.files.find(x => x.id === c.id || x.path === c.path); if (f) preview(f, { n: c.n, label: label(c.loc), page: c.loc && c.loc.page, sheet: c.loc && c.loc.sheet, r1: c.loc && c.loc.r1, r2: c.loc && c.loc.r2, rows: c.loc && c.loc.rows, text: c.quote }); return; }
+      const f = S.info.files.find(x => x.path === b.dataset.src || x.path.endsWith("/" + b.dataset.src)); if (f) preview(f); };
   } catch (e) { out.innerHTML = `<span class="msg" id="s-msg">${esc(e.code ? (e.code === "ai_budget" ? t("ai_budget") : why(e)) : t("err", e.message))}</span>`; }
 }
 
