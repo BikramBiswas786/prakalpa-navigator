@@ -772,6 +772,8 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
                 <select id="pd-scope"><option value="sel" data-t="pd_scope_sel"></option><option value="folder" data-t="pd_scope_folder"></option><option value="all" data-t="pd_scope_all"></option></select></div>
               <div class="field"><label for="pd-mode" data-t="pd_mode"></label>
                 <select id="pd-mode"><option value="ask" data-t="pd_mode_ask"></option><option value="analyse" data-t="pd_mode_analyse"></option></select></div>
+              <div class="field"><label for="pd-fmt" data-t="pd_fmt"></label>
+                <select id="pd-fmt"><option value="auto" data-t="pd_fmt_auto"></option><option value="table" data-t="pd_fmt_table"></option><option value="report" data-t="pd_fmt_report"></option><option value="letter" data-t="pd_fmt_letter"></option></select></div>
               <div class="field"><textarea id="pd-q" rows="7" maxlength="2000"></textarea></div>
               <button class="btn primary" type="submit" id="pd-ask" data-t="pd_ask"></button>
               <div class="pd-progress" id="pd-ai-progress"></div>
@@ -1077,7 +1079,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v107", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ · v108", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1151,7 +1153,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v107", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job · v108", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -5414,7 +5416,38 @@ pd.outs = []; pd.outCur = -1;
 const pdOutKey = () => "pd:out:" + (pd.name || "").toLowerCase();
 function pdOutLoad() { try { pd.outs = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); } catch (e) { pd.outs = []; } pd.outCur = pd.outs.length ? 0 : -1; renderPdOut(); }
 function pdOutSave() { try { localStorage.setItem(pdOutKey(), JSON.stringify(pd.outs.slice(0, 20))); } catch (e) { /* full */ } }
-function pdOutAdd(md, sources) { pd.outs.unshift({ md: String(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pdOutSave(); renderPdOut(); }
+/* v108: make any table the AI returns (HTML, tab-separated, pipes without a separator row) a GitHub markdown table */
+function pdNormTables(md) {
+  let s = String(md || "").replace(/\r/g, "");
+  const row = cs => "| " + cs.map(c => String(c).replace(/\|/g, "/").replace(/\s+/g, " ").trim()).join(" | ") + " |";
+  const sep = n => "| " + Array(n).fill("---").join(" | ") + " |";
+  const tbl = rows => { const n = Math.max(...rows.map(r => r.length)); rows = rows.map(r => r.concat(Array(n - r.length).fill(""))); return [row(rows[0]), sep(n), ...rows.slice(1).map(row)].join("\n"); };
+  s = s.replace(/<table[\s\S]*?<\/table>/gi, h => {
+    try { const d = new DOMParser().parseFromString(h, "text/html"); const rows = [...d.querySelectorAll("tr")].map(tr => [...tr.querySelectorAll("th,td")].map(c => c.textContent)).filter(r => r.length);
+      return rows.length ? "\n\n" + tbl(rows) + "\n\n" : h; } catch (e) { return h; }
+  });
+  const L = s.split("\n"), out = []; let fence = false;
+  const isSep = x => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(x) && /-/.test(x);
+  const pipeCells = x => x.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim());
+  const isPipe = x => !fence && (x.match(/\|/g) || []).length >= (/^\s*\|/.test(x) ? 2 : 1) && pipeCells(x).length >= 2 && !isSep(x);
+  const isTab = x => !fence && /\t/.test(x) && x.split("\t").filter(c => c.trim()).length >= 2;
+  for (let i = 0; i < L.length; i++) {
+    if (/^\s*```/.test(L[i])) { fence = !fence; out.push(L[i]); continue; }
+    if (isPipe(L[i])) {
+      const rows = [pipeCells(L[i])]; let j = i + 1;
+      if (j < L.length && isSep(L[j])) j++;
+      while (j < L.length && isPipe(L[j])) rows.push(pipeCells(L[j++]));
+      if (rows.length >= 2 || isSep(L[i + 1] || "")) { if (out.length && out[out.length - 1].trim()) out.push(""); out.push(tbl(rows), ""); i = j - 1; continue; }
+    }
+    if (isTab(L[i])) {
+      const rows = []; let j = i; while (j < L.length && isTab(L[j])) rows.push(L[j++].split("\t").map(c => c.trim()));
+      if (rows.length >= 2) { if (out.length && out[out.length - 1].trim()) out.push(""); out.push(tbl(rows), ""); i = j - 1; continue; }
+    }
+    out.push(L[i]);
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+function pdOutAdd(md, sources) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pdOutSave(); renderPdOut(); }
 function renderPdOut() {
   const doc = $("#pd-out-doc"); if (!doc) return; const o = pd.outs[pd.outCur];
   doc.innerHTML = o ? mdToHtml(o.md) + (o.sources && o.sources.length ? `<p class="src pd-used"><b>${esc(t("pd_ai_used"))} (${o.sources.length}):</b> ${o.sources.map(s => "📄 " + esc(s)).join(" · ")}</p>` : "") : `<p class="hint">${esc(t("pd_out_empty"))}</p>`;
@@ -5772,7 +5805,7 @@ async function pdAsk() {
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
-    const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, lang: settings.lang }) });
+    const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang }) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); const e = new Error(j.error || "http_" + r.status); e.info = j; throw e; }
     const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
     for (;;) {
