@@ -555,6 +555,8 @@ function mountSkills() {
   document.querySelectorAll(".ba-skill").forEach(x => { if (x.dataset.lang !== lang()) x.remove(); });
   const q = document.getElementById("q");
   if (q && !document.querySelector(".ba-skill.main")) { const form = q.closest("form") || q.parentElement; form.before(skillSel("main")); }
+  const ag = document.getElementById("ag-form");
+  if (ag && !document.querySelector(".ba-skill.ag")) ag.before(skillSel("ag"));
   const pq = document.getElementById("pd-q");
   if (pq && !document.querySelector(".ba-skill.pd")) { const f = pq.closest(".field") || pq; f.after(skillSel("pd")); }
 }
