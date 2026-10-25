@@ -4296,7 +4296,7 @@ async function runBiswasAgent(job) {
       ai.error = "";
     } else {
     const found = deepDump(pages);
-    ai.pages = pages.map(p => ({ title: p.title, url: p.url, via: p.via || "", text: String(p.text || "").slice(0, 900) })); // v110: snap() lived inside try
+    ai.pages = pages.map(p => ({ title: p.title, url: p.url, via: p.via || "", text: String(p.text || "").slice(0, 900) })); // v111: snap() lived inside try
     console.warn("agent error", e && (e.message || e.code));
     ai.content = found ? hideAudit(found) : cleanAgent((e && e.text) || "");
     ai.error = found ? "" : aiFailed(e);
@@ -6017,6 +6017,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=110" defer></script>
+<script src="/attach.js?v=111" defer></script>
 </body>
 </html>
