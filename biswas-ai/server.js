@@ -23,6 +23,50 @@ const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 const MAX_BODY = 12 * 1024 * 1024;
 
+import dns from "node:dns/promises";
+import net from "node:net";
+// Blocks private, loopback, link-local, CGNAT and metadata ranges after DNS lookup.
+function privateIp(ip) {
+  if (net.isIPv6(ip)) { const v = ip.toLowerCase(); if (v.startsWith("::ffff:")) return privateIp(v.slice(7)); return v === "::1" || v === "::" || /^f[cd]|^fe[89ab]/.test(v); }
+  const [a, b] = ip.split(".").map(Number);
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+}
+async function publicHost(url) {
+  try { const { hostname } = new URL(url); const rows = await dns.lookup(hostname.replace(/^\[|\]$/g, ""), { all: true }); return rows.length > 0 && rows.every(r => !privateIp(r.address)); } catch (e) { return false; }
+}
+// Follows up to 3 redirects by hand, re-checking every hop.
+async function safeFetch(url, opts) {
+  let u = safeHttpUrl(url);
+  for (let hop = 0; u && hop < 4; hop++) {
+    if (!(await publicHost(u))) return null;
+    const r = await fetch(u, { ...opts, redirect: "manual" });
+    if (r.status < 300 || r.status > 399) return r;
+    u = safeHttpUrl(new URL(r.headers.get("location") || "", u).toString());
+  }
+  return null;
+}
+// Small per-IP limiter (in memory; resets on restart). Render's proxy puts the real
+// client IP as the FIRST entry of X-Forwarded-For; fall back to the socket address.
+const rateHits = new Map();
+function clientIp(req) {
+  const xff = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return xff || String(req.headers["x-real-ip"] || "").trim() || String(req.socket.remoteAddress || "unknown");
+}
+function limited(req, bucket, max, windowMs) {
+  const key = bucket + ":" + clientIp(req);
+  const now = Date.now();
+  let row = rateHits.get(key);
+  if (!row || now - row.t > windowMs) { row = { n: 0, t: now, w: windowMs }; rateHits.set(key, row); }
+  row.n += 1;
+  if (rateHits.size > 20000) rateHits.clear(); // hard memory cap
+  return row.n > max;
+}
+// Drop expired windows every minute so memory stays small on the 512 MB instance.
+setInterval(() => { const now = Date.now(); for (const [k, r] of rateHits) if (now - r.t > r.w) rateHits.delete(k); }, 60 * 1000).unref();
+function tooMany(res) {
+  res.writeHead(429, { "content-type": "application/json; charset=utf-8", "retry-after": "60", "cache-control": "no-store" });
+  res.end(JSON.stringify({ error: "too_many_requests", retryAfter: 60, message: "Too many requests from this device. Please wait a minute and try again." }));
+}
 function safeHttpUrl(raw) {
   try {
     const u = new URL(raw);
@@ -82,16 +126,16 @@ function readableText(html) {
 async function readPage(url) {
   const safe = safeHttpUrl(url);
   if (!safe) return "";
-  const r = await fetch(safe, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0 (compatible; BiswasAI/1.0)" } });
-  if (!r.ok) return "";
+  const r = await safeFetch(safe, { signal: AbortSignal.timeout(8000), headers: { "user-agent": "Mozilla/5.0 (compatible; BiswasAI/1.0)" } });
+  if (!r || !r.ok) return "";
   return stripPage(await r.text());
 }
 async function readHtml(url) {
   const safe = safeHttpUrl(url);
   if (!safe) return "";
   try {
-    const r = await fetch(safe, { redirect: "follow", signal: AbortSignal.timeout(9000), headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "accept": "text/html" } });
-    if (!r.ok) return "";
+    const r = await safeFetch(safe, { signal: AbortSignal.timeout(9000), headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36", "accept": "text/html" } });
+    if (!r || !r.ok) return "";
     return await r.text();
   } catch (e) { return ""; }
 }
@@ -202,8 +246,8 @@ async function openReadable(url) {
   const safe = safeHttpUrl(url);
   if (!safe) return { url: "", text: "" };
   try {
-    const r = await fetch(safe, { redirect: "follow", signal: AbortSignal.timeout(8000), headers: { "user-agent": CHROME, accept: "text/html" } });
-    if (!r.ok) return { url: "", text: "" };
+    const r = await safeFetch(safe, { signal: AbortSignal.timeout(8000), headers: { "user-agent": CHROME, accept: "text/html" } });
+    if (!r || !r.ok) return { url: "", text: "" };
     const text = readableText(await r.text());
     return { url: r.url || safe, text };
   } catch (e) { return { url: "", text: "" }; }
@@ -702,6 +746,8 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://local");
   try {
     if (url.pathname === "/api/chat") {
+      if (url.searchParams.get("test") && (!process.env.ADMIN_TOKEN || req.headers["x-admin-token"] !== process.env.ADMIN_TOKEN)) { res.writeHead(403, { "content-type": "application/json" }).end(JSON.stringify({ error: "forbidden" })); return; }
+      if (req.method === "POST" && limited(req, "chat", 30, 60 * 1000)) { tooMany(res); return; }
       if (req.method !== "GET" && req.method !== "POST") { res.writeHead(405).end(); return; }
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > MAX_BODY) { res.writeHead(413).end(); return; } chunks.push(c); }
@@ -724,6 +770,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/api/research" && req.method === "POST") {
+      if (limited(req, "research", 20, 60 * 1000)) { tooMany(res); return; }
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 20000) { res.writeHead(413).end(); return; } chunks.push(c); }
       let body = {};
@@ -793,7 +840,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
       return;
     }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v96"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v97"); return; }
     res.writeHead(404, { "content-type": "text/plain" }).end("Not found");
   } catch (e) {
     console.error(e);

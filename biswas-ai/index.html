@@ -868,6 +868,9 @@ let chatCtl = null;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function toast(m) { const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = m; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+// Research calls that hit the per-device limit show one friendly note instead of failing silently.
+{ const realFetch = window.fetch.bind(window); let told = 0;
+  window.fetch = async (...args) => { const r = await realFetch(...args); try { if (r.status === 429 && String(args[0]).includes("/api/research") && Date.now() - told > 30000) { told = Date.now(); toast(errText("too_many")); } } catch (e) { /* ignore */ } return r; }; }
 const pad = n => String(n).padStart(2, "0");
 const today = () => { const d = new Date(); return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear(); };
 
@@ -900,7 +903,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v96", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", ag_h: "একটা কাজ · v97", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -974,7 +977,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", ag_h: "One job · v96", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", ag_h: "One job · v97", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2085,6 +2088,7 @@ const CLIENT_TIMEOUT_MS = 150000;
 const ERR = {
   bn: {
     not_granted: "AI ব্যবহারের অনুমতি দেওয়া হয়নি। পাতাটি আবার খুলে অনুমতি দিন।", sampling_disabled: "এই অ্যাকাউন্টে AI চালু নেই।",
+    too_many: "এই ডিভাইস থেকে এক মিনিটে অনেক বেশি প্রশ্ন এসেছে। এক মিনিট অপেক্ষা করে আবার চেষ্টা করুন।",
     rate_limited: "আজকের ফ্রি AI-এর সীমা শেষ বা খুব বেশি প্রশ্ন একসঙ্গে এসেছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।", session_expired: "আবার সাইন ইন করুন।",
     prompt_too_large: "লেখা বা ফাইল খুব বড়। ছোট অংশ দিন বা নতুন চ্যাট শুরু করুন।", refused: "এর উত্তর দেওয়া গেল না। অন্যভাবে লিখুন।",
     image_rejected: "ছবিটি নেওয়া গেল না। অন্য ছবি দিন।", images_unavailable: "এখন ছবি পড়তে পারে এমন AI পাওয়া যাচ্ছে না। লেখা-সহ PDF বা Word দিন।",
@@ -2094,6 +2098,7 @@ const ERR = {
   },
   en: {
     not_granted: "Permission to use the AI was not given. Reopen the page and allow it.", sampling_disabled: "The AI is not available for this account.",
+    too_many: "Too many requests from this device in a minute. Please wait a minute and try again.",
     rate_limited: "Today's free AI limit is used up, or too many requests came at once. Try again later.", session_expired: "Please sign in again.",
     prompt_too_large: "The text or file is too large. Send a smaller part or start a new chat.", refused: "This could not be answered. Try wording it differently.",
     image_rejected: "That image could not be used. Try another one.", images_unavailable: "No AI that can read images is available now. Use a PDF or Word file with text.",
@@ -2114,7 +2119,7 @@ async function serverAsk(system, turns, imgs, { signal, onText, fast, maxOut } =
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
-    throw { code: res.status === 429 ? "rate_limited" : res.status === 413 ? "prompt_too_large" : j.error === "not_configured" ? "server_unconfigured" : j.error === "no_vision" ? "images_unavailable" : res.status === 502 ? "all_failed" : "upstream_error" };
+    throw { code: res.status === 429 && j.error === "too_many_requests" ? "too_many" : res.status === 429 ? "rate_limited" : res.status === 413 ? "prompt_too_large" : j.error === "not_configured" ? "server_unconfigured" : j.error === "no_vision" ? "images_unavailable" : res.status === 502 ? "all_failed" : "upstream_error" };
   }
   const via = (res.headers.get("x-ai-provider") || "").split("/")[0];
   const reader = res.body.getReader(); const dec = new TextDecoder(); let text = "";
@@ -2667,7 +2672,18 @@ let xlCell = { r: 1, c: 0 };
 let xlQuery = "";
 const colName = i => { let s = "", n = i + 1; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
 const colIndex = name => { let n = 0; for (const ch of String(name).toUpperCase()) { if (ch < "A" || ch > "Z") return -1; n = n * 26 + (ch.charCodeAt(0) - 64); } return n - 1; };
-const cellNum = (r, c) => { const v = grid[r] && grid[r][c]; if (v == null || String(v).trim() === "") return null; const raw = String(v).replace(/[₹,\s]/g, ""); if (!/^-?\d+(\.\d+)?$/.test(raw)) return null; const n = Number(raw); return Number.isFinite(n) ? n : null; };
+const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
+// One cell = one number. Strip only ₹, outer spaces and well-formed thousands commas
+// (12,345 or 1,23,456). "76 75", "76\n75" or "76,75" are not numbers, never 7675.
+const cellNum = (r, c) => {
+  const v = grid[r] && grid[r][c];
+  if (v == null || String(v).trim() === "") return null;
+  let raw = String(v).replace(/[০-৯]/g, d => String(BN_DIGITS.indexOf(d))).replace(/₹/g, "").trim();
+  if (/^-?(\d{1,3}(,\d{3})+|\d{1,2}(,\d{2})*,\d{3})(\.\d+)?$/.test(raw)) raw = raw.replace(/,/g, "");
+  if (!/^-?\d+(\.\d+)?$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+};
 const xlSay = m => { const el = $("#xl-result"); if (el) el.textContent = m || ""; };
 function setCell(r, c, value) {
   while (grid.length <= r) grid.push(grid[0].map(() => ""));
@@ -2743,9 +2759,13 @@ function evalRange(s) {
   if (name === "MAX") return Math.max(...nums);
   return null;
 }
+const STAT_MARKS = new Set(["মোট", "গড়", "Total", "Average", "Count", "গণনা"]);
 function colStats(c) {
   const nums = [];
-  for (let r = 1; r < grid.length; r++) { const n = cellNum(r, c); if (n != null) nums.push(n); }
+  for (let r = 1; r < grid.length; r++) {
+    if (STAT_MARKS.has(String((grid[r] || [])[0] ?? "").trim())) continue; // never add an old total into a new one
+    const n = cellNum(r, c); if (n != null) nums.push(n);
+  }
   return nums;
 }
 function statRow(label) {
@@ -4415,6 +4435,7 @@ $("#d-rev-attach").addEventListener("click", () => $("#d-rev-file").click());
 $("#d-rev-file").addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, draftRevFiles, renderDraftForm); });
 
 // table maker
+$("#t-grid").addEventListener("keydown", e => { const td = e.target.closest("td[data-r]"); if (td && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); td.blur(); } });
 $("#t-grid").addEventListener("input", e => { const td = e.target.closest("td[data-r]"); if (!td) return; grid[+td.dataset.r][+td.dataset.c] = td.innerText.replace(/\n+$/, ""); saveGrid(); });
 $("#t-aiform").addEventListener("submit", async e => {
   e.preventDefault();

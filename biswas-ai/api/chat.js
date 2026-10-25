@@ -186,6 +186,21 @@ function openaiEvent(ev) {
   return out;
 }
 
+// Upstream error bodies can echo keys back (e.g. OpenAI "Incorrect API key provided: ...").
+// Mask anything key-like before it is stored, logged or counted.
+export function redact(text) {
+  let s = String(text || "");
+  for (const p of Object.values(PROVIDERS)) for (const name of [p.key, p.also, p.alt]) {
+    const v = name ? env(name) : ""; if (v.length >= 4) s = s.split(v).join("[redacted]");
+  }
+  return s
+    .replace(/(Incorrect API key provided:\s*)[^\s.,"']+/gi, "$1[redacted]")
+    .replace(/(Bearer\s+)[A-Za-z0-9._~+\/=-]+/gi, "$1[redacted]")
+    .replace(/\b(sk|gsk|nvapi|xai|pk|rk|csk|tvly|fc|AIza)[-_][A-Za-z0-9._-]{6,}/g, "[redacted]")
+    .replace(/\bAIza[A-Za-z0-9_-]{20,}/g, "[redacted]")
+    .replace(/((?:api[_-]?key|token|key|secret|authorization)["']?\s*[:=]\s*["']?)[A-Za-z0-9._~+\/-]{8,}/gi, "$1[redacted]")
+    .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "[redacted]");
+}
 const timeout = (ms, label) => new Promise((_, rej) => setTimeout(() => rej(new Error(label)), ms));
 
 // Sends one request and waits for the first piece of text. Resolves with
@@ -195,7 +210,7 @@ async function attempt(p, model, body, signal, firstMs = FIRST_TEXT_MS) {
   const ctl = new AbortController();
   const stop = () => ctl.abort();
   if (signal) signal.addEventListener("abort", stop, { once: true });
-  const fail = (status, error) => { ctl.abort(); return { ok: false, status, error: String(error || "").slice(0, 300) }; };
+  const fail = (status, error) => { ctl.abort(); return { ok: false, status, error: redact(error).slice(0, 300) }; };
   let upstream;
   try {
     upstream = await Promise.race([
