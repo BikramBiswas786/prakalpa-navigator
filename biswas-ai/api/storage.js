@@ -20,7 +20,7 @@ const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCode
 export const disposition = name => `attachment; filename="${(String(name).normalize("NFKD").replace(/[^\x20-\x7e]/g, "_").replace(/["\\%]/g, "_").trim() || "download")}"; filename*=UTF-8''${enc(String(name))}`;
 const encPath = p => p.split("/").map(enc).join("/");
 // Keys are built only by api/pendrive.js from hex ids; refuse anything else.
-const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$|^stats\/usage\.json$/;
+const SAFE_KEY = /^pendrives\/[a-f0-9]{24}\/[a-z0-9._\/-]{1,200}$|^names\/[a-f0-9]{64}\.json$|^stats\/usage\.json$|^stats\/egress\.json$|^shares\/[a-f0-9]{32}\.json$/;
 function checkKey(key) { if (!SAFE_KEY.test(key) || key.includes("..")) throw new Error("bad key"); return key; }
 
 /* ---------------- Any S3-compatible store (Backblaze B2, Cloudflare R2, versitygw, MinIO) ---------------- */
@@ -143,9 +143,10 @@ export class S3Storage {
     }
     return { total, count };
   }
-  async presignGet(key, filename) {
+  async presignGet(key, filename, opt = {}) {
     const q = filename ? { "response-content-disposition": disposition(filename) } : {};
-    return this.presign("GET", key, q, 900);
+    if (opt.type) { q["response-content-type"] = opt.type; q["response-content-disposition"] = "inline"; } // v113: share-link previews
+    return this.presign("GET", key, q, opt.expires || 900);
   }
 }
 export const R2Storage = S3Storage; // old name
@@ -185,7 +186,7 @@ export class LocalStorage {
     await fs.promises.rm(dir, { recursive: true, force: true });
   }
   async abortMultipart(key, uploadId) { await fs.promises.rm(this.file(key) + ".parts-" + uploadId, { recursive: true, force: true }); }
-  async presignGet(key, filename) { return this.sign("get", key, filename || ""); }
+  async presignGet(key, filename, opt = {}) { return this.sign("get", key, opt.type ? "ct:" + opt.type : (filename || "")); }
   // Serves the signed local URLs. Returns true when handled.
   async serve(req, res, url) {
     let v; try { v = this.verify(url.searchParams); } catch (e) { v = null; }
@@ -214,7 +215,8 @@ export class LocalStorage {
       const f = this.file(v.key);
       if (!fs.existsSync(f)) { res.writeHead(404).end(); return; }
       const h = { "content-type": "application/octet-stream", "content-length": fs.statSync(f).size };
-      if (v.extra) h["content-disposition"] = disposition(v.extra);
+      if (v.extra.startsWith("ct:")) { h["content-type"] = v.extra.slice(3); h["content-disposition"] = "inline"; }
+      else if (v.extra) h["content-disposition"] = disposition(v.extra);
       res.writeHead(200, h); fs.createReadStream(f).pipe(res); return;
     }
     res.writeHead(405).end();

@@ -288,7 +288,7 @@ export async function handle(req, res, url, body, send) {
     });
   }
 
-  const id = session(req);
+  const id = req.pdAs || session(req); // v113: share upload-request links act on the owner's pendrive with a fixed op set
   if (op === "list") {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
     const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text }) => ({ id, path, size, type, mtime, text }));
@@ -547,12 +547,23 @@ function moveTree(ix, old, np) {
 }
 async function dropFiles(id, ix, list) {
   const withText = list.filter(fid => ix.files[fid].text);
-  for (let i = 0; i < list.length; i += 8) await Promise.all(list.slice(i, i + 8).map(async fid => {
-    await bk(ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
-    if (ix.files[fid].text) await storage.del(`${P(id)}/t/${fid}.txt`);
-  }));
+  // v113: one flaky storage call used to fail the whole delete with "server" (objects gone, index unchanged).
+  // Now each object delete is retried; if a backend still refuses, the key is parked in ix.gc and retried by the next delete.
+  const keys = [];
+  for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }); }
+  const old = (ix.gc || []).slice(0, 50); ix.gc = (ix.gc || []).slice(50);
+  await delKeys(ix, [...keys, ...old]);
   if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); }
   for (const fid of list) delete ix.files[fid];
+}
+async function delKeys(ix, keys) {
+  for (let i = 0; i < keys.length; i += 8) await Promise.all(keys.slice(i, i + 8).map(async it => {
+    for (let n = 0; ; n++) {
+      try { await (it.b === null ? storage : bk(it.b).st).del(it.k); return; }
+      catch (e) { if (n >= 2) { console.warn("pendrive: delete deferred", e.message); (ix.gc = ix.gc || []).push(it); return; } await new Promise(r => setTimeout(r, 300 * (n + 1))); }
+    }
+  }));
+  if (ix.gc && ix.gc.length > 5000) ix.gc = ix.gc.slice(-5000);
 }
 async function dropFile(id, ix, fid) {
   await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
@@ -637,3 +648,5 @@ async function aiJob(req, res, id, body) {
   res.end();
 }
 export { HttpError };
+// v113: helpers for api/share.js (share links, upload-request links)
+export const internals = { session, meta, index, cget, cset, withLock, bk, P, hex, scrypt, cleanPath, under, fail, aiJob, limitedKey: null };

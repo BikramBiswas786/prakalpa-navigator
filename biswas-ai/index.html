@@ -398,6 +398,9 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 .pd-drop-hint { flex: 1 1 200px; text-align: center; color: var(--muted); font-size: .9rem; }
 .pd-confirm, .pd-batch { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; display: grid; gap: 6px; font-size: .88rem; }
 .pd-confirm b { font-size: .98rem; }
+.pd-sharebox label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .pd-sharebox input[type=text], .pd-sharebox input[type=password], .pd-sharebox input[type=number], .pd-sharebox select { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: transparent; color: inherit; }
+.pd-sharebox .pd-sh-url { font-family: ui-monospace, Consolas, monospace; word-break: break-all; padding: 6px 8px; border: 1px dashed var(--line); border-radius: 6px; }
+.pd-sh-item { border-top: 1px solid var(--line); padding: 6px 0; display: grid; gap: 3px; } .pd-sh-item details summary { cursor: pointer; }
 .pd-confirm .row, .pd-batch .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .pd-batch .pd-bar { max-width: none; height: 10px; }
 .pd-bar.warn i { background: #c0392b; }
@@ -757,7 +760,11 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
                 <button class="btn small" type="button" id="pd-move" data-t="pd_move"></button>
                 <button class="btn small" type="button" id="pd-download" data-t="pd_dl_sel"></button>
                 <button class="btn small" type="button" id="pd-delete" data-t="pd_delete"></button>
+                <button class="btn small" type="button" id="pd-share" data-t="pd_sh_btn"></button>
+                <button class="btn small" type="button" id="pd-request" data-t="pd_sh_req"></button>
+                <button class="btn small" type="button" id="pd-links" data-t="pd_sh_links"></button>
               </div>
+              <div class="pd-confirm pd-sharebox" id="pd-sharebox" hidden aria-live="polite"></div>
               <div class="pd-drop" id="pd-drop">
                 <table class="pd-list"><thead><tr><th><input type="checkbox" id="pd-all" aria-label="All"></th><th data-t="pd_col_name"></th><th data-t="pd_col_size"></th><th data-t="pd_col_date"></th></tr></thead><tbody id="pd-rows"></tbody></table>
               </div>
@@ -5121,6 +5128,10 @@ Object.assign(STR.bn, {
   pd_pin_hint: "৬ বা তার বেশি সংখ্যার PIN দিলে বেশি নিরাপদ।", pd_create: "বানান", pd_open: "খুলুন", pd_close: "বন্ধ করুন",
   pd_up_files: "ফাইল যোগ করুন", pd_up_folder: "ফোল্ডার যোগ করুন (ডেস্কটপ থেকে)", pd_mkdir: "নতুন ফোল্ডার", pd_rename: "নাম বদল", pd_move: "সরান", pd_download: "ডাউনলোড", pd_delete: "মুছুন",
   pd_col_name: "নাম", pd_col_size: "সাইজ", pd_col_date: "তারিখ", pd_drop: "ফোল্ডার বা ফাইল এখানে টেনে আনুন", pd_root: "পেনড্রাইভ", pd_empty: "এই ফোল্ডার খালি।",
+  pd_sh_btn: "🔗 শেয়ার লিংক", pd_sh_req: "📥 ফাইল চাওয়ার লিংক", pd_sh_links: "🔗 আমার লিংক", pd_sh_h: n => `${n}টি জিনিস শেয়ার করুন`, pd_sh_reqh: "অন্যরা যেন এই পেনড্রাইভে ফাইল পাঠাতে পারে", pd_sh_exp: "মেয়াদ", pd_sh_1d: "১ দিন", pd_sh_7d: "৭ দিন", pd_sh_30d: "৩০ দিন", pd_sh_never: "কখনো না",
+  pd_sh_max: "সর্বোচ্চ ডাউনলোড (০ = সীমা নেই)", pd_sh_pw: "পাসওয়ার্ড (ঐচ্ছিক)", pd_sh_ai: "AI-কে প্রশ্ন করতে দিন", pd_sh_title: "নাম", pd_sh_make: "লিংক তৈরি", pd_sh_cancel: "বন্ধ", pd_sh_copy: "কপি", pd_sh_copied: "লিংক কপি হয়েছে", pd_sh_revoke: "বন্ধ করুন", pd_sh_revoked: "বন্ধ",
+  pd_sh_folder: "কোন ফোল্ডারে আসবে", pd_sh_maxf: "সর্বোচ্চ ফাইল", pd_sh_maxmb: "প্রতি ফাইল সর্বোচ্চ (MB)", pd_sh_none: "এখনো কোনো লিংক নেই।", pd_sh_dl: n => `${n} বার ডাউনলোড`, pd_sh_up: n => `${n}টি ফাইল এসেছে`, pd_sh_act: "সাম্প্রতিক কার্যকলাপ", pd_sh_ev: { download: "ডাউনলোড", zip: "ZIP ডাউনলোড", upload: "আপলোড", ai: "AI প্রশ্ন" },
+  pd_sh_state: { active: "চালু", revoked: "বন্ধ", expired: "মেয়াদ শেষ", limit: "সীমা শেষ" }, pd_sh_today: (a, b) => `আজকের শেয়ার ডাউনলোড: ${a} / ${b}`, pd_sh_kind_up: "ফাইল চাওয়া", pd_sh_kind_sh: "শেয়ার",
   pd_dl_row: "ডাউনলোড", pd_dl_zip_row: "ZIP হিসেবে ডাউনলোড", pd_dl_sel: "⬇ বাছাই করা ডাউনলোড", pd_dl_prep: "ZIP তৈরি হচ্ছে…", pd_dl_prog: (a, b, x, y) => `${a}/${b}টি ফাইল · ${x} / ${y}`, pd_dl_done: n => `ডাউনলোড শেষ: ${n}`, pd_dl_fail: e => `ডাউনলোড হয়নি: ${e}`, pd_dl_cancel: "বাতিল", pd_dl_big: n => `এই ফোল্ডারটি ${n}। এই ব্রাউজারে বড় ZIP সরাসরি ডিস্কে লেখা যায় না, পুরোটা মেমরিতে রাখতে হবে (২ GB-র বেশি হলে আটকে যেতে পারে)। Chrome/Edge ডেস্কটপে চেষ্টা করুন। তবুও চালাবেন?`, pd_dl_empty: "এই ফোল্ডারে কোনো ফাইল নেই", pd_ctx_ai: "🤖 AI-র জন্য বাছুন / সরান", pd_ctx_open: "খুলুন",
   pd_out_h: "📄 ফলাফল", pd_out_copy: "কপি", pd_out_share: "শেয়ার", pd_out_save: "পেনড্রাইভে রাখুন", pd_out_hist: "আগের ফলাফল", pd_out_empty: "AI-কে প্রশ্ন করলে উত্তর এখানে সুন্দর করে সাজানো দেখাবে। তারপর Word, PDF, Excel বা পেনড্রাইভে রাখতে পারবেন।", pd_out_copied: "কপি হয়েছে", pd_out_notable: "এই ফলাফলে কোনো টেবিল নেই", pd_out_save_q: "পেনড্রাইভে কোন নামে রাখবেন? (.docx, .md, .txt বা .csv)", pd_out_save_ok: p => `পেনড্রাইভে রাখা হচ্ছে: ${p}`, pd_out_none: "আগে AI-কে কিছু জিজ্ঞেস করুন", pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
   pd_mode: "কাজের ধরন", pd_mode_ask: "প্রশ্ন (দরকারি অংশ খুঁজে)", pd_mode_analyse: "সব ফাইল বিশ্লেষণ", pd_ask: "AI-কে বলুন", pd_q_ph: "যেমন: বারাসতের জমির মামলার শুনানি কবে? বা: সব ফাইলের সারাংশ করে একটা নোটশিট লিখুন।",
@@ -5145,6 +5156,10 @@ Object.assign(STR.en, {
   pd_pin_hint: "A PIN of 6 or more digits is stronger.", pd_create: "Create", pd_open: "Open", pd_close: "Close",
   pd_up_files: "Add files", pd_up_folder: "Add folder from desktop", pd_mkdir: "New folder", pd_rename: "Rename", pd_move: "Move", pd_download: "Download", pd_delete: "Delete",
   pd_col_name: "Name", pd_col_size: "Size", pd_col_date: "Date", pd_drop: "Drag folders or files here", pd_root: "Pendrive", pd_empty: "This folder is empty.",
+  pd_sh_btn: "🔗 Share link", pd_sh_req: "📥 Request files", pd_sh_links: "🔗 My links", pd_sh_h: n => `Share ${n} item${n === 1 ? "" : "s"}`, pd_sh_reqh: "Let others send files into this pendrive", pd_sh_exp: "Expires", pd_sh_1d: "1 day", pd_sh_7d: "7 days", pd_sh_30d: "30 days", pd_sh_never: "Never",
+  pd_sh_max: "Max downloads (0 = no limit)", pd_sh_pw: "Password (optional)", pd_sh_ai: "Allow AI questions", pd_sh_title: "Title", pd_sh_make: "Create link", pd_sh_cancel: "Close", pd_sh_copy: "Copy", pd_sh_copied: "Link copied", pd_sh_revoke: "Revoke", pd_sh_revoked: "Revoked",
+  pd_sh_folder: "Save into folder", pd_sh_maxf: "Max files", pd_sh_maxmb: "Max size per file (MB)", pd_sh_none: "No links yet.", pd_sh_dl: n => `${n} downloads`, pd_sh_up: n => `${n} files received`, pd_sh_act: "Recent activity", pd_sh_ev: { download: "Downloaded", zip: "Downloaded ZIP", upload: "Uploaded", ai: "AI question" },
+  pd_sh_state: { active: "Active", revoked: "Revoked", expired: "Expired", limit: "Limit reached" }, pd_sh_today: (a, b) => `Today's share downloads: ${a} / ${b}`, pd_sh_kind_up: "Request", pd_sh_kind_sh: "Share",
   pd_dl_row: "Download", pd_dl_zip_row: "Download as ZIP", pd_dl_sel: "⬇ Download selected", pd_dl_prep: "Making ZIP…", pd_dl_prog: (a, b, x, y) => `${a}/${b} files · ${x} / ${y}`, pd_dl_done: n => `Downloaded: ${n}`, pd_dl_fail: e => `Download failed: ${e}`, pd_dl_cancel: "Cancel", pd_dl_big: n => `This folder is ${n}. This browser can't write a big ZIP straight to disk, so it must be held in memory (may fail above 2 GB). Chrome/Edge on desktop works best. Continue?`, pd_dl_empty: "This folder has no files", pd_ctx_ai: "🤖 Select / unselect for AI", pd_ctx_open: "Open",
   pd_out_h: "📄 Output", pd_out_copy: "Copy", pd_out_share: "Share", pd_out_save: "Save to pendrive", pd_out_hist: "Recent outputs", pd_out_empty: "Ask the AI and the answer appears here as a formatted document. Then export to Word, PDF, Excel or save it to the pendrive.", pd_out_copied: "Copied", pd_out_notable: "This output has no table", pd_out_save_q: "Save to the pendrive as? (.docx, .md, .txt or .csv)", pd_out_save_ok: p => `Saving to pendrive: ${p}`, pd_out_none: "Ask the AI something first", pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
   pd_mode: "Task", pd_mode_ask: "Question (finds the relevant parts)", pd_mode_analyse: "Analyse every file", pd_ask: "Ask the AI", pd_q_ph: "e.g. When is the hearing in the Barasat land case? Or: summarise all files and write a notesheet.",
@@ -5225,6 +5240,38 @@ function renderPdList() {
   const rows = [...folders.sort((a, b) => a.name.localeCompare(b.name)), ...files.sort((a, b) => a.name.localeCompare(b.name))];
   $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t("pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
   $("#pd-all").checked = rows.length > 0 && rows.every(r => pd.sel.has(r.key));
+}
+/* ---- v113: share links + upload-request links (owner side) ---- */
+function pdShareForm(kind) {
+  const box = $("#pd-sharebox"); pd.shKind = kind; box.hidden = false;
+  const exp = `<label>${esc(t("pd_sh_exp"))} <select id="pd-sh-exp">${["1d", "7d", "30d", "never"].map(k => `<option value="${k}"${k === "7d" ? " selected" : ""}>${esc(t("pd_sh_" + k))}</option>`).join("")}</select></label>`;
+  const pw = `<label>${esc(t("pd_sh_pw"))} <input type="password" id="pd-sh-pw" autocomplete="new-password" maxlength="100"></label>`;
+  const title = `<label>${esc(t("pd_sh_title"))} <input type="text" id="pd-sh-title" maxlength="80"></label>`;
+  const n = kind === "share" ? pd.shPick.ids.length + pd.shPick.folders.length : 0;
+  box.innerHTML = kind === "share"
+    ? `<b>${esc(t("pd_sh_h", n))}</b>${title}${exp}<label>${esc(t("pd_sh_max"))} <input type="number" id="pd-sh-max" min="0" max="100000" value="0" style="width:90px"></label>${pw}<label><input type="checkbox" id="pd-sh-ai"> ${esc(t("pd_sh_ai"))}</label>`
+    : `<b>${esc(t("pd_sh_reqh"))}</b>${title}<label>${esc(t("pd_sh_folder"))} <input type="text" id="pd-sh-folder" value="${esc(pd.cwd || "Received")}"></label>${exp}<label>${esc(t("pd_sh_maxf"))} <input type="number" id="pd-sh-maxf" min="1" max="1000" value="20" style="width:80px"></label><label>${esc(t("pd_sh_maxmb"))} <input type="number" id="pd-sh-maxmb" min="1" max="5000" value="200" style="width:90px"></label>${pw}`;
+  box.innerHTML += `<div class="row"><span></span><span><button class="btn small primary" type="button" data-pd-sh-go>${esc(t("pd_sh_make"))}</button> <button class="btn small" type="button" data-pd-sh-close>${esc(t("pd_sh_cancel"))}</button></span></div><div id="pd-sh-out"></div>`;
+}
+async function pdShareMake() {
+  const v = id => ($("#" + id) || {}).value || "";
+  const base = { kind: pd.shKind, expiry: v("pd-sh-exp"), password: v("pd-sh-pw") || undefined, title: v("pd-sh-title").trim() || undefined };
+  const body = pd.shKind === "share" ? { ...base, ...pd.shPick, maxDl: Number(v("pd-sh-max")) || 0, ai: !!($("#pd-sh-ai") || {}).checked }
+    : { ...base, folder: v("pd-sh-folder").trim().replace(/^\/+|\/+$/g, "") || "Received", maxFiles: Number(v("pd-sh-maxf")) || 20, maxBytes: (Number(v("pd-sh-maxmb")) || 200) * 1024 * 1024 };
+  const j = await pdApi("share/create", body);
+  $("#pd-sh-out").innerHTML = `<div class="row"><span class="pd-sh-url" id="pd-sh-url">${esc(location.origin + j.url)}</span><button class="btn small" type="button" data-pd-sh-copy="${esc(j.sid)}">${esc(t("pd_sh_copy"))}</button></div>`;
+}
+async function pdLinks() {
+  const box = $("#pd-sharebox"); box.hidden = false; box.innerHTML = "…";
+  const j = await pdApi("share/list"); const st = t("pd_sh_state"), ev = t("pd_sh_ev");
+  const when = ms => new Date(ms).toLocaleString(settings.lang === "bn" ? "bn-IN" : "en-IN", { dateStyle: "short", timeStyle: "short" });
+  const rows = (j.shares || []).map(r => `<div class="pd-sh-item" data-pd-sid="${esc(r.sid)}"><div class="row"><span><b>${esc(r.title || (r.kind === "upload" ? t("pd_sh_kind_up") : t("pd_sh_kind_sh")))}</b> ${r.password ? "🔒" : ""}${r.ai ? " ✨" : ""} · <span class="pd-sh-state">${esc(st[r.state] || r.state)}</span></span>
+    <span>${r.state === "active" ? `<button class="btn small" type="button" data-pd-sh-copy="${esc(r.sid)}">${esc(t("pd_sh_copy"))}</button> <button class="btn small" type="button" data-pd-sh-revoke="${esc(r.sid)}">${esc(t("pd_sh_revoke"))}</button>` : ""}</span></div>
+    <div class="hint">${esc(r.kind === "upload" ? "📥 " + (r.up && r.up.folder || "") : "🔗 " + [...(r.folders || [])].join(", ") + (r.ids && r.ids.length ? ` +${r.ids.length}` : ""))} · ${esc(r.expires ? t("pd_sh_exp") + " " + when(r.expires) : t("pd_sh_never"))} · ${esc(r.kind === "upload" ? t("pd_sh_up", r.up ? r.up.count : 0) : t("pd_sh_dl", r.dl) + (r.maxDl ? ` / ${r.maxDl}` : ""))} · ${esc(pdSize(r.kind === "upload" ? (r.up ? r.up.bytes : 0) : r.bytes))}</div>
+    ${(r.events || []).length ? `<details><summary class="hint">${esc(t("pd_sh_act"))} (${r.events.length})</summary>${r.events.slice(0, 20).map(e => `<div class="hint">${esc(when(e.t))} · ${esc(ev[e.a] || e.a)} · ${esc(e.n)}${e.s ? " · " + esc(pdSize(e.s)) : ""}</div>`).join("")}</details>` : ""}</div>`).join("");
+  const eg = j.egress && j.egress.pendrive;
+  box.innerHTML = `<div class="row"><b>${esc(t("pd_sh_links"))}</b><button class="btn small" type="button" data-pd-sh-close>${esc(t("pd_sh_cancel"))}</button></div>${eg ? `<span class="hint">${esc(t("pd_sh_today", pdSize(eg.used), pdSize(eg.cap)))}</span>` : ""}` +
+    (rows ? `<div id="pd-sh-table">${rows}</div>` : `<p class="hint">${esc(t("pd_sh_none"))}</p>`);
 }
 function pdPicked() {
   const ids = [], folders = [];
@@ -5967,7 +6014,14 @@ document.addEventListener("click", async e => {
     if (el("#pd-up-files")) return $("#pd-file-in").click();
     if (el("#pd-up-folder")) return $("#pd-folder-in").click();
     if (el("#pd-mkdir")) { const n = prompt(t("pd_newfolder")); if (n && n.trim()) { await pdApi("mkdir", { path: (pd.cwd ? pd.cwd + "/" : "") + n.trim() }); await pdRefresh(); } return; }
+    if (el("#pd-links")) return pdLinks();
+    if (el("#pd-request")) return pdShareForm("upload");
+    if (el("[data-pd-sh-close]")) { $("#pd-sharebox").hidden = true; return; }
+    if (el("[data-pd-sh-go]")) return pdShareMake();
+    if ((x = el("[data-pd-sh-copy]"))) { const u = location.origin + "/s/" + x.dataset.pdShCopy; try { await navigator.clipboard.writeText(u); toast(t("pd_sh_copied")); } catch (e) { prompt(t("pd_sh_copy"), u); } return; }
+    if ((x = el("[data-pd-sh-revoke]"))) { await pdApi("share/revoke", { sid: x.dataset.pdShRevoke }); return pdLinks(); }
     const { ids, folders } = pdPicked();
+    if (el("#pd-share")) { if (!ids.length && !folders.length) { toast(t("pd_pick")); return; } pd.shPick = { ids, folders }; return pdShareForm("share"); }
     if (el("#pd-rename")) {
       if (ids.length + folders.length !== 1) { toast(t(ids.length + folders.length ? "pd_pick_one" : "pd_pick")); return; }
       const old = ids.length ? pd.files.find(f => f.id === ids[0]).path : folders[0];
