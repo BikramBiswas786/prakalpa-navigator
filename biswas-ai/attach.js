@@ -383,7 +383,7 @@ async function pdfFromHtml(html, opt = {}) {
       }
       pdf.setProperties({ title: opt.title || "Biswas AI document", creator: "Biswas AI" });
     } catch (e) { console.warn("pdf text layer skipped", e); }
-    return pdf.output("blob");
+    return BA.cleanPdf(pdf.output("blob"));
   } finally { host.remove(); }
 }
 BA.pdfFromHtml = pdfFromHtml;
@@ -582,6 +582,14 @@ function msgMd(el) {
   try { if (msg && Array.isArray(messages)) { const m = messages[Number(msg.dataset.k)]; if (m && m.content) return m.content; } } catch (e) { /* not available */ }
   return "";
 }
+/* PDF metadata: replace the library name+number in /Producer with "Biswas AI" (same byte length, so offsets stay valid). */
+BA.cleanPdf = async (blob) => {
+  const u = new Uint8Array(await blob.arrayBuffer()); let s = ""; for (let i = 0; i < u.length; i += 32768) s += String.fromCharCode.apply(null, u.subarray(i, i + 32768));
+  const m = /\/Producer \(([^)]*)\)/.exec(s); if (!m || m[1].length < 9) return blob;
+  const rep = "/Producer (Biswas AI)" + " ".repeat(m[0].length - 21);
+  for (let i = 0; i < rep.length; i++) u[m.index + i] = rep.charCodeAt(i);
+  return new Blob([u], { type: "application/pdf" });
+};
 /* deterministic attachments. The model may forget the attachment block; build the files from the answer itself. */
 const INTENT = {
   excel: /excel|xlsx|spreadsheet|\bsheet\b|accounts?|budget|ledger|expense|হিসাব|এক্সেল|শিট|খরচ|বাজেট|খতিয়ান/i,
