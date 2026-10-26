@@ -19,7 +19,7 @@ async function tessWorker(onProg) {
 }
 const canOcr = name => IMG_EXT.test(name || "") || /\.pdf$/i.test(name || "");
 // file -> canvases (one per page), longest side <= max
-async function pages(blob, name, max = 2000, maxPages = 10) {
+async function pages(blob, name, max = 2000, maxPages = 60) {
   const out = [];
   const fit = (w, h, m) => { const k = Math.min(1, m / Math.max(w, h)); return [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))]; };
   if (/\.pdf$/i.test(name) || blob.type === "application/pdf") {
@@ -45,7 +45,7 @@ async function read(blob, name, onProg = () => {}) {
   if (!visionOff && typeof pdApi === "function") {
     try {
       for (let i = 0; i < cs.length; i += 4) {
-        onProg(L("Reading text with the vision model…", "ভিশন মডেল দিয়ে লেখা পড়া হচ্ছে…") + (multi ? ` ${i + 1}/${cs.length}` : ""));
+        onProg(L("Reading text with the vision model…", "ভিশন মডেল দিয়ে লেখা পড়া হচ্ছে…") + (multi ? ` ${L("pages", "পাতা")} ${i + 1}–${Math.min(i + 4, cs.length)} / ${cs.length}` : ""));
         const r = await pdApi("ocr", { images: cs.slice(i, i + 4).map(c => ({ mime: "image/jpeg", data: b64(c) })) });
         text += (text ? "\n\n" : "") + (multi && !/\[Page \d+\]/.test(r.text || "") ? `[Page ${i + 1}]\n` : "") + (r.text || "");
       }
