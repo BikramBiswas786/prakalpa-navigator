@@ -65,7 +65,10 @@ const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openr
 const LIMITS = { system: 80000, message: 160000, total: 360000, turns: 40, images: 4, imageB64: 7000000 };
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const MAX_OUT = 8192;
-const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 12000;
+const FIRST_TEXT_MS = Number(env("FIRST_TEXT_MS")) || 12000; // last-resort wait
+const NORMAL_FIRST_MS = Number(env("NORMAL_FIRST_MS")) || 4000; // normal mode: a model with no first text in 4 s is skipped (one at a time, never raced)
+const modelCool = new Map(); // "id/model" → until (a model that stalled or failed sits out for 3 min)
+const mCooled = k => (modelCool.get(k) || 0) > Date.now();
 const IDLE_MS = Number(env("IDLE_MS")) || 60000;
 
 const outTokens = body => {
@@ -383,24 +386,31 @@ export async function POST(request) {
     }
     return json({ error: sawLimit ? "rate_limited" : "upstream", tried: tried.length }, sawLimit ? 429 : 502);
   }
-  const live = ids.filter(id => !cooled(id));
-  const later = ids.filter(id => cooled(id));
-  for (const id of [...live, ...later]) {
-    const p = PROVIDERS[id];
-    if (wantsVision && !p.vision) continue;
-    let asked = 0, limited = 0;
-    for (const model of p.models) {
-      if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
-      const r = await attempt(p, model, body, request.signal, body.fast ? Math.min(FIRST_TEXT_MS, 8000) : FIRST_TEXT_MS);
-      asked += 1;
-      if (r.ok) {
-        console.log(`answered by ${id}/${model}` + (tried.length ? ` after: ${tried.join(" | ")}` : ""));
-        return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
-      }
-      if (quotaError(r.status, r.error)) { sawLimit = true; limited += 1; }
-      tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
+  // Normal mode: one model at a time, quickest recent first-text first; stalled/failed models sit out 3 min; a short first-text wait,
+  // then (only if every model missed it) the first few are retried with the long wait.
+  const pairs = fastPairs(ids, wantsVision, !!body.freeOnly);
+  const order = [...pairs.filter(([id, m]) => !mCooled(id + "/" + m)), ...pairs.filter(([id, m]) => mCooled(id + "/" + m))];
+  const slow = [];
+  for (const [i, [id, model]] of order.entries()) {
+    if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
+    const first = body.fast ? Math.min(FIRST_TEXT_MS, 8000) : NORMAL_FIRST_MS;
+    const t0 = Date.now(); const r = await attempt(PROVIDERS[id], model, body, request.signal, first);
+    speedNote(id, model, r.ok ? Date.now() - t0 : null);
+    if (r.ok) {
+      modelCool.delete(id + "/" + model);
+      console.log(`answered by ${id}/${model} in ${Date.now() - t0} ms` + (tried.length ? ` after: ${tried.join(" | ")}` : ""));
+      return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } });
     }
-    if (asked && limited === asked) cool(id, 60 * 1000);
+    modelCool.set(id + "/" + model, Date.now() + 3 * 60 * 1000);
+    if (quotaError(r.status, r.error)) { sawLimit = true; cool(id, 60 * 1000); } else if (/in time|stalled|no text/i.test(String(r.error))) slow.push([id, model]);
+    tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
+    if (i >= 11 && slow.length) break; // don't walk the whole list at 4 s each
+  }
+  for (const [id, model] of slow.slice(0, 2)) { // everyone missed the short wait: give the quickest stallers the long wait
+    if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
+    const r = await attempt(PROVIDERS[id], model, body, request.signal, FIRST_TEXT_MS);
+    if (r.ok) { console.log(`answered by ${id}/${model} (long wait) after: ${tried.join(" | ")}`); return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } }); }
+    tried.push(`${id}/${model} (long): ${r.status || ""} ${r.error}`.trim());
   }
   if (wantsVision && !tried.length) return json({ error: "no_vision" }, 422);
   console.warn("all providers failed:\n  " + tried.join("\n  "));
