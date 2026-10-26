@@ -9,7 +9,7 @@ ED.addTX({
   en: { w_tsize: "Drag to resize the table", w_del: "Delete", w_cmt: "Comment", w_cmtq: "Comment on the selected text:", w_cmts: "Comments", w_track: "Track changes", w_acc: "Accept all changes", w_rej: "Reject all changes", w_cols: "Columns", w_col1: "One column", w_col2: "Two columns", w_col3: "Three columns", w_toc: "Table of contents", w_tocT: "Contents", w_selfirst: "Select some text first.", w_trackon: "Track changes is on: new text is green, deleted text is struck out.", w_trackoff: "Track changes is off.", w_nohead: "Add Heading 1–3 paragraphs first, then insert the contents.", w_wm: "Watermark", w_wmq: "Watermark text (empty to remove):", w_fn: "Footnote", w_fnq: "Footnote text:", w_fns: "Footnotes",
     w_font: "Font", w_size: "Size", w_style: "Style", w_grow: "Bigger text", w_shrink: "Smaller text", w_strike: "Strikethrough", w_sup: "Superscript", w_sub: "Subscript",
     w_hl: "Highlight", w_color: "Font colour", w_clear: "Clear formatting", w_case: "Change case", w_upper: "UPPER CASE", w_lower: "lower case", w_title: "Title Case",
-    w_out: "Decrease indent", w_in: "Increase indent", w_ls: "Line spacing", w_border: "Paragraph border", w_hr: "Horizontal line", w_vl: "Vertical line", w_shape: "Shapes", w_tbox: "Text box",
+    w_gram: "Grammar", w_gram_run: "Checking grammar…", w_gram_ok: "No grammar or spelling issues found.", w_gram_n: "{0} issue(s) found", w_gram_err: "Grammar check is unavailable right now. Try again in a minute.", w_gram_ign: "Ignore", w_out: "Decrease indent", w_in: "Increase indent", w_ls: "Line spacing", w_border: "Paragraph border", w_hr: "Horizontal line", w_vl: "Vertical line", w_shape: "Shapes", w_tbox: "Text box",
     w_wa: "WordArt", w_link: "Link", w_sym: "Symbol", w_date: "Date", w_addpg: "+ Add page", w_setup: "Page setup", w_hf: "Header & footer", w_findr: "Find & replace",
     w_zoom: "Zoom", w_print: "Print", w_painter: "Format painter", w_painter_on: "Select text to paint the copied format onto it.", w_url: "Link address (https://…):",
     w_pgof: "Page {0} of {1}", w_words: "{0} words", w_chars: "{0} characters", w_pgsize: "Paper size", w_orient: "Orientation", w_port: "Portrait", w_land: "Landscape",
@@ -20,7 +20,7 @@ ED.addTX({
   bn: { w_tsize: "টেবিলের মাপ বদলাতে টানুন", w_del: "মুছুন", w_cmt: "মন্তব্য", w_cmtq: "বাছাই করা লেখায় মন্তব্য:", w_cmts: "মন্তব্য", w_track: "পরিবর্তন ট্র্যাক", w_acc: "সব পরিবর্তন মেনে নিন", w_rej: "সব পরিবর্তন বাতিল", w_cols: "কলাম", w_col1: "এক কলাম", w_col2: "দুই কলাম", w_col3: "তিন কলাম", w_toc: "সূচিপত্র", w_tocT: "সূচিপত্র", w_selfirst: "আগে কিছু লেখা বাছুন।", w_trackon: "ট্র্যাক চালু: নতুন লেখা সবুজ, মোছা লেখা কাটা দাগে।", w_trackoff: "ট্র্যাক বন্ধ।", w_nohead: "আগে Heading 1–3 অনুচ্ছেদ দিন, তারপর সূচিপত্র।", w_wm: "জলছাপ", w_wmq: "জলছাপের লেখা (মুছতে ফাঁকা রাখুন):", w_fn: "পাদটীকা", w_fnq: "পাদটীকার লেখা:", w_fns: "পাদটীকা",
     w_font: "ফন্ট", w_size: "আকার", w_style: "শৈলী", w_grow: "লেখা বড়", w_shrink: "লেখা ছোট", w_strike: "কাটা দাগ", w_sup: "উপরে ছোট লেখা", w_sub: "নিচে ছোট লেখা",
     w_hl: "হাইলাইট", w_color: "লেখার রং", w_clear: "ফরম্যাট মুছুন", w_case: "অক্ষরের ধরন", w_upper: "বড় হাতের", w_lower: "ছোট হাতের", w_title: "প্রথম অক্ষর বড়",
-    w_out: "ইনডেন্ট কমান", w_in: "ইনডেন্ট বাড়ান", w_ls: "লাইনের ফাঁক", w_border: "অনুচ্ছেদের বর্ডার", w_hr: "আনুভূমিক রেখা", w_vl: "খাড়া লাইন", w_shape: "আকৃতি", w_tbox: "টেক্সট বক্স",
+    w_gram: "ব্যাকরণ", w_gram_run: "ব্যাকরণ দেখা হচ্ছে…", w_gram_ok: "কোনো ব্যাকরণ বা বানান ভুল পাওয়া যায়নি।", w_gram_n: "{0}টি সমস্যা পাওয়া গেছে", w_gram_err: "এখন ব্যাকরণ পরীক্ষা করা যাচ্ছে না। একটু পরে আবার চেষ্টা করুন।", w_gram_ign: "উপেক্ষা", w_out: "ইনডেন্ট কমান", w_in: "ইনডেন্ট বাড়ান", w_ls: "লাইনের ফাঁক", w_border: "অনুচ্ছেদের বর্ডার", w_hr: "আনুভূমিক রেখা", w_vl: "খাড়া লাইন", w_shape: "আকৃতি", w_tbox: "টেক্সট বক্স",
     w_wa: "ওয়ার্ডআর্ট", w_link: "লিংক", w_sym: "চিহ্ন", w_date: "তারিখ", w_addpg: "+ পাতা যোগ", w_setup: "পাতার সেটআপ", w_hf: "হেডার ও ফুটার", w_findr: "খুঁজুন ও বদলান",
     w_zoom: "জুম", w_print: "প্রিন্ট", w_painter: "ফরম্যাট পেইন্টার", w_painter_on: "যে লেখায় ফরম্যাট বসাতে চান সেটি সিলেক্ট করুন।", w_url: "লিংকের ঠিকানা (https://…):",
     w_pgof: "পাতা {0} / {1}", w_words: "{0} শব্দ", w_chars: "{0} অক্ষর", w_pgsize: "কাগজের মাপ", w_orient: "দিক", w_port: "লম্বালম্বি", w_land: "আড়াআড়ি",
@@ -80,6 +80,7 @@ const css = `
 .wd-page img.wd-obj { cursor: pointer; vertical-align: middle; } .wd-page img.wd-obj:hover { outline: 2px dashed var(--accent, #2563eb); }
 .wd-page a { color: #0563c1; }
 .wd-status { display: flex; gap: 16px; font-size: .8rem; color: var(--muted, #555); padding: 4px 2px 0; flex-wrap: wrap; }
+.wd-gram { border: 1px solid var(--line, #ccc); border-radius: 6px; padding: 6px 8px; margin: 4px 0; max-height: 220px; overflow: auto; font-size: .9rem; } .wd-gram-h { display: flex; justify-content: space-between; align-items: center; } .wd-gram-i { padding: 3px 0; border-top: 1px solid #eee; } .wd-gram-w { color: #b91c1c; text-decoration: underline wavy; font-weight: 600; } .wd-gram-fix { margin-left: 4px; }
 .wd-find { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0; } .wd-find[hidden] { display: none; }
 dialog.wd-dlg { border: 1px solid var(--line); border-radius: 10px; padding: 16px; background: var(--surface, #fff); color: var(--ink, #111); max-width: 520px; }
 dialog.wd-dlg label { display: grid; grid-template-columns: 150px 1fr; gap: 8px; align-items: center; margin: 6px 0; font-size: .9rem; }
@@ -171,6 +172,26 @@ ED.kinds.word = (() => {
     const el = curEl(); if (el) { const f = firstFont(getComputedStyle(el).fontFamily); const hit = FONTS.find(x => x[0].toLowerCase() === f.toLowerCase());
       if (hit) fontSel.value = hit[0]; else if (f) { if (![...fontSel.options].some(o => o.value === f)) fontSel.append(h("option", { value: f }, f)); fontSel.value = f; } }
     const p = curPt(); if (![...sizeSel.options].some(o => +o.value === p)) sizeSel.append(h("option", { value: p }, String(p))); sizeSel.value = String(p);
+  }
+  /* grammar + spelling check (server proxy to LanguageTool); each issue can be fixed in place or ignored */
+  let gramPane = null;
+  function gramBlocks() { return [...page.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li,td,th,blockquote")].filter(b => !b.querySelector("p,h1,h2,h3,h4,h5,h6,li,td,th,blockquote")); }
+  function locate(b, off, len) { const it = document.createNodeIterator(b, NodeFilter.SHOW_TEXT); let n, pos = 0, sN = null, sO = 0;
+    while ((n = it.nextNode())) { const L = n.nodeValue.length; if (!sN && off < pos + L) { sN = n; sO = off - pos; } if (sN && off + len <= pos + L) { const r = document.createRange(); r.setStart(sN, sO); r.setEnd(n, off + len - pos); return r; } pos += L; } return null; }
+  async function grammar() {
+    const bl = gramBlocks(); let text = "", starts = []; for (const b of bl) { starts.push(text.length); text += b.textContent + "\n\n"; }
+    gramPane.hidden = false; gramPane.textContent = T("w_gram_run");
+    let j; try { const r = await fetch("/api/grammar", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text }) }); j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); }
+    catch (e) { gramPane.textContent = T("w_gram_err"); return; }
+    const items = j.matches.map(m => { let i = starts.length - 1; while (i > 0 && starts[i] > m.offset) i--; return { ...m, b: bl[i], o: m.offset - starts[i], word: text.substr(m.offset, m.length) }; }).filter(m => m.b && m.o + m.length <= m.b.textContent.length);
+    gramPane.textContent = "";
+    const head = h("div", { class: "wd-gram-h" }, h("b", {}, items.length ? T("w_gram_n", items.length) : T("w_gram_ok")), h("button", { type: "button", class: "btn small", onclick: () => { gramPane.hidden = true; } }, "✕"));
+    gramPane.append(head);
+    for (const m of items) { const row = h("div", { class: "wd-gram-i" }, h("span", { class: "wd-gram-w" }, m.word), " ", h("span", {}, m.message), " ");
+      for (const rep of m.rep) row.append(h("button", { type: "button", class: "btn small wd-gram-fix", onclick: () => {
+        if (m.b.textContent.substr(m.o, m.length) !== m.word) { row.remove(); return; } const rg = locate(m.b, m.o, m.length); if (!rg) return; rg.deleteContents(); rg.insertNode(document.createTextNode(rep)); m.b.normalize(); dirty();
+        const d = rep.length - m.length; for (const x of items) if (x !== m && x.b === m.b && x.o > m.o) x.o += d; row.remove(); } }, rep || "∅"));
+      row.append(h("button", { type: "button", class: "btn small", onclick: () => row.remove() }, T("w_gram_ign"))); gramPane.append(row); }
   }
   function insertHTML(html) { focusPage(); document.execCommand("styleWithCSS", false, false); document.execCommand("insertHTML", false, html); dirty(); }
   function insertBlock(el) { const n = (curEl() || page.lastElementChild); let top = n; while (top && top.parentElement !== page) top = top.parentElement;
@@ -416,7 +437,12 @@ ED.kinds.word = (() => {
       await hfText("headerReference", "header"); await hfText("footerReference", "footer"); }
     const blocks = [...page.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li")]; const strip = s => s.replace(/\s+/g, ""); let k = 0, pending = [];
     const bn = /[\u0980-\u09FF]/;
-    const putBefore = (el, kind) => { const a = el.tagName === "LI" ? (el.parentElement && el === el.parentElement.firstElementChild ? el.parentElement : null) : el; if (a) a.before(h("hr", { class: kind === "pb" ? "ed-pb" : "wd-hr" })); };
+    const mkVl = v => { const d = h("div", { class: "wd-vline", contenteditable: "false" }); d.style.height = v.h + "px"; d.style.marginLeft = v.ml + "px"; d.style.borderLeft = `${v.w}px solid ${v.c}`; return d; };
+    const putBefore = (el, kind) => { const a = el.tagName === "LI" ? (el.parentElement && el === el.parentElement.firstElementChild ? el.parentElement : null) : el; if (a) a.before(typeof kind === "object" ? mkVl(kind) : h("hr", { class: kind === "pb" ? "ed-pb" : "wd-hr" })); };
+    if (sp) { const pb = one(sp, "pgBorders"); if (pb) { const ed = ["top", "left", "bottom", "right"].map(e => one(pb, e)).map(e => e && at(e, "val") !== "nil" && at(e, "val") !== "none" ? e : null); const any = ed.find(Boolean);
+      if (any) { pg.pbd = ed.every(Boolean) ? "box" : "left"; pg.pbw = Math.round((+at(any, "sz") || 12) / 8 * 4) / 4; const c = at(any, "color"); pg.pbc = c && c !== "auto" ? "#" + c : "#000000"; } } }
+    const vlOf = wp => { const l = wp.getElementsByTagNameNS("urn:schemas-microsoft-com:vml", "line")[0]; if (!l) return null; const n = v => parseFloat(String(v || "0").split(",")[0]) || 0, y = v => parseFloat(String(v || "0,0").split(",")[1]) || 0;
+      return { h: Math.max(8, Math.round((y(l.getAttribute("to")) - y(l.getAttribute("from"))) / 0.75)), ml: Math.round(n(l.getAttribute("from")) / 0.75), w: Math.max(1, Math.round(parseFloat(l.getAttribute("strokeweight") || "1.5") / 0.75)), c: l.getAttribute("strokecolor") || "#000000" }; };
     for (const wp of doc.getElementsByTagNameNS(W, "p")) {
       if (wp.parentNode && /txbxContent/.test(wp.parentNode.localName)) continue;
       const pPr = one(wp, "pPr"), sid = at(one(pPr, "pStyle"), "val") || normalId; const sr = { ...base, ...chainR(sid) };
@@ -426,7 +452,7 @@ ED.kinds.word = (() => {
         if (t) { seen = true; runs.push({ t, o }); } }
       if (pPr && one(pPr, "pageBreakBefore")) brBefore = true;
       const text = runs.map(r => r.t).join(""); const pBdr = pPr && one(pPr, "pBdr");
-      if (!strip(text)) { if (brBefore || brAfter) pending.push("pb"); else if (pBdr && one(pBdr, "bottom") && at(one(pBdr, "bottom"), "val") !== "nil") pending.push("hr"); continue; }
+      if (!strip(text)) { const vl = vlOf(wp); if (vl) { pending.push(vl); continue; } if (brBefore || brAfter) pending.push("pb"); else if (pBdr && one(pBdr, "bottom") && at(one(pBdr, "bottom"), "val") !== "nil") pending.push("hr"); continue; }
       let j = k; while (j < blocks.length && j < k + 60 && strip(blocks[j].textContent) !== strip(text)) j++;
       if (j >= blocks.length || j >= k + 60) continue; k = j + 1; const el = blocks[j];
       for (const x of pending) putBefore(el, x); pending = []; if (brBefore) putBefore(el, "pb"); if (brAfter) pending.push("pb");
@@ -451,7 +477,7 @@ ED.kinds.word = (() => {
           let mid = t; if (s0 > 0) mid = t.splitText(s0); if (e0 - s0 < mid.length) mid.splitText(e0 - s0);
           const span = document.createElement("span"); Object.assign(span.style, g.s); mid.replaceWith(span); span.append(mid); } } catch (e) {} }
     }
-    if (pending.length) { for (const x of pending) page.append(h("hr", { class: x === "pb" ? "ed-pb" : "wd-hr" })); page.append(h("p", {}, h("br"))); }
+    if (pending.length) { for (const x of pending) page.append(typeof x === "object" ? mkVl(x) : h("hr", { class: x === "pb" ? "ed-pb" : "wd-hr" })); page.append(h("p", {}, h("br"))); }
   }
 
   /* ---- Review: comments, track changes; Layout: columns; References: contents, footnotes; Design: watermark ---- */
@@ -562,6 +588,7 @@ ED.kinds.word = (() => {
         B("wd-pb", "⤓ " + T("pb"), T("pb") + " (Ctrl+Enter)", () => insertHTML('<hr class="ed-pb"><p><br></p>')), B("wd-addpg", T("w_addpg"), T("w_blank"), addPage), B("wd-setup", "📄 " + T("w_setup"), T("w_setup"), pageSetup), B("wd-hf", "▔▁ " + T("w_hf"), T("w_hf"), pageSetup), sep(),
         B("wd-findbtn", "🔍", T("w_findr") + " (Ctrl+H)", () => { findBar.hidden = !findBar.hidden; if (!findBar.hidden) { const s = document.getSelection().toString(); if (s && s.length < 80) fi.value = s; fi.focus(); countFound(); } }), zoomSel, B("wd-print", "🖨", T("w_print") + " (Ctrl+P)", printDoc), sep(),
         colSel, B("wd-tocb", "📑 " + T("w_toc"), T("w_toc"), toc), B("wd-fnb", "¹ " + T("w_fn"), T("w_fn"), () => { save(); footnote(); }), B("wd-wmb", "💧 " + T("w_wm"), T("w_wm"), watermark), sep(),
+        B("wd-gramb", "✓ " + T("w_gram"), T("w_gram"), () => grammar()),
         B("wd-cmtb", "💬 " + T("w_cmt"), T("w_cmt"), () => { save(); addComment(); }), trackBtn, B("wd-acc", "✓ " + T("w_acc"), T("w_acc"), () => acceptAll(true)), B("wd-rej", "✗ " + T("w_rej"), T("w_rej"), () => acceptAll(false)), imgIn);
       fi = h("input", { id: "wd-fi", placeholder: T("find"), "aria-label": T("find"), oninput: () => countFound(), onkeydown: e => { if (e.key === "Enter") { e.preventDefault(); findNext(); } } });
       ri = h("input", { id: "wd-ri", placeholder: T("repl"), "aria-label": T("repl") }); mc = h("input", { type: "checkbox", id: "wd-mc", onchange: () => countFound() }); fcnt = h("span", { id: "wd-fcnt", class: "muted" });
@@ -581,7 +608,8 @@ ED.kinds.word = (() => {
       page.addEventListener("paste", e => { const html = e.clipboardData.getData("text/html"); if (!html) return; e.preventDefault(); const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object,title").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (a.name === "href" && /^\s*javascript:/i.test(a.value)) || (a.name === "class" && /^Mso/.test(a.value))) n.removeAttribute(a.name); }); insertHTML(d.body.innerHTML); });
       new ResizeObserver(() => sched()).observe(page); window.addEventListener("resize", () => { if (zoomSel.value === "fit") setZoom("fit"); });
       if (document.fonts) document.fonts.addEventListener("loadingdone", sched);
-      body.append(tb, findBar, cmtPane, desk, status);
+      gramPane = h("div", { class: "wd-gram", id: "wd-gram", hidden: true, role: "region", "aria-label": T("w_gram") });
+      body.append(tb, findBar, gramPane, cmtPane, desk, status);
       try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) {}
       applyGeo();
     },

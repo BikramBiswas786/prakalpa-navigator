@@ -469,7 +469,7 @@ ED.kinds.excel = (() => {
   function chartData(ch) { const s = book.sheets[ch.si ?? si] || S(); const { r1, c1, r2, c2 } = ch; const head = c2 > c1 && typeof val(r1, c1 + 1, book.sheets.indexOf(s)) === "string";
     const ix = book.sheets.indexOf(s); const rows = []; for (let r = head ? r1 + 1 : r1; r <= r2; r++) rows.push(r);
     const series = []; for (let c = c1 + (c2 > c1 ? 1 : 0); c <= c2; c++) series.push({ name: head ? String(val(r1, c, ix)) : colName(c), vals: rows.map(r => { const v = val(r, c, ix); return typeof v === "number" ? v : 0; }) });
-    return { labels: rows.map(r => c2 > c1 ? show(val(r, c1, ix), s.fmt.get(K(r, c1))) : String(r + 1)), series }; }
+    return { head, labels: rows.map(r => c2 > c1 ? show(val(r, c1, ix), s.fmt.get(K(r, c1))) : String(r + 1)), series }; }
   function drawChart(cv, ch) {
     const g = cv.getContext("2d"), W = cv.width, H = cv.height, d = chartData(ch); g.clearRect(0, 0, W, H); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.font = "13px Calibri, Carlito, 'Noto Sans Bengali', sans-serif"; g.fillStyle = "#111";
     g.textAlign = "center"; g.font = "bold 15px Calibri, Carlito, 'Noto Sans Bengali', sans-serif"; g.fillText(ch.title || "", W / 2, 20); g.font = "12px Calibri, Carlito, 'Noto Sans Bengali', sans-serif";
@@ -534,8 +534,57 @@ ED.kinds.excel = (() => {
         for (const ref of (v.getAttribute("sqref") || "").split(/\s+/).filter(Boolean)) { const g = XLSX.utils.decode_range(ref); const base = { r1: g.s.r, c1: g.s.c, r2: g.e.r, c2: g.e.c };
           if (ty === "list") { if (/^".*"$/.test(f1)) dv.push({ ...base, type: "list", list: f1.slice(1, -1).split(",").map(z => z.trim()) }); }
           else dv.push({ ...base, type: ty, min: op === "lessThanOrEqual" || op === "lessThan" ? "" : f1, max: op === "between" ? f2 : op === "lessThanOrEqual" || op === "lessThan" ? f1 : "" }); } }
-      out.sheets[sh.getAttribute("name")] = { cells, frz, rowH, dv }; }
+      const charts = await readCharts(z, "xl/" + t, P);
+      out.sheets[sh.getAttribute("name")] = { cells, frz, rowH, dv, charts }; }
     return out;
+  }
+  /* charts inside the .xlsx (DrawingML): written on save, read back on open */
+  const relsOf = p => p.replace(/([^/]+)$/, "_rels/$1.rels");
+  const relPath = (base, t) => { if (t[0] === "/") return t.slice(1); const a = base.split("/"); a.pop(); for (const x of t.split("/")) { if (x === "..") a.pop(); else if (x !== ".") a.push(x); } return a.join("/"); };
+  async function readCharts(z, sp, P) {
+    const out = []; try {
+      const rf = z.file(relsOf(sp)); if (!rf) return out; const rels = P(await rf.async("string"));
+      for (const r of els(rels, "Relationship")) { if (!/\/drawing$/.test(r.getAttribute("Type") || "")) continue; const dp = relPath(sp, r.getAttribute("Target")); const df = z.file(dp), drf = z.file(relsOf(dp)); if (!df || !drf) continue;
+        const dr = P(await drf.async("string")), map = {}; for (const x of els(dr, "Relationship")) map[x.getAttribute("Id")] = relPath(dp, x.getAttribute("Target"));
+        for (const c of els(P(await df.async("string")), "chart")) { const id = c.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") || c.getAttribute("r:id"); const cf = z.file(map[id] || ""); if (!cf) continue;
+          const x = P(await cf.async("string")); const plot = els(x, "plotArea")[0]; if (!plot) continue; const kind = [...plot.children].find(n => /Chart$/.test(n.localName)); if (!kind) continue;
+          const dir = (els(kind, "barDir")[0] || { getAttribute: () => "col" }).getAttribute("val");
+          const type = kind.localName === "pieChart" || kind.localName === "doughnutChart" ? "pie" : kind.localName === "lineChart" ? "line" : dir === "bar" ? "hbar" : "bar";
+          const fs = [...els(kind, "cat"), ...els(kind, "val"), ...els(kind, "tx")].map(n => (els(n, "f")[0] || {}).textContent).filter(Boolean);
+          let r1 = 1e9, c1 = 1e9, r2 = -1, c2 = -1; for (const f of fs) { const ref = f.replace(/^.*!/, "").replace(/\$/g, ""); try { const g = XLSX.utils.decode_range(ref); r1 = Math.min(r1, g.s.r); c1 = Math.min(c1, g.s.c); r2 = Math.max(r2, g.e.r); c2 = Math.max(c2, g.e.c); } catch (e) { /* skip */ } }
+          if (r2 < 0) continue; const tt = els(els(x, "title")[0], "t").map(n => n.textContent).join("");
+          out.push({ type, r1, c1, r2, c2, title: tt }); } }
+    } catch (e) { console.warn("xlsx charts", e); } return out;
+  }
+  function chartXml(ch, sn) {
+    const d = chartData(ch), q = "'" + sn.replace(/'/g, "''") + "'!", A = (r, c) => "$" + colName(c) + "$" + (r + 1);
+    const head = d.head, r0 = head ? ch.r1 + 1 : ch.r1, cat = ch.c2 > ch.c1 ? `<c:cat><c:strRef><c:f>${XA(q + A(r0, ch.c1) + ":" + A(ch.r2, ch.c1))}</c:f><c:strCache><c:ptCount val="${d.labels.length}"/>${d.labels.map((l, i) => `<c:pt idx="${i}"><c:v>${XA(l)}</c:v></c:pt>`).join("")}</c:strCache></c:strRef></c:cat>` : "";
+    const c0 = ch.c1 + (ch.c2 > ch.c1 ? 1 : 0), list = ch.type === "pie" ? d.series.slice(0, 1) : d.series;
+    const ser = list.map((s, j) => `<c:ser><c:idx val="${j}"/><c:order val="${j}"/>${head ? `<c:tx><c:strRef><c:f>${XA(q + A(ch.r1, c0 + j))}</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>${XA(s.name)}</c:v></c:pt></c:strCache></c:strRef></c:tx>` : ""}`
+      + (ch.type === "pie" ? "" : `<c:spPr>${ch.type === "line" ? `<a:ln w="28575"><a:solidFill><a:srgbClr val="${PAL[j % PAL.length].slice(1)}"/></a:solidFill></a:ln>` : `<a:solidFill><a:srgbClr val="${PAL[j % PAL.length].slice(1)}"/></a:solidFill>`}</c:spPr>`)
+      + (ch.type === "line" ? '<c:marker><c:symbol val="circle"/></c:marker>' : "") + cat
+      + `<c:val><c:numRef><c:f>${XA(q + A(r0, c0 + j) + ":" + A(ch.r2, c0 + j))}</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${s.vals.length}"/>${s.vals.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join("")}</c:numCache></c:numRef></c:val>${ch.type === "line" ? '<c:smooth val="0"/>' : ""}</c:ser>`).join("");
+    const ax = '<c:axId val="111"/><c:axId val="222"/>', axes = '<c:catAx><c:axId val="111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="' + (ch.type === "hbar" ? "l" : "b") + '"/><c:crossAx val="222"/></c:catAx><c:valAx><c:axId val="222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="' + (ch.type === "hbar" ? "b" : "l") + '"/><c:majorGridlines/><c:numFmt formatCode="General" sourceLinked="1"/><c:crossAx val="111"/></c:valAx>';
+    const plot = ch.type === "pie" ? `<c:pieChart><c:varyColors val="1"/>${ser}<c:firstSliceAng val="0"/></c:pieChart>` : ch.type === "line" ? `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${ser}<c:marker val="1"/>${ax}</c:lineChart>${axes}`
+      : `<c:barChart><c:barDir val="${ch.type === "hbar" ? "bar" : "col"}"/><c:grouping val="clustered"/><c:varyColors val="0"/>${ser}<c:gapWidth val="150"/>${ax}</c:barChart>${axes}`;
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:chart>${ch.title ? `<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:t>${XA(ch.title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>'}<c:plotArea><c:layout/>${plot}</c:plotArea><c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/></c:chart></c:chartSpace>`;
+  }
+  async function writeCharts(z) { // one drawing per sheet with charts; anchored below / right of the data
+    let n = 0, ct = await z.file("[Content_Types].xml").async("string"); const add = [];
+    for (let i = 0; i < book.sheets.length; i++) { const s = book.sheets[i]; if (!s.charts || !s.charts.length) continue; const sp = `xl/worksheets/sheet${i + 1}.xml`; if (!z.file(sp)) continue;
+      const di = i + 1; let anchors = "", drels = "";
+      s.charts.forEach((ch, j) => { n++; const col = Math.max(...s.charts.map(c => c.c2)) + 2, row = j * 16;
+        z.file(`xl/charts/chart${n}.xml`, chartXml({ ...ch, si: i }, s.name)); add.push(`<Override PartName="/xl/charts/chart${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`);
+        drels += `<Relationship Id="rId${j + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart${n}.xml"/>`;
+        anchors += `<xdr:twoCellAnchor><xdr:from><xdr:col>${col}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${col + 8}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${row + 15}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="${j + 2}" name="Chart ${j + 1}"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="rId${j + 1}"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>`; });
+      z.file(`xl/drawings/drawing${di}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors}</xdr:wsDr>`);
+      z.file(`xl/drawings/_rels/drawing${di}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${drels}</Relationships>`);
+      add.push(`<Override PartName="/xl/drawings/drawing${di}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`);
+      const rp = relsOf(sp); let rx = z.file(rp) ? await z.file(rp).async("string") : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+      rx = rx.replace("</Relationships>", `<Relationship Id="rIdDr1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing${di}.xml"/></Relationships>`); z.file(rp, rx);
+      let x = await z.file(sp).async("string"); if (!/xmlns:r=/.test(x.slice(0, 600))) x = x.replace("<worksheet ", '<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ');
+      const at = x.search(/<legacyDrawing|<tableParts|<extLst|<\/worksheet>/); x = x.slice(0, at) + '<drawing r:id="rIdDr1"/>' + x.slice(at); z.file(sp, x); }
+    if (add.length) z.file("[Content_Types].xml", ct.replace("</Types>", add.join("") + "</Types>"));
   }
   const NFID = { General: 0, "0": 1, "0.00": 2, "#,##0": 3, "#,##0.00": 4, "0%": 9, "0.00%": 10, "@": 49 };
   const XA = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -657,7 +706,7 @@ ED.kinds.excel = (() => {
           if (raw !== "") s.cells.set(K(d.r, d.c), raw);
           if (cell.c && cell.c.length) s.notes.set(K(d.r, d.c), cell.c.map(x => x.t).join("\n").trim());
           if (!ss && cell.t === "n" && cell.z && cell.z !== "General") s.fmt.set(K(d.r, d.c), { nf: String(cell.z) }); }
-        if (ss) { for (const [k, f] of ss.cells) s.fmt.set(k, { ...f }); s.frz = ss.frz; s.rowH = ss.rowH; s.dv = ss.dv || []; }
+        if (ss) { for (const [k, f] of ss.cells) s.fmt.set(k, { ...f }); s.frz = ss.frz; s.rowH = ss.rowH; s.dv = ss.dv || []; if (ss.charts && ss.charts.length) s.charts = ss.charts; }
         s.merges = (ws["!merges"] || []).map(m => ({ r1: m.s.r, c1: m.s.c, r2: m.e.r, c2: m.e.c }));
         (ws["!cols"] || []).forEach((c, i) => { if (c && (c.wpx || c.wch || c.width)) s.colW[i] = Math.round(c.wpx || (c.wch || c.width) * 7 + 5); });
         return s; }) };
@@ -704,7 +753,7 @@ ED.kinds.excel = (() => {
               return `<dataValidation type="${v.type}" operator="${op}" allowBlank="1" showErrorMessage="1" sqref="${ref}"><formula1>${has1 ? +v.min : has2 ? +v.max : 0}</formula1>${has1 && has2 ? `<formula2>${+v.max}</formula2>` : ""}</dataValidation>`; }).join("") + "</dataValidations>";
             const at = x.search(/<hyperlinks|<printOptions|<pageMargins|<pageSetup|<headerFooter|<drawing|<legacyDrawing|<tableParts|<extLst|<\/worksheet>/); x = x.slice(0, at) + dvx + x.slice(at); }
           z.file(n, x); }
-        z.file("xl/styles.xml", W.xml());
+        z.file("xl/styles.xml", W.xml()); await writeCharts(z);
         out = await z.generateAsync({ type: "arraybuffer", compression: "DEFLATE" }); }
       return { blob: new Blob(e === "csv" ? ["\ufeff", out] : [out], { type: MIME[e] || MIME.xlsx }) };
     }

@@ -20,9 +20,9 @@ const fill = {
   word: () => p.evaluate(t => { const pg = BA_ED.kinds.word.page(); pg.innerHTML = `<p>${t} word</p>`; pg.dispatchEvent(new Event("input", { bubbles: true })); }, tag),
   note: () => p.evaluate(t => { const ta = document.querySelector("#np-ta"); ta.value = t + " note"; ta.dispatchEvent(new Event("input", { bubbles: true })); }, tag),
   excel: () => p.evaluate(t => { BA_ED.kinds.excel._api().aiEdit(({ book, putRaw }) => putRaw(book.sheets[0], 0, 0, t + " excel")); }, tag),
-  image: () => p.evaluate(() => { const a = BA_ED.kinds.image._api(); const c = a.flat(); BA_ED.st.image.dirty = true; }),
+  image: () => p.evaluate(() => { const a = BA_ED.kinds.image._api(); const L = a.layers()[0]; const g = L.c.getContext("2d"); g.fillStyle = "#ff0000"; g.fillRect(10, 10, 40, 40); BA_ED.st.image.dirty = true; }),
 };
-const check = { word: () => p.evaluate(() => BA_ED.kinds.word.page().innerText), note: () => p.$eval("#np-ta", e => e.value), excel: () => p.evaluate(() => String(BA_ED.kinds.excel._api().val(0, 0, 0))), image: async () => "" };
+const check = { word: () => p.evaluate(() => BA_ED.kinds.word.page().innerText), note: () => p.$eval("#np-ta", e => e.value), excel: () => p.evaluate(() => String(BA_ED.kinds.excel._api().val(0, 0, 0))), image: () => p.evaluate(t => { const d = BA_ED.kinds.image._api().flat().getContext("2d").getImageData(20, 20, 1, 1).data; return d[0] > 200 && d[1] < 60 ? t + " image red" : "pixel " + [...d].join(","); }, tag) };
 for (const k of ["word", "excel", "image", "note"]) {
   await p.click("#ed-tab-" + k); await sl(900); await fill[k]();
   await sl(3000); const ids0 = await p.evaluate(k => BA_ED.ai.S[k].rows.map(r => r.id), k); const msgs = [];
@@ -31,7 +31,7 @@ for (const k of ["word", "excel", "image", "note"]) {
   const rws = await p.evaluate(k => BA_ED.ai.S[k].rows.map(r => r.id), k); const sum = await p.$eval("#ea-cv-" + k + " summary", e => e.textContent);
   const fresh = rws.filter(x => !ids0.includes(x));
   ok(fresh.length === 2 && new Set(rws).size === rws.length && sum.includes("· " + rws.length) && ids0.every(x => rws.includes(x)), `${k}: 2 clicks = 2 new rows (${ids0.length}→${rws.length}), summary "${sum}", msgs ${JSON.stringify(msgs)}`);
-  if (k !== "image") { await p.evaluate(k => { BA_ED.st[k].dirty = false; }, k);
+  { await p.evaluate(k => { if (k === "image") { const g = BA_ED.kinds.image._api().layers()[0].c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, 100, 100); } }, k); await p.evaluate(k => { BA_ED.st[k].dirty = false; }, k);
     await p.$eval(`[data-ea-open="${fresh[0]}"]`, e => e.click()); await sl(2500); const v = await check[k](); ok(v.includes(tag), `${k}: row reopens the document (${v.slice(0, 40)})`); }
 }
 ok(perr === 0, "no page errors"); console.log(fails ? fails + " FAILED" : "ALL PASS"); await b.close(); process.exit(fails ? 1 : 0);
