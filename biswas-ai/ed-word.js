@@ -614,14 +614,57 @@ ED.kinds.word = (() => {
       applyGeo();
     },
     blank() { Object.assign(pg, DEF); pg.wm = ""; setTimeout(comments, 0); delete page.dataset.minPages; page.innerHTML = "<p><br></p>"; applyGeo(); fontSel.value = pg.font; sizeSel.value = String(pg.size); },
-    async load(buf) {
-      await load("mammoth");
-      const r = await mammoth.convertToHtml({ arrayBuffer: buf }, { styleMap: ["u => u", "strike => s", "p[style-name='Title'] => h1:fresh", "p[style-name='Subtitle'] => h2:fresh"], includeDefaultStyleMap: true });
-      const d = new DOMParser().parseFromString(r.value, "text/html"); d.querySelectorAll("script,style,iframe,object").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
-      d.querySelectorAll("table").forEach(t => t.classList.add("wd-tbl"));
-      Object.assign(pg, DEF); delete page.dataset.minPages; page.innerHTML = d.body.innerHTML || "<p><br></p>";
-      try { await enrich(buf); } catch (e) { console.warn("docx details", e); }
-      applyGeo(); if ([...fontSel.options].some(o => o.value === pg.font)) fontSel.value = pg.font; comments();
+    async load(buf, e, path) {
+      const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      const extn = String(e || String(path || "").split(".").pop() || "").toLowerCase();
+      const zip = u8.length > 3 && u8[0] === 0x50 && u8[1] === 0x4b;
+      const pdf = extn === "pdf" || (u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46);
+      const put = text => {
+        const safe = String(text || "").replace(/\u0000/g, "").slice(0, 1500000);
+        Object.assign(pg, DEF); delete page.dataset.minPages;
+        page.innerHTML = safe.trim() ? safe.split(/\n{2,}/).map(p => "<p>" + XE(p).replace(/\n/g, "<br>") + "</p>").join("") : "<p><br></p>";
+        applyGeo(); if ([...fontSel.options].some(o => o.value === pg.font)) fontSel.value = pg.font; comments();
+      };
+      const fail = () => { throw new Error("openfail"); };
+      try {
+        if (pdf) {
+          await load("pdfworker"); await load("pdfjs");
+          const doc = await window.pdfjsLib.getDocument({ data: u8 }).promise;
+          let t = "";
+          for (let p = 1; p <= Math.min(doc.numPages, 40); p++) { const c = await (await doc.getPage(p)).getTextContent(); t += c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n\n"; }
+          if (!t.replace(/\s/g, "")) fail();
+          put(t); return;
+        }
+        if (zip) {
+          await load("jszip");
+          let z; try { z = await JSZip.loadAsync(u8); } catch (err) { fail(); }
+          if (z.file("word/document.xml")) {
+            await load("mammoth");
+            const r = await mammoth.convertToHtml({ arrayBuffer: u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) }, { styleMap: ["u => u", "strike => s", "p[style-name='Title'] => h1:fresh", "p[style-name='Subtitle'] => h2:fresh"], includeDefaultStyleMap: true });
+            const d = new DOMParser().parseFromString(r.value || "", "text/html");
+            d.querySelectorAll("script,style,iframe,object").forEach(n => n.remove());
+            d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
+            d.querySelectorAll("table").forEach(t => t.classList.add("wd-tbl"));
+            Object.assign(pg, DEF); delete page.dataset.minPages; page.innerHTML = d.body.innerHTML || "<p><br></p>";
+            try { await enrich(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } catch (err) { /* details are optional */ }
+            applyGeo(); if ([...fontSel.options].some(o => o.value === pg.font)) fontSel.value = pg.font; comments();
+            return;
+          }
+          const parts = [];
+          for (const n of Object.keys(z.files).filter(n => !z.files[n].dir).slice(0, 30)) {
+            if (/\.(png|jpe?g|gif|webp|woff2?|ttf|bin|emf|wmf)$/i.test(n)) continue;
+            let s = ""; try { s = await z.file(n).async("string"); } catch (err) { continue; }
+            if (!s || s.length < 2) continue;
+            if ((s.slice(0, 400).match(/[\u0000-\u0008]/g) || []).length > 2) continue;
+            parts.push("— " + n + " —\n" + s.slice(0, 40000));
+          }
+          if (!parts.length) fail();
+          put(parts.join("\n\n")); return;
+        }
+        const dec = new TextDecoder("utf-8", { fatal: false }).decode(u8.subarray(0, Math.min(u8.length, 1500000)));
+        if (u8.length > 64 && ((dec.match(/\uFFFD/g) || []).length > dec.length * 0.05)) fail();
+        put(dec);
+      } catch (err) { throw new Error("openfail"); }
     },
     async export() { return { blob: await ED.htmlToDocx(clean(), { page: { ...pg }, font: pg.font, size: pg.size, line: pg.line, header: pg.header, footer: pg.footer, pnum: pg.pnum, pnumPos: pg.pnumPos, pnumAlign: pg.pnumAlign, wm: pg.wm, pbd: pg.pbd, pbw: pg.pbw, pbc: pg.pbc }) }; },
     comments, columns, toc, acceptAll, setTrack, tracking: () => tracking,
