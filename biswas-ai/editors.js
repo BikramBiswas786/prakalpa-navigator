@@ -273,19 +273,21 @@ function xEngine(book) { // book.sheets[i] = { name, cells: Map("r,c" -> raw str
   function first(rg) { const [si, r1, c1] = rg.range; return cellVal(si, r1, c1); }
   function flat(args) { const out = []; for (const a of args) { if (a && a.range) { const [si, r1, c1, r2, c2] = a.range; for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) out.push({ v: cellVal(si, r, c), ref: true }); } else out.push({ v: a, ref: false }); } return out; }
   const nums = args => flat(args).filter(x => typeof x.v === "number" || (!x.ref && (typeof x.v === "boolean" || (typeof x.v === "string" && x.v !== "" && !isNaN(+x.v))))).map(x => +x.v);
-  const num = v => { if (v && v.range) v = first(v); if (v == null || v === "") return 0; if (typeof v === "boolean") return +v; if (typeof v === "number") return v; const n = +v; if (isNaN(n)) ERR("#VALUE!"); return n; };
-  const str = v => { if (v && v.range) v = first(v); return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v); };
+  const num = v => { if (v && v.range) v = first(v); if (v instanceof XErr) throw v; if (v == null || v === "") return 0; if (typeof v === "boolean") return +v; if (typeof v === "number") return v; const n = +v; if (isNaN(n)) ERR("#VALUE!"); return n; };
+  const str = v => { if (v && v.range) v = first(v); if (v instanceof XErr) throw v; return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v); };
   const FN = {
     SUM: a => nums(a).reduce((x, y) => x + y, 0), AVERAGE: a => { const n = nums(a); if (!n.length) ERR("#DIV/0!"); return n.reduce((x, y) => x + y, 0) / n.length; },
     MIN: a => { const n = nums(a); return n.length ? Math.min(...n) : 0; }, MAX: a => { const n = nums(a); return n.length ? Math.max(...n) : 0; },
     COUNT: a => nums(a).length, COUNTA: a => flat(a).filter(x => x.v != null && x.v !== "").length, PRODUCT: a => nums(a).reduce((x, y) => x * y, 1),
     ROUND: a => { const p = Math.pow(10, num(a[1] ?? 0)); return Math.round(num(a[0]) * p) / p; }, ABS: a => Math.abs(num(a[0])), INT: a => Math.floor(num(a[0])),
     SQRT: a => { const n = num(a[0]); if (n < 0) ERR("#NUM!"); return Math.sqrt(n); }, MOD: a => { const d = num(a[1]); if (!d) ERR("#DIV/0!"); const n = num(a[0]); return n - d * Math.floor(n / d); },
-    IF: a => { const c = a[0] && a[0].range ? first(a[0]) : a[0]; return (typeof c === "string" ? c !== "" : !!c) ? (a[1] ?? true) : (a[2] ?? false); },
+    IF: a => { if (a[0] instanceof XErr) return a[0]; const c = a[0] && a[0].range ? first(a[0]) : a[0]; return (typeof c === "string" ? c !== "" : !!c) ? (a[1] ?? true) : (a[2] ?? false); },
     AND: a => flat(a).every(x => !!x.v), OR: a => flat(a).some(x => !!x.v), NOT: a => !num(a[0]),
     CONCAT: a => flat(a).map(x => str(x.v)).join(""), CONCATENATE: a => flat(a).map(x => str(x.v)).join(""), LEN: a => [...str(a[0])].length,
     UPPER: a => str(a[0]).toUpperCase(), LOWER: a => str(a[0]).toLowerCase(), TRIM: a => str(a[0]).trim().replace(/\s+/g, " ")
   };
+  if (xEngine.ext) Object.assign(FN, xEngine.ext({ flat, nums, num, str, first, cellVal, ERR, XErr, book }));
+  const LAZY = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "IF", "ERROR.TYPE"]);
   function evalF(src, si) {
     const toks = []; const re = /\s*(?:(\d+\.?\d*(?:e[+-]?\d+)?|\.\d+)|("(?:[^"]|"")*")|((?:'[^']+'|[A-Za-z_][\w.]*)!)?(\$?[A-Za-z]{1,3}\$?\d+)(?::(\$?[A-Za-z]{1,3}\$?\d+))?|([A-Za-z_][\w.]*)|(<>|<=|>=|[-+*/^&=<>(),%]))/y;
     let m, pos = 0; src = src.trim();
@@ -304,7 +306,11 @@ function xEngine(book) { // book.sheets[i] = { name, cells: Map("r,c" -> raw str
     function prim() { const k = eat(); if (!k) ERR("#ERR!");
       if (k.t === "n" || k.t === "s") return k.v;
       if (k.t === "r") return k.single ? cellVal(k.v[0], k.v[1], k.v[2]) : { range: k.v };
-      if (k.t === "id") { if (k.v === "TRUE") return true; if (k.v === "FALSE") return false; const f = FN[k.v]; if (!f || !peek() || peek().v !== "(") ERR("#NAME?"); eat("("); const args = []; if (peek() && peek().v !== ")") { args.push(cmp()); while (peek() && peek().v === ",") { eat(); args.push(cmp()); } } eat(")"); return f(args); }
+      if (k.t === "id") { if (k.v === "TRUE") return true; if (k.v === "FALSE") return false; const f = FN[k.v]; if (!f || !peek() || peek().v !== "(") ERR("#NAME?"); eat("("); const args = [];
+        const arg = () => { const st = i; try { return cmp(); } catch (e) { if (!(e instanceof XErr)) throw e; i = st; let d = 0; while (i < toks.length) { const t = toks[i]; if (t.t === "op" && t.v === "(") d++; else if (t.t === "op" && t.v === ")") { if (!d) break; d--; } else if (t.t === "op" && t.v === "," && !d) break; i++; } return e; } };
+        if (peek() && peek().v !== ")") { args.push(arg()); while (peek() && peek().v === ",") { eat(); args.push(peek() && (peek().v === "," || peek().v === ")") ? null : arg()); } } eat(")");
+        if (!LAZY.has(k.v)) { const bad = args.find(a => a instanceof XErr); if (bad) throw bad; }
+        const out = f(args, si); if (out instanceof XErr) throw out; return out; }
       if (k.v === "(") { const v = cmp(); eat(")"); return v; }
       ERR("#ERR!"); }
     const v = cmp(); if (i < toks.length) ERR("#ERR!"); return v;
