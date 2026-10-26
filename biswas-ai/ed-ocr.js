@@ -95,7 +95,10 @@ async function genPicture(prompt, w = 1216, h = 832) {
     const r = await fetch("/api/imagegen", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, w, h }) });
     if (!r.ok) return null; const j = await r.json(); if (!j.b64) return null;
     const bin = Uint8Array.from(atob(j.b64), ch => ch.charCodeAt(0));
-    return { bm: await createImageBitmap(new Blob([bin], { type: j.mime || "image/png" })), provider: j.provider };
+    const bm = await createImageBitmap(new Blob([bin], { type: j.mime || "image/png" }));
+    // Pollinations stamps a watermark and a garbled text strip along the bottom: drop the bottom 8%
+    const sh = j.provider === "pollinations" ? Math.round(bm.height * 0.92) : bm.height;
+    return { bm, sh, provider: j.provider };
   } catch (e) { return null; }
 }
 // cover-fit the picture, then write the title/text on dark bands so Bengali and English stay exact
@@ -103,8 +106,8 @@ async function drawScene(a) {
   const W = 1216, H = 832, pic = await genPicture(a.scene, W, H); if (!pic) return null;
   try { await document.fonts.load(`bold 56px ${FONT}`, "অআ abc"); await document.fonts.load(`30px ${FONT}`, "অআ abc"); } catch (e) { /* system fonts */ }
   const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const k = Math.max(W / pic.bm.width, H / pic.bm.height), dw = pic.bm.width * k, dh = pic.bm.height * k;
-  g.drawImage(pic.bm, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  const sh = pic.sh || pic.bm.height, k = Math.max(W / pic.bm.width, H / sh), dw = pic.bm.width * k, dh = sh * k;
+  g.drawImage(pic.bm, 0, 0, pic.bm.width, sh, (W - dw) / 2, (H - dh) / 2, dw, dh);
   const P = 48; g.textAlign = "center"; g.textBaseline = "top";
   const band = (y0, y1, top) => { const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(top ? 0 : 1, "rgba(0,0,0,0.78)"); gr.addColorStop(top ? 1 : 0, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, y0, W, y1 - y0); };
   if (a.title) {

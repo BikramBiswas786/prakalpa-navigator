@@ -26,12 +26,6 @@ const PROVIDERS = [
     const j = await r.json(); const a = j && (j.artifacts || [])[0]; if (!a || !a.base64) throw new Error("nvidia empty");
     return { mime: "image/jpeg", b64: a.base64 };
   } },
-  { name: "pollinations", ok: () => env("IMAGE_POLLINATIONS") !== "off", run: async (p, w, h) => {
-    const r = await tfetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&nologo=true&safe=true&model=flux`, {}, 60000);
-    const ct = r.headers.get("content-type") || "";
-    if (!r.ok || !/^image\//.test(ct)) throw new Error("pollinations " + r.status);
-    return { mime: ct.split(";")[0], b64: await b64OfRes(r) };
-  } },
   { name: "gemini", ok: () => env("GEMINI_API_KEY"), run: async p => {
     const model = env("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
     const r = await tfetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "x-goog-api-key": env("GEMINI_API_KEY"), "content-type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: p }] }], generationConfig: { responseModalities: ["IMAGE", "TEXT"] } }) });
@@ -39,6 +33,12 @@ const PROVIDERS = [
     const j = await r.json(); const part = ((((j.candidates || [])[0] || {}).content || {}).parts || []).find(x => x.inlineData || x.inline_data);
     const d = part && (part.inlineData || part.inline_data); if (!d) throw new Error("gemini empty");
     return { mime: d.mimeType || d.mime_type || "image/png", b64: d.data };
+  } },
+  { name: "pollinations", ok: () => env("IMAGE_POLLINATIONS") !== "off", run: async (p, w, h) => {
+    const r = await tfetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&nologo=true&safe=true&model=flux`, {}, 60000);
+    const ct = r.headers.get("content-type") || "";
+    if (!r.ok || !/^image\//.test(ct)) throw new Error("pollinations " + r.status);
+    return { mime: ct.split(";")[0], b64: await b64OfRes(r) };
   } },
   { name: "openai", paid: true, ok: () => env("OPENAI_API_KEY") && OPENAI_DAILY > 0, run: async (p, w, h) => {
     roll(); if (counts.openai >= OPENAI_DAILY) throw new Error("openai daily cap");
