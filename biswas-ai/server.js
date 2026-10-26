@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "153";
+const BUILD = "154";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -836,6 +836,19 @@ const server = http.createServer(async (req, res) => {
       return J(200, ms.status());
     }
     if (url.pathname === "/api/pd/_count" && process.env.PD_DEBUG === "1") { const { S3_COUNT } = await import("./api/storage.js"); res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(S3_COUNT)); return; }
+    if (url.pathname === "/api/grammar" && req.method === "POST") { // Word grammar check: proxied to LanguageTool (no key; text is not stored)
+      const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }); res.end(JSON.stringify(obj)); };
+      if (limited(req, "grammar", 20, 60 * 1000)) { tooMany(res); return; }
+      const chunks = []; let size = 0; for await (const c of req) { size += c.length; if (size > 80 * 1024) { res.writeHead(413).end(); return; } chunks.push(c); }
+      let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      const text = String(body.text || "").slice(0, 20000); if (!text.trim()) { sendJson(200, { matches: [] }); return; }
+      try {
+        const r = await fetch("https://api.languagetool.org/v2/check", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ text, language: /[\u0980-\u09FF]/.test(text) && !/[a-z]{3}/i.test(text) ? "auto" : "en-US" }), signal: AbortSignal.timeout(20000) });
+        if (!r.ok) { sendJson(502, { error: "grammar_unavailable", status: r.status }); return; }
+        const j = await r.json(); sendJson(200, { lang: j.language && j.language.name, matches: (j.matches || []).slice(0, 200).map(m => ({ offset: m.offset, length: m.length, message: m.message, short: m.shortMessage || "", kind: m.rule && m.rule.issueType || "", rep: (m.replacements || []).slice(0, 4).map(x => x.value) })) });
+      } catch (e) { sendJson(502, { error: "grammar_unavailable" }); }
+      return;
+    }
     if (url.pathname === "/api/imagegen") { // text-to-image (free providers first, capped paid fallback)
       const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(JSON.stringify(obj)); };
       if (req.method === "GET") { sendJson(200, { providers: imagegen.imageProviders() }); return; }
