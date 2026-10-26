@@ -240,7 +240,7 @@ async function send(k) {
       ED.st[k].file = null; ED.st[k].name = "New " + fmtAtt.name.replace(/\.[^.]+$/, "") + "." + (k === "excel" && fmtAtt.e === "csv" ? "xlsx" : fmtAtt.e); ED.dirty(k); ED.label(k);
       notes.push(T("a_fmt", fmtAtt.name)); before.tables = k === "word" ? wordPage().querySelectorAll("table").length : 0;
     }
-    for (const a of atts) if (a.how === "tesseract") notes.push(T("a_ocr", a.name));
+    for (const a of atts) if (a.how === "tesseract") notes.push(T("a_ocr", a.name)); else if (a.how === "vision") notes.push(T("a_vision", a.name));
     const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc: struct(k), fast: s.el.fast.checked, lang: lang(),
       thread: s.thread.slice(-4), attachments: atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })) });
     const ops = r.ops || []; let res = { ok: 0, bad: 0 };
@@ -305,7 +305,7 @@ function rows(k) {
     h("span", { class: "ea-cvt" }, r.title), h("small", {}, ` ${r.n ? r.n + " AI · " : ""}${Math.max(1, Math.round(r.size * 0.75 / 1024))} KB`),
     h("span", { class: "ea-cvb" },
       h("button", { type: "button", class: "btn small", "data-ea-open": r.id, onclick: () => openRow(k, r.id).catch(e => say(k, e.message)) }, T("a_open")),
-      h("button", { type: "button", class: "btn small", "data-ea-ren": r.id, onclick: async () => { const n = prompt(T("a_renq"), r.title); if (!n) return; const x = await pdApi("edconv/rename", { area: k, rid: r.id, title: n }); r.title = x.title; rows(k); } }, T("a_ren")),
+      h("button", { type: "button", class: "btn small", "data-ea-ren": r.id, onclick: async () => { const n = prompt(T("a_renq"), r.title); if (!n || !n.trim()) return; const old = r.title; r.title = n.trim(); rows(k); try { const x = await pdApi("edconv/rename", { area: k, rid: r.id, title: n.trim() }); r.title = x.title || r.title; } catch (e) { r.title = old; say(k, T("a_err", (e && e.message) || String(e))); } rows(k); } }, T("a_ren")),
       h("button", { type: "button", class: "btn small", "data-ea-dl": r.id, onclick: () => dlRow(k, r.id).catch(e => say(k, e.message)) }, "⬇"),
       h("button", { type: "button", class: "btn small", "data-ea-del": r.id, onclick: async () => { if (!confirm(T("a_delq", r.title))) return; await pdApi("edconv/delete", { area: k, rid: r.id }); s.rows = s.rows.filter(x => x.id !== r.id); rows(k); } }, T("a_del")))));
 }

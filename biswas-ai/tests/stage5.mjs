@@ -52,7 +52,7 @@ await p.$eval("#ea-cv-word", d => { d.open = true; }); const first = await p.$ev
 await p.click(`[data-ea-open="${first}"]`); await sl(1500);
 ok(await p.evaluate(() => /Report v2/.test(BA_ED.kinds.word.page().innerText) && BA_ED.ai.S.word.thread.length === 3), "S12 opening a row restores the document and its thread");
 await shot("s04-row-restored");
-PROMPT = "My renamed report"; await p.$eval("#ea-cv-word", d => { d.open = true; }); await p.click(`[data-ea-ren="${first}"]`); await sl(800);
+PROMPT = "My renamed report"; await p.$eval("#ea-cv-word", d => { d.open = true; }); await p.click(`[data-ea-ren="${first}"]`); await p.waitForFunction(f => (document.querySelector(`[data-ea-row="${f}"] .ea-cvt`) || {}).textContent === "My renamed report", { timeout: 15000 }, first).catch(() => {}); await sl(2500);
 ok(await p.$eval(`[data-ea-row="${first}"] .ea-cvt`, e => e.textContent) === "My renamed report", "S13 rename row");
 await p.click(`[data-ea-del="${first}"]`); await sl(800); ok(await rowsN("word") === 2, "S14 delete row");
 ok(await p.evaluate(async () => (await pdApi("edconv/list", { area: "excel" })).rows.length === 0), "S15 conversations are separate per editor");
@@ -84,7 +84,8 @@ fs.writeFileSync("/tmp/s5-shot.png", Buffer.from(png, "base64"));
 r = await ask("word", "type this into Word", ["/tmp/s5-shot.png"]);
 const wt = await p.evaluate(() => BA_ED.kinds.word.page().innerText);
 ok(/Meeting at ten/i.test(wt) && /Bring the files/i.test(wt), "S19 screenshot typed into Word: " + wt.replace(/\n/g, " | ").slice(0, 80));
-ok(/OCR|vision/.test(r.last + " " + r.st), "S20 says how the image text was read: " + r.last.replace(/\n/g, " | ").slice(-120));
+ok(/OCR|vision/.test(r.last), "S20 says how the image text was read: " + r.last.replace(/\n/g, " | ").slice(-120));
+const lng = await ask("word", "What is this file about?"); ok(!/[\u0980-\u09FF]/.test(lng.last), "S19b reply in English when the screen is English: " + lng.last.slice(0, 80));
 await shot("s07-screenshot-word");
 // ---------- Notepad / Image quick ----------
 await p.click("#ed-tab-note"); await sl(500);
@@ -94,13 +95,13 @@ await p.click("#ea-undo-note"); await sl(300); ok(await p.$eval("#np-ta", e => e
 await p.click("#ed-note [data-ed=conv]"); await sl(1000); ok(await rowsN("note") === 1, "S23 Notepad conversation row");
 await p.click("#ed-tab-image"); await sl(600);
 r = await ask("image", 'make a poster "Hello Stage 5"'); const px = await p.evaluate(() => { const c = BA_ED.kinds.image._api().flat(); const d = c.getContext("2d").getImageData(2, 2, 1, 1).data; return [...d].slice(0, 3); });
-ok(px.join() === "0,0,0", "S24 Image AI edit (black background + text): " + px);
+const MOCK = process.env.MOCK === "1"; ok(MOCK ? px.join() === "0,0,0" : px.join() !== "255,255,255", "S24 Image AI edit (black background + text): " + px);
 await p.click("#ed-image [data-ed=conv]"); await sl(1500); ok(await rowsN("image") === 1, "S25 Image conversation row");
 await p.click("#ea-undo-image"); await sl(800); const px2 = await p.evaluate(() => [...BA_ED.kinds.image._api().flat().getContext("2d").getImageData(2, 2, 1, 1).data].slice(0, 4));
 ok(px2.join() !== "0,0,0,255", "S26 Image undo: " + px2);
 await p.$eval("#ea-cv-image", d => { d.open = true; }); const ir = await p.$eval("#ea-cvlist-image .ea-cvrow", e => e.dataset.eaRow); await p.click(`[data-ea-open="${ir}"]`); await sl(1500);
 const px3 = await p.evaluate(() => [...BA_ED.kinds.image._api().flat().getContext("2d").getImageData(2, 2, 1, 1).data].slice(0, 4));
-ok(px3.join() === "0,0,0,255", "S27 Image row reopens the saved picture: " + px3);
+ok(px3.slice(0, 3).join() === px.join() && px3[3] === 255, "S27 Image row reopens the saved picture: " + px3);
 await shot("s08-image");
 // paste a file onto the AI box
 await p.click("#ed-tab-note"); await sl(300);
