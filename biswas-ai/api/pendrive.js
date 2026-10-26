@@ -299,7 +299,44 @@ export function parseActions(text) {
     } catch (e) { /* ignore a broken block */ }
     return "";
   });
-  return { text: body.trim(), actions };
+  const body2 = body.replace(/```pendrive-image\s*([\s\S]*?)```/g, (_, j) => {
+    try { const a = imageAction(JSON.parse(j.trim())); if (a) actions.push(a); } catch (e) { /* ignore a broken block */ }
+    return "";
+  });
+  return { text: body2.trim(), actions };
+}
+// an image the browser draws (text on a background, a poster/notice, or a simple chart) and offers as a PNG
+const HEX = v => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(v || "")) ? String(v) : "";
+function imageAction(a) {
+  if (!a || typeof a !== "object") return null;
+  const kind = ["text", "poster", "chart"].includes(a.kind) ? a.kind : "text";
+  const text = String(a.text || "").slice(0, 20000), title = String(a.title || "").slice(0, 300);
+  let chart = null;
+  if (kind === "chart" && a.chart && Array.isArray(a.chart.labels) && Array.isArray(a.chart.values)) {
+    const n = Math.min(a.chart.labels.length, a.chart.values.length, 40);
+    chart = { type: ["bar", "line", "pie"].includes(a.chart.type) ? a.chart.type : "bar", labels: a.chart.labels.slice(0, n).map(x => String(x).slice(0, 40)), values: a.chart.values.slice(0, n).map(Number).map(v => isFinite(v) ? v : 0) };
+  }
+  if (!text.trim() && !title.trim() && !chart) return null;
+  let name = cleanPath(String(a.name || a.path || "AI image")).replace(/\.(png|jpe?g|webp)$/i, "") + ".png";
+  return { type: "image", kind: chart ? "chart" : kind === "chart" ? "text" : kind, path: name, format: "png", bg: HEX(a.bg) || "#ffffff", fg: HEX(a.fg) || "#111111", accent: HEX(a.accent) || "", align: a.align === "center" ? "center" : "left", title, text, chart };
+}
+// "write this as an image", "make a poster", "a chart of…", "…on a black background" — the user wants a picture back, not prose
+export const IMAGE_OUT_RE = /\b(make|create|generate|draw|write|render|put|turn|convert|give|produce|design|export|save)\b[^.?!\n]{0,140}\b(a|an|as|into|to|one)\s+((?!this\b|that\b|these\b|those\b|the\b|my\b|of\b)[\w-]+\s+){0,4}(image|picture|png|jpe?g|poster|chart|graph|banner|wallpaper)\b|\b(on|in|with|onto)\s+(a|an|one)?\s*([\w-]+\s+){0,3}background\b|ছবি\s*(বানা|তৈরি|কর)|ছবিতে|পোস্টার|চার্ট/i;
+export function imageColors(q) {
+  const s = String(q || "").toLowerCase();
+  const C = { black: "#000000", white: "#ffffff", red: "#b91c1c", blue: "#1e3a8a", green: "#166534", yellow: "#facc15", grey: "#4b5563", gray: "#4b5563", navy: "#0b1f4b", কালো: "#000000", সাদা: "#ffffff", লাল: "#b91c1c", নীল: "#1e3a8a", সবুজ: "#166534" };
+  const m = s.match(/(black|white|red|blue|green|yellow|grey|gray|navy|কালো|সাদা|লাল|নীল|সবুজ)\s*(\w+\s*)?(background|bg|ব্যাকগ্রাউন্ড|পটভূমি)/);
+  const t = s.match(/(black|white|red|blue|green|yellow|grey|gray|navy|কালো|সাদা|লাল|নীল|সবুজ)\s*(text|letters|font|লেখা)/);
+  const bg = m ? C[m[1]] : "#ffffff";
+  const dark = ["#000000", "#b91c1c", "#1e3a8a", "#166534", "#4b5563", "#0b1f4b"].includes(bg);
+  return { bg, fg: t ? C[t[1]] : dark ? "#ffffff" : "#111111" };
+}
+// the model forgot the block: make one from its answer so the user still gets the picture
+export function ensureImage(q, text, actions) {
+  if (!IMAGE_OUT_RE.test(String(q || "")) || actions.some(a => a.type === "image")) return actions;
+  const body = String(text || "").replace(/\s*\[\d{1,2}\]/g, "").replace(/^MOCK answer[^\n]*\n?/, "").trim() || String(text || "").trim();
+  const a = imageAction({ kind: /poster|notice|banner|পোস্টার/i.test(q) ? "poster" : "text", name: "AI image " + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ""), text: body, ...imageColors(q) });
+  return a ? [...actions, a] : actions;
 }
 // output format rules. A table request (any language) must produce a GitHub markdown table.
 export const TABLE_RE = /\b(table|tables|tabular|tabulate|list|listing|compar\w*|matrix|spreadsheet|csv|excel|columns?|rows?)\b|টেবিল|সারণি|সারণী|তালিকা|তুলনা|ছক|কলাম|এক্সেল/i;
@@ -309,6 +346,7 @@ export function fmtRule(q, format) {
   const r = [];
   if (wantsTable(q, format)) r.push("OUTPUT FORMAT (mandatory): the answer MUST contain a GitHub-style markdown table: a header row, then a separator row like | --- | --- |, then one row per item, every row starting and ending with |. Use short cell text, keep [file] citations in a 'File'/'ফাইল' column. Do not use HTML, tabs or code blocks for the table. A one-line intro before the table and short notes after it are fine.");
   if (format === "report") r.push("OUTPUT FORMAT: a structured report in markdown: a # title, ## sections (Summary, Details, Conclusion), bullet points, and a markdown table where data fits.");
+  if (IMAGE_OUT_RE.test(String(q || ""))) r.push("OUTPUT: the user wants an IMAGE back. Reply with one short line, then the ```pendrive-image block holding the complete requested text (colours as asked). Do not add commentary inside the text.");
   if (format === "letter") r.push("OUTPUT FORMAT: a formal office letter/notesheet: To, Subject, salutation, body paragraphs, closing and signature lines. No tables unless asked.");
   return r.length ? "\n\n" + r.join("\n") : "";
 }
@@ -317,7 +355,12 @@ If the user asks you to write, save or create a file (notesheet, report, table, 
 \`\`\`pendrive-write
 {"path":"Folder/Name.docx","format":"docx","content":"markdown text (for xlsx: a markdown table)"}
 \`\`\`
-format is one of docx, xlsx, pdf, md, txt, csv. Never claim you deleted or overwrote anything; the user confirms that in the app.`;
+format is one of docx, xlsx, pdf, md, txt, csv.
+If the user asks for an IMAGE / picture / PNG / poster / notice / chart (for example "write this text on a black background image"), add ONE block at the end exactly like:
+\`\`\`pendrive-image
+{"name":"Short name","kind":"text","bg":"#000000","fg":"#ffffff","title":"","text":"the full text, line breaks kept","align":"left"}
+\`\`\`
+kind is "text" (plain text on a background), "poster" (title + body, centred, for notices) or "chart" (add "chart":{"type":"bar|line|pie","labels":[...],"values":[numbers]}). Put the COMPLETE text in "text" in its original language and script; the app draws the PNG. Never say you cannot make images. Never claim you deleted or overwrote anything; the user confirms that in the app.`;
 
 /* ---------- API ---------- */
 export async function handle(req, res, url, body, send) {
@@ -664,6 +707,18 @@ export async function handle(req, res, url, body, send) {
     });
   }
   if (op === "ai") return aiJob(req, res, id, body);
+  if (op === "ocr") { // read the text in up to 4 page images with a vision model; the browser falls back to Tesseract when this says no_vision
+    const imgs = (Array.isArray(body.images) ? body.images : []).slice(0, 4).filter(im => im && /^image\/(jpeg|png|webp)$/.test(im.mime) && typeof im.data === "string" && im.data.length < 2500000);
+    if (!imgs.length) fail(400, "no_image");
+    if (env.PENDRIVE_MOCK_AI === "1") fail(422, "no_vision");
+    const sys = "You are an exact OCR engine. Transcribe ALL text visible in the image(s), in reading order, in its original language and script (Bengali stays Bengali, English stays English). Keep line breaks, list markers and table rows (use | between cells). Do not translate, summarise, explain or add anything. If there are several images, start each with [Page n]. If there is no text, reply NO_TEXT.";
+    const r = await chatMod.POST(new Request("http://pendrive.local/api/chat", { method: "POST", headers: { "content-type": "application/json", host: "pendrive.local" }, body: JSON.stringify({ system: sys, messages: [{ role: "user", content: "Transcribe the text." }], images: imgs, maxOut: 4000 }) }));
+    if (!r.ok) { let e = ""; try { e = (await r.json()).error; } catch (x) { /* ignore */ } fail(r.status === 422 ? 422 : 502, e || "no_vision"); }
+    let text = ""; const dec = new TextDecoder(); for await (const c of r.body) text += dec.decode(c, { stream: true });
+    text = text.replace(/\u0000[A-Z_]*/g, "").trim();
+    if (/^\W*NO_TEXT\W*$/.test(text)) text = "";
+    return send(200, { text: text.slice(0, TEXT_MAX), provider: r.headers.get("x-ai-provider") || "vision" });
+  }
   fail(404, "unknown");
 }
 function moveTree(ix, old, np) {
@@ -733,13 +788,13 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   for (const c of (overview ? cands : strong).slice(0, overview && memo ? 24 : fast ? (agg ? 4 : 5) : agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
   const cardIds = memo && !overview ? [...new Set(ev.map(e => e.fid))].filter(f => memo.files[f]).slice(0, 4) : [];
   const cardsTxt = cardIds.length ? `\nAbout these files (memory; for orientation only, cite the extracts):\n${cardIds.map(f => `- ${ix.files[f].path}: ${memText(memo.files[f]).replace(/\n/g, " · ")}`).join("\n")}\n` : "";
-  const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
+  const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${/^ocr/.test(ix.files[e.fid].note || "") ? " (image text, read by OCR)" : ""}${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
   const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
   let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || {});
   if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
   answer = answer.replace(/\bNOT_FOUND\b/g, "");
   const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
-  const cites = ev.map((e, i) => ({ n: i + 1, id: e.fid, path: ix.files[e.fid].path, loc: e.loc, quote: e.quote })).filter(c => !used.size || used.has(c.n));
+  const cites = ev.map((e, i) => ({ n: i + 1, id: e.fid, path: ix.files[e.fid].path, loc: e.loc, quote: e.quote, ocr: /^ocr/.test(ix.files[e.fid].note || "") || undefined })).filter(c => !used.size || used.has(c.n));
   return { answer, cites, sources: [...new Set(cites.map(c => c.path))] };
 }
 
@@ -769,7 +824,7 @@ async function aiJob(req, res, id, body) {
       emit({ type: "progress", msg: "revise" });
       const cur = body.revise.slice(0, 60000);
       const ans = await askAI(SYSX(lang), `CURRENT DOCUMENT (markdown; the user may have edited it by hand):\n\n${cur}\n\nINSTRUCTION: ${q}\n\nReturn the full revised document in markdown, nothing else. Apply the instruction; keep every other fact, number, table row and [n] citation unless the instruction says otherwise.${fmtRule(q, fmt)}`, 3600);
-      const { text, actions } = parseActions(ans);
+      const { text, actions: acts } = parseActions(ans); const actions = ensureImage(q, text, acts);
       emit({ type: "answer", text, sources: [], cites: [], actions, revised: true });
     } catch (e) { emit({ type: "error", error: e.code || "ai_failed" }); }
     return res.end();
@@ -785,11 +840,20 @@ async function aiJob(req, res, id, body) {
   try {
     if (fastOn && withText.length) { const hit = await acGet(id, ck).catch(() => null); if (hit) { emit({ type: "progress", msg: "cache" }); await done({ ...hit, cached: true }); return res.end(); } }
     if (!withText.length) {
-      emit({ type: "answer", text: lang === "en" ? "None of the selected files has readable text. Scanned images need OCR, which isn't supported yet." : "বেছে নেওয়া ফাইলে পড়ার মতো লেখা নেই। স্ক্যান করা ছবি পড়তে OCR লাগে, সেটা এখনও নেই।", sources: [], cites: [], actions: [], noText, scanned });
+      emit({ type: "answer", text: lang === "en" ? "The selected files have no text read yet. Use “🔍 Read text (OCR)” on the file row, then ask again." : "বেছে নেওয়া ফাইলের লেখা এখনও পড়া হয়নি। ফাইলের সারিতে “🔍 লেখা পড়ুন (OCR)” চাপুন, তারপর আবার জিজ্ঞাসা করুন।", sources: [], cites: [], actions: [], noText, scanned });
       return res.end();
     }
     const read = async f => ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
     let answer, sources, cites;
+    const picked0 = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
+    if (picked0 && withText.length <= 5 && IMAGE_OUT_RE.test(q) && /\b(all|whole|full|entire|every|exact)\b[^.?!]{0,40}\b(text|words|writing)\b|\b(text|words|writing) (of|from|in) (this|the|that|these)\b|সব লেখা|পুরো লেখা|লেখাগুলো/i.test(q)) {
+      // "write all the text of this screenshot on a black image": copy the files' own text (OCR included) exactly, no AI rewording
+      const parts = []; for (const f of withText) parts.push((await read(f)).replace(/^\s*\[Page \d+\]\s*$/gm, "").trim());
+      const a = imageAction({ kind: /poster|notice|banner|পোস্টার/i.test(q) ? "poster" : "text", name: withText.length === 1 ? withText[0].path.split("/").pop().replace(/\.[^.]+$/, "") + " text" : "Text image", text: parts.join("\n\n").slice(0, 20000), ...imageColors(q) });
+      const msg = lang === "en" ? `Here is all the text of ${withText.map(f => f.path.split("/").pop()).join(", ")} as an image (${a ? a.text.length : 0} characters, copied exactly).` : `${withText.map(f => f.path.split("/").pop()).join(", ")} ফাইলের সব লেখা ছবি করে দেওয়া হল (${a ? a.text.length : 0} অক্ষর, হুবহু)।`;
+      await done({ type: "answer", text: msg, sources: withText.map(f => f.path), cites: [], actions: a ? [a] : [], noText, scanned });
+      return res.end();
+    }
     if (body.mode === "analyse") {
       const files = withText.slice(0, JOB.maxFiles);
       emit({ type: "progress", msg: `files ${files.length}/${withText.length}` });
@@ -814,7 +878,7 @@ async function aiJob(req, res, id, body) {
     } else {
       let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast);
       // a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
-      const transform = /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
+      const transform = IMAGE_OUT_RE.test(q) || /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
       const picked = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
       if (r.notFound && transform && picked) {
         emit({ type: "progress", msg: "transform" });
@@ -830,7 +894,7 @@ async function aiJob(req, res, id, body) {
       emit({ type: "progress", msg: "table" });
       try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block and any \`\`\`attachment block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
-    const { text, actions } = parseActions(answer);
+    const { text, actions: acts } = parseActions(answer); const actions = ensureImage(q, text, acts);
     await done({ type: "answer", text, sources, cites: cites || [], actions, noText, scanned });
   } catch (e) {
     emit({ type: "error", error: e.code || "ai_failed" });
