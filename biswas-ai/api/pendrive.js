@@ -8,6 +8,9 @@
 //   pendrives/<id>/bm25.json   keyword index over text chunks
 // Renames and moves only change index.json; the stored bytes never move.
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import pathMod from "node:path";
 import { makePool } from "./storage.js";
 import { MetaStore } from "./metastore.js";
 import * as rag from "./rag.js";
@@ -89,6 +92,34 @@ function session(req) {
   let s; try { s = JSON.parse(Buffer.from(body, "base64url").toString("utf8")); } catch (e) { fail(401, "bad_session"); }
   if (!/^[a-f0-9]{24}$/.test(s.p) || !(s.exp > Date.now())) fail(401, "session_expired");
   return s.p;
+}
+
+/* ---------- always open: PIN check that survives every bucket being down ---------- */
+// (a) server auth cache: name -> salted PIN hash, filled at every successful open, kept on local disk (survives restarts until a redeploy);
+// (b) an open ticket in the browser: signed with PENDRIVE_SECRET, holds a PIN verifier (HMAC, not the PIN), valid 30 days.
+// With neither, a pendrive whose storage is down does not open: the PIN is never skipped.
+const TICKET_MS = 30 * 24 * 3600 * 1000;
+const AUTH_FILE = env.PD_AUTH_FILE || pathMod.join(os.tmpdir(), "pd-auth-cache.json");
+const AUTHC = new Map(); try { for (const [k, v] of Object.entries(JSON.parse(fs.readFileSync(AUTH_FILE, "utf8")))) AUTHC.set(k, v); } catch (e) { /* first run */ }
+let authT = 0; const authSave = () => { clearTimeout(authT); authT = setTimeout(() => { try { fs.writeFileSync(AUTH_FILE, JSON.stringify(Object.fromEntries(AUTHC)), { mode: 0o600 }); } catch (e) { console.warn("pendrive: auth cache write", e.message); } }, 500); };
+const pinV = (id, pin) => crypto.createHmac("sha256", SECRET).update("pinv|" + id + "|" + pin).digest("base64url");
+function mkTicket(id, nn, pin, pub) { const body = b64u(JSON.stringify({ p: id, n: nn, v: pinV(id, pin), pub, exp: Date.now() + TICKET_MS })); return body + "." + crypto.createHmac("sha256", SECRET).update("ticket." + body).digest("base64url"); }
+function readTicket(t) { const [body, sig] = String(t || "").split("."); if (!body || !sig) return null; const want = crypto.createHmac("sha256", SECRET).update("ticket." + body).digest("base64url");
+  if (sig.length !== want.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want))) return null; try { const x = JSON.parse(Buffer.from(body, "base64url").toString("utf8")); return x.exp > Date.now() && /^[a-f0-9]{24}$/.test(x.p) ? x : null; } catch (e) { return null; } }
+const SIM = new Map(); // test flag (ADMIN_TOKEN, zz-test-* only): this pendrive's storage behaves as if every bucket refused
+const SIMID = new Set();
+export function simOffline(name, on) { const nn = normName(name); if (!nn.startsWith("zz-test")) return false; if (on) SIM.set(nn, true); else { SIM.delete(nn); const a = AUTHC.get(nn); if (a) SIMID.delete(a.id); } return true; }
+const LIMFAIL = new Map();
+async function openLimited(body, nn, why, send) {
+  const lf = LIMFAIL.get(nn); if (lf && lf.until > Date.now()) fail(423, "locked", { retryAfter: Math.ceil((lf.until - Date.now()) / 1000) });
+  const a = AUTHC.get(nn), tk = readTicket(body.ticket); let id = null, pub = null;
+  if (a) { const h = await scrypt(body.pin, a.salt); if (crypto.timingSafeEqual(Buffer.from(h, "hex"), Buffer.from(a.hash, "hex"))) { id = a.id; pub = a.pub; } }
+  else if (tk && tk.n === nn) { const v = pinV(tk.p, body.pin); if (v.length === tk.v.length && crypto.timingSafeEqual(Buffer.from(v), Buffer.from(tk.v))) { id = tk.p; pub = tk.pub; } }
+  else fail(503, "storage_resting", { noCache: true });
+  if (!id) { const f = LIMFAIL.get(nn) || { n: 0, until: 0 }; f.n++; if (f.n >= LOCK_TRIES) { f.n = 0; f.until = Date.now() + LOCK_MS; } LIMFAIL.set(nn, f); fail(401, "wrong", { left: Math.max(0, LOCK_TRIES - f.n) }); }
+  LIMFAIL.delete(nn); if (SIM.has(nn)) SIMID.add(id);
+  console.warn(`pendrive: opened in limited mode (${a ? "server auth cache" : "browser ticket"}): ${String(why && why.message || why).slice(0, 60)}`);
+  return send(200, { token: issue(id), ticket: mkTicket(id, nn, body.pin, pub), limited: true, ...(pub || { name: body.name }) });
 }
 
 /* ---------- meta + index ---------- */
@@ -411,10 +442,12 @@ export async function handle(req, res, url, body, send) {
     });
   }
   if (op === "open") {
-    checkPin(body.pin);
+    checkPin(body.pin); const nn = normName(body.name);
+    try {
+    if (SIM.has(nn)) throw new Error("storage 403 AccessDenied (simulated)");
     const ref = await jget(nameKey(body.name));
     if (!ref) { await scrypt(body.pin, "00".repeat(16)); fail(401, "wrong"); } // same cost either way
-    return withLock(ref.id, async () => {
+    return await withLock(ref.id, async () => {
       const m = await meta(ref.id);
       if (m.lockUntil > Date.now()) fail(423, "locked", { retryAfter: Math.ceil((m.lockUntil - Date.now()) / 1000) });
       const h = await scrypt(body.pin, m.salt);
@@ -424,12 +457,15 @@ export async function handle(req, res, url, body, send) {
         await saveMeta(ref.id, m);
         fail(401, "wrong", { left: LOCK_TRIES - m.fails });
       }
-      if (m.fails || m.lockUntil) { m.fails = 0; m.lockUntil = 0; await saveMeta(ref.id, m); }
-      return send(200, { token: issue(ref.id), ...publicMeta(m) });
+      if (m.fails || m.lockUntil) { m.fails = 0; m.lockUntil = 0; await saveMeta(ref.id, m).catch(() => {}); }
+      const pub = publicMeta(m); AUTHC.set(nn, { id: ref.id, salt: m.salt, hash: m.hash, pub, at: Date.now() }); authSave();
+      return send(200, { token: issue(ref.id), ticket: mkTicket(ref.id, nn, body.pin, pub), ...pub });
     });
+    } catch (e) { if (e instanceof HttpError) throw e; return openLimited(body, nn, e, send); } // every bucket refused: open from the auth cache or the browser ticket
   }
 
-  const id = req.pdAs || session(req); // share upload-request links act on the owner's pendrive with a fixed op set
+  const id = req.pdAs || session(req);
+  if (SIMID.has(id) && op !== "ed-ai") fail(503, "storage_resting"); // test flag only // share upload-request links act on the owner's pendrive with a fixed op set
   // Change the PIN: owner session only, the current PIN must match (wrong tries count toward the same lock as opening).
   if (op === "pin") {
     if (req.pdAs) fail(403, "forbidden");
@@ -511,7 +547,8 @@ export async function handle(req, res, url, body, send) {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
     const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text, note }) => ({ id, path, size, type, mtime, text, ...(note ? { note } : {}) }));
     const pending = Object.entries(m.pending || {}).map(([fileId, v]) => ({ fileId, path: v.path, size: v.size, t: v.t }));
-    return send(200, { ...publicMeta(m), files, folders: ix.folders.slice().sort(), pending });
+    const down = metaStore && metaStore.all.every(b => b.metaBad > Date.now()); // served from cache while every replica refuses
+    return send(200, { ...publicMeta(m), files, folders: ix.folders.slice().sort(), pending, ...(down ? { limited: true } : {}) });
   }
   if (op === "download") {
     const ix = await index(id); const f = ix.files[String(body.id)];

@@ -48,15 +48,16 @@ for (const k of KINDS) ED.st[k] = { file: null, name: DEFNAME[k], dirty: false, 
 
 /* ---------- reading / writing pendrive files ---------- */
 async function fetchFile(f) {
-  const j = await pdApi("download-urls", { ids: [f.id] }); const u = j.urls && j.urls[f.id]; if (!u) throw new Error("not_found");
-  const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return await r.arrayBuffer();
+  const get = async () => { const j = await pdApi("download-urls", { ids: [f.id] }); const u = j.urls && j.urls[f.id]; if (!u) throw new Error("not_found");
+    const r = await fetch(u); if (!r.ok) throw new Error("HTTP " + r.status); return await r.blob(); };
+  return await (window.PDO ? await PDO.blob(f, get) : await get()).arrayBuffer();
 }
-function waitUpload(u) { return new Promise((res, rej) => { const tick = () => { if (u.state === "done") return res(); if (u.state === "fail" || u.state === "cancel" || u.state === "skip") return rej(new Error(u.err || u.state)); setTimeout(tick, 250); }; tick(); }); }
+function waitUpload(u) { return new Promise((res, rej) => { const tick = () => { if (u.state === "done" || u.state === "queued") return res(); if (u.state === "fail" || u.state === "cancel" || u.state === "skip") return rej(new Error(u.err || u.state)); setTimeout(tick, 250); }; tick(); }); }
 async function upload(path, blob, { overwrite = false, text } = {}) {
   const file = new File([blob], base(path), { type: blob.type || MIME[ext(path)] || "application/octet-stream" });
   pdQueue([{ file, path, text, overwrite }]);
   const u = pd.ups[pd.ups.length - 1]; await waitUpload(u); await pdRefresh().catch(() => {});
-  return (pd.files || []).find(f => f.path === path) || null;
+  return (pd.files || []).find(f => f.path === path) || (u.state === "queued" ? { id: "", path, size: blob.size, queued: true } : null);
 }
 const stamp = () => { const d = new Date(), z = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`; };
 async function backupOld(f) { // cheap restorable version: the old file is renamed and moved, not copied, so it costs no extra upload

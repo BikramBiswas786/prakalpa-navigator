@@ -10,7 +10,8 @@ const shot = n => p.screenshot({ path: `${SH}/${n}.png` });
 await p.goto(B + "/", { waitUntil: "networkidle0" });
 for (let i = 0; i < 2; i++) { if (await p.$eval("#langpick", d => d.open).catch(() => false)) await p.click('[data-pick-lang="en"]'); if (await p.$eval("#gate", g => !g.hidden).catch(() => false)) { await p.type("#gate-name", "zz tester"); await p.$eval("#gate-form", f => f.requestSubmit()); } await sl(400); }
 await p.click("#sec-pendrive"); await sl(500);
-await p.type("#pd-c-name", "zz-test-r5-" + Date.now().toString(36)); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit());
+if (process.env.PD) { await p.type("#pd-o-name", process.env.PD); await p.type("#pd-o-pin", process.env.PIN || "482915"); await p.$eval("#pd-open-form", f => f.requestSubmit()); }
+else { await p.type("#pd-c-name", "zz-test-cv-" + Date.now().toString(36)); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit()); }
 await p.waitForSelector("#pd-main", { visible: true, timeout: 30000 }); await sl(800);
 // Excel: data + column chart + line chart -> .xlsx has real chart parts -> reopened, the charts come back
 await p.click("#ed-tab-excel"); await sl(900);

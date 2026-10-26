@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "156";
+const BUILD = "157";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -828,6 +828,7 @@ const server = http.createServer(async (req, res) => {
       const okTok = A && tok.length === A.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(A));
       const J = (st, o) => res.writeHead(st, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(o));
       if (!okTok) return J(403, { error: "forbidden" });
+      if (url.searchParams.get("do") === "offline") { const ok = pd.simOffline(url.searchParams.get("pd") || "", url.searchParams.get("on") === "1"); return J(ok ? 200 : 400, ok ? { ok: true } : { error: "zz-test pendrives only" }); }
       const ms = pd.metaStore; if (!ms) return J(200, { replicated: false });
       const act = url.searchParams.get("do") || "status", name = String(url.searchParams.get("b") || "");
       const b = pd.pool.find(x => x.name === name);
