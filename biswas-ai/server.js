@@ -26,7 +26,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "139";
+const BUILD = "140";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -111,6 +111,7 @@ function clientIp(req) {
   return xff || String(req.headers["x-real-ip"] || "").trim() || String(req.socket.remoteAddress || "unknown");
 }
 function limited(req, bucket, max, windowMs) {
+  max *= Number(process.env.PD_RATE_MULT) || 1; // local failover tests only
   const key = bucket + ":" + clientIp(req);
   const now = Date.now();
   let row = rateHits.get(key);
@@ -821,6 +822,19 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
+    if (url.pathname === "/api/admin/meta") { // ADMIN_TOKEN only: replica status, metadata sync from a backend, simulated outage for tests
+      const tok = String(req.headers["x-admin-token"] || ""), A = process.env.ADMIN_TOKEN || "";
+      const okTok = A && tok.length === A.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(A));
+      const J = (st, o) => res.writeHead(st, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(o));
+      if (!okTok) return J(403, { error: "forbidden" });
+      const ms = pd.metaStore; if (!ms) return J(200, { replicated: false });
+      const act = url.searchParams.get("do") || "status", name = String(url.searchParams.get("b") || "");
+      const b = pd.pool.find(x => x.name === name);
+      if (act === "sync") { try { return J(200, await ms.sync(b || ms.legacy)); } catch (e) { return J(500, { error: String(e.message).slice(0, 80) }); } }
+      if (act === "fault" && b && (process.env.PD_DEBUG === "1" || process.env.PD_FAULTS === "1")) { b.st.fault = Number(url.searchParams.get("code")) || 0; b.st.faultList = url.searchParams.get("list") === "1"; if (!b.st.fault) { b.metaBad = 0; b.badUntil = 0; } return J(200, { [b.name]: b.st.fault }); }
+      return J(200, ms.status());
+    }
+    if (url.pathname === "/api/pd/_count" && process.env.PD_DEBUG === "1") { const { S3_COUNT } = await import("./api/storage.js"); res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(S3_COUNT)); return; }
     if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
     // share links. /s/<id> is the receiver page; /api/s/<op> its API (no login); /api/pd/share/* the owner's ops.
     if (/^\/s\/[a-f0-9]{32}\/?$/.test(url.pathname)) { res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...SHARE_HEADERS }).end(SHARE_PAGE); return; }
@@ -839,7 +853,8 @@ const server = http.createServer(async (req, res) => {
         if (url.pathname.startsWith("/api/pd/")) await share.owner(req, url.pathname.slice(8), body, sendJson);
         else await share.receiver(req, res, url.pathname.slice(7), body, sendJson);
       } catch (e) {
-        if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
+        if (e && (e.code === "storage_reset" || /^storage_reset/.test(e.message || ""))) { if (!res.headersSent) sendJson(503, { error: "storage_reset" }); else res.end(); }
+        else if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
         else { console.error("share:", e.message); if (!res.headersSent) sendJson(500, { error: "server" }); else res.end(); }
       }
       return;
@@ -861,7 +876,8 @@ const server = http.createServer(async (req, res) => {
       try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") || {}; } catch (e) { sendJson(400, { error: "bad_json" }); return; }
       try { await pd.handle(req, res, url, body, sendJson); }
       catch (e) {
-        if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
+        if (e && (e.code === "storage_reset" || /^storage_reset/.test(e.message || ""))) { if (!res.headersSent) sendJson(503, { error: "storage_reset" }); else res.end(); }
+        else if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
         else { console.error("pendrive:", e.message); const why = /cap exceeded|transaction cap|download cap|storage cap/i.test(e.message || "") ? "storage_cap" : /AccessDenied|403/.test(e.message || "") ? "storage_denied" : /timeout|ETIMEDOUT|ECONNRESET|socket|network/i.test(e.message || "") ? "storage_network" : /\b5\d\d\b|ServiceUnavailable|InternalError/.test(e.message || "") ? "storage_5xx" : "other";
           if (!res.headersSent) sendJson(500, { error: "server", why, detail: /^storage [a-z]+ \d{3}( [A-Za-z_]{1,40})?$/.test(e.message || "") ? e.message : undefined }); else res.end(); }
       }
@@ -959,7 +975,7 @@ const server = http.createServer(async (req, res) => {
       // one row per storage backend (name, cors, used, cap, healthy); never keys, endpoints' secrets or bucket names.
       const backends = await pd.poolStatus();
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
-      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
+      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used), ...(pd.metaStore ? { meta: pd.metaStore.status() } : {}) })); return;
     }
     if (ED_FILES.includes(url.pathname.slice(1))) { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, url.pathname.slice(1)))); return; }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
@@ -1001,7 +1017,7 @@ server.listen(PORT, async () => {
   // Reconcile per-backend usage by listing each bucket a few times a day (B2 list = class C, cheap).
   { const gc = () => pd.gcTestPendrives({ minAgeMs: Number(process.env.PENDRIVE_TEST_GC_AGE_MS || 30 * 60 * 1000) }).then(r => { if (r.length) console.log("pendrive: emptied test pendrives", JSON.stringify(r)); }).catch(e => console.warn("pendrive: test gc", e.message));
     if (process.env.PENDRIVE_TEST_GC !== "0") { setTimeout(gc, Number(process.env.PENDRIVE_TEST_GC_DELAY_MS || 90 * 1000)).unref(); setInterval(gc, 3600 * 1000).unref(); } }
-  if (pd.pool.some(b => b.st.sumPrefix)) { setTimeout(() => pd.reconcile().catch(() => {}), 60 * 1000).unref(); setInterval(() => pd.reconcile().catch(() => {}), 6 * 3600 * 1000).unref(); }
+  if (pd.pool.some(b => b.st.sumPrefix)) { if (process.env.PD_RECONCILE_START === "1") setTimeout(() => pd.reconcile().catch(() => {}), 60 * 1000).unref(); /* bucket LISTs are B2 class-C; a deploy no longer triggers one */ setInterval(() => pd.reconcile().catch(() => {}), 6 * 3600 * 1000).unref(); }
   console.log(pd.pool.length ? `AI Pendrive storage: ${pd.pool.map(b => `${b.name} (${b.st.origin || "local"}, cap ${(b.cap / 1024 ** 3).toFixed(1)} GiB)`).join(", ")}` : "AI Pendrive storage: not configured (set S3_ENDPOINT, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET)");
   console.log(`Search providers: ${search.length ? search.join(", ") : "keyless only"} (+ bing, duckduckgo, wikipedia, parallel-mcp)`);
 });

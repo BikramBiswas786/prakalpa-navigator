@@ -85,7 +85,8 @@ export class S3Storage {
     h.authorization = `AWS4-HMAC-SHA256 Credential=${this.ak}/${this.scope(date)}, SignedHeaders=${names.join(";")}, Signature=${sig}`;
     delete h.host;
     const url = `${this.endpoint}${this.uri(key)}${cq ? "?" + cq : ""}`;
-    const t0 = Date.now();
+    const t0 = Date.now(); S3_COUNT[method] = (S3_COUNT[method] || 0) + 1;
+    if (this.fault && (key !== "" || this.faultList)) return new Response(`<Error><Code>${this.fault === 403 ? "AccessDenied" : "Fault"}</Code></Error>`, { status: this.fault }); // admin test hook (simulated outage)
     const r = await fetch(url, { method, headers: h, body: method === "GET" || method === "HEAD" ? undefined : payload, signal: AbortSignal.timeout(this._to || 30000) });
     const d = Date.now() - t0; this.okAt = Date.now(); this.lat = this.lat ? Math.round(this.lat * 0.7 + d * 0.3) : d; // server→backend latency (EWMA), used for placement
     return r;
@@ -97,8 +98,25 @@ export class S3Storage {
     return r.text();
   }
   async getJson(key) { const t = await this.getText(key); return t == null ? null : JSON.parse(t); }
-  async putText(key, text, type = "text/plain; charset=utf-8") {
-    const r = await this.request("PUT", key, {}, Buffer.from(text, "utf8"), { "content-type": type });
+  // text + the write version stored in object metadata (0 for objects written before replication)
+  async getTextV(key) {
+    const r = await this.request("GET", key);
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`storage get ${r.status} ${((await r.text().catch(() => "")).match(/<Code>([^<]+)/) || [])[1] || ""}`.trim());
+    return { text: await r.text(), v: Number(r.headers.get("x-amz-meta-v") || 0), dead: r.headers.get("x-amz-meta-dead") === "1" };
+  }
+  async listKeys(prefix, max = 100000) {
+    const out = []; let token = "";
+    for (let page = 0; page < 200 && out.length < max; page++) {
+      const r = await this.request("GET", "", { "list-type": "2", prefix, "max-keys": "1000", ...(token ? { "continuation-token": token } : {}) }); const t = await r.text();
+      if (!r.ok) throw new Error(`storage list ${r.status}`);
+      for (const c of t.matchAll(/<Key>([^<]*)<\/Key>/g)) out.push(c[1].replace(/&amp;/g, "&"));
+      token = (t.match(/<NextContinuationToken>([^<]+)</) || [])[1] || ""; if (!/<IsTruncated>true/.test(t) || !token) break;
+    }
+    return out;
+  }
+  async putText(key, text, type = "text/plain; charset=utf-8", extra = {}) {
+    const r = await this.request("PUT", key, {}, Buffer.from(text, "utf8"), { "content-type": type, ...extra });
     if (!r.ok) throw new Error(`storage put ${r.status} ${((await r.text().catch(() => "")).match(/<Code>([^<]+)/) || [])[1] || ""}`.trim());
   }
   putJson(key, obj) { return this.putText(key, JSON.stringify(obj), "application/json"); }
@@ -231,6 +249,8 @@ const GiB = 1024 ** 3;
 export const DEFAULT_CAPS = { b2: 9 * GiB, coritan: 9 * GiB, tigris: 4.5 * GiB, vatora: 4.5 * GiB, internetport: 9 * GiB, filebase: 4.5 * GiB };
 export const OTHER_CAP = 4 * GiB;
 const capFor = (name, override) => { const o = Number(override); return o > 0 ? o : (DEFAULT_CAPS[String(name).toLowerCase()] ?? OTHER_CAP); };
+// request counts per HTTP method since start (B2 bills GET/HEAD/LIST as class B/C transactions); read by /api/pd/_count when PD_DEBUG=1
+export const S3_COUNT = {};
 export function backendConfigs(env) {
   const out = [];
   const c1 = s3Config(env);

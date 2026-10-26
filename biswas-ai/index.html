@@ -5398,6 +5398,7 @@ async function pdApi(op, body = {}, tries = 0) {
 function pdErrText(e) {
   const c = e.message;
   if (c === "storage_not_configured") return t("pd_no_storage");
+  if (c === "storage_reset") return settings.lang === "en" ? "This pendrive is on a storage account that is resting right now. It will open again after the daily reset (about 5:30 AM). New pendrives work now." : "এই পেনড্রাইভটা যে স্টোরেজে আছে সেটা এখন বিশ্রামে। দৈনিক রিসেটের পরে (ভোর ৫:৩০ নাগাদ) আবার খুলবে। নতুন পেনড্রাইভ এখনই চলবে।";
   if (c === "quota") return t("pd_quota");
   if (c === "file_too_big") return t("pd_too_big");
   if (c === "total_cap") return t("pd_total_cap");
