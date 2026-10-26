@@ -5920,6 +5920,7 @@ const pdAvoid = new Set((() => { try { return JSON.parse(sessionStorage.getItem(
    - pdCommit: finished small files are committed 25 at a time (upload/batch-complete: one index/meta write)
    - text for the AI is read after the upload, in a Web Worker for txt/docx, and sent with text-batch */
 let pdProbeP = null;
+const pdReach = () => Object.keys(pd.probe || {}).filter(h => pd.probe[h] > 0);
 function pdProbe() {
   if (pdProbeP) return pdProbeP;
   pdProbeP = (async () => {
@@ -5945,7 +5946,7 @@ function pdPlan(u) {
     pdPlanQ = null;
     if (!list.length) return;
     try {
-      const r = await pdApi("upload/batch-init", { files: list.map(x => ({ path: x.path, size: x.file.size, type: x.file.type || "application/octet-stream", overwrite: !!x.overwrite })), avoid: [...pdAvoid] });
+      const r = await pdApi("upload/batch-init", { files: list.map(x => ({ path: x.path, size: x.file.size, type: x.file.type || "application/octet-stream", overwrite: !!x.overwrite })), avoid: [...pdAvoid], reach: pdReach() });
       list.forEach((x, i) => { x.plan = r.files[i] || { error: "no_plan" }; });
     } catch (e) { list.forEach(x => { x.noBatch = true; }); }
   })();
@@ -6049,7 +6050,7 @@ async function pdUpload(u) {
       const pl = !u.noBatch && !u.overwrite && u.file.size < PD_SINGLE ? await pdPlan(u) : null; delete u.plan;
       if (pl && pl.error) { const e = new Error(pl.error); e.info = pl; throw e; }
       if (pl) init = pl;
-      else { await Promise.race([pdProbe(), new Promise(r => setTimeout(r, 4500))]); init = await pdApi("upload/init", { path: u.path, size: u.file.size, type: u.file.type || "application/octet-stream", overwrite: !!u.overwrite, avoid: [...pdAvoid], bps: Math.round(pd.batch.speed || 0) }); }
+      else { await Promise.race([pdProbe(), new Promise(r => setTimeout(r, 4500))]); init = await pdApi("upload/init", { path: u.path, size: u.file.size, type: u.file.type || "application/octet-stream", overwrite: !!u.overwrite, avoid: [...pdAvoid], reach: pdReach(), bps: Math.round(pd.batch.speed || 0) }); }
     }
     catch (e) {
       if (e.message === "exists" && !u.batch && e.info && e.info.id && !u.overwrite && confirm(t("pd_exists", u.path))) { u.overwrite = true; u.noBatch = true; return pdUpload(u); }
