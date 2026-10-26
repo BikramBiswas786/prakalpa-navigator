@@ -19,6 +19,7 @@ if (fs.existsSync(envFile)) {
 }
 
 const chat = await import("./api/chat.js");
+const imagegen = await import("./api/imagegen.js");
 const pd = await import("./api/pendrive.js");
 pd.useChat(chat);
 // Non-secret AI Pendrive status for /healthz/pendrive (no keys, no bucket name).
@@ -26,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "140";
+const BUILD = "141";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -835,6 +836,16 @@ const server = http.createServer(async (req, res) => {
       return J(200, ms.status());
     }
     if (url.pathname === "/api/pd/_count" && process.env.PD_DEBUG === "1") { const { S3_COUNT } = await import("./api/storage.js"); res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify(S3_COUNT)); return; }
+    if (url.pathname === "/api/imagegen") { // text-to-image (free providers first, capped paid fallback)
+      const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(JSON.stringify(obj)); };
+      if (req.method === "GET") { sendJson(200, { providers: imagegen.imageProviders() }); return; }
+      if (req.method !== "POST") { res.writeHead(405).end(); return; }
+      if (limited(req, "imagegen", 8, 60 * 1000)) { tooMany(res); return; }
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 64 * 1024) { res.writeHead(413).end(); return; } chunks.push(c); }
+      let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      await imagegen.handle(req, body, sendJson); return;
+    }
     if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
     // share links. /s/<id> is the receiver page; /api/s/<op> its API (no login); /api/pd/share/* the owner's ops.
     if (/^\/s\/[a-f0-9]{32}\/?$/.test(url.pathname)) { res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...SHARE_HEADERS }).end(SHARE_PAGE); return; }

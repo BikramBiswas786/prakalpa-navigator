@@ -30,10 +30,12 @@ Operations (coordinates in pixels of the picture):
 {"op":"text","text":"...","x":40,"y":60,"size":36,"color":"#1a1a1a","bold":true,"align":"left|center"}
 {"op":"rect","x":0,"y":0,"w":200,"h":80,"color":"#000000","fill":true}
 {"op":"background","color":"#000000"}       (fills the whole picture)
+{"op":"picture","prompt":"English description of a scene, no words"}   (an AI image model paints a real picture over the whole canvas)
 {"op":"filter","kind":"grey|invert|soft|sharpen"}
 {"op":"rotate","dir":1}  {"op":"flip","h":true}  {"op":"resize","w":800,"h":600}
 {"op":"overlay","att":0,"x":0,"y":0,"w":400,"h":300,"opacity":0.5}   (place attachment image #0 as a new layer)
-For a NEW poster, banner, card or notice: FIRST give a "background" op (a strong colour), THEN big "text" ops whose colour contrasts with that background (light text on dark, dark text on light), centred, sized to the picture. Never put white text on the empty white picture.`
+When the user asks for a picture, photo, illustration or a poster/banner WITH a picture: FIRST a "picture" op, THEN a dark "rect" band (e.g. color "#000000") behind where the text goes, THEN the "text" ops in white on that band (the app writes the text itself so Bengali stays exact). Never put words in the picture prompt.
+For a NEW plain-text poster, banner, card or notice: FIRST give a "background" op (a strong colour), THEN big "text" ops whose colour contrasts with that background (light text on dark, dark text on light), centred, sized to the picture. Never put white text on the empty white picture.`
 };
 const SYS = kind => `You edit a ${kind === "word" ? "Word document" : kind === "excel" ? "spreadsheet" : kind === "image" ? "picture" : "plain-text file"} for an Indian government office (Bengali and English).
 Reply with ONLY one JSON object: {"reply":"one or two short sentences for the user, in the user's language","ops":[...operations...]}.

@@ -160,6 +160,8 @@ async function applyImage(ops, atts) {
     else if (o.op === "rotate") { a.rotate(o.dir < 0 ? -1 : 1); ok++; }
     else if (o.op === "flip") { a.flip(o.h !== false); ok++; }
     else if (o.op === "resize" && o.w > 0 && o.h > 0) { a.resizeTo(Math.min(10000, +o.w), Math.min(10000, +o.h)); ok++; }
+    else if (o.op === "picture") { const pic = window.BA_IMG && String(o.prompt || "").trim() ? await window.BA_IMG.gen(String(o.prompt), a.W, a.H) : null; if (!pic) { bad++; continue; }
+      a.aiEdit(({ g, W, H, L }) => { const k = Math.max(W / pic.bm.width, H / pic.bm.height), dw = pic.bm.width * k, dh = pic.bm.height * k; g.drawImage(pic.bm, (W - dw) / 2 - L.x, (H - dh) / 2 - L.y, dw, dh); }); ok++; }
     else if (o.op === "overlay") { const at = atts.filter(x => x.blob && x.isImg)[+o.att || 0]; if (!at) { bad++; continue; } const bm = await createImageBitmap(at.blob);
       a.aiEdit(({ g, L }) => { g.save(); g.globalAlpha = Math.max(0.05, Math.min(1, +o.opacity || 1)); g.drawImage(bm, (+o.x || 0) - L.x, (+o.y || 0) - L.y, +o.w || bm.width, +o.h || bm.height); g.restore(); }); ok++; }
     else if (o.op === "background" || o.op === "rect" || o.op === "text") {
