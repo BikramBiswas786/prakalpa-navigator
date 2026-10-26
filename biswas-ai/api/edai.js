@@ -27,12 +27,13 @@ Operations:
 {"op":"set_text","text":"the whole new text"}   (only when asked to write/convert everything)`,
   image: `The picture is described by its size and layers.
 Operations (coordinates in pixels of the picture):
-{"op":"text","text":"...","x":40,"y":60,"size":36,"color":"#ffffff","bold":true,"align":"left|center"}
+{"op":"text","text":"...","x":40,"y":60,"size":36,"color":"#1a1a1a","bold":true,"align":"left|center"}
 {"op":"rect","x":0,"y":0,"w":200,"h":80,"color":"#000000","fill":true}
 {"op":"background","color":"#000000"}       (fills the whole picture)
 {"op":"filter","kind":"grey|invert|soft|sharpen"}
 {"op":"rotate","dir":1}  {"op":"flip","h":true}  {"op":"resize","w":800,"h":600}
-{"op":"overlay","att":0,"x":0,"y":0,"w":400,"h":300,"opacity":0.5}   (place attachment image #0 as a new layer)`
+{"op":"overlay","att":0,"x":0,"y":0,"w":400,"h":300,"opacity":0.5}   (place attachment image #0 as a new layer)
+For a NEW poster, banner, card or notice: FIRST give a "background" op (a strong colour), THEN big "text" ops whose colour contrasts with that background (light text on dark, dark text on light), centred, sized to the picture. Never put white text on the empty white picture.`
 };
 const SYS = kind => `You edit a ${kind === "word" ? "Word document" : kind === "excel" ? "spreadsheet" : kind === "image" ? "picture" : "plain-text file"} for an Indian government office (Bengali and English).
 Reply with ONLY one JSON object: {"reply":"one or two short sentences for the user, in the user's language","ops":[...operations...]}.
@@ -78,6 +79,14 @@ function mock(kind, q, doc, atts) {
   }
   return { reply: `MOCK: ${ops.length} change(s) for “${q.slice(0, 60)}”.`, ops };
 }
+const LANGRULE = l => l === "bn" ? `LANGUAGE: write "reply" in Bengali (the user's screen is in Bengali), unless the instruction asks for another language.` : `LANGUAGE: write "reply" in English (the user's screen is in English), even if the document is in Bengali, unless the instruction itself is written in Bengali or asks for Bengali. Document content keeps its own language.`;
+const lum = c => { const m = String(c || "").match(/^#?([0-9a-f]{6}|[0-9a-f]{3})$/i); if (!m) return /white/i.test(c) ? 1 : /black/i.test(c) ? 0 : 0.5; let x = m[1]; if (x.length === 3) x = x.replace(/./g, "$&$&"); const n = parseInt(x, 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
+// safety net: text on the blank picture with no background in a light colour would be invisible
+export function fixImageOps(ops) {
+  const texts = ops.filter(o => o.op === "text"); if (!texts.length || ops.some(o => o.op === "background")) return ops;
+  if (texts.every(o => lum(o.color || "#000") > 0.75)) return [{ op: "background", color: "#0b2a4a" }, ...ops];
+  return ops;
+}
 export async function edAI(body, askAI, mockOn) {
   const kind = ["word", "excel", "image", "note"].includes(body.kind) ? body.kind : null; if (!kind) return { error: "bad_kind" };
   const q = String(body.q || "").slice(0, 4000).trim(); if (!q) return { error: "no_question" };
@@ -87,7 +96,9 @@ export async function edAI(body, askAI, mockOn) {
   const thread = (Array.isArray(body.thread) ? body.thread : []).slice(-4).map(t => `USER: ${String(t.q || "").slice(0, 600)}\nAI: ${String(t.a || "").slice(0, 600)}`).join("\n");
   const user = `${thread ? "EARLIER IN THIS DOCUMENT'S THREAD:\n" + thread + "\n\n" : ""}FILE: ${String(body.name || "").slice(0, 200)}\nDOCUMENT STRUCTURE:\n${doc || "(empty document)"}\n\n${atts.map((a, i) => `ATTACHMENT #${i} ${a.name}${a.format ? " (ALREADY LOADED AS THE DOCUMENT'S FORMAT — fill it)" : ""}${a.how === "tesseract" ? " (text read by OCR, may have small errors)" : ""}:\n${a.text || "(image)"}`).join("\n\n")}\n\nINSTRUCTION: ${q}`;
   const opts = body.fast ? { fast: true } : {};
-  let out = await askAI(SYS(kind), user, 4000, opts); let r = parseOps(out);
-  if (!r) { out = await askAI(SYS(kind), user + "\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON object {\"reply\":...,\"ops\":[...]}.", 4000, opts); r = parseOps(out); }
+  const sys = SYS(kind) + "\n" + LANGRULE(body.lang === "bn" ? "bn" : "en");
+  let out = await askAI(sys, user, 4000, opts); let r = parseOps(out);
+  if (!r) { out = await askAI(sys, user + "\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON object {\"reply\":...,\"ops\":[...]}.", 4000, opts); r = parseOps(out); }
+  if (r && kind === "image") r.ops = fixImageOps(r.ops);
   return r || { reply: String(out || "").replace(/```[\s\S]*?```/g, "").slice(0, 2000), ops: [], malformed: true };
 }
