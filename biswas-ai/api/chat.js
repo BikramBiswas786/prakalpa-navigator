@@ -77,6 +77,21 @@ const configured = () => ORDER.filter(id => keyOf(PROVIDERS[id]) && (!PROVIDERS[
 const coolUntil = new Map();
 const cooled = id => (coolUntil.get(id) || 0) > Date.now();
 const cool = (id, ms) => coolUntil.set(id, Date.now() + ms);
+// Measured time to first text per provider/model (ms, moving average); starts from a rough guess.
+const SPEED_GUESS = { cerebras: 500, groq: 600, sambanova: 900, gemini: 1100, mistral: 1200, zai: 1400, llm7: 1500, nvidia: 1500, cloudflare: 1500, deepseek: 1800, qwen: 1500, nara: 2000, cohere: 1800, together: 1500, fireworks: 1200, xai: 1500, kimi: 2500, sarvam: 2500, openrouter: 3000, openai: 1500 };
+const speed = new Map();
+export function speedNote(id, model, ms) {
+  const k = id + "/" + model, cur = speed.get(k);
+  if (ms == null) { speed.set(k, { ms: Math.max(cur ? cur.ms : 0, 9000), n: (cur ? cur.n : 0) + 1, failAt: Date.now() }); return; }
+  speed.set(k, { ms: cur && !cur.failAt ? Math.round(cur.ms * 0.6 + ms * 0.4) : ms, n: (cur ? cur.n : 0) + 1, failAt: 0 });
+}
+function fastPairs(ids, vision, freeOnly) {
+  const pairs = [];
+  for (const id of ids) { const p = PROVIDERS[id]; if (vision && !p.vision) continue; if (freeOnly && p.paid) continue; p.models.forEach((m, i) => pairs.push([id, m, i])); }
+  const score = ([id, m, i]) => { const s = speed.get(id + "/" + m); let v = s ? (s.failAt && Date.now() - s.failAt > 10 * 60 * 1000 ? (SPEED_GUESS[id] || 2500) * 1.5 : s.ms) : (SPEED_GUESS[id] || 2500) + i * 300; if (cooled(id)) v += 60000; if (PROVIDERS[id].paid) v += 100000; return v; };
+  return pairs.sort((a, b) => score(a) - score(b)).map(([id, m]) => [id, m]);
+}
+export function speedTable() { return [...speed.entries()].map(([k, v]) => ({ model: k, ms: v.ms, n: v.n, failing: !!v.failAt })).sort((a, b) => a.ms - b.ms); }
 const quotaError = (status, error) => status === 429 || /rate limit|quota|resource exhausted|too many requests/i.test(String(error || ""));
 
 export async function GET(request) {
@@ -343,6 +358,28 @@ export async function POST(request) {
   const wantsVision = Boolean(body.images && body.images.length);
   let sawLimit = false;
   const tried = [];
+  if (body.race) { // Fast (pendrive ⚡): the models that answered quickest lately go first, and the two quickest race; paid ones only as a last resort
+    const pairs = fastPairs(ids, wantsVision, !!body.freeOnly);
+    const win = (r, id, model) => { console.log(`answered (fast) by ${id}/${model}` + (tried.length ? ` after: ${tried.join(" | ")}` : "")); return new Response(r.stream, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-ai-provider": `${id}/${model}` } }); };
+    const timed = async ([id, model], signal) => { const t0 = Date.now(); const r = await attempt(PROVIDERS[id], model, body, signal, Math.min(FIRST_TEXT_MS, 8000)); speedNote(id, model, r.ok ? Date.now() - t0 : null); if (!r.ok) { if (quotaError(r.status, r.error)) { sawLimit = true; cool(id, 60 * 1000); } tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim()); } return { r, id, model }; };
+    const head = pairs.slice(0, 2), rest = pairs.slice(2);
+    if (head.length) {
+      const ctls = head.map(() => new AbortController());
+      if (request.signal) request.signal.addEventListener("abort", () => ctls.forEach(c => c.abort()), { once: true });
+      const runs = head.map((pr, i) => timed(pr, ctls[i].signal).then(x => { if (!x.r.ok) throw x; return { ...x, i }; }));
+      try {
+        const w = await Promise.any(runs);
+        runs.forEach((pr, i) => { if (i !== w.i) pr.then(x => { try { x.r.stream.cancel(); } catch { /* done */ } }, () => {}); });
+        ctls.forEach((c, i) => { if (i !== w.i) c.abort(); });
+        return win(w.r, w.id, w.model);
+      } catch { /* both failed: go on in order */ }
+    }
+    for (const pr of rest) {
+      if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
+      const x = await timed(pr, request.signal); if (x.r.ok) return win(x.r, x.id, x.model);
+    }
+    return json({ error: sawLimit ? "rate_limited" : "upstream", tried: tried.length }, sawLimit ? 429 : 502);
+  }
   const live = ids.filter(id => !cooled(id));
   const later = ids.filter(id => cooled(id));
   for (const id of [...live, ...later]) {

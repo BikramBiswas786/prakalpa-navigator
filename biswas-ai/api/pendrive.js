@@ -167,6 +167,48 @@ async function loadChunks(id, f) {
   try { const t = await storage.getText(cKey(id, f.id)); if (t) return JSON.parse(t); } catch (e) { /* rebuild below */ }
   return rag.build((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
 }
+/* ---------- memory: one short card per file (what it is, key words, sheet columns), grown as files are indexed ----------
+   pendrives/<id>/mem.json {v, files: {fid: {sum, kw, sheets, n, ai?}}}. A background job adds a 1–2 line AI summary (free models only). */
+const memKey = id => `${P(id)}/mem.json`;
+async function mem(id) { return (await cget(memKey(id))) || { v: 1, files: {} }; }
+function memCard(text, built) {
+  const lines = String(text).split("\n").map(l => l.replace(/\t+/g, " | ").trim()).filter(l => l && !/^\[(Sheet|Page)[: ]/.test(l));
+  let sum = ""; for (const l of lines) { if (sum.length > 260) break; sum += (sum ? " · " : "") + l.slice(0, 160); }
+  const tf = {}; for (const t of tokens(String(text).slice(0, 60000))) if (t.length > 3 && !/^[\d.,]+$/.test(t)) tf[t] = (tf[t] || 0) + 1;
+  const card = { sum: sum.slice(0, 300), kw: Object.entries(tf).sort((a, b) => b[1] - a[1]).slice(0, 12).map(e => e[0]), n: String(text).length };
+  if (built && built.sheets) card.sheets = Object.entries(built.sheets).slice(0, 12).map(([name, d]) => { const hi = d.rows.findIndex(r => r.some(Boolean)); return { name, cols: hi >= 0 ? d.rows[hi].filter(Boolean).slice(0, 20).map(c => c.slice(0, 40)) : [], rows: hi >= 0 ? d.rows.length - hi - 1 : 0 }; });
+  return card;
+}
+function memText(c) { return `${c.ai || c.sum}${c.sheets && c.sheets.length ? "\nSheets: " + c.sheets.map(s => `${s.name} (${s.rows} rows; columns: ${s.cols.join(" | ")})`).join("; ") : ""}${c.kw && c.kw.length ? "\nKey words: " + c.kw.join(", ") : ""}`; }
+async function memFill(id, files, getC) { // cards for files indexed before memory existed
+  const m = await mem(id); const miss = files.filter(f => !m.files[f.id]).slice(0, 60); if (!miss.length) return m;
+  for (let i = 0; i < miss.length; i += 8) await Promise.all(miss.slice(i, i + 8).map(async f => { try { const t = (await storage.getText(`${P(id)}/t/${f.id}.txt`)) || ""; m.files[f.id] = memCard(t, await getC(f.id)); } catch (e) { /* skip */ } }));
+  await cset(memKey(id), m); memGrow(id); return m;
+}
+const memBusy = new Set();
+function memGrow(id) { // background: short AI summaries, one at a time, free models only
+  if (env.PENDRIVE_MOCK_AI === "1" || env.PENDRIVE_MEM_AI === "0" || memBusy.has(id)) return;
+  memBusy.add(id);
+  (async () => {
+    for (let n = 0; n < 25; n++) {
+      const m = await mem(id); const ix = await index(id);
+      const fid = Object.keys(m.files).find(k => ix.files[k] && !m.files[k].ai && !m.files[k].aiTry && m.files[k].n > 120); if (!fid) break;
+      let ai = "";
+      try {
+        const t = ((await storage.getText(`${P(id)}/t/${fid}.txt`)) || "").slice(0, 5000);
+        ai = (await askAI("You write very short file descriptions.", `File: ${ix.files[fid].path}\n\n${t}\n\nIn one or two sentences (max 45 words), say what this file is and its key facts (who, what, when, main numbers). Write in the file's own language. No preamble.`, 160, { fast: true, freeOnly: true })).replace(/\s+/g, " ").slice(0, 320);
+      } catch (e) { /* try once only */ }
+      await withLock(id, async () => { const m2 = await mem(id); if (m2.files[fid]) { if (ai) m2.files[fid].ai = ai; else m2.files[fid].aiTry = 1; await cset(memKey(id), m2); } });
+      await new Promise(r => setTimeout(r, 2500));
+    }
+  })().catch(e => console.warn("pendrive: memory", e.message)).finally(() => memBusy.delete(id));
+}
+async function memDrop(id, fids) { const m = await cget(memKey(id)); if (!m) return; let ch = false; for (const f of fids) if (m.files[f]) { delete m.files[f]; ch = true; } if (ch) await cset(memKey(id), m); }
+/* answer cache: same question + same files (ids, sizes, times) → same answer, until a file changes. pendrives/<id>/acache.json */
+const acKey = id => `${P(id)}/acache.json`;
+function acSig(parts, files) { return crypto.createHash("sha1").update(JSON.stringify([parts, files.map(f => [f.id, f.path, f.size, f.mtime || 0]).sort((a, b) => a[0] < b[0] ? -1 : 1)])).digest("hex"); }
+async function acGet(id, k) { const c = await cget(acKey(id)); return c && c[k] ? c[k].ans : null; }
+async function acPut(id, k, ans) { const c = (await cget(acKey(id))) || {}; c[k] = { at: Date.now(), ans }; const ks = Object.keys(c).sort((a, b) => c[b].at - c[a].at); for (const x of ks.slice(60)) delete c[x]; await cset(acKey(id), c); }
 function bmAddChunks(x, fileId, chunks) {
   bmRemove(x, fileId);
   x.files[fileId] = chunks.map(c => {
@@ -215,13 +257,20 @@ export function bmSearch(x, q, allowed, k = 8) {
 /* ---------- AI (reuses the free-provider chain in chat.js) ---------- */
 let chatMod = null;
 export function useChat(mod) { chatMod = mod; }
-async function askAI(system, user, maxOut = 1600) {
-  if (env.PENDRIVE_MOCK_AI === "1") return mockAI(system, user);
-  const req = new Request("http://pendrive.local/api/chat", { method: "POST", headers: { "content-type": "application/json", host: "pendrive.local" }, body: JSON.stringify({ system, messages: [{ role: "user", content: user }], maxOut }) });
+// opts.fast: quickest models first (two race); opts.onDelta(text) gets the answer as it arrives; opts.freeOnly skips paid models.
+async function askAI(system, user, maxOut = 1600, opts = {}) {
+  if (env.PENDRIVE_MOCK_AI === "1") {
+    const out = mockAI(system, user);
+    if (opts.onDelta) { const d = Number(env.PENDRIVE_MOCK_DELAY || 0); const h = Math.ceil(out.length / 2); if (d) await new Promise(r => setTimeout(r, d)); opts.onDelta(out.slice(0, h)); if (d) await new Promise(r => setTimeout(r, d)); opts.onDelta(out.slice(h)); }
+    else if (env.PENDRIVE_MOCK_DELAY) await new Promise(r => setTimeout(r, 2 * Number(env.PENDRIVE_MOCK_DELAY)));
+    return out;
+  }
+  const req = new Request("http://pendrive.local/api/chat", { method: "POST", headers: { "content-type": "application/json", host: "pendrive.local" }, body: JSON.stringify({ system, messages: [{ role: "user", content: user }], maxOut, ...(opts.fast ? { fast: true, race: true } : {}), ...(opts.freeOnly ? { freeOnly: true } : {}) }) });
   const r = await chatMod.POST(req);
   if (!r.ok) { let e = ""; try { e = (await r.json()).error; } catch (x) { /* ignore */ } fail(502, e || "ai_failed"); }
+  if (opts.meta) opts.meta.provider = r.headers.get("x-ai-provider") || "";
   let text = ""; const dec = new TextDecoder();
-  for await (const c of r.body) text += dec.decode(c, { stream: true });
+  for await (const c of r.body) { const d = dec.decode(c, { stream: true }); text += d; if (opts.onDelta) { const v = d.replace(/\u0000[A-Z_]*/g, ""); if (v) opts.onDelta(v); } }
   return text.replace(/\u0000[A-Z_]+$/, "").trim();
 }
 // Test-only stand-in (PENDRIVE_MOCK_AI=1): cites the sources it was given and echoes a write request.
@@ -373,7 +422,10 @@ export async function handle(req, res, url, body, send) {
     if (x.v !== 2) { x = await ragIndex(id, Object.values(ix.files).filter(f => f.state === "ok" && f.text && !built[f.id]), null); }
     for (const t of ok) { const f = ix.files[String(t.id)]; const text = String(t.text || "").slice(0, TEXT_MAX); const b = built[f.id];
       bmAddChunks(x, f.id, b.chunks); f.text = text.length > 0 && b.chunks.length > 0; f.note = String(t.note || (b.scanned ? "scanned" : "")).slice(0, 80); if (b.pages) f.pages = b.pages; }
-    if (ok.length) await cset(`${P(id)}/bm25.json`, x);
+    if (ok.length) {
+      await cset(`${P(id)}/bm25.json`, x);
+      try { const m = await mem(id); for (const t of ok) { const f = ix.files[String(t.id)]; m.files[f.id] = memCard(String(t.text || "").slice(0, TEXT_MAX), built[f.id]); } await cset(memKey(id), m); memGrow(id); } catch (e) { console.warn("pendrive: memory", e.message); }
+    }
     return ok.length;
   };
   // placement + reservation shared by upload/init and upload/batch-init. Small files (< 16 MB) get one presigned PUT;
@@ -610,7 +662,7 @@ async function dropFiles(id, ix, list) {
   for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text || ix.files[fid].note) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }, { b: null, k: cKey(id, fid) }); }
   const old = (ix.gc || []).slice(0, 50); ix.gc = (ix.gc || []).slice(50);
   await delKeys(ix, [...keys, ...old]);
-  if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); }
+  if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); await memDrop(id, withText).catch(() => {}); }
   for (const fid of list) delete ix.files[fid];
 }
 async function delKeys(ix, keys) {
@@ -626,7 +678,7 @@ async function dropFile(id, ix, fid) {
   await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
   if (ix.files[fid] && ix.files[fid].text) {
     await storage.del(`${P(id)}/t/${fid}.txt`); await storage.del(cKey(id, fid)).catch(() => {});
-    const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x);
+    const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); await memDrop(id, [fid]).catch(() => {});
   }
   delete ix.files[fid];
 }
@@ -635,7 +687,7 @@ const NOT_FOUND = { en: "Not found in your files. The selected files don't conta
 const locLabel = l => !l ? "" : l.page ? `page ${l.page}` : l.sheet ? `sheet "${l.sheet}" rows ${l.r1}–${l.r2}` : l.h ? `section: ${l.h}` : "";
 // retrieval for "ask": expanded BM25 (top 40) → optional embeddings/reranker → lexical rerank → top 6, numbered [n].
 // Spreadsheet maths is computed here (rag.aggregate, no eval) and handed to the model as an exact, citable fact.
-async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote) {
+async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast = null) {
   const x = await ragIndex(id, all, emit);
   const allowed = new Set(withText.map(f => f.id)); const ex = rag.expand(q, tokens);
   const hits = bmSearch(x, [...ex.base, ...ex.extra].join(" "), allowed, 40);
@@ -643,8 +695,11 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   const cands = [];
   for (const h of hits) { const c = (await getC(h.fid)).chunks[h.i]; if (c) cands.push({ ...h, chunk: c }); }
   const overview = rag.OVERVIEW.test(q);
-  if (overview) for (const f of withText.slice(0, 8)) if (!cands.some(c => c.fid === f.id)) { const c = (await getC(f.id)).chunks[0]; if (c) cands.push({ fid: f.id, i: 0, s: 0, chunk: c }); }
-  const how = await rag.remoteScores(q, cands.slice(0, 30));
+  const memo = fast ? await memFill(id, withText, getC).catch(() => null) : null;
+  if (overview && memo) { // Fast: the file cards from memory answer "what is in here" in one short call
+    for (const f of withText.slice(0, 24)) if (memo.files[f.id] && !cands.some(c => c.fid === f.id)) cands.push({ fid: f.id, i: -1, s: 0, chunk: { t: "FILE CARD (from memory)\n" + memText(memo.files[f.id]), loc: null } });
+  } else if (overview) for (const f of withText.slice(0, 8)) if (!cands.some(c => c.fid === f.id)) { const c = (await getC(f.id)).chunks[0]; if (c) cands.push({ fid: f.id, i: 0, s: 0, chunk: c }); }
+  const how = fast ? "" : await rag.remoteScores(q, cands.slice(0, 30)); // Fast skips the remote re-ranker (a network round trip)
   rag.lexRerank(q, cands, tokens);
   let agg = null;
   if (rag.numericQuestion(q)) {
@@ -656,12 +711,14 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   const strong = cands.filter(c => c.cov >= need || (c.emb || 0) >= 0.62);
   emit({ type: "progress", msg: `chunks ${cands.length} → ${strong.length}${how ? " · " + how : ""}${agg ? " · computed" : ""}` });
   if (!overview && !agg && !strong.length) return { notFound: true };
-  const ev = []; let left = JOB.askChars;
+  const ev = []; let left = fast ? 9000 : JOB.askChars;
   if (agg) { const t = rag.aggText(agg); ev.push({ fid: agg.fid, loc: { sheet: agg.sheet, r1: agg.rows[0] || 0, r2: agg.rows[agg.rows.length - 1] || 0, rows: agg.rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
-  for (const c of (overview ? cands : strong).slice(0, agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
+  for (const c of (overview ? cands : strong).slice(0, overview && memo ? 24 : fast ? (agg ? 4 : 5) : agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
+  const cardIds = memo && !overview ? [...new Set(ev.map(e => e.fid))].filter(f => memo.files[f]).slice(0, 4) : [];
+  const cardsTxt = cardIds.length ? `\nAbout these files (memory; for orientation only, cite the extracts):\n${cardIds.map(f => `- ${ix.files[f].path}: ${memText(memo.files[f]).replace(/\n/g, " · ")}`).join("\n")}\n` : "";
   const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
   const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
-  let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800);
+  let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || {});
   if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
   answer = answer.replace(/\bNOT_FOUND\b/g, "");
   const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
@@ -703,7 +760,13 @@ async function aiJob(req, res, id, body) {
   const noText = inScope.filter(f => !f.text).map(f => f.path);
   const withText = inScope.filter(f => f.text);
   const scanned = inScope.filter(f => f.note === "scanned").map(f => f.path);
+  const fastOn = body.fast === true && body.mode !== "analyse";
+  const t0 = Date.now(); let tFirst = 0;
+  const fast = fastOn ? { fast: true, meta: {}, onDelta: d => { if (!tFirst) tFirst = Date.now() - t0; emit({ type: "delta", text: d }); } } : null;
+  const ck = fastOn ? acSig([q.toLowerCase().replace(/\s+/g, " "), lang, fmt, body.mode || "ask", skillNote], inScope) : "";
+  const done = async o => { const total = Date.now() - t0; if (fastOn && !o.notFound && !o.cached) await acPut(id, ck, o).catch(e => console.warn("pendrive: answer cache", e.message)); emit({ ...o, ms: { first: tFirst || total, total }, fast: fastOn }); };
   try {
+    if (fastOn && withText.length) { const hit = await acGet(id, ck).catch(() => null); if (hit) { emit({ type: "progress", msg: "cache" }); await done({ ...hit, cached: true }); return res.end(); } }
     if (!withText.length) {
       emit({ type: "answer", text: lang === "en" ? "None of the selected files has readable text. Scanned images need OCR, which isn't supported yet." : "বেছে নেওয়া ফাইলে পড়ার মতো লেখা নেই। স্ক্যান করা ছবি পড়তে OCR লাগে, সেটা এখনও নেই।", sources: [], cites: [], actions: [], noText, scanned });
       return res.end();
@@ -732,7 +795,7 @@ async function aiJob(req, res, id, body) {
       answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
-      let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote);
+      let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast);
       // a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
       const transform = /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
       const picked = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
@@ -751,7 +814,7 @@ async function aiJob(req, res, id, body) {
       try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block and any \`\`\`attachment block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
     const { text, actions } = parseActions(answer);
-    emit({ type: "answer", text, sources, cites: cites || [], actions, noText, scanned });
+    await done({ type: "answer", text, sources, cites: cites || [], actions, noText, scanned });
   } catch (e) {
     emit({ type: "error", error: e.code || "ai_failed" });
   }

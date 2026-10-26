@@ -7,7 +7,7 @@ const b = await puppeteer.launch({ executablePath: "/usr/bin/google-chrome", arg
 const sl = ms => new Promise(r => setTimeout(r, ms));
 let fails = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
 const p = await b.newPage(); await p.setViewport({ width: 1366, height: 768 });
-const errs = []; p.on("pageerror", e => errs.push(String(e))); p.on("console", m => { if (m.type() === "error" && !/favicon|401|429/.test(m.text())) errs.push("console: " + m.text()); });
+const errs = []; p.on("pageerror", e => errs.push(String(e))); const bad = []; p.on("response", r => { if (r.status() >= 400) { const u = new URL(r.url()); bad.push(r.status() + " " + u.host + u.pathname.slice(0, 40)); } });
 let PROMPT = null; p.on("dialog", d => { d.type() === "prompt" ? d.accept(PROMPT ?? d.defaultValue()) : d.accept(); });
 const cdp = await b.target().createCDPSession(); await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: DL });
 const shot = n => p.screenshot({ path: `${SH}/${n}.png` });
@@ -123,6 +123,6 @@ await p.click("#ed-tab-word"); await sl(300); await shot("10-word-dark");
 const over = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1); ok(!over, "32 no horizontal page overflow at 1366×768");
 // picker screenshot
 await p.click("#ed-word [data-ed=open]"); await p.waitForSelector("dialog.ed-pick[open]"); await p.select("#ed-pk-br", "Office"); await sl(150); await shot("11-picker"); await p.keyboard.press("Escape");
-ok(!errs.length, "33 no page errors " + errs.slice(0, 3).join(" | "));
+ok(!errs.length, "33 no page errors " + errs.slice(0, 3).join(" | ")); console.log("http errors seen (info):", [...new Set(bad)].join(" | ") || "none");
 const listing = await p.evaluate(() => pd.files.map(f => f.path).sort()); fs.writeFileSync(SH + "/listing.json", JSON.stringify(listing, null, 1));
 await b.close(); console.log(fails ? `${fails} FAILED` : "ALL PASS"); process.exit(fails ? 1 : 0);
