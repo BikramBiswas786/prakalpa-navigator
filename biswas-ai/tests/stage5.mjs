@@ -25,7 +25,7 @@ const ask = async (k, q, files = []) => {
 };
 // ---------- Word basics ----------
 for (const k of ["excel", "image", "note", "word"]) { await p.click("#ed-tab-" + k); await sl(500); }
-ok(await p.evaluate(() => !document.querySelector("[data-ed=ask]") && ["word", "excel", "image", "note"].every(k => !document.querySelector(`#ed-${k} [data-ed=conv]`) && document.querySelector(`#ed-${k} [data-ed=newpage]`))), "S1 no Ask AI button, no Save to conversation button; New page present");
+ok(await p.evaluate(() => !document.querySelector("[data-ed=ask]") && ["word", "excel", "image", "note"].every(k => document.querySelector(`#ed-${k} [data-ed=conv]`) && document.querySelector(`#ed-${k} [data-ed=newpage]`))), "S1 no Ask AI button, Save to conversation + New page present");
 ok(await p.evaluate(() => { const pan = document.getElementById("ea-word"), body = BA_ED.st.word.body; return !!pan && !!(body.compareDocumentPosition(pan) & Node.DOCUMENT_POSITION_FOLLOWING) && document.getElementById("ea-q-word").placeholder === "Write what to edit or change in this file…" && !pan.querySelector(".chip,.chips"); }), "S2 AI panel below the editor, placeholder right, no example chips");
 await p.evaluate(() => { BA_ED.kinds.word.page().innerHTML = "<h1>Report</h1><p>The budget is low.</p>"; BA_ED.kinds.word.page().dispatchEvent(new Event("input", { bubbles: true })); });
 await p.evaluate(() => BA_ED.ai.save("word")); await waitRows("word", 1); await p.evaluate(() => BA_ED.ai.save("word")); await waitRows("word", 2);
