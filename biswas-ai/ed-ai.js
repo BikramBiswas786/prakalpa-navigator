@@ -229,15 +229,32 @@ function verify(k, before) {
 /* ---------- attachments ---------- */
 async function readAtt(file, k) {
   const e = ext(file.name), at = { name: file.name, blob: file, e, text: "", how: "" };
-  if (e === "docx") { await load("mammoth"); at.text = String((await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value || ""); }
-  else if (["xlsx", "xls", "csv"].includes(e)) { await load("xlsx"); const wb = e === "csv" ? XLSX.read(await file.text(), { type: "string" }) : XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellFormula: true });
-    at.text = wb.SheetNames.slice(0, 6).map(n => "SHEET " + n + "\n" + XLSX.utils.sheet_to_csv(wb.Sheets[n]).slice(0, 8000)).join("\n\n"); }
-  else if (e === "pdf") { await load("pdfworker"); await load("pdfjs"); const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise; let t = "";
-    for (let p = 1; p <= Math.min(pdf.numPages, 30); p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
-    if (t.replace(/\s/g, "").length > 40) at.text = t; else if (window.BA_OCR) { const r = await BA_OCR.read(file, file.name); at.text = r.text; at.how = r.how; } }
-  else if (/^(png|jpe?g|webp|gif|bmp)$/.test(e) || (file.type || "").startsWith("image/")) { at.isImg = true; if (window.BA_OCR) { const r = await BA_OCR.read(file, file.name || "image.png"); at.text = r.text; at.how = r.how; } }
-  else if (["txt", "md", "json", "log"].includes(e) || (file.type || "").startsWith("text/")) at.text = (await file.text()).slice(0, 60000);
-  else throw new Error(T("a_badtype", file.name));
+  const zipText = async raw => {
+    await load("jszip");
+    const z = await JSZip.loadAsync(raw);
+    const bits = [];
+    for (const n of Object.keys(z.files).filter(n => !z.files[n].dir).slice(0, 24)) {
+      if (/\.(png|jpe?g|gif|webp|woff2?|ttf|bin)$/i.test(n)) continue;
+      let s = ""; try { s = await z.file(n).async("string"); } catch (err) { continue; }
+      if (s && (s.slice(0, 200).match(/[\u0000-\u0008]/g) || []).length < 2) bits.push(n + "\n" + s.slice(0, 8000));
+    }
+    return bits.join("\n\n");
+  };
+  try {
+    const raw = new Uint8Array(await file.arrayBuffer());
+    const zip = raw.length > 3 && raw[0] === 0x50 && raw[1] === 0x4b;
+    if (e === "docx") {
+      try { await load("mammoth"); at.text = String((await mammoth.extractRawText({ arrayBuffer: raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) })).value || ""); } catch (err) { /* try the archive text below */ }
+    }
+    if (!at.text && zip) { try { at.text = await zipText(raw); } catch (err) { /* not a readable archive */ } }
+    else if (!at.text && ["xlsx", "xls", "csv"].includes(e)) { await load("xlsx"); const wb = e === "csv" ? XLSX.read(new TextDecoder().decode(raw), { type: "string" }) : XLSX.read(raw, { type: "array", cellFormula: true });
+      at.text = wb.SheetNames.slice(0, 6).map(n => "SHEET " + n + "\n" + XLSX.utils.sheet_to_csv(wb.Sheets[n]).slice(0, 8000)).join("\n\n"); }
+    else if (!at.text && e === "pdf") { await load("pdfworker"); await load("pdfjs"); const pdf = await pdfjsLib.getDocument({ data: raw }).promise; let t = "";
+      for (let p = 1; p <= Math.min(pdf.numPages, 30); p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
+      if (t.replace(/\s/g, "").length > 40) at.text = t; else if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
+    else if (!at.text && (/^(png|jpe?g|webp|gif|bmp)$/.test(e) || (file.type || "").startsWith("image/"))) { at.isImg = true; if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name || "image.png"); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
+    else if (!at.text) at.text = new TextDecoder("utf-8", { fatal: false }).decode(raw.subarray(0, 60000));
+  } catch (err) { at.text = at.text || ""; }
   at.text = String(at.text || "").slice(0, 30000); void k; return at;
 }
 async function addFiles(k, files) {
