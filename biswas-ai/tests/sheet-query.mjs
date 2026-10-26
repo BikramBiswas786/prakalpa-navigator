@@ -21,4 +21,8 @@ let threw = false; try { q({ agg: "max", col: "Bonus" }); } catch (e) { threw = 
 ok(/over ALL rows/.test(rag.queryText(q({ agg: "max", col: "Basic" }))) && /where Block eq Katwa/.test(rag.queryText(q({ agg: "max", col: "Basic", where: [{ col: "Block", value: "Katwa" }] }))), "computed text states the scope");
 const plan = rag.parsePlan('Sure: {"queries":[{"agg":"sum","col":"Basic","where":[{"col":"Block","op":"eq","value":"Katwa"}]},{"agg":"max","col":"Basic"}]}');
 ok(plan && plan.length === 2 && q(plan[1]).value === 27400, "plan parsed from model text; mixed-scope question keeps overall max");
+ok(rag.fmtIN(27400) === "27,400" && rag.fmtIN(34725000) === "3,47,25,000" && rag.fmtIN(23718.5) === "23,718.5", "Indian grouping of computed values");
+ok(/= 27,400 \(/.test(rag.queryText(q({ agg: "max", col: "Basic" }))), "COMPUTED text carries 27,400 pre-formatted");
+ok(rag.fixGroups("Kalna: 27 400 [1]; total 3\u202f47\u202f25\u202f000") === "Kalna: 27,400 [1]; total 3,47,25,000", "space/narrow-nbsp grouping -> commas");
+ok(rag.fixGroups("Page 12 345; on 15 30 rows; 1.5 200") === "Page 12 345; on 15 30 rows; 1.5 200", "non-groupings left alone");
 console.log(fails ? fails + " FAILED" : "ALL PASS"); process.exit(fails ? 1 : 0);

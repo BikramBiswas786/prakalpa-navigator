@@ -318,11 +318,27 @@ export function queryText(r) {
   const opName = { sum: "total", avg: "average", count: "count of rows", max: "maximum", min: "minimum", top: "top", bottom: "bottom", list: "rows" }[r.agg];
   const scope = r.where.length ? ` where ${r.where.join(" and ")}` : " over ALL rows (no filter)";
   const head = `${r.label ? r.label + ": " : ""}${opName}${r.col ? ` of "${r.col}"` : ""}${r.groupBy ? ` per "${r.groupBy}"` : ""}${scope} in ${r.path} › sheet "${r.sheet}"`;
-  if (r.items) return `${head} = ${r.items.map((it, i) => `${i + 1}. ${it.value ?? ""} (row ${it.row}; ${it.who})`).join("; ")} [from ${r.n} matching rows]`;
-  if (r.groups) return `${head} = ${r.groups.map(g => `${g.key}: ${g.value} (${g.n} rows)`).join("; ")}`;
-  return `${head} = ${r.value} (${r.n} rows${r.at && r.at.length ? "; at " + r.at.join(", ") : ""})`;
+  if (r.items) return `${head} = ${r.items.map((it, i) => `${i + 1}. ${fmtIN(it.value) ?? ""} (row ${it.row}; ${it.who})`).join("; ")} [from ${r.n} matching rows]`;
+  if (r.groups) return `${head} = ${r.groups.map(g => `${g.key}: ${fmtIN(g.value)} (${g.n} rows)`).join("; ")}`;
+  return `${head} = ${fmtIN(r.value)} (${r.n} rows${r.at && r.at.length ? "; at " + r.at.join(", ") : ""})`;
 }
 export function parsePlan(s) { const m = String(s || "").match(/\{[\s\S]*\}/); if (!m) return null; try { const j = JSON.parse(m[0]); const qs = Array.isArray(j) ? j : j.queries; return Array.isArray(qs) && qs.length ? qs.slice(0, 8) : null; } catch (e) { return null; } }
 export const PLAN_SYS = `You turn a question about spreadsheet tables into a JSON query plan. Output ONLY JSON: {"queries":[{"label":"short name","file":"...","sheet":"...","agg":"sum|max|min|avg|count|top|bottom|list","col":"exact column header","where":[{"col":"header","op":"eq|ne|in|contains|gt|lt|ge|le","value":"..."}],"groupBy":"header (optional)","n":5}]}
 Rules: one query per thing asked. Respect scope words exactly: a filter (e.g. Block = Katwa) applies ONLY to the parts of the question it is attached to; "all", "overall", "among all", "whole sheet", "any" mean NO filter; "each X"/"per X"/"block-wise" means groupBy X; "top 5"/"highest 5" means agg top with n 5; "lowest 3" means bottom with n 3. Use exact header names and exact values from the schema. count needs no col.`;
 export const TABLE_Q = /\b(top|bottom)\s*\d+|\b(each|per|wise|rank|highest|lowest)\b|প্রতিটি|প্রত্যেক|ভিত্তিক/i;
+// Indian digit grouping: 27400 -> 27,400; 34725000 -> 3,47,25,000; decimals kept (max 2).
+export function fmtIN(v) {
+  if (typeof v !== "number" || !isFinite(v)) return v;
+  const neg = v < 0, r = Math.round(Math.abs(v) * 100) / 100, [i, d] = String(r).split(".");
+  const g = i.length > 3 ? i.slice(0, -3).replace(/\B(?=(\d{2})+$)/g, ",") + "," + i.slice(-3) : i;
+  return (neg ? "-" : "") + g + (d ? "." + d : "");
+}
+// "27 363" / "3 47 25 000" (space, nbsp, narrow nbsp) -> commas, only when the groups form a valid Western or Indian grouping.
+export function fixGroups(s) {
+  return String(s).replace(/(^|[^\d.,])(\d{1,3}(?:[\u202f\u00a0\u2009 ]\d{2,3})+)(?![\d]|[.,]\d)/g, (m, pre, n, at, all) => {
+    if (/\b(pages?|pp?\.|rows?|no\.?|nos\.?|serial|sl\.?)\s*$/i.test(all.slice(0, at + pre.length))) return m;
+    const g = n.split(/[\u202f\u00a0\u2009 ]/), last = g.pop();
+    const ok = last.length === 3 && (g.slice(1).every(x => x.length === 3) || g.slice(1).every(x => x.length === 2));
+    return ok ? pre + g.concat(last).join(",") : m;
+  });
+}
