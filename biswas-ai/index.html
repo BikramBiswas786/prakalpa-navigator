@@ -5351,8 +5351,8 @@ Object.assign(STR.bn, {
   pd_exists: p => `"${p}" আগেই আছে। বদলে নতুনটা রাখবেন? (পুরনোটা মুছে যাবে)`, pd_newfolder: "নতুন ফোল্ডারের নাম", pd_newname: "নতুন নাম", pd_move_to: "কোন ফোল্ডারে সরাবেন? (খালি রাখলে মূল জায়গা)",
   pd_confirm_del: n => `${n}টা জিনিস মুছে ফেলবেন? এটা ফেরানো যাবে না।`, pd_pick: "আগে বাঁদিকের ঘরে টিক দিয়ে বাছুন।", pd_pick_one: "একটাই বাছুন।",
   pd_up_wait: "অপেক্ষায়", pd_up_go: "তুলছি", pd_up_read: "লেখা পড়ছি", pd_up_done: "হয়ে গেছে", pd_up_fail: "আটকে গেছে", pd_up_cancel: "বাতিল", pd_retry: "আবার চেষ্টা", pd_cancel: "বাতিল",
-  pd_no_text: "লেখা নেই (স্ক্যান? OCR এখনও নেই)", pd_preview_big: "ফাইল বড়, দেখতে ডাউনলোড করুন।", pd_preview_none: "এই ফাইল এখানে দেখা যায় না, ডাউনলোড করুন।",
-  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_scanned: "স্ক্যান করা, লেখা নেই", pd_cites: "প্রমাণ", pd_notfound_hint: "প্রশ্নটা অন্যভাবে লিখে দেখুন, বা ঠিক ফাইলগুলো বেছে নিন।", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই (স্ক্যান করা ছবি পড়তে OCR লাগে, এখনও নেই)।`,
+  pd_no_text: "লেখা এখনও পড়া হয়নি", pd_ocr_done: "🔍 OCR দিয়ে পড়া লেখা", pd_ocr_btn: "🔍 লেখা পড়ুন (OCR)", pd_ocr_again: "🔍 আবার পড়ুন", pd_ocr_run: "লেখা পড়া হচ্ছে…", pd_ocr_ok: (n, how) => `পড়া হল: ${n} অক্ষর (${how === "vision" ? "ভিশন মডেল" : "OCR"})`, pd_ocr_none: "ছবিতে কোনো লেখা পাওয়া গেল না।", pd_ocr_fail: "লেখা পড়া গেল না", pd_imgtext: "ছবির লেখা", pd_preview_big: "ফাইল বড়, দেখতে ডাউনলোড করুন।", pd_preview_none: "এই ফাইল এখানে দেখা যায় না, ডাউনলোড করুন।",
+  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_scanned: "স্ক্যান করা, লেখা পড়া হয়নি", pd_cites: "প্রমাণ", pd_notfound_hint: "প্রশ্নটা অন্যভাবে লিখে দেখুন, বা ঠিক ফাইলগুলো বেছে নিন।", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই (ফাইলের সারিতে “🔍 লেখা পড়ুন (OCR)” চাপুন)।`,
   pd_leave: "ফাইল তোলা চলছে। সত্যিই পাতা ছাড়বেন?"
 });
 Object.assign(STR.en, {
@@ -5379,8 +5379,8 @@ Object.assign(STR.en, {
   pd_exists: p => `"${p}" already exists. Replace it with the new one? (The old one will be deleted.)`, pd_newfolder: "New folder name", pd_newname: "New name", pd_move_to: "Move to which folder? (leave empty for the top level)",
   pd_confirm_del: n => `Delete ${n} item(s)? This can't be undone.`, pd_pick: "Tick items in the left column first.", pd_pick_one: "Pick just one.",
   pd_up_wait: "Waiting", pd_up_go: "Uploading", pd_up_read: "Reading text", pd_up_done: "Done", pd_up_fail: "Stopped", pd_up_cancel: "Cancelled", pd_retry: "Retry", pd_cancel: "Cancel",
-  pd_no_text: "No text (scan? OCR not supported yet)", pd_preview_big: "Large file: download it to view.", pd_preview_none: "This file can't be shown here; download it.",
-  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_scanned: "scanned, no text", pd_cites: "Evidence", pd_notfound_hint: "Try rephrasing, or pick the right files for the AI.", pd_no_text_files: n => `${n} file(s) have no readable text (scanned images need OCR, not supported yet).`,
+  pd_no_text: "Text not read yet", pd_ocr_done: "🔍 Text read by OCR", pd_ocr_btn: "🔍 Read text (OCR)", pd_ocr_again: "🔍 Read again", pd_ocr_run: "Reading the text…", pd_ocr_ok: (n, how) => `Read ${n} characters (${how === "vision" ? "vision model" : "OCR"})`, pd_ocr_none: "No text was found in this image.", pd_ocr_fail: "Could not read the text", pd_imgtext: "image text", pd_preview_big: "Large file: download it to view.", pd_preview_none: "This file can't be shown here; download it.",
+  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_scanned: "scanned, text not read yet", pd_cites: "Evidence", pd_notfound_hint: "Try rephrasing, or pick the right files for the AI.", pd_no_text_files: n => `${n} file(s) have no readable text (use “🔍 Read text (OCR)” on the file row).`,
   pd_leave: "Uploads are running. Leave the page anyway?"
 });
 const pd = { token: "", name: "", files: [], folders: [], cwd: "", sel: new Set(), quota: 0, used: 0, ups: [], running: 0 };
@@ -5489,7 +5489,7 @@ function renderPdList() {
   renderPdChips();
   const { folders, files } = pdChildren();
   const rows = [...folders.sort((a, b) => a.name.localeCompare(b.name)), ...files.sort((a, b) => a.name.localeCompare(b.name))];
-  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t(r.note === "scanned" ? "pd_scanned" : "pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
+  $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t(r.note === "scanned" ? "pd_scanned" : "pd_no_text"))}</span>` : ""}${r.kind === "file" && r.text && /^ocr/.test(r.note || "") ? ` <span class="hint pd-ocr-note">· ${esc(t("pd_ocr_done"))}</span>` : ""}${r.kind === "file" && r.id && pdCanOcr(r.name) && (!r.text || /^ocr/.test(r.note || "")) ? ` <button type="button" class="btn small pd-ocr-btn" data-pd-ocr="${esc(r.id)}">${esc(t(r.text ? "pd_ocr_again" : "pd_ocr_btn"))}</button>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
   $("#pd-all").checked = rows.length > 0 && rows.every(r => pd.sel.has(r.key));
 }
 /* ---- share links + upload-request links (owner side) ---- */
@@ -5968,6 +5968,21 @@ function pdWorkerText(f) {
   if (!pdWorker) { pdWorker = new Worker("/pd-text-worker.js"); pdWorker.onmessage = e => { const cb = pdWorkerCb.get(e.data.id); pdWorkerCb.delete(e.data.id); if (cb) e.data.error ? cb.rej(new Error(e.data.error)) : cb.res(e.data.text || ""); }; }
   return new Promise((res, rej) => { const id = ++pdWorkerK; pdWorkerCb.set(id, { res, rej }); pdWorker.postMessage({ id, file: f, cap: PD_TEXT }); });
 }
+const pdCanOcr = name => /\.(png|jpe?g|webp|gif|bmp|pdf)$/i.test(name || "");
+async function pdOcrFile(id, btn) {
+  const f = pd.files.find(x => x.id === id); if (!f || !window.BA_OCR) return;
+  const lab = btn ? btn.textContent : ""; if (btn) btn.disabled = true;
+  const prog = m => { if (btn) btn.textContent = "⏳ " + String(m).slice(0, 60); };
+  try {
+    prog(t("pd_ocr_run"));
+    const j = await pdApi("download-urls", { ids: [id] }); const u = j.urls && j.urls[id]; if (!u) throw new Error("not_found"); const rr = await fetch(u); if (!rr.ok) throw new Error("HTTP " + rr.status); const blob = await rr.blob();
+    const r = await BA_OCR.read(new File([blob], f.path.split("/").pop(), { type: blob.type || f.type || "" }), f.path, prog);
+    if (!r.text) { toast(t("pd_ocr_none")); return; }
+    await pdApi("text", { id, text: r.text.slice(0, PD_TEXT), note: r.how === "vision" ? "ocr-vision" : "ocr" });
+    toast(t("pd_ocr_ok", r.text.length, r.how)); pdRefreshSoon();
+  } catch (e) { toast(t("pd_ocr_fail") + (e && e.message ? ": " + e.message : "")); }
+  finally { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = lab; } }
+}
 function pdTextLater(id, file, text) { pdTextQ.push({ id, file, text }); pd.textLeft = pdTextQ.length + pdTextBusy; pdTextPump(); }
 function pdTextPump() {
   while (pdTextBusy < 2 && pdTextQ.length) {
@@ -5979,7 +5994,11 @@ function pdTextPump() {
         try { text = PD_WORKER_EXT.has(ext) || (it.file.type || "").startsWith("text/") ? await pdWorkerText(it.file) : await pdExtract(it.file); }
         catch (e) { try { text = await pdExtract(it.file); } catch (x) { text = ""; } }
       }
-      if (text) pdTextOut.push({ id: it.id, text });
+      let note = "";
+      if (!text && pdCanOcr(it.file.name) && it.file.size <= 40 * 1024 * 1024 && window.BA_OCR) { // pictures and scans: read the text by OCR
+        try { const r = await BA_OCR.read(it.file, it.file.name); if (r.text) { text = r.text.slice(0, PD_TEXT); note = r.how === "vision" ? "ocr-vision" : "ocr"; } } catch (e) { /* the row offers "Read text (OCR)" */ }
+      }
+      if (text) pdTextOut.push({ id: it.id, text, ...(note ? { note } : {}) });
       else if (/\.pdf$/i.test(it.file.name) && it.file.size <= 150 * 1024 * 1024) pdTextOut.push({ id: it.id, text: "", note: "scanned" }); // scanned PDF, no text layer
     })().finally(() => {
       pdTextBusy--; pd.textLeft = pdTextQ.length + pdTextBusy;
@@ -6342,9 +6361,10 @@ function pdAiEvent(ev) {
   pdOutAdd(ev.text || "", ev.sources || [], pd.cites);
   out.innerHTML = ""
     + (ev.notFound ? `<div class="src pd-notfound"><b>${esc(ev.text)}</b> ${esc(t("pd_notfound_hint"))}</div>` : "")
-    + (pd.cites.length ? `<div class="src pd-cites"><b>${esc(t("pd_cites"))}:</b> ${pd.cites.map(c => `<button type="button" class="pd-cite" data-pd-cite="${c.n}" title="${esc(c.quote || "")}">[${c.n}] ${esc(c.path.split("/").pop())}${pdLocLabel(c.loc) ? " · " + esc(pdLocLabel(c.loc)) : ""}</button>`).join(" ")}</div>` : "")
+    + (pd.cites.length ? `<div class="src pd-cites"><b>${esc(t("pd_cites"))}:</b> ${pd.cites.map(c => `<button type="button" class="pd-cite" data-pd-cite="${c.n}" title="${esc(c.quote || "")}">[${c.n}] ${esc(c.path.split("/").pop())}${pdLocLabel(c.loc) ? " · " + esc(pdLocLabel(c.loc)) : ""}${c.ocr ? " · " + esc(t("pd_imgtext")) : ""}</button>`).join(" ")}</div>` : "")
     + (ev.sources && ev.sources.length ? `<div class="src pd-used"><b>${esc(t("pd_ai_used"))} (${ev.sources.length}):</b> ${ev.sources.map(s => "📄 " + esc(s)).join(" · ")}</div>` : "")
     + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "");
+  if (window.BA_OCR) BA_OCR.cards(out, pd.actions);
   const box = $("#pd-out"); if (box) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 async function pdSaveAction(i) {
@@ -6405,6 +6425,7 @@ document.addEventListener("click", async e => {
     if (el("[data-pd-cancel-all]")) { for (const u of pd.ups) if (u.state === "wait" || u.state === "go" || u.state === "fail") pdCancel(u); return; }
     if (el("[data-pd-sum-go]")) return pdOfferGo();
     if (el("[data-pd-sum-no]")) { pd.offer = null; $("#pd-confirm").hidden = true; return; }
+    if ((x = el("[data-pd-ocr]"))) { e.preventDefault(); e.stopPropagation(); return pdOcrFile(x.dataset.pdOcr, x); }
     if ((x = el("[data-pd-act]"))) return pdSaveAction(Number(x.dataset.pdAct));
     if (el("#pd-close")) { if (pd.ups.some(u => u.state === "go") && !confirm(t("pd_leave"))) return; pd.loaded = false; return pdLogout(); }
     if (el("#pd-up-files")) return $("#pd-file-in").click();
@@ -6500,5 +6521,6 @@ resume();
 <script src="/ed-excel.js?h=0" defer></script>
 <script src="/ed-image.js?h=0" defer></script>
 <script src="/ed-note.js?h=0" defer></script>
+<script src="/ed-ocr.js?h=0" defer></script>
 </body>
 </html>
