@@ -157,7 +157,8 @@ async function totalUse(exceptId) {
 const saveIndex = (id, x) => cset(`${P(id)}/index.json`, x);
 // Existing pendrives get the current default quota if it's bigger than the one stored at creation.
 const quotaOf = m => Math.max(Number(m.quota) || 0, QUOTA);
-const publicMeta = m => ({ name: m.name, quota: quotaOf(m), used: m.used, reserved: reservedOf(m), maxFile: MAX_FILE });
+const publicMeta = m => ({ name: m.name, quota: quotaOf(m), used: m.used, binUsed: m.binUsed || 0, reserved: reservedOf(m), maxFile: MAX_FILE });
+const BIN_DAYS = 7, BIN_MS = BIN_DAYS * 86400000;
 function checkPin(pin) { if (!/^\d{4,8}$/.test(String(pin || ""))) fail(400, "bad_pin"); }
 function pathTaken(ix, p) { return Object.values(ix.files).some(f => f.state === "ok" && f.path === p) || ix.folders.includes(p); }
 function addFolders(ix, p) { const parts = p.split("/"); for (let i = 1; i <= parts.length; i++) { const f = parts.slice(0, i).join("/"); if (!ix.folders.includes(f)) ix.folders.push(f); } }
@@ -750,22 +751,65 @@ export async function handle(req, res, url, body, send) {
       await saveIndex(id, ix); return send(200, { ok: true });
     });
   }
-  if (op === "delete") {
+  if (op === "delete") { // soft delete: files go to the bin (ix.bin) for 7 days; "purge" frees the storage
     if (body.confirm !== true) fail(400, "confirm_required");
     return withLock(id, async () => {
       const [m, ix] = await Promise.all([meta(id), index(id)]);
       const ids = new Set((body.ids || []).map(String));
-      const folders = (body.folders || []).map(s => cleanPath(s));
+      const folders = (body.folders || []).map(s => cleanPath(s)).filter(Boolean);
       for (const f of Object.values(ix.files)) if (folders.some(d => under(f.path, d))) ids.add(f.id);
-      let freed = 0;
-      // delete objects 8 at a time and rewrite the search index once (was 4 sequential storage calls per file)
-      const list = [...ids].filter(fid => ix.files[fid]);
-      for (const fid of list) freed += ix.files[fid].size;
-      await dropFiles(id, ix, list);
-      ix.folders = ix.folders.filter(p => !folders.some(d => under(p, d)));
-      m.used = Math.max(0, m.used - freed);
+      const list = [...ids].filter(fid => ix.files[fid]); const at = Date.now();
+      const gone = ix.folders.filter(p => folders.some(d => under(p, d)));
+      ix.bin = ix.bin || { files: {}, folders: [] };
+      for (const fid of list) { ix.bin.files[fid] = { ...ix.files[fid], delAt: at }; m.binUsed = (m.binUsed || 0) + (ix.files[fid].size || 0); delete ix.files[fid]; }
+      for (const p of gone) ix.bin.folders.push({ path: p, delAt: at });
+      ix.folders = ix.folders.filter(p => !gone.includes(p));
+      const withText = list.filter(fid => ix.bin.files[fid].text);
+      if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); await memDrop(id, withText).catch(() => {}); }
+      await binExpire(id, m, ix);
       await saveIndex(id, ix); await saveMeta(id, m);
-      return send(200, { ok: true, deleted: ids.size, ...publicMeta(m) });
+      return send(200, { ok: true, deleted: list.length, folders: gone.length, binDays: BIN_DAYS, ...publicMeta(m) });
+    });
+  }
+  if (op === "bin") {
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      if (await binExpire(id, m, ix)) { await saveIndex(id, ix); await saveMeta(id, m); }
+      const b = ix.bin || { files: {}, folders: [] };
+      return send(200, { files: Object.values(b.files).map(({ id, path, size, mtime, delAt }) => ({ id, path, size, mtime, delAt, until: delAt + BIN_MS })), folders: b.folders.map(f => ({ ...f, until: f.delAt + BIN_MS })), binDays: BIN_DAYS, ...publicMeta(m) });
+    });
+  }
+  if (op === "restore") {
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      const b = ix.bin || { files: {}, folders: [] }; const want = new Set((body.ids || []).map(String)); const wantF = (body.folders || []).map(s => cleanPath(s));
+      for (const f of b.files ? Object.values(b.files) : []) if (wantF.some(d => under(f.path, d))) want.add(f.id);
+      const fids = [...want].filter(fid => b.files[fid]); const restored = [];
+      const addDir = p => { const parts = p.split("/"); for (let i = 1; i <= parts.length; i++) { const d = parts.slice(0, i).join("/"); if (!ix.folders.includes(d)) ix.folders.push(d); } };
+      for (const bf of b.folders.filter(f => wantF.some(d => under(f.path, d)) || fids.some(fid => under(b.files[fid].path, f.path)))) addDir(bf.path);
+      b.folders = b.folders.filter(f => !ix.folders.includes(f.path));
+      for (const fid of fids) {
+        const { delAt, ...f } = b.files[fid]; let p = f.path;
+        if (pathTaken(ix, p)) { const dot = p.lastIndexOf("."), sl = p.lastIndexOf("/"); const [a, e] = dot > sl + 1 ? [p.slice(0, dot), p.slice(dot)] : [p, ""]; let n = 1; do p = `${a} (restored${n > 1 ? " " + n : ""})${e}`; while (pathTaken(ix, p) && ++n < 100); }
+        f.path = p; const dir = p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : ""; if (dir) addDir(dir);
+        ix.files[fid] = f; delete b.files[fid]; m.binUsed = Math.max(0, (m.binUsed || 0) - (f.size || 0)); restored.push(f);
+      }
+      const withText = restored.filter(f => f.text);
+      if (withText.length) { const x = await bm(id); for (const f of withText) { try { const built = await putChunks(id, f.id, (await tget(`${P(id)}/t/${f.id}.txt`)) || ""); bmAddChunks(x, f.id, built.chunks); } catch (e) { console.warn("pendrive: restore reindex", e.message); } } await cset(`${P(id)}/bm25.json`, x); }
+      ix.bin = b; await saveIndex(id, ix); await saveMeta(id, m);
+      return send(200, { ok: true, restored: restored.length, paths: restored.map(f => f.path), ...publicMeta(m) });
+    });
+  }
+  if (op === "purge") { // permanent: frees storage. body.all = empty the whole bin
+    if (body.confirm !== true) fail(400, "confirm_required");
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      const b = ix.bin || { files: {}, folders: [] };
+      const fids = body.all ? Object.keys(b.files) : (body.ids || []).map(String).filter(fid => b.files[fid]);
+      const freed = await binDrop(id, m, ix, fids);
+      if (body.all) b.folders = [];
+      await saveIndex(id, ix); await saveMeta(id, m);
+      return send(200, { ok: true, purged: fids.length, freed, ...publicMeta(m) });
     });
   }
   if (op === "ai") return aiJob(req, res, id, body);
@@ -789,12 +833,25 @@ function moveTree(ix, old, np) {
   ix.folders = ix.folders.map(p => under(p, old) ? np + p.slice(old.length) : p);
   addFolders(ix, np);
 }
-async function dropFiles(id, ix, list) {
+async function binDrop(id, m, ix, fids) { // permanently remove bin entries (objects + text) and free the space
+  const b = ix.bin; if (!b || !fids.length) return 0; let freed = 0;
+  for (const fid of fids) { ix.files[fid] = { ...b.files[fid], text: false }; freed += b.files[fid].size || 0; delete b.files[fid]; }
+  await dropFiles(id, ix, fids, true);
+  m.used = Math.max(0, m.used - freed); m.binUsed = Math.max(0, (m.binUsed || 0) - freed); return freed;
+}
+async function binExpire(id, m, ix) { // purge bin entries older than 7 days; runs on delete / bin list
+  const b = ix.bin; if (!b) return false; const cut = Date.now() - BIN_MS;
+  const old = Object.values(b.files).filter(f => f.delAt < cut).map(f => f.id); const nf = b.folders.length;
+  b.folders = b.folders.filter(f => f.delAt >= cut);
+  if (old.length) await binDrop(id, m, ix, old);
+  return old.length > 0 || nf !== b.folders.length;
+}
+async function dropFiles(id, ix, list, keepText) {
   const withText = list.filter(fid => ix.files[fid].text);
   // one flaky storage call used to fail the whole delete with "server" (objects gone, index unchanged).
   // Now each object delete is retried; if a backend still refuses, the key is parked in ix.gc and retried by the next delete.
   const keys = [];
-  for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text || ix.files[fid].note) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }, { b: null, k: cKey(id, fid) }); }
+  for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (keepText || ix.files[fid].text || ix.files[fid].note) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }, { b: null, k: cKey(id, fid) }); }
   const old = (ix.gc || []).slice(0, 50); ix.gc = (ix.gc || []).slice(50);
   await delKeys(ix, [...keys, ...old]);
   if (withText.length) { const x = await bm(id); for (const fid of withText) bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); await memDrop(id, withText).catch(() => {}); }
@@ -984,8 +1041,8 @@ export async function gcTestPendrives({ minAgeMs = 30 * 60 * 1000 } = {}) {
         if (!/^zz-test-/i.test(String(m.name || ""))) return;
         for (const [k, p] of Object.entries(m.pending || {})) { try { await (p.single ? bk(p.b).st.del(`${P(id)}/f/${k}`) : bk(p.b).st.abortMultipart(`${P(id)}/f/${k}`, p.u)); } catch (e) { /* stale */ } }
         m.pending = {}; const n = Object.keys(ix.files).length;
-        await dropFiles(id, ix, Object.keys(ix.files));
-        ix.folders = []; m.used = 0;
+        await dropFiles(id, ix, Object.keys(ix.files)); if (ix.bin) await binDrop(id, m, ix, Object.keys(ix.bin.files));
+        ix.folders = []; ix.bin = { files: {}, folders: [] }; m.used = 0; m.binUsed = 0;
         await saveIndex(id, ix); await saveMeta(id, m);
         out.push({ name: m.name, files: n });
       });
