@@ -249,3 +249,80 @@ export function aggText(a) {
 }
 // questions that ask about the files as a whole (no strict "not found" gate for these)
 export const OVERVIEW = /\b(summar\w*|overview|describe|each file|all files|every file|list (the |all )?files|what('| i)s in|outline|key points|main points)\b|সারাংশ|সংক্ষেপ|সারসংক্ষেপ|প্রতিটি ফাইল|সব ফাইল|ফাইলগুলোর|ফাইলের নাম|কী আছে|কি আছে|মূল বিষয়|বিষয়বস্তু/i;
+
+/* ---------- spreadsheet query engine: the AI writes a small JSON plan, code runs it over ALL rows ----------
+   plan = { queries: [{ file?, sheet?, agg: sum|max|min|avg|count|top|bottom|list, col?, where?: [{col, op: eq|ne|in|contains|gt|lt|ge|le, value}], groupBy?, n?, label? }] }
+   No eval: every field is matched against the real headers; unknown columns make that query fail with a reason. */
+export function sheetTables(files) {
+  const out = [];
+  for (const f of files) for (const [sheet, data] of Object.entries(f.sheets || {})) {
+    const rows = data.rows; const hi = rows.findIndex(r => r.some(Boolean)); if (hi < 0) continue;
+    const head = rows[hi].map((h, c) => h || `col ${c + 1}`);
+    const body = rows.slice(hi + 1).map((r, i) => ({ r, n: data.r0 + hi + 1 + i })).filter(x => x.r.some(Boolean));
+    const cols = head.map((h, c) => { const vals = body.map(x => x.r[c]).filter(v => v !== undefined && v !== ""); const nums = vals.filter(v => num(v) !== null).length;
+      return { c, h, num: vals.length > 0 && nums / vals.length >= 0.6 }; });
+    out.push({ fid: f.id, path: f.path, sheet, head, cols, body });
+  }
+  return out;
+}
+export function sheetSchema(tables) { // what the planner sees: headers, types, a few distinct values of text columns
+  return tables.map((t, i) => `T${i + 1}: file "${t.path}", sheet "${t.sheet}", ${t.body.length} rows. Columns: ` + t.cols.map(c => {
+    if (c.num) { const v = t.body.map(x => num(x.r[c.c])).filter(x => x !== null); return `"${c.h}" (number)`; }
+    const d = [...new Set(t.body.map(x => x.r[c.c]).filter(Boolean))]; return `"${c.h}" (text, ${d.length} distinct${d.length <= 30 ? ": " + d.slice(0, 30).map(x => JSON.stringify(String(x).slice(0, 40))).join(", ") : ", e.g. " + d.slice(0, 5).map(x => JSON.stringify(String(x).slice(0, 40))).join(", ")})`;
+  }).join("; ")).join("\n");
+}
+const normH = s => String(s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+function findCol(t, name) { if (name == null || name === "") return null; const n = normH(name); return t.cols.find(c => normH(c.h) === n) || t.cols.find(c => normH(c.h).includes(n) || (n.includes(normH(c.h)) && normH(c.h).length >= 3)) || null; }
+function rowOk(t, x, w) {
+  const c = findCol(t, w.col); if (!c) throw new Error(`no column "${w.col}"`);
+  const v = x.r[c.c] ?? "", op = String(w.op || "eq").toLowerCase(), vs = Array.isArray(w.value) ? w.value : [w.value];
+  const eq = a => normH(v) === normH(a) || (num(v) !== null && num(a) !== null && num(v) === num(a));
+  if (op === "eq") return vs.some(eq); if (op === "in") return vs.some(eq); if (op === "ne" || op === "not_in") return !vs.some(eq);
+  if (op === "contains") return vs.some(a => normH(v).includes(normH(a)));
+  const a = num(v), b = num(vs[0]); if (a === null || b === null) return false;
+  return op === "gt" ? a > b : op === "lt" ? a < b : op === "ge" ? a >= b : op === "le" ? a <= b : false;
+}
+const r2 = v => Math.round(v * 100) / 100;
+function aggVals(agg, vals, n) { if (agg === "count") return n; if (!vals.length) return null;
+  return agg === "sum" ? r2(vals.reduce((a, b) => a + b, 0)) : agg === "avg" ? r2(vals.reduce((a, b) => a + b, 0) / vals.length) : agg === "max" ? Math.max(...vals) : agg === "min" ? Math.min(...vals) : null; }
+export function runQuery(tables, q) {
+  let ts = tables;
+  if (q.file) ts = ts.filter(t => normH(t.path).includes(normH(q.file)) || normH(q.file).includes(normH(t.path))) || ts;
+  if (q.sheet) { const s = ts.filter(t => normH(t.sheet) === normH(q.sheet)); if (s.length) ts = s; }
+  if (!ts.length) ts = tables;
+  const agg = String(q.agg || "").toLowerCase(); if (!/^(sum|max|min|avg|count|top|bottom|list)$/.test(agg)) throw new Error(`bad agg "${q.agg}"`);
+  // pick the first table that has every column the query names
+  const need = [q.col, q.groupBy, ...(q.where || []).map(w => w.col)].filter(x => x != null && x !== "");
+  const t = ts.find(t => need.every(n => findCol(t, n))); if (!t) throw new Error(`columns not found: ${need.filter(n => !tables.some(t => findCol(t, n))).join(", ") || need.join(", ")}`);
+  const col = findCol(t, q.col); if (agg !== "count" && (!col || !col.num) && agg !== "list") throw new Error(`"${q.col}" is not a number column`);
+  const keep = t.body.filter(x => (q.where || []).every(w => rowOk(t, x, w)));
+  const where = (q.where || []).map(w => `${findCol(t, w.col).h} ${w.op || "eq"} ${Array.isArray(w.value) ? w.value.join(" / ") : w.value}`);
+  const base = { fid: t.fid, path: t.path, sheet: t.sheet, agg, col: col ? col.h : "", where, n: keep.length, rows: keep.map(x => x.n), label: q.label || "" };
+  const label = x => t.cols.filter(c => !c.num).slice(0, 3).map(c => `${c.h}: ${x.r[c.c]}`).join(", ");
+  if (agg === "top" || agg === "bottom" || agg === "list") {
+    const n = Math.min(50, Math.max(1, Number(q.n) || (agg === "list" ? 50 : 5)));
+    const s = col && col.num ? keep.filter(x => num(x.r[col.c]) !== null).sort((a, b) => agg === "bottom" ? num(a.r[col.c]) - num(b.r[col.c]) : num(b.r[col.c]) - num(a.r[col.c])) : keep;
+    return { ...base, n_out: n, items: s.slice(0, n).map(x => ({ row: x.n, value: col ? (col.num ? num(x.r[col.c]) : x.r[col.c]) : null, who: label(x) })) };
+  }
+  if (q.groupBy) {
+    const g = findCol(t, q.groupBy); const m = new Map();
+    for (const x of keep) { const k = x.r[g.c] || "(blank)"; if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
+    return { ...base, groupBy: g.h, groups: [...m].map(([k, xs]) => ({ key: k, n: xs.length, value: aggVals(agg, col ? xs.map(x => num(x.r[col.c])).filter(v => v !== null) : [], xs.length) })).sort((a, b) => String(a.key).localeCompare(String(b.key))) };
+  }
+  const vals = col ? keep.map(x => num(x.r[col.c])).filter(v => v !== null) : [];
+  const value = aggVals(agg, vals, keep.length);
+  const at = (agg === "max" || agg === "min") && value !== null ? keep.filter(x => num(x.r[col.c]) === value).slice(0, 3).map(x => `row ${x.n} (${label(x)})`) : [];
+  return { ...base, value, at };
+}
+export function queryText(r) {
+  const opName = { sum: "total", avg: "average", count: "count of rows", max: "maximum", min: "minimum", top: "top", bottom: "bottom", list: "rows" }[r.agg];
+  const scope = r.where.length ? ` where ${r.where.join(" and ")}` : " over ALL rows (no filter)";
+  const head = `${r.label ? r.label + ": " : ""}${opName}${r.col ? ` of "${r.col}"` : ""}${r.groupBy ? ` per "${r.groupBy}"` : ""}${scope} in ${r.path} › sheet "${r.sheet}"`;
+  if (r.items) return `${head} = ${r.items.map((it, i) => `${i + 1}. ${it.value ?? ""} (row ${it.row}; ${it.who})`).join("; ")} [from ${r.n} matching rows]`;
+  if (r.groups) return `${head} = ${r.groups.map(g => `${g.key}: ${g.value} (${g.n} rows)`).join("; ")}`;
+  return `${head} = ${r.value} (${r.n} rows${r.at && r.at.length ? "; at " + r.at.join(", ") : ""})`;
+}
+export function parsePlan(s) { const m = String(s || "").match(/\{[\s\S]*\}/); if (!m) return null; try { const j = JSON.parse(m[0]); const qs = Array.isArray(j) ? j : j.queries; return Array.isArray(qs) && qs.length ? qs.slice(0, 8) : null; } catch (e) { return null; } }
+export const PLAN_SYS = `You turn a question about spreadsheet tables into a JSON query plan. Output ONLY JSON: {"queries":[{"label":"short name","file":"...","sheet":"...","agg":"sum|max|min|avg|count|top|bottom|list","col":"exact column header","where":[{"col":"header","op":"eq|ne|in|contains|gt|lt|ge|le","value":"..."}],"groupBy":"header (optional)","n":5}]}
+Rules: one query per thing asked. Respect scope words exactly: a filter (e.g. Block = Katwa) applies ONLY to the parts of the question it is attached to; "all", "overall", "among all", "whole sheet", "any" mean NO filter; "each X"/"per X"/"block-wise" means groupBy X; "top 5"/"highest 5" means agg top with n 5; "lowest 3" means bottom with n 3. Use exact header names and exact values from the schema. count needs no col.`;
+export const TABLE_Q = /\b(top|bottom)\s*\d+|\b(each|per|wise|rank|highest|lowest)\b|প্রতিটি|প্রত্যেক|ভিত্তিক/i;

@@ -893,23 +893,32 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   } else if (overview) for (const f of withText.slice(0, 8)) if (!cands.some(c => c.fid === f.id)) { const c = (await getC(f.id)).chunks[0]; if (c) cands.push({ fid: f.id, i: 0, s: 0, chunk: c }); }
   const how = fast ? "" : await rag.remoteScores(q, cands.slice(0, 30)); // Fast skips the remote re-ranker (a network round trip)
   rag.lexRerank(q, cands, tokens);
-  let agg = null;
-  if (rag.numericQuestion(q)) {
+  let agg = null, computed = [];
+  if (rag.numericQuestion(q) || rag.TABLE_Q.test(q)) {
     const sheetFiles = [];
-    for (const f of withText.filter(f => /\.(xlsx|xls|ods)$/i.test(f.path)).slice(0, 20)) { const c = await getC(f.id); if (c.sheets) sheetFiles.push({ id: f.id, path: f.path, sheets: c.sheets }); }
-    agg = rag.aggregate(q, sheetFiles, tokens);
+    for (const f of withText.filter(f => /\.(xlsx|xls|xlsm|ods|csv)$/i.test(f.path)).slice(0, 20)) { const c = await getC(f.id); if (c.sheets) sheetFiles.push({ id: f.id, path: f.path, sheets: c.sheets }); }
+    if (sheetFiles.length) {
+      const tables = rag.sheetTables(sheetFiles);
+      try { // the AI only plans; the numbers are computed here over every row
+        const plan = rag.parsePlan(await askAI(rag.PLAN_SYS, `TABLES:\n${rag.sheetSchema(tables)}\n\nQUESTION: ${q}\nJSON:`, 700, fast ? { fast } : {}));
+        for (const pq of plan || []) { try { computed.push(rag.runQuery(tables, pq)); } catch (e) { console.warn("pendrive: sheet query", e.message); } }
+      } catch (e) { console.warn("pendrive: sheet plan", e.message); }
+      if (!computed.length) agg = rag.aggregate(q, sheetFiles, tokens);
+    }
   }
   const need = ex.base.length >= 3 ? 0.34 : ex.base.length === 2 ? 0.5 : 1;
   const strong = cands.filter(c => c.cov >= need || (c.emb || 0) >= 0.62);
-  emit({ type: "progress", msg: `chunks ${cands.length} → ${strong.length}${how ? " · " + how : ""}${agg ? " · computed" : ""}` });
-  if (!overview && !agg && !strong.length) return { notFound: true };
+  emit({ type: "progress", msg: `chunks ${cands.length} → ${strong.length}${how ? " · " + how : ""}${agg || computed.length ? " · computed" : ""}` });
+  if (!overview && !agg && !computed.length && !strong.length) return { notFound: true };
   const ev = []; let left = fast ? 9000 : JOB.askChars;
-  if (agg) { const t = rag.aggText(agg); ev.push({ fid: agg.fid, loc: { sheet: agg.sheet, r1: agg.rows[0] || 0, r2: agg.rows[agg.rows.length - 1] || 0, rows: agg.rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
+  for (const r of computed) { const t = rag.queryText(r).slice(0, 3000); const rows = r.items ? r.items.map(i => i.row) : r.rows; ev.push({ fid: r.fid, loc: { sheet: r.sheet, r1: Math.min(...rows, Infinity) === Infinity ? 0 : Math.min(...rows), r2: rows.length ? Math.max(...rows) : 0, rows: rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
+  if (computed.length) agg = { computed: true };
+  if (agg && !agg.computed) { const t = rag.aggText(agg); ev.push({ fid: agg.fid, loc: { sheet: agg.sheet, r1: agg.rows[0] || 0, r2: agg.rows[agg.rows.length - 1] || 0, rows: agg.rows.slice(0, 200) }, text: "COMPUTED: " + t, quote: "" }); left -= t.length; }
   for (const c of (overview ? cands : strong).slice(0, overview && memo ? 24 : fast ? (agg ? 4 : 5) : agg ? 5 : 6)) { if (left <= 200) break; const t = c.chunk.t.slice(0, left); left -= t.length; ev.push({ fid: c.fid, loc: c.chunk.loc, text: t, quote: rag.quote(t, q, tokens) }); }
   const cardIds = memo && !overview ? [...new Set(ev.map(e => e.fid))].filter(f => memo.files[f]).slice(0, 4) : [];
   const cardsTxt = cardIds.length ? `\nAbout these files (memory; for orientation only, cite the extracts):\n${cardIds.map(f => `- ${ix.files[f].path}: ${memText(memo.files[f]).replace(/\n/g, " · ")}`).join("\n")}\n` : "";
   const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${/^ocr/.test(ix.files[e.fid].note || "") ? " (image text, read by OCR)" : ""}${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
-  const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
+  const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extracts marked COMPUTED are exact values calculated in code over every row of the spreadsheet: give those numbers exactly as written, keep their scope (a filtered value is only for that filter; 'ALL rows' means the whole sheet) and cite them; never recompute or estimate from the other extracts. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
   let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || stream || {});
   if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
   answer = answer.replace(/\bNOT_FOUND\b/g, "");
