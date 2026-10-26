@@ -692,6 +692,12 @@ const CSS = `
 .doc table th,.ba-page table th,.pd-out-doc table th{background:#d9e2f3}
 .doc table th,.doc table td{border:1px solid #9aa4b2;padding:4px 8px}
 .doc blockquote,.ba-page blockquote{border-left:4px solid #8ea9db;margin:0 0 10px;padding:2px 12px;color:#333;background:#f7f9fc}
+.doc pre,.pd-out-doc pre{background:var(--paper,#f6f8fa);border-color:var(--line,#e1e4e8);color:var(--ink,#1c2233)}
+.doc table th,.pd-out-doc table th{background:var(--th,#d9e2f3);color:var(--ink,#1c2233)}
+.doc table th,.doc table td,.pd-out-doc table th,.pd-out-doc table td{border-color:var(--tbl-line,#9aa4b2)}
+.doc blockquote,.pd-out-doc blockquote{color:var(--ink,#333);background:var(--accent-soft,#f7f9fc)}
+:root[data-theme=dark] .doc .tk-k,:root[data-theme=dark] .pd-out-doc .tk-k{color:#ff7b72}:root[data-theme=dark] .doc .tk-s,:root[data-theme=dark] .pd-out-doc .tk-s{color:#a5d6ff}:root[data-theme=dark] .doc .tk-c,:root[data-theme=dark] .pd-out-doc .tk-c{color:#9ba2b5}:root[data-theme=dark] .doc .tk-n,:root[data-theme=dark] .pd-out-doc .tk-n{color:#79c0ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .doc .tk-k,:root:not([data-theme=light]) .pd-out-doc .tk-k{color:#ff7b72}:root:not([data-theme=light]) .doc .tk-s,:root:not([data-theme=light]) .pd-out-doc .tk-s{color:#a5d6ff}:root:not([data-theme=light]) .doc .tk-c,:root:not([data-theme=light]) .pd-out-doc .tk-c{color:#9ba2b5}:root:not([data-theme=light]) .doc .tk-n,:root:not([data-theme=light]) .pd-out-doc .tk-n{color:#79c0ff}}
 #ba-viewer{position:fixed;top:0;right:0;bottom:0;width:min(640px,44vw);z-index:15;background:#e9e6df;border-left:1px solid var(--line,#ccc);box-shadow:-6px 0 18px rgba(0,0,0,.12);display:flex;flex-direction:column}
 #ba-viewer[hidden]{display:none}
 @media (min-width:1100px){body.ba-open .app{margin-right:min(640px,44vw)}}
@@ -703,7 +709,7 @@ const CSS = `
 .ba-page[contenteditable=true]{outline:2px solid var(--accent,#1c3d32);outline-offset:-2px}
 .ba-page h1,.ba-page h2,.ba-page h3,.ba-page h4{font-family:"Noto Serif","Noto Serif Bengali",serif;color:#1f3864;margin:12pt 0 6pt}.ba-page h1,.ba-page h2:first-child{text-align:center}
 .ba-page table{border-collapse:collapse;width:100%;font-size:10.5pt;margin:6pt 0}.ba-page th,.ba-page td{border:1px solid #666;padding:4px 6px;text-align:left;vertical-align:top}
-.ba-vhelp{font-size:.74rem;color:#555;margin:0;padding:6px 12px;background:var(--surface,#fff);border-top:1px solid var(--line,#ccc)}
+.ba-vhelp{font-size:.74rem;color:var(--muted,#555);margin:0;padding:6px 12px;background:var(--surface,#fff);border-top:1px solid var(--line,#ccc)}
 .pdf-doc.ba-a4 th{background:#d9e2f3}.pdf-doc.ba-a4 th,.pdf-doc.ba-a4 td{border:1px solid #666;padding:4px 6px;text-align:left;vertical-align:top}.pdf-doc.ba-a4 pre{background:#f4f4f4;padding:6px;white-space:pre-wrap;font-size:9.5pt}.pdf-doc.ba-a4 h1,.pdf-doc.ba-a4 h2,.pdf-doc.ba-a4 h3{color:#1f3864}.pdf-doc.ba-a4 blockquote{border-left:4px solid #8ea9db;margin:0 0 8pt;padding-left:10px}.pdf-doc.ba-a4 p,.pdf-doc.ba-a4 li{margin:0 0 6pt}
 @media (max-width:1099px){#ba-viewer{top:auto;left:0;width:auto;height:84vh;border-left:0;border-top:1px solid var(--line,#ccc);border-radius:14px 14px 0 0}#ba-viewer .ba-page{zoom:.46}}
 @media print{#ba-viewer{display:none}}

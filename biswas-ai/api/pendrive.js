@@ -309,6 +309,39 @@ export async function handle(req, res, url, body, send) {
   }
 
   const id = req.pdAs || session(req); // share upload-request links act on the owner's pendrive with a fixed op set
+  // Saved conversations (thread of questions, answers, edits, revisions). One small index + one JSON per conversation.
+  // Owner only (PIN session); share links never reach these ops.
+  if (op.startsWith("conv/")) {
+    if (req.pdAs) fail(403, "forbidden");
+    const CK = `${P(id)}/conv/index.json`, cKeyOf = c => `${P(id)}/conv/${c}.json`;
+    const cid = String(body.cid || ""); const okId = /^[a-f0-9]{16}$/.test(cid);
+    const title = s => String(s || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 120);
+    const listC = async () => ((await cget(CK)) || { convs: [] }).convs;
+    if (op === "conv/list") return send(200, { convs: (await listC()).sort((a, b) => b.at - a.at) });
+    if (op === "conv/get") { if (!okId) fail(400, "bad_id"); const c = await storage.getJson(cKeyOf(cid)); if (!c) fail(404, "not_found"); return send(200, c); }
+    if (op === "conv/save" || op === "conv/rename" || op === "conv/delete") return withLock("conv:" + id, async () => {
+      const convs = await listC(); const i = convs.findIndex(c => c.id === cid);
+      if (op === "conv/delete") { if (i < 0) fail(404, "not_found"); await storage.del(cKeyOf(cid)); convs.splice(i, 1); await cset(CK, { convs }); return send(200, { ok: true }); }
+      if (op === "conv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const c = await storage.getJson(cKeyOf(cid)); if (c) { c.title = tt; await storage.putJson(cKeyOf(cid), c); } convs[i].title = tt; await cset(CK, { convs }); return send(200, convs[i]); }
+      const turns = (Array.isArray(body.turns) ? body.turns : []).slice(-60).map(t => ({
+        q: String(t.q || "").slice(0, 2000), md: String(t.md || "").slice(0, 200000), at: Number(t.at) || Date.now(),
+        kind: ["ask", "revise", "edit"].includes(t.kind) ? t.kind : "ask",
+        sources: (Array.isArray(t.sources) ? t.sources : []).slice(0, 50).map(x => String(x).slice(0, 500)),
+        cites: (Array.isArray(t.cites) ? t.cites : []).slice(0, 20).map(c => ({ n: Number(c.n) || 0, path: String(c.path || "").slice(0, 500), id: String(c.id || "").slice(0, 64), quote: String(c.quote || "").slice(0, 600), loc: c.loc && typeof c.loc === "object" ? JSON.parse(JSON.stringify(c.loc).slice(0, 400) || "null") : null }))
+      })).filter(t => t.md || t.q);
+      if (!turns.length) fail(400, "empty");
+      const branch = typeof body.branch === "string" && body.branch.trim() ? cleanPath(body.branch).slice(0, 120) : "";
+      const nid = i >= 0 ? cid : crypto.randomBytes(8).toString("hex");
+      const rec = { id: nid, title: title(body.title) || title(turns[0].q) || "Conversation", branch, at: Date.now(), turns };
+      const json = JSON.stringify(rec); if (json.length > 1500000) fail(413, "too_large");
+      if (i < 0 && convs.length >= 200) fail(409, "too_many");
+      await storage.putJson(cKeyOf(nid), rec);
+      const row = { id: nid, title: i >= 0 && !body.title ? convs[i].title : rec.title, branch, at: rec.at, n: turns.length, size: json.length };
+      if (i >= 0) convs[i] = row; else convs.push(row);
+      await cset(CK, { convs }); return send(200, row);
+    });
+    fail(404, "unknown_op");
+  }
   if (op === "list") {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
     const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text, note }) => ({ id, path, size, type, mtime, text, ...(note ? { note } : {}) }));
@@ -657,6 +690,16 @@ async function aiJob(req, res, id, body) {
   }
   res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
   const emit = o => res.write(JSON.stringify(o) + "\n");
+  if (typeof body.revise === "string" && body.revise.trim()) { // revise the current (maybe hand-edited) output with an instruction; no new retrieval
+    try {
+      emit({ type: "progress", msg: "revise" });
+      const cur = body.revise.slice(0, 60000);
+      const ans = await askAI(SYSX(lang), `CURRENT DOCUMENT (markdown; the user may have edited it by hand):\n\n${cur}\n\nINSTRUCTION: ${q}\n\nReturn the full revised document in markdown, nothing else. Apply the instruction; keep every other fact, number, table row and [n] citation unless the instruction says otherwise.${fmtRule(q, fmt)}`, 3600);
+      const { text, actions } = parseActions(ans);
+      emit({ type: "answer", text, sources: [], cites: [], actions, revised: true });
+    } catch (e) { emit({ type: "error", error: e.code || "ai_failed" }); }
+    return res.end();
+  }
   const noText = inScope.filter(f => !f.text).map(f => f.path);
   const withText = inScope.filter(f => f.text);
   const scanned = inScope.filter(f => f.note === "scanned").map(f => f.path);
