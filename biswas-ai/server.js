@@ -26,7 +26,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "136";
+const BUILD = "137";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -852,6 +852,7 @@ const server = http.createServer(async (req, res) => {
       const op = url.pathname.slice(8);
       if ((op === "open" || op === "create" || op === "pin") && limited(req, "pd-open", 10, 60 * 1000)) { tooMany(res); return; }
       if (op === "ai" && limited(req, "pd-ai", 10, 60 * 1000)) { tooMany(res); return; }
+      if (op === "ed-ai" && limited(req, "pd-edai", 20, 60 * 1000)) { tooMany(res); return; }
       if (op === "ocr" && limited(req, "pd-ocr", 30, 60 * 1000)) { tooMany(res); return; }
       if (limited(req, "pd", 1800, 60 * 1000)) /* folder imports: ~3 calls per small file */ { tooMany(res); return; }
       const chunks = []; let size = 0;
