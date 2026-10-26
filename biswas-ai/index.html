@@ -450,6 +450,24 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 @media (min-width: 1100px) { .pd-grid.pd-3 { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr) minmax(340px, 1.15fr); } }
 @media (min-width: 701px) and (max-width: 1099px) { .pd-grid.pd-3 { grid-template-columns: 1fr 1fr; } .pd-grid.pd-3 .pd-files { grid-column: 1 / -1; } }
 @media (max-width: 700px) { .pd-grid.pd-3 { grid-template-columns: minmax(0, 1fr); } .pd-out { position: static; max-height: none; min-height: 0; } .pd-dlbtn { margin: 4px 0 0 4px; } }
+/* v122: one flow - files | ask, then one full-width answer panel below, only after a run */
+.pd-grid.pd-v122 { grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr) !important; }
+.pd-grid.pd-v122 .pd-files { grid-column: auto !important; }
+.pd-grid.pd-v122 .pd-out { grid-column: 1 / -1; position: static; max-height: none; min-height: 0; }
+.pd-out[hidden] { display: none !important; }
+.pd-out-bar { gap: 8px; padding: 10px 14px; background: rgba(80,60,200,.04); border-radius: 12px 12px 0 0; }
+.pd-out-bar h3 { flex: 1 1 auto !important; margin: 0; }
+.pd-out-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pd-more { position: relative; } .pd-more summary { list-style: none; cursor: pointer; } .pd-more summary::-webkit-details-marker { display: none; }
+.pd-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 6; display: flex; flex-direction: column; min-width: 180px; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 10px; padding: 4px; box-shadow: 0 6px 18px rgba(0,0,0,.14); }
+.pd-menu button { border: 0; background: none; text-align: left; padding: 7px 10px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; border-radius: 6px; } .pd-menu button:hover { background: rgba(0,0,0,.06); }
+.pd-out-doc { max-width: 900px; padding: 18px 26px; font-size: 16px; line-height: 1.7; }
+.pd-out .pd-answer:empty { display: none; } .pd-out .pd-answer { padding: 8px 14px 0; }
+.pd-progress:not(:empty) { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(80,60,200,.06); font-size: 14px; }
+.pd-progress:not(:empty)::before { content: ""; width: 18px; height: 18px; border: 3px solid rgba(80,60,200,.25); border-top-color: rgba(80,60,200,.9); border-radius: 50%; animation: pdspin .8s linear infinite; }
+.pd-progress.idle::before { display: none; }
+@keyframes pdspin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) { .pd-grid.pd-v122 { grid-template-columns: minmax(0, 1fr) !important; } .pd-out-doc { padding: 12px 14px; font-size: 15px; } }
 @media print { body.pd-printing * { visibility: hidden; } body.pd-printing #pd-out-doc, body.pd-printing #pd-out-doc * { visibility: visible; } body.pd-printing #pd-out-doc { position: absolute; left: 0; top: 0; overflow: visible; } }
 .pd-answer .src { font-size: .8rem; color: var(--muted); }
 .pd-act { border: 1px solid var(--accent); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
@@ -747,7 +765,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
             <div class="pd-usage"><div class="pd-bar"><i id="pd-bar"></i></div><span id="pd-used"></span></div>
             <button class="btn small" type="button" id="pd-close" data-t="pd_close"></button>
           </div>
-          <div class="pd-grid pd-3">
+          <div class="pd-grid pd-3 pd-v122">
             <div class="pd-files">
               <div class="pd-nav"><button type="button" class="pd-navbtn" id="pd-back" aria-label="Back" title="Back (Alt+←)">←</button><button type="button" class="pd-navbtn" id="pd-up" aria-label="Up" title="Up (Backspace)">⬆</button><nav class="pd-crumbs" id="pd-crumbs" aria-label="Folder path"></nav></div>
               <div class="pd-import" id="pd-import">
@@ -790,20 +808,24 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
                 <select id="pd-fmt"><option value="auto" data-t="pd_fmt_auto"></option><option value="table" data-t="pd_fmt_table"></option><option value="report" data-t="pd_fmt_report"></option><option value="letter" data-t="pd_fmt_letter"></option></select></div>
               <div class="field"><textarea id="pd-q" rows="7" maxlength="2000"></textarea></div>
               <button class="btn primary" type="submit" id="pd-ask" data-t="pd_ask"></button>
-              <div class="pd-progress" id="pd-ai-progress"></div>
-              <div class="pd-answer" id="pd-answer"></div>
+              <div class="pd-progress" id="pd-ai-progress" aria-live="polite"></div>
             </form>
-            <section class="pd-out" id="pd-out" aria-labelledby="pd-out-h">
+            <section class="pd-out" id="pd-out" aria-labelledby="pd-out-h" hidden>
               <div class="pd-out-bar"><h3 id="pd-out-h" data-t="pd_out_h"></h3>
+                <div class="pd-out-tools">
+                <button class="btn small primary" type="button" data-pd-out="docx">⬇ Word</button>
+                <button class="btn small primary" type="button" data-pd-out="pdf">⬇ PDF</button>
+                <button class="btn small" type="button" data-pd-out="csv" id="pd-out-csv">⬇ Excel/CSV</button>
                 <button class="btn small" type="button" data-pd-out="copy" data-t="pd_out_copy"></button>
-                <button class="btn small" type="button" data-pd-out="docx">Word</button>
-                <button class="btn small" type="button" data-pd-out="pdf">PDF</button>
-                <button class="btn small" type="button" data-pd-out="csv" id="pd-out-csv">Excel/CSV</button>
-                <button class="btn small" type="button" data-pd-out="txt">.txt</button>
-                <button class="btn small" type="button" data-pd-out="md">.md</button>
-                <button class="btn small" type="button" data-pd-out="share" data-t="pd_out_share"></button>
-                <button class="btn small primary" type="button" data-pd-out="save" data-t="pd_out_save"></button>
+                <details class="pd-more"><summary class="btn small" data-t="pd_moremenu"></summary><div class="pd-menu">
+                  <button type="button" data-pd-out="txt">⬇ .txt</button>
+                  <button type="button" data-pd-out="md">⬇ .md</button>
+                  <button type="button" data-pd-out="share" data-t="pd_out_share"></button>
+                  <button type="button" data-pd-out="save" data-t="pd_out_save"></button>
+                </div></details>
+                </div>
               </div>
+              <div class="pd-answer" id="pd-answer"></div>
               <div class="pd-out-doc doc" id="pd-out-doc"></div>
               <details class="pd-out-hist" id="pd-out-hist"><summary data-t="pd_out_hist"></summary><div id="pd-out-list"></div></details>
             </section>
@@ -5149,7 +5171,7 @@ Object.assign(STR.bn, {
   pd_sh_folder: "কোন ফোল্ডারে আসবে", pd_sh_maxf: "সর্বোচ্চ ফাইল", pd_sh_maxmb: "প্রতি ফাইল সর্বোচ্চ (MB)", pd_sh_none: "এখনো কোনো লিংক নেই।", pd_sh_dl: n => `${n} বার ডাউনলোড`, pd_sh_up: n => `${n}টি ফাইল এসেছে`, pd_sh_act: "সাম্প্রতিক কার্যকলাপ", pd_sh_ev: { download: "ডাউনলোড", zip: "ZIP ডাউনলোড", upload: "আপলোড", ai: "AI প্রশ্ন" },
   pd_sh_state: { active: "চালু", revoked: "বন্ধ", expired: "মেয়াদ শেষ", limit: "সীমা শেষ" }, pd_sh_today: (a, b) => `আজকের শেয়ার ডাউনলোড: ${a} / ${b}`, pd_sh_kind_up: "ফাইল চাওয়া", pd_sh_kind_sh: "শেয়ার",
   pd_dl_row: "ডাউনলোড", pd_dl_zip_row: "ZIP হিসেবে ডাউনলোড", pd_dl_sel: "⬇ বাছাই করা ডাউনলোড", pd_dl_prep: "ZIP তৈরি হচ্ছে…", pd_dl_prog: (a, b, x, y) => `${a}/${b}টি ফাইল · ${x} / ${y}`, pd_dl_done: n => `ডাউনলোড শেষ: ${n}`, pd_dl_fail: e => `ডাউনলোড হয়নি: ${e}`, pd_dl_cancel: "বাতিল", pd_dl_big: n => `এই ফোল্ডারটি ${n}। এই ব্রাউজারে বড় ZIP সরাসরি ডিস্কে লেখা যায় না, পুরোটা মেমরিতে রাখতে হবে (২ GB-র বেশি হলে আটকে যেতে পারে)। Chrome/Edge ডেস্কটপে চেষ্টা করুন। তবুও চালাবেন?`, pd_dl_empty: "এই ফোল্ডারে কোনো ফাইল নেই", pd_ctx_ai: "🤖 AI-র জন্য বাছুন / সরান", pd_ctx_open: "খুলুন",
-  pd_out_h: "📄 ফলাফল", pd_out_copy: "কপি", pd_out_share: "শেয়ার", pd_out_save: "পেনড্রাইভে রাখুন", pd_out_hist: "আগের ফলাফল", pd_out_empty: "AI-কে প্রশ্ন করলে উত্তর এখানে সুন্দর করে সাজানো দেখাবে। তারপর Word, PDF, Excel বা পেনড্রাইভে রাখতে পারবেন।", pd_out_copied: "কপি হয়েছে", pd_out_notable: "এই ফলাফলে কোনো টেবিল নেই", pd_out_save_q: "পেনড্রাইভে কোন নামে রাখবেন? (.docx, .md, .txt বা .csv)", pd_out_save_ok: p => `পেনড্রাইভে রাখা হচ্ছে: ${p}`, pd_out_none: "আগে AI-কে কিছু জিজ্ঞেস করুন", pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
+  pd_moremenu: "আরও ▾", pd_out_h: "📄 উত্তর", pd_out_copy: "কপি", pd_out_share: "শেয়ার", pd_out_save: "💾 পেনড্রাইভে রাখুন", pd_out_hist: "আগের ফলাফল", pd_out_empty: "AI-কে প্রশ্ন করলে উত্তর এখানে সুন্দর করে সাজানো দেখাবে। তারপর Word, PDF, Excel বা পেনড্রাইভে রাখতে পারবেন।", pd_out_copied: "কপি হয়েছে", pd_out_notable: "এই ফলাফলে কোনো টেবিল নেই", pd_out_save_q: "পেনড্রাইভে কোন নামে রাখবেন? (.docx, .md, .txt বা .csv)", pd_out_save_ok: p => `পেনড্রাইভে রাখা হচ্ছে: ${p}`, pd_out_none: "আগে AI-কে কিছু জিজ্ঞেস করুন", pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
   pd_mode: "কাজের ধরন", pd_mode_ask: "প্রশ্ন (দরকারি অংশ খুঁজে)", pd_mode_analyse: "সব ফাইল বিশ্লেষণ", pd_ask: "AI-কে বলুন", pd_q_ph: "যেমন: বারাসতের জমির মামলার শুনানি কবে? বা: সব ফাইলের সারাংশ করে একটা নোটশিট লিখুন।",
   pd_pin_mismatch: "দুটো PIN মিলছে না।", pd_bad_pin: "PIN ৪ থেকে ৮টা সংখ্যার হতে হবে।", pd_bad_name: "নাম ৩ থেকে ৬০ অক্ষরের হতে হবে।", pd_name_taken: "এই নামে পেনড্রাইভ আগেই আছে। অন্য নাম দিন।",
   pd_wrong: n => `নাম বা PIN ভুল।${n != null ? ` আর ${n} বার চেষ্টা করা যাবে।` : ""}`, pd_locked: m => `অনেকবার ভুল PIN। ${m} মিনিট পরে আবার চেষ্টা করুন।`, pd_expired: "সময় শেষ, আবার PIN দিয়ে খুলুন।",
@@ -5177,7 +5199,7 @@ Object.assign(STR.en, {
   pd_sh_folder: "Save into folder", pd_sh_maxf: "Max files", pd_sh_maxmb: "Max size per file (MB)", pd_sh_none: "No links yet.", pd_sh_dl: n => `${n} downloads`, pd_sh_up: n => `${n} files received`, pd_sh_act: "Recent activity", pd_sh_ev: { download: "Downloaded", zip: "Downloaded ZIP", upload: "Uploaded", ai: "AI question" },
   pd_sh_state: { active: "Active", revoked: "Revoked", expired: "Expired", limit: "Limit reached" }, pd_sh_today: (a, b) => `Today's share downloads: ${a} / ${b}`, pd_sh_kind_up: "Request", pd_sh_kind_sh: "Share",
   pd_dl_row: "Download", pd_dl_zip_row: "Download as ZIP", pd_dl_sel: "⬇ Download selected", pd_dl_prep: "Making ZIP…", pd_dl_prog: (a, b, x, y) => `${a}/${b} files · ${x} / ${y}`, pd_dl_done: n => `Downloaded: ${n}`, pd_dl_fail: e => `Download failed: ${e}`, pd_dl_cancel: "Cancel", pd_dl_big: n => `This folder is ${n}. This browser can't write a big ZIP straight to disk, so it must be held in memory (may fail above 2 GB). Chrome/Edge on desktop works best. Continue?`, pd_dl_empty: "This folder has no files", pd_ctx_ai: "🤖 Select / unselect for AI", pd_ctx_open: "Open",
-  pd_out_h: "📄 Output", pd_out_copy: "Copy", pd_out_share: "Share", pd_out_save: "Save to pendrive", pd_out_hist: "Recent outputs", pd_out_empty: "Ask the AI and the answer appears here as a formatted document. Then export to Word, PDF, Excel or save it to the pendrive.", pd_out_copied: "Copied", pd_out_notable: "This output has no table", pd_out_save_q: "Save to the pendrive as? (.docx, .md, .txt or .csv)", pd_out_save_ok: p => `Saving to pendrive: ${p}`, pd_out_none: "Ask the AI something first", pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
+  pd_moremenu: "More ▾", pd_out_h: "📄 Answer", pd_out_copy: "Copy", pd_out_share: "Share", pd_out_save: "💾 Save to pendrive", pd_out_hist: "Recent outputs", pd_out_empty: "Ask the AI and the answer appears here as a formatted document. Then export to Word, PDF, Excel or save it to the pendrive.", pd_out_copied: "Copied", pd_out_notable: "This output has no table", pd_out_save_q: "Save to the pendrive as? (.docx, .md, .txt or .csv)", pd_out_save_ok: p => `Saving to pendrive: ${p}`, pd_out_none: "Ask the AI something first", pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
   pd_mode: "Task", pd_mode_ask: "Question (finds the relevant parts)", pd_mode_analyse: "Analyse every file", pd_ask: "Ask the AI", pd_q_ph: "e.g. When is the hearing in the Barasat land case? Or: summarise all files and write a notesheet.",
   pd_pin_mismatch: "The two PINs don't match.", pd_bad_pin: "The PIN must be 4 to 8 digits.", pd_bad_name: "The name must be 3 to 60 characters.", pd_name_taken: "A pendrive with this name already exists. Pick another name.",
   pd_wrong: n => `Wrong name or PIN.${n != null ? ` ${n} tries left.` : ""}`, pd_locked: m => `Too many wrong PINs. Try again in ${m} minutes.`, pd_expired: "Session ended. Open it again with the PIN.",
@@ -5483,7 +5505,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") pdMenuClose(
 /* ---- v106: output panel ---- */
 pd.outs = []; pd.outCur = -1;
 const pdOutKey = () => "pd:out:" + (pd.name || "").toLowerCase();
-function pdOutLoad() { try { pd.outs = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); } catch (e) { pd.outs = []; } pd.outCur = pd.outs.length ? 0 : -1; renderPdOut(); }
+function pdOutLoad() { try { pd.outs = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); } catch (e) { pd.outs = []; } pd.outCur = pd.outs.length ? 0 : -1; pd.outShown = false; renderPdOut(); }
 function pdOutSave() { try { localStorage.setItem(pdOutKey(), JSON.stringify(pd.outs.slice(0, 20))); } catch (e) { /* full */ } }
 /* v108: make any table the AI returns (HTML, tab-separated, pipes without a separator row) a GitHub markdown table */
 function pdNormTables(md) {
@@ -5516,7 +5538,7 @@ function pdNormTables(md) {
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-function pdOutAdd(md, sources, cites) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pdOutSave(); renderPdOut(); }
+function pdOutAdd(md, sources, cites) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); }
 // v115: [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
 function pdLocLabel(l) { if (!l) return ""; const en = settings.lang === "en"; if (l.page) return (en ? "p. " : "পৃ. ") + l.page; if (l.sheet) return `${l.sheet} ${en ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}`; if (l.h) return l.h.split(" › ").pop(); return ""; }
 function pdChipify(root, cites) {
@@ -5532,7 +5554,7 @@ function pdMarked(text, quote) {
   return esc(text.slice(0, i)) + `<mark id="pd-hl">${esc(quote)}</mark>` + esc(text.slice(i + quote.length));
 }
 function renderPdOut() {
-  const doc = $("#pd-out-doc"); if (!doc) return; const o = pd.outs[pd.outCur];
+  const doc = $("#pd-out-doc"); if (!doc) return; const o = pd.outs[pd.outCur]; $("#pd-out").hidden = !(o && pd.outShown); doc.dataset.q = o ? o.q || "" : "";
   doc.innerHTML = o ? mdToHtml(o.md) + (o.sources && o.sources.length ? `<p class="src pd-used"><b>${esc(t("pd_ai_used"))} (${o.sources.length}):</b> ${o.sources.map(s => "📄 " + esc(s)).join(" · ")}</p>` : "") : `<p class="hint">${esc(t("pd_out_empty"))}</p>`;
   if (o && o.cites && o.cites.length) pdChipify(doc, o.cites);
   const hasTable = !!(o && parseMd(o.md).some(b => b.t === "table")); const c = $("#pd-out-csv"); c.disabled = !hasTable; c.title = hasTable ? "" : t("pd_out_notable");
@@ -5994,7 +6016,7 @@ async function pdAsk() {
   const scope = {};
   if (pd.aiSel.size) { const ids = pdAiFiles(); if (!ids.length) { toast(t("pd_ai_none_in")); return; } scope.ids = ids; } // else: whole pendrive
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
-  prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
+  prog.classList.remove("idle"); prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
     const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang, skillNote: window.BA ? (BA.lastPdQ = String(($("#pd-q") || {}).value || ""), BA.addendum()) : "" }) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); const e = new Error(j.error || "http_" + r.status); e.info = j; throw e; }
@@ -6004,14 +6026,14 @@ async function pdAsk() {
       buf += dec.decode(value, { stream: true });
       let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); if (line.trim()) pdAiEvent(JSON.parse(line)); }
     }
-  } catch (e) { prog.innerHTML = `<span>${esc(pdErrText(e))}</span>`; }
+  } catch (e) { prog.classList.add("idle"); prog.innerHTML = `<span>${esc(pdErrText(e))}</span>`; }
   $("#pd-ask").disabled = false;
 }
 pd.actions = [];
 function pdAiEvent(ev) {
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   if (ev.type === "progress") { const s = document.createElement("span"); s.textContent = (ev.step ? `${ev.step}/${ev.of} · ` : "") + ev.msg; prog.append(s); return; }
-  if (ev.type === "error") { prog.innerHTML = `<span>${esc(t("pd_err", ev.error))}</span>`; return; }
+  if (ev.type === "error") { prog.classList.add("idle"); prog.innerHTML = `<span>${esc(t("pd_err", ev.error))}</span>`; return; }
   if (ev.type !== "answer") return;
   prog.innerHTML = "";
   pd.actions = ev.actions || [];
@@ -6021,8 +6043,8 @@ function pdAiEvent(ev) {
     + (ev.notFound ? `<div class="src pd-notfound"><b>${esc(ev.text)}</b> ${esc(t("pd_notfound_hint"))}</div>` : "")
     + (pd.cites.length ? `<div class="src pd-cites"><b>${esc(t("pd_cites"))}:</b> ${pd.cites.map(c => `<button type="button" class="pd-cite" data-pd-cite="${c.n}" title="${esc(c.quote || "")}">[${c.n}] ${esc(c.path.split("/").pop())}${pdLocLabel(c.loc) ? " · " + esc(pdLocLabel(c.loc)) : ""}</button>`).join(" ")}</div>` : "")
     + (ev.sources && ev.sources.length ? `<div class="src pd-used"><b>${esc(t("pd_ai_used"))} (${ev.sources.length}):</b> ${ev.sources.map(s => "📄 " + esc(s)).join(" · ")}</div>` : "")
-    + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "")
-    + pd.actions.map((a, i) => `<div class="pd-act"><b>${esc(t("pd_save_as"))} (${esc(a.format)})</b><input data-pd-act-path="${i}" value="${esc(a.path)}" aria-label="Path"><button class="btn small primary" type="button" data-pd-act="${i}">${esc(t("pd_save_as"))}</button></div>`).join("");
+    + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "");
+  const box = $("#pd-out"); if (box) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 async function pdSaveAction(i) {
   const a = pd.actions[i]; if (!a) return;
@@ -6048,7 +6070,7 @@ document.addEventListener("click", async e => {
   try {
     if ((x = el("[data-pd-dlrow]"))) return pdDlKeys([x.dataset.pdDlrow]);
     if ((x = el("[data-pd-dlcancel]"))) { if (pd.dl) pd.dl.cancel = true; return; }
-    if ((x = el("[data-pd-out]"))) return pdOutAct(x.dataset.pdOut);
+    if ((x = el("[data-pd-out]"))) { const m = x.closest("details.pd-more"); if (m) m.open = false; return pdOutAct(x.dataset.pdOut); }
     if ((x = el("[data-pd-outh]"))) { pd.outCur = Number(x.dataset.pdOuth); renderPdOut(); return; }
     if ((x = el("[data-pd-ai]"))) { pdAiToggle(x.dataset.pdAi); return; }
     if ((x = el("[data-pd-ai-x]"))) { pdAiToggle(x.dataset.pdAiX, false); return; }
@@ -6129,6 +6151,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=121" defer></script>
+<script src="/attach.js?v=122" defer></script>
 </body>
 </html>

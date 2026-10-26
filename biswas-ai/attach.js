@@ -418,9 +418,10 @@ BA.cardHtml = function (info, content) {
   const warn = a.type === "json" && !BA.jsonOk(a.content) ? `<small class="ba-warn">${escH(T("JSON ঠিক নয়, যেমন আছে তেমন দেওয়া হবে", "JSON is not valid; it is given as written"))}</small>` : "";
   return `<div class="ba-att" data-ba-att="${id}" data-type="${escH(a.type)}"><span class="ba-ico" aria-hidden="true">${ICON[a.type] || "💻"}</span><span class="ba-meta"><b>${escH(a.name)}</b><small>${escH(a.type.toUpperCase())}${a.chart ? " · " + escH(a.chart) + " chart" : ""} · ~${kb} KB</small>${warn}</span><span class="ba-btns">`
     + `<button class="btn small primary" type="button" data-ba="dl" data-id="${id}">⬇ ${escH(T("ডাউনলোড", "Download"))}</button>`
-    + `<button class="btn small" type="button" data-ba="open" data-id="${id}">👁 ${escH(T("দেখুন", "Preview"))}</button>`
-    + `<button class="btn small" type="button" data-ba="pd" data-id="${id}">💾 ${escH(T("পেনড্রাইভে", "To pendrive"))}</button>`
-    + `<button class="btn small" type="button" data-ba="share" data-id="${id}">↗ ${escH(T("শেয়ার", "Share"))}</button></span></div>`;
+    + `<details class="ba-more"><summary aria-label="More">⋯</summary><span class="ba-menu">`
+    + `<button class="ba-link" type="button" data-ba="open" data-id="${id}">${escH(T("দেখুন", "Preview"))}</button>`
+    + `<button class="ba-link" type="button" data-ba="share" data-id="${id}">${escH(T("শেয়ার", "Share"))}</button>`
+    + `<button class="ba-link" type="button" data-ba="pd" data-id="${id}">${escH(T("পেনড্রাইভে রাখুন", "Save to pendrive"))}</button></span></details></span></div>`;
 };
 async function fileOf(a) { const b = await BA.build(a); return new File([b], a.name, { type: (mime[a.type] || "application/octet-stream") }); }
 BA.fileOf = fileOf;
@@ -589,6 +590,14 @@ const INTENT = {
   json: /\bjson\b/i,
   chart: /chart|graph|plot|চার্ট|গ্রাফ|লেখচিত্র/i
 };
+const FILEQ = /\bfile|download|attach|report|\bcsv\b|xlsx|docx|ফাইল|ডাউনলোড|রিপোর্ট|প্রতিবেদন/i;
+function inlineHtml(a) {
+  if (a.html) return a.content;
+  if (["docx", "pdf", "md", "txt"].includes(a.type)) return mdHtml(a.content);
+  if (["xlsx", "csv", "png", "svg"].includes(a.type)) { const t = tablesOf(a.content); if (t.length) return t.map(t => `<table><thead><tr>${t.rows[0].map(c => `<th>${escH(c)}</th>`).join("")}</tr></thead><tbody>${t.rows.slice(1).map(r => `<tr>${r.map(c => `<td>${escH(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`).join(""); }
+  return `<pre><code>${escH(a.content)}</code></pre>`;
+}
+BA.FILEQ = FILEQ;
 function intents(q) {
   const k = BA.skill(), out = new Set();
   if (k === "excel") out.add("excel"); if (k === "draft") out.add("draft"); if (k === "code") out.add("code"); if (k === "analysis") out.add("chart");
@@ -619,18 +628,24 @@ function autoAtt(root) {
   const boxes = [];
   root.querySelectorAll(".msg.ai").forEach(m => { if (!m.querySelector(".actions")) return; const doc = m.querySelector(".doc") || m.querySelector(".bubble"); let u = m.previousElementSibling; while (u && !u.matches(".msg.user")) u = u.previousElementSibling; if (doc) boxes.push({ host: m, doc, q: u ? u.innerText : "" }); });
   root.querySelectorAll("article.job").forEach(j => { if (!j.querySelector(".actions")) return; const doc = j.querySelector(".doc"); if (doc) boxes.push({ host: j, doc, q: (j.querySelector(".job-ask") || {}).innerText || "" }); });
-  const pdo = document.getElementById("pd-out-doc"); if (pdo && pdo.innerText.trim().length > 20 && !document.querySelector("#pd-out[aria-busy=true]")) boxes.push({ host: pdo.closest(".pd-out") || pdo, doc: pdo, q: (document.getElementById("pd-q") || {}).value || BA.lastPdQ || "" });
+  const pdo = document.getElementById("pd-out-doc"); if (pdo && pdo.innerText.trim().length > 20 && !document.querySelector("#pd-out[aria-busy=true]")) boxes.push({ host: pdo.closest(".pd-out") || pdo, doc: pdo, q: pdo.dataset.q || (document.getElementById("pd-q") || {}).value || BA.lastPdQ || "" });
   for (const b of boxes) {
     const sig = b.doc.innerText.length + ":" + b.q.length; if (b.doc.dataset.baAuto === sig) continue;
-    const want = intents(b.q); if (!want.size) { b.doc.dataset.baAuto = sig; continue; }
-    const have = new Set([...b.host.querySelectorAll(".ba-att")].map(x => x.dataset.type));
+    const want = intents(b.q);
+    if (!want.size && !FILEQ.test(b.q || "") && BA.skill() === "auto") { // v122: plain question -> plain answer, no file cards
+      b.doc.querySelectorAll(".ba-att").forEach(c => { const a = REG.get(c.dataset.baAtt); const d = document.createElement("div"); d.className = "ba-inline"; d.innerHTML = a ? inlineHtml(a) : ""; c.replaceWith(d); });
+      b.host.querySelectorAll(".ba-auto").forEach(x => x.remove());
+      b.doc.dataset.baAuto = b.doc.innerText.length + ":" + b.q.length; continue;
+    }
+    if (!want.size) { b.doc.dataset.baAuto = sig; continue; }
+    const have = new Set([...b.host.querySelectorAll(".ba-att")].filter(x => !x.closest(".ba-auto")).map(x => x.dataset.type)); // v122: our own earlier auto cards do not count
     const clone = b.doc.cloneNode(true); clone.querySelectorAll(".ba-att, .ba-auto, button, .ba-noexport").forEach(x => x.remove());
     const park = document.createElement("div"); park.style.cssText = "position:fixed;left:-30000px;top:0;width:800px"; park.append(clone); document.body.append(park);
     let text, tables; try { text = clone.innerText.trim(); tables = domTables(clone).filter(t => t[0].length >= 2); } finally { park.remove(); }
     if (text.length < 15) continue;
     const base = slug(b.q.replace(/[^\x00-\x7f]/g, " ")) ; const cards = [];
     if (want.has("excel") && !have.has("xlsx") && tables.length) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "hisab" : base) + ".xlsx", type: "xlsx", types: ["xlsx"] }, tables.map((t, i) => (tables.length > 1 ? `## Sheet${i + 1}\n` : "") + tableMd(t, true).md).join("\n\n")));
-    const chartOk = [...b.host.querySelectorAll('.ba-att[data-type="png"], .ba-att[data-type="svg"]')].some(x => { const a = REG.get(x.dataset.baAtt); return a && tablesOf(a.content).some(t => t.rows.length > 1 && t.rows.slice(1).some(r => r.slice(1).some(c => toNum(c) !== null))); }); // v121: a model chart with no numbers does not count
+    const chartOk = [...b.host.querySelectorAll('.ba-att[data-type="png"], .ba-att[data-type="svg"]')].filter(x => !x.closest(".ba-auto")).some(x => { const a = REG.get(x.dataset.baAtt); return a && tablesOf(a.content).some(t => t.rows.length > 1 && t.rows.slice(1).some(r => r.slice(1).some(c => toNum(c) !== null))); }); // v121: a model chart with no numbers does not count
     if (want.has("chart") && !chartOk) { const t = tables.map(t => ({ t, m: tableMd(t, false) })).find(x => x.m.numCols.length); if (t) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "chart" : base) + ".png", type: "png", types: ["png"], chart: /trend|month|year|মাস|বছর/i.test(b.q) ? "line" : "bar", title: "" }, t.m.md)); }
     if (want.has("code")) { const seen = {}; clone.querySelectorAll("pre").forEach((pre, i) => { const lg = (pre.dataset.lang || "").toLowerCase(); const ext = AEXT[lg] || (/^\s*(def |import |print\()/m.test(pre.textContent) ? "py" : /^\s*(const |let |function |console\.)/m.test(pre.textContent) ? "js" : ""); if (!ext || ext === "json" || have.has(ext) || seen[ext]) return; seen[ext] = 1; cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "code" : base) + (i ? "-" + i : "") + "." + ext, type: ext, types: [ext] }, pre.textContent.replace(/(Copy|কপি)$/, "").trim())); }); }
     if (want.has("json") && !have.has("json")) { let js = ""; for (const pre of clone.querySelectorAll("pre")) { if (BA.jsonOk(pre.textContent.trim())) { js = pre.textContent.trim(); break; } } if (!js) { const m = text.match(/[\[{][\s\S]*[\]}]/); if (m && BA.jsonOk(m[0])) js = m[0]; } if (!js && tables.length) { const t = tables[0]; js = JSON.stringify(t.slice(1).map(r => Object.fromEntries(t[0].map((h, j) => [h, isNum(r[j]) ? toNum(r[j]) : r[j]]))), null, 2); } if (js) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "data" : base) + ".json", type: "json", types: ["json"] }, js)); }
@@ -644,16 +659,10 @@ BA.autoAtt = autoAtt;
 function enhance(root) {
   enhanceCode(root);
   try { autoAtt(document); } catch (e) { console.warn("auto attachments", e); }
-  root.querySelectorAll(".msg.ai .actions:not([data-ba-v]), article.job .actions:not([data-ba-v]), .pd-out-bar:not([data-ba-v])").forEach(act => {
+  root.querySelectorAll(".msg.ai .actions:not([data-ba-v]), article.job .actions:not([data-ba-v])").forEach(act => {
     act.dataset.baV = "1"; const bt = document.createElement("button"); bt.type = "button"; bt.className = "btn small ba-vbtn"; bt.textContent = "📄 " + T("ডকুমেন্ট ভিউ", "Document view");
     bt.addEventListener("click", ev => { ev.stopPropagation(); const box = act.closest(".msg.ai, article.job, .pd-out"); const docs = box ? [...box.querySelectorAll(".pd-out-doc, .doc")] : []; if (!docs.length) return; const html = docs.map(d => d.innerHTML).join(""); show(html, titleOf(html), { md: msgMd(act) }); });
     act.append(bt);
-  });
-  if (matchMedia("(min-width: 1100px)").matches) root.querySelectorAll(".msg.ai .via, article.job .actions").forEach(v => {
-    const msg = v.closest(".msg.ai, article.job"); const att = msg && msg.querySelector('.ba-att[data-type="docx"], .ba-att[data-type="pdf"], .ba-att[data-type="md"]'); if (!att) return;
-    const id = att.dataset.baAtt; BA._auto = BA._auto || new Set(); if (BA._auto.has(id)) return; BA._auto.add(id);
-    if (Date.now() - BOOT < 4000) return; // do not pop up for old answers on page load
-    const a = REG.get(id); if (a) openAtt(a);
   });
 }
 const BOOT = Date.now();
@@ -664,7 +673,10 @@ const CSS = `
 .ba-skill small{opacity:.8}
 .ba-att{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line,#ccc);border-left:4px solid var(--accent,#1c3d32);background:var(--surface,#fff);border-radius:8px;padding:8px 10px;margin:8px 0}
 .ba-att .ba-ico{font-size:1.5rem}.ba-att .ba-meta{display:flex;flex-direction:column;min-width:150px;flex:1}.ba-att .ba-meta small{color:var(--muted,#666);font-size:.75rem}.ba-att .ba-warn{color:var(--warn,#a60)!important}
-.ba-att .ba-btns{display:flex;gap:6px;flex-wrap:wrap}
+.ba-att .ba-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ba-more{position:relative}.ba-more summary{list-style:none;cursor:pointer;padding:2px 8px;border-radius:6px;color:var(--muted,#666)}.ba-more summary::-webkit-details-marker{display:none}
+.ba-menu{position:absolute;right:0;top:100%;z-index:5;display:flex;flex-direction:column;background:var(--surface,#fff);border:1px solid var(--line,#ccc);border-radius:8px;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,.12);min-width:150px}
+.ba-link{border:0;background:none;text-align:left;padding:5px 8px;cursor:pointer;font:inherit;font-size:.85rem;color:inherit;border-radius:6px}.ba-link:hover{background:rgba(0,0,0,.06)}
 .doc pre,.ba-page pre,.pd-out-doc pre{background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:10px 12px;padding-right:64px;overflow:auto;font:13px/1.5 "IBM Plex Mono",Consolas,monospace;white-space:pre}
 .doc pre code,.ba-page pre code{background:none;padding:0;font-size:inherit}
 .ba-copy{position:absolute;top:6px;right:6px;opacity:.85}
