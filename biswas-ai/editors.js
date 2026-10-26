@@ -8,7 +8,7 @@ const TX = {
   en: { files: "Files & AI", word: "Drafting Desk Word", excel: "Drafting Desk Excel", image: "Drafting Image", note: "Notepad",
     open: "Open…", newb: "New blank", save: "Save", saveas: "Save as…", dl: "Download", conv: "Save to conversation", conv_t: "Save a copy of this document and its AI thread as a new row in Conversations", newpage: "New page", newpage_t: "Save this document as a conversation row, then start a blank one", unsaved: "not saved yet",
     nofile: "New file (not on the pendrive yet)", pick_open: "Open a file", pick_save: "Save as", branch: "Branch", main: "Main", fname: "File name",
-    cancel: "Cancel", newfolder: "New folder", nofiles: "No matching files here.", keepold: "Keep the old version (moved to the folder “Old versions”)",
+    cancel: "Cancel", newfolder: "New folder", nofiles: "No files in this folder.", openfail: "This file could not be opened as a document. Nothing was written into the page.", dlword: "Word", dlpdf: "PDF", dlx: "Excel", keepold: "Keep the old version (moved to the folder “Old versions”)",
     replace: "Replace “{0}” with your edited version?", saved: "Saved: {0}", saving: "Saving…", opening: "Opening…", lost: "You have unsaved changes. Discard them?",
     badtype: "This editor can’t open that file type.", docold: "Old .doc files can’t be read in the browser. Open the file in Word and save it as .docx first.", docold_short: "old .doc: save it as .docx in Word first",
     big: "This file is large; only the first {0} rows are shown.", fail: "Could not save: {0}", find: "Find", repl: "Replace with", next: "Next", rone: "Replace", rall: "Replace all",
@@ -20,7 +20,7 @@ const TX = {
   bn: { files: "ফাইল ও AI", word: "ড্রাফটিং ডেস্ক Word", excel: "ড্রাফটিং ডেস্ক Excel", image: "ড্রাফটিং ছবি", note: "নোটপ্যাড",
     open: "খুলুন…", newb: "নতুন ফাঁকা", save: "সেভ", saveas: "অন্য নামে সেভ…", dl: "ডাউনলোড", conv: "কথোপকথনে রাখুন", conv_t: "এই নথি ও AI-আলাপের একটি কপি কথোপকথনে নতুন সারি হিসেবে রাখুন", newpage: "নতুন পাতা", newpage_t: "এই নথি কথোপকথনে রেখে নতুন ফাঁকা পাতা শুরু করুন", unsaved: "এখনও সেভ হয়নি",
     nofile: "নতুন ফাইল (এখনও পেনড্রাইভে নেই)", pick_open: "ফাইল খুলুন", pick_save: "অন্য নামে সেভ", branch: "শাখা", main: "মূল", fname: "ফাইলের নাম",
-    cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এখানে মেলে এমন ফাইল নেই।", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
+    cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এই ফোল্ডারে কোনো ফাইল নেই।", openfail: "এই ফাইল নথি হিসেবে খোলা গেল না। পাতায় কিছু লেখা হয়নি।", dlword: "Word", dlpdf: "PDF", dlx: "Excel", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
     replace: "“{0}” আপনার সম্পাদিত সংস্করণ দিয়ে বদলাবেন?", saved: "সেভ হয়েছে: {0}", saving: "সেভ হচ্ছে…", opening: "খোলা হচ্ছে…", lost: "সেভ না করা পরিবর্তন আছে। বাদ দেবেন?",
     badtype: "এই এডিটর এই ধরনের ফাইল খুলতে পারে না।", docold: "পুরনো .doc ফাইল ব্রাউজারে পড়া যায় না। Word-এ খুলে .docx হিসেবে সেভ করুন।", docold_short: "পুরনো .doc: Word-এ .docx হিসেবে সেভ করুন",
     big: "ফাইলটি বড়; প্রথম {0}টি সারি দেখানো হচ্ছে।", fail: "সেভ হয়নি: {0}", find: "খুঁজুন", repl: "বদলে দিন", next: "পরের", rone: "বদলান", rall: "সব বদলান",
@@ -37,7 +37,7 @@ const ext = p => (/\.([a-z0-9]+)$/i.exec(p || "") || [, ""])[1].toLowerCase();
 const base = p => (p || "").split("/").pop();
 const dirOf = p => p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "";
 const TYPES = {
-  word: ["docx", "doc"], excel: ["xlsx", "xls", "csv"], image: ["png", "jpg", "jpeg", "webp"],
+  word: ["docx", "doc", "txt", "md", "pdf", "rtf", "policy", "json", "csv", "log", "html", "xml", "zip"], excel: ["xlsx", "xls", "csv"], image: ["png", "jpg", "jpeg", "webp"],
   note: ["txt", "md", "csv", "json", "js", "mjs", "ts", "py", "html", "htm", "css", "xml", "yml", "yaml", "ini", "log", "sh", "sql", "java", "c", "cpp", "h", "go", "rs", "php", "rb", "tsv", "env", "toml", "bat"]
 };
 const MIME = { docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xls: "application/vnd.ms-excel", csv: "text/csv", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", txt: "text/plain", md: "text/markdown", json: "application/json" };
@@ -79,7 +79,7 @@ function pick(kind, mode, suggest) { // mode "open" | "save"; resolves to { file
       if (!(cur === root() || cur.startsWith(root() + (root() ? "/" : "")))) cur = root();
       const folders = [...new Set([...(pd.folders || []), ...extraFolders])].filter(f => dirOf(f) === cur && !(cur === "" && f === PD_BR)).sort((a, b) => a.localeCompare(b));
       const ok = TYPES[kind];
-      const files = (pd.files || []).filter(f => dirOf(f.path) === cur && (mode === "save" || ok.includes(ext(f.path)))).sort((a, b) => a.path.localeCompare(b.path));
+      const files = (pd.files || []).filter(f => dirOf(f.path) === cur).sort((a, b) => a.path.localeCompare(b.path));
       const rel = root() ? cur.slice(root().length).replace(/^\//, "") : cur; const parts = rel ? rel.split("/") : [];
       dlg.innerHTML = "";
       const bsel = h("select", { id: "ed-pk-br", "aria-label": T("branch"), onchange: e => { br = e.target.value; cur = root(); draw(); } },
@@ -132,6 +132,9 @@ function frame(kind) {
       h("button", { type: "button", class: "btn small primary", "data-ed": "save", onclick: () => doSave(kind) }, "💾 " + T("save")),
       h("button", { type: "button", class: "btn small", "data-ed": "saveas", onclick: () => doSave(kind, true) }, T("saveas")),
       h("button", { type: "button", class: "btn small", "data-ed": "dl", onclick: () => doDownload(kind) }, "⬇ " + T("dl")),
+      h("button", { type: "button", class: "btn small", "data-ed": "as-docx", onclick: () => dlAs(kind, "docx") }, T("dlword")),
+      h("button", { type: "button", class: "btn small", "data-ed": "as-pdf", onclick: () => dlAs(kind, "pdf") }, T("dlpdf")),
+      h("button", { type: "button", class: "btn small", "data-ed": "as-xlsx", onclick: () => dlAs(kind, "xlsx") }, T("dlx")),
       h("button", { type: "button", class: "btn small", "data-ed": "conv", id: "ed-conv-" + kind, title: T("conv_t"), onclick: () => ED.ai && ED.ai.saveConv(kind) }, "💾 " + T("conv")),
       h("button", { type: "button", class: "btn small", "data-ed": "newpage", title: T("newpage_t"), onclick: () => ED.ai && ED.ai.newPage(kind) }, "📄 " + T("newpage"))));
   const body = h("div", { class: "ed-body" });
@@ -160,11 +163,11 @@ async function doOpen(kind, file) {
   if (!file) { const r = await pick(kind, "open"); if (!r) return; file = r.file; }
   if (tabs) { const same = ED.kinds[kind].findTab && ED.kinds[kind].findTab(file.path); if (same) return; ED.kinds[kind].newTab(); }
   const e = ext(file.path);
-  if (!TYPES[kind].includes(e)) { say(kind, T("badtype")); return; }
   if (kind === "word" && e === "doc") { say(kind, T("docold")); return; }
+  if (kind !== "word" && !TYPES[kind].includes(e)) { say(kind, T("badtype")); return; }
   say(kind, T("opening"));
   try { const buf = await fetchFile(file); await ED.kinds[kind].load(buf, e, file.path); st.file = { id: file.id, path: file.path }; st.name = base(file.path); st.dirty = false; label(kind); say(kind, ""); }
-  catch (er) { say(kind, (er && er.message) || String(er)); }
+  catch (er) { const m = String((er && er.message) || er); say(kind, m === "openfail" || /zip|central directory|jszip|mammoth/i.test(m) ? T("openfail") : (m.length > 160 ? T("openfail") : m)); }
 }
 function doNew(kind) {
   const st = ED.st[kind]; if (ED.kinds[kind].newTab) { ED.kinds[kind].newTab(true); say(kind, ""); return; }
@@ -202,6 +205,34 @@ async function doSave(kind, as = false) {
     const f = await upload(path, blob, { overwrite, text });
     st.file = f ? { id: f.id, path: f.path } : { id: "", path }; st.name = base(path); st.dirty = false; label(kind); say(kind, T("saved", path));
   } catch (er) { say(kind, T("fail", (er && er.message) || String(er))); }
+}
+async function plainOf(kind) {
+  if (kind === "word") return (document.getElementById("wd-page") || {}).innerText || "";
+  if (kind === "note") return (document.getElementById("np-ta") || {}).value || "";
+  if (kind === "excel") { const { blob } = await ED.kinds.excel.export("csv"); return await blob.text(); }
+  return ED.st[kind].name || "";
+}
+async function dlAs(kind, fmt) {
+  const st = ED.st[kind];
+  const stem = ((st.file ? base(st.file.path) : st.name) || "document").replace(/\.[^.]+$/, "") || "document";
+  say(kind, T("opening"));
+  try {
+    let blob, name = stem + "." + fmt;
+    if (fmt === "docx") {
+      if (kind === "word") blob = (await ED.kinds.word.export()).blob;
+      else { const div = document.createElement("div"); (await plainOf(kind)).split(/\n/).forEach(line => { const p = document.createElement("p"); p.textContent = line || " "; div.append(p); }); blob = await ED.htmlToDocx(div, {}); }
+    } else if (fmt === "pdf") {
+      const html = kind === "word" ? (document.getElementById("wd-page") || {}).innerHTML || "<p></p>" : (await plainOf(kind)).split(/\n/).map(l => `<p>${XE(l || " ")}</p>`).join("");
+      blob = await htmlToPdf(html);
+    } else if (kind === "excel") blob = (await ED.kinds.excel.export("xlsx")).blob;
+    else {
+      await load("xlsx"); const rows = (await plainOf(kind)).split(/\n/).map(l => [l]);
+      const ws = XLSX.utils.aoa_to_sheet(rows.length ? rows : [[""]]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      blob = new Blob([XLSX.write(wb, { bookType: "xlsx", type: "array" })], { type: MIME.xlsx });
+    }
+    const a = h("a", { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    say(kind, "");
+  } catch (e) { say(kind, T("openfail")); }
 }
 async function doDownload(kind) {
   const st = ED.st[kind]; const E = ED.kinds[kind]; const name = st.file ? base(st.file.path) : st.name;
