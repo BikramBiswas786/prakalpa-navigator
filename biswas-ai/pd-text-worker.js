@@ -4,10 +4,27 @@ self.onmessage = async e => {
   const { id, file, cap } = e.data;
   try {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
-    const text = ext === "docx" ? await docx(file) : await file.slice(0, cap * 3).text();
+    let text;
+    if (ext === "docx") text = await docx(file);
+    else if (ext === "pptx") text = await pptx(file);
+    else if (ext === "xml") { const x = tallyLib().decode(await file.slice(0, cap * 4).arrayBuffer()); text = (tallyLib().isTally(x) && tallyLib().toText(x)) || x; }
+    else text = await file.slice(0, cap * 3).text();
     self.postMessage({ id, text: text.slice(0, cap) });
   } catch (err) { self.postMessage({ id, error: String(err && err.message || err) }); }
 };
+let tallyOk = false;
+function tallyLib() { if (!tallyOk) { importScripts("/ed-tally.js"); tallyOk = true; } return self.BA_TALLY; }
+// .pptx: text of every slide in order, "[Slide n]" markers
+async function pptx(file) {
+  const out = [];
+  for (let n = 1; n <= 500; n++) {
+    let xml; try { xml = await entry(file, `ppt/slides/slide${n}.xml`); } catch (e) { break; }
+    if (xml == null) break;
+    const paras = xml.split(/<\/a:p>/).map(p => [...p.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => m[1]).join("")).filter(t => t.trim());
+    out.push(`[Slide ${n}]\n` + paras.join("\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"'));
+  }
+  return out.join("\n\n");
+}
 async function entry(file, want) {
   const buf = new Uint8Array(await file.arrayBuffer()); const dv = new DataView(buf.buffer);
   let eo = -1; for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eo = i; break; }
