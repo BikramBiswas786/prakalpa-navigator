@@ -8,7 +8,7 @@ const TX = {
   en: { files: "Files & AI", word: "Drafting Desk Word", excel: "Drafting Desk Excel", image: "Drafting Image", note: "Notepad",
     open: "Open…", newb: "New blank", save: "Save", saveas: "Save as…", dl: "Download", conv: "Save to conversation", conv_t: "Save a copy of this document and its AI thread as a new row in Conversations", newpage: "New page", newpage_t: "Save this document as a conversation row, then start a blank one", unsaved: "not saved yet",
     nofile: "New file (not on the pendrive yet)", pick_open: "Open a file", pick_save: "Save as", branch: "Branch", main: "Main", fname: "File name",
-    cancel: "Cancel", newfolder: "New folder", nofiles: "No files in this folder.", openfail: "This file could not be opened as a document. Nothing was written into the page.", dlword: "Word", dlpdf: "PDF", dlx: "Excel", keepold: "Keep the old version (moved to the folder “Old versions”)",
+    cancel: "Cancel", newfolder: "New folder", nofiles: "No files in this folder.", openfail: "This file could not be opened as a document. Nothing was written into the page.", dlword: "Word", dlpdf: "PDF", dlx: "Excel", print: "Print", keepold: "Keep the old version (moved to the folder “Old versions”)",
     replace: "Replace “{0}” with your edited version?", saved: "Saved: {0}", saving: "Saving…", opening: "Opening…", lost: "You have unsaved changes. Discard them?",
     badtype: "This editor can’t open that file type.", docold: "Old .doc files can’t be read in the browser. Open the file in Word and save it as .docx first.", docold_short: "old .doc: save it as .docx in Word first",
     big: "This file is large; only the first {0} rows are shown.", fail: "Could not save: {0}", find: "Find", repl: "Replace with", next: "Next", rone: "Replace", rall: "Replace all",
@@ -20,7 +20,7 @@ const TX = {
   bn: { files: "ফাইল ও AI", word: "ড্রাফটিং ডেস্ক Word", excel: "ড্রাফটিং ডেস্ক Excel", image: "ড্রাফটিং ছবি", note: "নোটপ্যাড",
     open: "খুলুন…", newb: "নতুন ফাঁকা", save: "সেভ", saveas: "অন্য নামে সেভ…", dl: "ডাউনলোড", conv: "কথোপকথনে রাখুন", conv_t: "এই নথি ও AI-আলাপের একটি কপি কথোপকথনে নতুন সারি হিসেবে রাখুন", newpage: "নতুন পাতা", newpage_t: "এই নথি কথোপকথনে রেখে নতুন ফাঁকা পাতা শুরু করুন", unsaved: "এখনও সেভ হয়নি",
     nofile: "নতুন ফাইল (এখনও পেনড্রাইভে নেই)", pick_open: "ফাইল খুলুন", pick_save: "অন্য নামে সেভ", branch: "শাখা", main: "মূল", fname: "ফাইলের নাম",
-    cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এই ফোল্ডারে কোনো ফাইল নেই।", openfail: "এই ফাইল নথি হিসেবে খোলা গেল না। পাতায় কিছু লেখা হয়নি।", dlword: "Word", dlpdf: "PDF", dlx: "Excel", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
+    cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এই ফোল্ডারে কোনো ফাইল নেই।", openfail: "এই ফাইল নথি হিসেবে খোলা গেল না। পাতায় কিছু লেখা হয়নি।", dlword: "Word", dlpdf: "PDF", dlx: "Excel", print: "প্রিন্ট", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
     replace: "“{0}” আপনার সম্পাদিত সংস্করণ দিয়ে বদলাবেন?", saved: "সেভ হয়েছে: {0}", saving: "সেভ হচ্ছে…", opening: "খোলা হচ্ছে…", lost: "সেভ না করা পরিবর্তন আছে। বাদ দেবেন?",
     badtype: "এই এডিটর এই ধরনের ফাইল খুলতে পারে না।", docold: "পুরনো .doc ফাইল ব্রাউজারে পড়া যায় না। Word-এ খুলে .docx হিসেবে সেভ করুন।", docold_short: "পুরনো .doc: Word-এ .docx হিসেবে সেভ করুন",
     big: "ফাইলটি বড়; প্রথম {0}টি সারি দেখানো হচ্ছে।", fail: "সেভ হয়নি: {0}", find: "খুঁজুন", repl: "বদলে দিন", next: "পরের", rone: "বদলান", rall: "সব বদলান",
@@ -111,9 +111,20 @@ const ICON = { files: "📁", word: "📝", excel: "📊", image: "🖼️", not
 function bar() {
   const nav = h("div", { class: "ed-tabs", role: "tablist", id: "ed-tabs", "aria-label": "Pendrive tools" },
     ...["files", ...KINDS].map(k => h("button", { type: "button", role: "tab", id: "ed-tab-" + k, "data-ed-tab": k, "aria-selected": String(ED.tab === k), onclick: () => show(k) }, h("span", { "aria-hidden": "true" }, ICON[k] + " "), h("span", { class: "lbl" }, T(k)))));
-  return nav;
+  const tools = h("div", { class: "ed-tab-dl" },
+    h("button", { type: "button", class: "btn small", id: "ed-hd-print", onclick: () => headAct("print") }, "🖨 " + T("print")),
+    h("button", { type: "button", class: "btn small", id: "ed-hd-word", onclick: () => headAct("docx") }, T("dlword")),
+    h("button", { type: "button", class: "btn small", id: "ed-hd-pdf", onclick: () => headAct("pdf") }, T("dlpdf")),
+    h("button", { type: "button", class: "btn small", id: "ed-hd-xlsx", onclick: () => headAct("xlsx") }, T("dlx")));
+  return h("div", { class: "ed-tabbar", id: "ed-tabbar" }, nav, tools);
 }
-function relabel() { for (const b of document.querySelectorAll("[data-ed-tab] .lbl")) b.textContent = T(b.parentNode.dataset.edTab); }
+function relabel() {
+  for (const b of document.querySelectorAll("[data-ed-tab] .lbl")) b.textContent = T(b.parentNode.dataset.edTab);
+  const p = document.getElementById("ed-hd-print"); if (p) p.textContent = "🖨 " + T("print");
+  const w = document.getElementById("ed-hd-word"); if (w) w.textContent = T("dlword");
+  const f = document.getElementById("ed-hd-pdf"); if (f) f.textContent = T("dlpdf");
+  const x = document.getElementById("ed-hd-xlsx"); if (x) x.textContent = T("dlx");
+}
 function show(k) {
   if (!KINDS.includes(k)) k = "files"; relabel();
   ED.tab = k; const main = $e("#pd-main"); main.classList.toggle("ed-on", k !== "files");
@@ -234,6 +245,35 @@ async function dlAs(kind, fmt) {
     say(kind, "");
   } catch (e) { say(kind, T("openfail")); }
 }
+function cleanPrint(html) {
+  const f = h("iframe", { style: "position:fixed;right:0;bottom:0;width:0;height:0;border:0", title: "\u00a0" });
+  document.body.append(f);
+  const d = f.contentDocument; d.open();
+  d.write(`<!doctype html><html><head><meta charset="utf-8"><title>\u00a0</title><style>@page{margin:0}html,body{margin:0}body{padding:14mm 12mm;font:12pt/1.5 Calibri,"Noto Sans",sans-serif;color:#111}table{border-collapse:collapse;width:100%}td,th{border:1px solid #808080;padding:4px 6px;vertical-align:top}img{max-width:100%}pre{white-space:pre-wrap;font:11pt Consolas,monospace}p{margin:0 0 8pt}</style></head><body>${html}</body></html>`);
+  d.close();
+  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 60000); }, 400);
+}
+async function headAct(fmt) {
+  const k = ED.tab || "files";
+  if (k === "files") {
+    if (fmt === "print" && window.pdPrintAnswer) return window.pdPrintAnswer();
+    if (window.pdOutAct) return window.pdOutAct(fmt === "xlsx" ? "csv" : fmt);
+    return;
+  }
+  if (fmt === "print") {
+    const K = ED.kinds[k];
+    if (K && K.print) return K.print();
+    if (k === "image" && K) {
+      const { blob } = await K.export();
+      const data = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+      return cleanPrint(`<img src="${data}" alt="">`);
+    }
+    const text = await plainOf(k);
+    const rows = String(text || "").split(/\n/).filter(l => l.length).map(l => "<tr>" + l.split(/,|\t/).map(c => `<td>${XE(c)}</td>`).join("") + "</tr>").join("");
+    return cleanPrint(rows ? `<table>${rows}</table>` : `<pre>${XE(text || "")}</pre>`);
+  }
+  return dlAs(k, fmt);
+}
 async function doDownload(kind) {
   const st = ED.st[kind]; const E = ED.kinds[kind]; const name = st.file ? base(st.file.path) : st.name;
   const { blob } = await E.export(ext(name) || E.exts()[0]);
@@ -244,7 +284,7 @@ document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.ke
 function mount() {
   const main = $e("#pd-main"), top = main && $e(".pd-top", main); if (!top || $e("#ed-tabs")) return;
   new MutationObserver(() => { if (main.hidden) { for (const k of KINDS) { const st = ED.st[k]; if (st.ready) ED.kinds[k].blank(); st.file = null; st.name = DEFNAME[k]; st.dirty = false; label(k); } show("files"); } else relabel(); }).observe(main, { attributes: true, attributeFilter: ["hidden"] });
-  top.after(bar()); $e("#ed-tabs").after(h("div", { class: "ed-host", id: "ed-host" }));
+  top.after(bar()); $e("#ed-tabbar").after(h("div", { class: "ed-host", id: "ed-host" }));
 }
 ED.relabel = relabel; ED.show = show; ED.open = doOpen; ED.pick = pick; ED.T = T;
 // shared with the per-editor modules (ed-*.js): helpers and a way to add their own words

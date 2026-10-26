@@ -381,14 +381,13 @@ ED.kinds.word = (() => {
     const r = document.createRange(); r.setStart(p, 0); r.collapse(true); const s = document.getSelection(); page.focus(); s.removeAllRanges(); s.addRange(r); p.scrollIntoView({ block: "center" }); dirty(); }
   function clean() { const c = page.cloneNode(true); unpush(c); c.removeAttribute("style"); return c; }
   function printDoc() {
-    const f = h("iframe", { style: "position:fixed;right:0;bottom:0;width:0;height:0;border:0", title: "print" }); document.body.append(f);
-    const d = f.contentDocument, pa = pg.pnumAlign || "center", F = "font: 9pt Calibri, Carlito, sans-serif; color: #555;";
-    const box = pos => { const txt = pos === "top" ? pg.header : pg.footer, pn = pg.pnum && (pg.pnumPos === "top") === (pos === "top"); let x = "";
-      if (txt) x += `@${pos}-center { content: ${JSON.stringify(txt)}${pn && pa === "center" ? ' "  " counter(page)' : ""}; ${F} }`;
-      if (pn && (pa !== "center" || !txt)) x += `@${pos}-${pa === "left" ? "left" : pa === "right" ? "right" : "center"} { content: counter(page); ${F} }`; return x; };
-    d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${XE(ED.st.word.name || "Document")}</title>${document.getElementById("wd-fonts").outerHTML}<style>@page { size: ${pg.w}mm ${pg.h}mm; margin: ${pg.mt}mm ${pg.mr}mm ${pg.mb}mm ${pg.ml}mm; ${box("top")} ${box("bottom")} }
-      body { margin: 0; font-family: ${stackOf(pg.font)}; font-size: ${pg.size}pt; line-height: ${pg.line || 1.15}; color: #111; } p { margin: 0 0 8pt; } table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #808080; padding: 4px 6px; vertical-align: top; }
-      hr.ed-pb { break-after: page; border: 0; margin: 0; } hr.wd-hr { border: 0; border-top: 1.5px solid #000; } div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; } .wd-tbox { border: 1.5px solid #333; padding: 6px 10px; width: 60%; } img { max-width: 100%; } h1,h2,h3 { color: #1f3864; }</style></head><body>${clean().innerHTML}</body></html>`); d.close();
+    const f = h("iframe", { style: "position:fixed;right:0;bottom:0;width:0;height:0;border:0", title: "\u00a0" }); document.body.append(f);
+    const d = f.contentDocument;
+    const head = pg.header ? `<p style="text-align:center;font:9pt Calibri,sans-serif;color:#555;margin:0 0 10pt">${XE(pg.header)}</p>` : "";
+    const foot = pg.footer ? `<p style="text-align:center;font:9pt Calibri,sans-serif;color:#555;margin:12pt 0 0">${XE(pg.footer)}${pg.pnum ? "" : ""}</p>` : "";
+    d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>\u00a0</title>${document.getElementById("wd-fonts") ? document.getElementById("wd-fonts").outerHTML : ""}<style>@page { size: ${pg.w}mm ${pg.h}mm; margin: 0; }
+      html, body { margin: 0; } body { padding: ${pg.mt}mm ${pg.mr}mm ${pg.mb}mm ${pg.ml}mm; font-family: ${stackOf(pg.font)}; font-size: ${pg.size}pt; line-height: ${pg.line || 1.15}; color: #111; } p { margin: 0 0 8pt; } table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #808080; padding: 4px 6px; vertical-align: top; }
+      hr.ed-pb { break-after: page; border: 0; margin: 0; } hr.wd-hr { border: 0; border-top: 1.5px solid #000; } div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; } .wd-tbox { border: 1.5px solid #333; padding: 6px 10px; width: 60%; } img { max-width: 100%; } h1,h2,h3 { color: #1f3864; }</style></head><body>${head}${clean().innerHTML}${foot}</body></html>`); d.close();
     setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 60000); }, 600);
   }
 
@@ -556,6 +555,7 @@ ED.kinds.word = (() => {
   return {
     _ai: { pg, applyGeo, pages: () => { layout(); return bgs.children.length; } },
     exts: () => ["docx"],
+    print: printDoc,
     init(body) {
       fontSel = h("select", { id: "wd-font", "aria-label": T("w_font"), title: T("w_font"), onchange: () => { restore(); cmd("fontName", stackOf(fontSel.value), true); } }, ...FONTS.map(f => h("option", { value: f[0], style: `font-family:${f[1]}` }, f[0])));
       sizeSel = h("select", { id: "wd-size", "aria-label": T("w_size"), title: T("w_size"), onchange: () => { restore(); setSize(sizeSel.value); } }, ...STEPS.map(s => h("option", { value: s, selected: s === 11 }, String(s))));

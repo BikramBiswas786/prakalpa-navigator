@@ -132,6 +132,13 @@ export class S3Storage {
     return { size: Number(r.headers.get("content-length") || 0) };
   }
   async del(key) { const r = await this.request("DELETE", key); if (!r.ok && r.status !== 404) throw new Error(`storage delete ${r.status}`); }
+  async copyObject(srcKey, dstKey) {
+    checkKey(srcKey); checkKey(dstKey);
+    const src = "/" + this.bucket + "/" + encPath(srcKey);
+    const r = await this.request("PUT", dstKey, {}, null, { "x-amz-copy-source": src, "x-amz-metadata-directive": "COPY" });
+    const text = await r.text().catch(() => "");
+    if (!r.ok || /<Error>/.test(text)) throw new Error(`storage copy ${r.status} ${(text.match(/<Code>([^<]+)/) || [])[1] || ""}`.trim());
+  }
   async createMultipart(key, type) {
     const r = await this.request("POST", key, { uploads: "" }, null, { "content-type": type || "application/octet-stream" });
     const xml = await r.text();
@@ -180,6 +187,11 @@ export class LocalStorage {
   putJson(key, obj) { return this.putText(key, JSON.stringify(obj)); }
   async head(key) { try { return { size: (await fs.promises.stat(this.file(key))).size }; } catch (e) { return null; } }
   async del(key) { await fs.promises.rm(this.file(key), { force: true }); }
+  async copyObject(srcKey, dstKey) {
+    const from = this.file(srcKey), to = this.file(dstKey);
+    await fs.promises.mkdir(path.dirname(to), { recursive: true });
+    await fs.promises.copyFile(from, to);
+  }
   sign(op, key, extra) { const e = Date.now() + 3600 * 1000; const s = crypto.createHmac("sha256", this.secret).update(`${op}|${key}|${extra}|${e}`).digest("hex"); return `/api/pd/blob?op=${op}&k=${encodeURIComponent(key)}&x=${encodeURIComponent(extra)}&e=${e}&s=${s}`; }
   verify(q) {
     const op = q.get("op"), key = q.get("k"), extra = q.get("x") || "", e = Number(q.get("e")), s = q.get("s") || "";

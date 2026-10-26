@@ -10,14 +10,14 @@ ED.addTX({
     n_spell: "Spellcheck", n_prev: "Preview", n_hl: "Colours", n_enc: "Encoding", n_eol: "Line endings", n_regex: "Regex", n_word: "Whole word", n_prevb: "Previous",
     n_ln: "Ln {0}, Col {1}", n_cnt: "{0} characters · {1} words · {2} lines", n_selc: "{0} selected", n_fmt: "Format JSON", n_min: "Minify", n_valid: "JSON is valid.", n_bad: "JSON error: {0}",
     n_tools: "Line tools…", n_up: "UPPERCASE", n_low: "lowercase", n_title: "Title Case", n_sort: "Sort lines", n_dedup: "Remove duplicate lines", n_trim: "Trim trailing spaces",
-    n_print: "Print", n_close: "Close tab", n_newtab: "New tab", n_lost: "“{0}” has unsaved changes. Close it anyway?", n_restored: "Restored {0} tab(s) from your last session.",
+    n_print: "Print", n_copy: "Copy", n_copied: "Copied", n_close: "Close tab", n_newtab: "New tab", n_lost: "“{0}” has unsaved changes. Close it anyway?", n_restored: "Restored {0} tab(s) from your last session.",
     n_bold: "Bold", n_ital: "Italic", n_h: "Heading", n_list: "List", n_num: "Numbered list", n_link: "Link", n_code: "Code", n_quote: "Quote", n_table: "Table", n_untitled: "Untitled",
     n_badre: "Bad pattern: {0}", n_csv: "CSV preview" },
   bn: { n_wrap: "শব্দ মোড়ানো", n_font: "ফন্ট", n_size: "আকার", n_zin: "বড় করুন", n_zout: "ছোট করুন", n_goto: "লাইনে যান", n_gotoq: "লাইন নম্বর (১–{0}):", n_time: "সময়/তারিখ",
     n_spell: "বানান যাচাই", n_prev: "প্রিভিউ", n_hl: "রঙ", n_enc: "এনকোডিং", n_eol: "লাইনের শেষ", n_regex: "রেজেক্স", n_word: "পুরো শব্দ", n_prevb: "আগের",
     n_ln: "লাইন {0}, কলাম {1}", n_cnt: "{0} অক্ষর · {1} শব্দ · {2} লাইন", n_selc: "{0} নির্বাচিত", n_fmt: "JSON সাজান", n_min: "ছোট করুন", n_valid: "JSON ঠিক আছে।", n_bad: "JSON ভুল: {0}",
     n_tools: "লাইন টুল…", n_up: "বড় হাতের", n_low: "ছোট হাতের", n_title: "শিরোনাম রূপ", n_sort: "লাইন সাজান", n_dedup: "একই লাইন বাদ দিন", n_trim: "শেষের ফাঁকা বাদ দিন",
-    n_print: "প্রিন্ট", n_close: "ট্যাব বন্ধ", n_newtab: "নতুন ট্যাব", n_lost: "“{0}”-এ না-সেভ করা পরিবর্তন আছে। তবুও বন্ধ করবেন?", n_restored: "আগের সেশনের {0}টি ট্যাব ফিরিয়ে আনা হল।",
+    n_print: "প্রিন্ট", n_copy: "কপি", n_copied: "কপি হয়েছে", n_close: "ট্যাব বন্ধ", n_newtab: "নতুন ট্যাব", n_lost: "“{0}”-এ না-সেভ করা পরিবর্তন আছে। তবুও বন্ধ করবেন?", n_restored: "আগের সেশনের {0}টি ট্যাব ফিরিয়ে আনা হল।",
     n_bold: "মোটা", n_ital: "বাঁকা", n_h: "শিরোনাম", n_list: "তালিকা", n_num: "নম্বর তালিকা", n_link: "লিঙ্ক", n_code: "কোড", n_quote: "উদ্ধৃতি", n_table: "টেবিল", n_untitled: "নামহীন",
     n_badre: "ভুল প্যাটার্ন: {0}", n_csv: "CSV প্রিভিউ" }
 });
@@ -84,7 +84,7 @@ const FONTS = ["'Noto Sans Mono', ui-monospace, Consolas, 'Noto Sans Bengali', m
 const HL_MAX = 200000;
 
 ED.kinds.note = (() => {
-  let ta, pre, gut, edBox, prev, fi, ri, mc, rx, ww, cnt, stat, encSel, eolSel, tabsEl, mdBar, jsonBar, wrapChk, spellChk, hlChk, prevChk, fontSel, sizeIn;
+  let ta, pre, gut, edBox, prev, prevCol, fi, ri, mc, rx, ww, cnt, stat, encSel, eolSel, tabsEl, mdBar, jsonBar, wrapChk, spellChk, hlChk, prevChk, fontSel, sizeIn;
   let tabs = [], cur = 0, curExt = "txt", enc = "utf-8", eol = "lf", zoom = 100, seq = 1, firstBlank = true, sessKey = "", saveT = 0, nl = -1;
   const st = () => ED.st.note;
   const lang = () => (window.settings && settings.lang === "bn") ? "bn" : "en";
@@ -111,7 +111,7 @@ ED.kinds.note = (() => {
   function mode() { return curExt === "json" ? "json" : curExt === "csv" || curExt === "tsv" ? "csv" : curExt === "md" ? "md" : CODE.has(curExt) || ["html", "htm", "xml", "yml", "yaml", "toml", "ini"].includes(curExt) ? "code" : ""; }
   function paint() { const m = mode(), on = hlChk.checked && m && ta.value.length <= HL_MAX; edBox.classList.toggle("hl", !!on); pre.hidden = !on; if (!on) return;
     const s = ta.value; pre.innerHTML = (m === "json" ? hlJson(s) : m === "csv" ? hlCsv(s, curExt === "tsv" ? "\t" : ",") : m === "md" ? hlMd(s) : hlCode(s, curExt)) + "\n "; sync(); }
-  function preview() { const m = mode(), on = prevChk.checked && (m === "md" || m === "csv"); prev.hidden = !on; edBox.parentNode.parentNode.classList.toggle("split", on); if (!on) return;
+  function preview() { const m = mode(), on = prevChk.checked && (m === "md" || m === "csv"); if (prevCol) prevCol.hidden = !on; prev.hidden = false; edBox.parentNode.parentNode.classList.toggle("split", on); if (!on) return;
     if (m === "md") prev.innerHTML = mdHtml(ta.value);
     else { const rows = csvRows(ta.value, curExt === "tsv" ? "\t" : ",").slice(0, 500); prev.innerHTML = "<table><tbody>" + rows.map((r, i) => "<tr>" + r.map(c => (i ? "<td>" : "<th>") + esc(c) + (i ? "</td>" : "</th>")).join("") + "</tr>").join("") + "</tbody></table>"; } }
   function lines() { const n = ta.value.split("\n").length; if (nl !== n) { nl = n; gut.textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n") + "\n"; } }
@@ -153,14 +153,29 @@ ED.kinds.note = (() => {
     if (k === "up") wholeText(s => s.toUpperCase()); else if (k === "low") wholeText(s => s.toLowerCase()); else if (k === "title") wholeText(tc);
     else if (k === "sort") wholeText(s => s.split("\n").sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).join("\n"));
     else if (k === "dedup") wholeText(s => [...new Set(s.split("\n"))].join("\n")); else if (k === "trim") wholeText(s => s.replace(/[ \t]+$/gm, "")); }
+  async function copyPreview() {
+    const text = (prev && prev.innerText && prev.innerText.trim()) || ta.value || "";
+    if (!text) { ED.say("note", T("nomatch")); return; }
+    try {
+      if (navigator.clipboard && window.ClipboardItem && prev && prev.innerHTML) {
+        await navigator.clipboard.write([new ClipboardItem({ "text/plain": new Blob([text], { type: "text/plain" }), "text/html": new Blob([prev.innerHTML], { type: "text/html" }) })]);
+      } else if (navigator.clipboard) await navigator.clipboard.writeText(text);
+      else throw new Error("no-clipboard");
+    } catch (e) {
+      const x = document.createElement("textarea"); x.value = text; document.body.append(x); x.select();
+      try { document.execCommand("copy"); } catch (err) { ED.say("note", T("fail", "")); return; }
+      x.remove();
+    }
+    ED.say("note", T("n_copied"));
+  }
   function print() { const f = h("iframe", { style: "position:fixed;width:0;height:0;border:0;right:0;bottom:0" }); document.body.append(f);
-    const d = f.contentDocument; d.open(); d.write(`<!doctype html><title>${esc(st().name)}</title><pre style="white-space:pre-wrap;font:12pt Consolas,monospace">${esc(ta.value)}</pre>`); d.close();
+    const d = f.contentDocument; d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>\u00a0</title><style>@page{margin:0}body{margin:0;padding:14mm 12mm}pre{white-space:pre-wrap;font:12pt Consolas,monospace}</style></head><body><pre>${esc(ta.value)}</pre></body></html>`); d.close();
     setTimeout(() => { try { f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 1000); }, 100); }
   function setZoom(z) { zoom = Math.max(50, Math.min(300, z)); look(); }
   const btn = (id, label, title, fn) => h("button", { type: "button", class: "btn small", id, title, "aria-label": title, onmousedown: e => e.preventDefault(), onclick: fn }, label);
   const chk = (id, label, on, fn) => { const c = h("input", { type: "checkbox", id }); c.checked = on; c.addEventListener("change", fn); return [c, h("label", { class: "ed-chk", for: id }, c, " " + label)]; };
   return {
-    exts: () => [curExt, ...ED.TYPES.note], newTab, findTab, _api: () => ({ tabs: () => (stash(), tabs), cur: () => cur, enc: () => enc, eol: () => eol, zoom: () => zoom, mode }),
+    exts: () => [curExt, ...ED.TYPES.note], newTab, findTab, print, _api: () => ({ tabs: () => (stash(), tabs), cur: () => cur, enc: () => enc, eol: () => eol, zoom: () => zoom, mode }),
     init(body) {
       fi = h("input", { id: "np-find", placeholder: T("find"), "aria-label": T("find") }); ri = h("input", { id: "np-repl", placeholder: T("repl"), "aria-label": T("repl") });
       let mcL, rxL, wwL; [mc, mcL] = chk("np-mc", T("mcase"), false, () => {}); [rx, rxL] = chk("np-re", T("n_regex"), false, () => {}); [ww, wwL] = chk("np-ww", T("n_word"), false, () => {});
@@ -185,7 +200,9 @@ ED.kinds.note = (() => {
       tabsEl = h("div", { class: "np-tabs", id: "np-tabs", role: "tablist" });
       gut = h("pre", { class: "np-gut", "aria-hidden": "true" }); pre = h("pre", { class: "np-hl", "aria-hidden": "true", hidden: true });
       ta = h("textarea", { class: "np-ta", id: "np-ta", spellcheck: "false", wrap: "off", "aria-label": T("note") });
-      edBox = h("div", { class: "np-ed" }, pre, ta); prev = h("div", { class: "np-prev", id: "np-preview", hidden: true, "aria-label": T("n_prev") });
+      edBox = h("div", { class: "np-ed" }, pre, ta); prev = h("div", { class: "np-prev", id: "np-preview", "aria-label": T("n_prev") });
+      const prevBar = h("div", { class: "np-prevbar" }, btn("np-copyprev", "📋 " + T("n_copy"), T("n_copy"), copyPreview));
+      prevCol = h("div", { class: "np-prevcol", hidden: true }, prevBar, prev);
       encSel = h("select", { id: "np-enc", "aria-label": T("n_enc"), title: T("n_enc"), onchange: () => { enc = encSel.value; ED.dirty("note"); persist(); } }, ...ENCS.map(([v, l]) => h("option", { value: v }, l)));
       eolSel = h("select", { id: "np-eol", "aria-label": T("n_eol"), title: T("n_eol"), onchange: () => { eol = eolSel.value; ED.dirty("note"); persist(); } }, h("option", { value: "lf" }, "Unix (LF)"), h("option", { value: "crlf" }, "Windows (CRLF)"));
       stat = h("span", { id: "np-stat", class: "np-st", role: "status" });
@@ -198,7 +215,7 @@ ED.kinds.note = (() => {
         else if (e.key === "F3") { e.preventDefault(); find(e.shiftKey); } else if (e.key === "F5") { e.preventDefault(); timeDate(); }
         else if (c && (k === "=" || k === "+")) { e.preventDefault(); setZoom(zoom + 10); } else if (c && k === "-") { e.preventDefault(); setZoom(zoom - 10); } else if (c && k === "0") { e.preventDefault(); setZoom(100); }
         else if (c && mode() === "md" && k === "b") { e.preventDefault(); wrapSel("**", "**", T("n_bold")); } else if (c && mode() === "md" && k === "i") { e.preventDefault(); wrapSel("*", "*", T("n_ital")); } });
-      body.append(tabsEl, row1, row2, mdBar, jsonBar, h("div", { class: "np-split" }, h("div", { class: "np-wrap" }, gut, edBox), prev), h("div", { class: "np-bar" }, stat, h("span", { class: "np-sp" }), eolSel, encSel));
+      body.append(tabsEl, row1, row2, mdBar, jsonBar, h("div", { class: "np-split" }, h("div", { class: "np-wrap" }, gut, edBox), prevCol), h("div", { class: "np-bar" }, stat, h("span", { class: "np-sp" }), eolSel, encSel));
       if (!document.getElementById("np-css")) document.head.append(h("style", { id: "np-css" }, CSS));
       look();
       const sec = ED.st.note.sec; if (sec) { let dT = 0; new MutationObserver(() => { clearTimeout(dT); dT = setTimeout(drawTabs, 30); }).observe(sec.querySelector(".ed-fname").parentNode, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["hidden"] }); }
@@ -235,7 +252,9 @@ const CSS = `
 .np-c0 { color: #1d4ed8; } .np-c1 { color: #047857; } .np-c2 { color: #b45309; } .np-c3 { color: #be185d; }
 [data-theme="dark"] .np-k { color: #c4b5fd; } [data-theme="dark"] .np-s { color: #6ee7b7; } [data-theme="dark"] .np-n { color: #fcd34d; } [data-theme="dark"] .np-c { color: #9ca3af; } [data-theme="dark"] .np-l { color: #93c5fd; }
 [data-theme="dark"] .np-c0 { color: #93c5fd; } [data-theme="dark"] .np-c1 { color: #6ee7b7; } [data-theme="dark"] .np-c2 { color: #fcd34d; } [data-theme="dark"] .np-c3 { color: #f9a8d4; }
-.np-prev { border: 1px solid var(--line, #ddd); border-radius: 8px; padding: 10px 14px; height: 60vh; min-height: 260px; overflow: auto; background: var(--surface, #fff); line-height: 1.5; box-sizing: border-box; }
+.np-prevcol { min-width: 0; display: flex; flex-direction: column; }
+.np-prevbar { display: flex; justify-content: flex-end; margin: 0 0 4px; }
+.np-prev { border: 1px solid var(--line, #ddd); border-radius: 8px; padding: 10px 14px; height: calc(60vh - 36px); min-height: 220px; overflow: auto; background: var(--surface, #fff); line-height: 1.5; box-sizing: border-box; user-select: text; -webkit-user-select: text; }
 .np-prev table { border-collapse: collapse; font-size: .9rem; } .np-prev th, .np-prev td { border: 1px solid var(--line, #ddd); padding: 3px 8px; text-align: left; } .np-prev th { background: var(--surface-2, #f3f4f6); }
 .np-prev pre { background: var(--surface-2, #f3f4f6); padding: 8px; border-radius: 6px; overflow: auto; } .np-prev code { font-family: Consolas, monospace; } .np-prev blockquote { border-left: 3px solid var(--line, #ccc); margin: 0; padding-left: 10px; color: #6b7280; }
 .np-bar { display: flex; align-items: center; gap: 8px; font-size: .82rem; padding: 4px 2px; color: var(--muted); flex-wrap: wrap; } .np-sp { flex: 1; } .np-bar select { font-size: .8rem; }

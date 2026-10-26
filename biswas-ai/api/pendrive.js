@@ -45,7 +45,7 @@ if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES
 const SESSION_MS = 12 * 3600 * 1000;
 const LOCK_TRIES = 5, LOCK_MS = 15 * 60 * 1000;
 const TEXT_MAX = 2 * 1024 * 1024;           // per-file extracted text kept for the AI
-const JOB = { maxFiles: 40, mapChars: 12000, maxMapCalls: 10, askChars: 14000 };
+const JOB = { maxFiles: 48, mapChars: 22000, maxMapCalls: 14, askChars: 20000 };
 
 /* ---------- helpers ---------- */
 const hex = n => crypto.randomBytes(n).toString("hex");
@@ -419,7 +419,7 @@ If the user asks for an IMAGE / picture / PNG / poster / notice / chart (for exa
 \`\`\`
 kind is "picture" (a real AI-generated picture/photo/illustration), "text" (plain text on a background), "poster" (title + body, centred, for notices) or "chart" (add "chart":{"type":"bar|line|pie","labels":[...],"values":[numbers]}). Put the COMPLETE text in "text" in its original language and script; the app draws the PNG.
 When the user wants a real picture, photo, illustration, drawing of a scene, or a poster/banner/card with a picture, ALSO add "scene":"a short ENGLISH description of what to draw (people, place, objects, mood), with NO words or letters in it". The app generates that picture with an image model and writes your "title"/"text" on top of it (so Bengali stays correct). For a picture only, use kind "picture" with "scene" and empty "text". For a plain text image or a notice without a picture, leave "scene" out. Never say you cannot make images.
-Files whose text starts with "[Tally export]" are Tally Prime / Tally ERP 9 data already decoded for you: the summary lines give voucher totals by type, each ledger's Dr/Cr movement and GST ledgers, and the [Sheet: Vouchers] rows list every ledger entry. Answer ledger balances, voucher totals and GST questions from those numbers exactly and cite the file. Tally Excel/PDF exports are read like any sheet or PDF. Never claim you deleted or overwrote anything; the user confirms that in the app.`;
+Files whose text starts with "[Tally export]" are Tally Prime / Tally ERP 9 data already decoded for you: the summary lines give voucher totals by type, each ledger's Dr/Cr movement and GST ledgers, and the [Sheet: Vouchers] rows list every ledger entry. Answer ledger balances, voucher totals and GST questions from those numbers exactly and cite the file. Tally Excel/PDF exports are read like any sheet or PDF. Never claim you deleted or overwrote anything; the user confirms that in the app. When the task is to analyse or explain, write a real report in full sentences: what the files are, the findings (names, numbers, dates, rules), and a short conclusion. Never reply with only a list of file names or paths.`;
 
 /* ---------- API ---------- */
 export async function handle(req, res, url, body, send) {
@@ -788,6 +788,64 @@ export async function handle(req, res, url, body, send) {
       await saveIndex(id, ix); return send(200, { ok: true });
     });
   }
+  if (op === "copy") { // duplicate files (and whole folders) into another folder. Bytes are copied in storage; the original stays.
+    const to = cleanPath(body.to, true);
+    return withLock(id, async () => {
+      const [m, ix] = await Promise.all([meta(id), index(id)]);
+      if (to && !ix.folders.includes(to)) fail(404, "no_target");
+      const folderList = (body.folders || []).map(s => cleanPath(s)).filter(p => ix.folders.includes(p));
+      for (const old of folderList) if (under(to, old)) fail(400, "into_itself");
+      const ids = new Set((body.ids || []).map(String).filter(fid => ix.files[fid] && ix.files[fid].state === "ok"));
+      for (const old of folderList) for (const f of Object.values(ix.files)) if (f.state === "ok" && under(f.path, old)) ids.add(f.id);
+      const list = [...ids].map(fid => ix.files[fid]).filter(Boolean);
+      if (!list.length && !folderList.length) fail(400, "nothing");
+      if (list.length > 80) fail(400, "copy_big");
+      const extra = list.reduce((a, f) => a + (f.size || 0), 0);
+      if (m.used + reservedOf(m) + extra > quotaOf(m)) fail(413, "quota", { quota: quotaOf(m), used: m.used });
+      const unique = p => {
+        if (!pathTaken(ix, p)) return p;
+        const dot = p.lastIndexOf("."), sl = p.lastIndexOf("/");
+        const [a, e] = dot > sl ? [p.slice(0, dot), p.slice(dot)] : [p, ""];
+        let n = 2, q = `${a} (2)${e}`;
+        while (pathTaken(ix, q) && n < 200) q = `${a} (${++n})${e}`;
+        return q;
+      };
+      const fmap = new Map();
+      for (const old of folderList) {
+        const np = unique((to ? to + "/" : "") + baseOf(old));
+        fmap.set(old, np); addFolders(ix, np);
+        for (const sub of ix.folders.filter(p => under(p, old) && p !== old)) addFolders(ix, np + p.slice(old.length));
+      }
+      const made = []; let bm25 = null; const created = [];
+      try {
+        for (const f of list) {
+          const hit = [...fmap.entries()].sort((a, b) => b[0].length - a[0].length).find(([old]) => under(f.path, old));
+          let np = hit ? hit[1] + f.path.slice(hit[0].length) : (to ? to + "/" : "") + baseOf(f.path);
+          np = unique(np);
+          const nid = hex(12);
+          await bk(f.b).st.copyObject(`${P(id)}/f/${f.id}`, `${P(id)}/f/${nid}`);
+          created.push({ b: f.b, id: nid });
+          let hasText = false;
+          if (f.text) {
+            const txt = await tget(`${P(id)}/t/${f.id}.txt`);
+            if (txt) {
+              await tput(`${P(id)}/t/${nid}.txt`, txt); hasText = true;
+              try { const built = await putChunks(id, nid, txt); if (!bm25) bm25 = await bm(id); bmAddChunks(bm25, nid, built.chunks); } catch (e) { console.warn("pendrive: copy index", e.message); }
+            }
+          }
+          ix.files[nid] = { id: nid, path: np, size: f.size || 0, type: f.type || "", mtime: Date.now(), text: hasText, state: "ok", ...(f.note ? { note: f.note } : {}), ...(f.b && f.b !== "1" ? { b: f.b } : {}) };
+          if (parentOf(np)) addFolders(ix, parentOf(np));
+          m.used += f.size || 0; made.push(np);
+        }
+      } catch (e) {
+        for (const c of created) { try { await bk(c.b).st.del(`${P(id)}/f/${c.id}`); } catch (x) { /* best effort */ } }
+        throw e;
+      }
+      if (bm25) await cset(`${P(id)}/bm25.json`, bm25);
+      await saveIndex(id, ix); await saveMeta(id, m);
+      return send(200, { ok: true, n: made.length, paths: made.slice(0, 40), ...publicMeta(m) });
+    });
+  }
   if (op === "delete") { // soft delete: files go to the bin (ix.bin) for 7 days; "purge" frees the storage
     if (body.confirm !== true) fail(400, "confirm_required");
     return withLock(id, async () => {
@@ -1008,7 +1066,7 @@ async function aiJob(req, res, id, body) {
   try {
     if (fastOn && withText.length) { const hit = await acGet(id, ck).catch(() => null); if (hit) { emit({ type: "progress", msg: "cache" }); await done({ ...hit, cached: true }); return res.end(); } }
     if (!withText.length) {
-      emit({ type: "answer", text: lang === "en" ? "The selected files have no text read yet. Use “🔍 Read text (OCR)” on the file row, then ask again." : "বেছে নেওয়া ফাইলের লেখা এখনও পড়া হয়নি। ফাইলের সারিতে “🔍 লেখা পড়ুন (OCR)” চাপুন, তারপর আবার জিজ্ঞাসা করুন।", sources: [], cites: [], actions: [], noText, scanned });
+      emit({ type: "answer", text: lang === "en" ? "Nothing readable was found in the selected files. Open one in Notepad or Word, or press Read text on a picture, then ask again." : "বেছে নেওয়া ফাইলে পড়ার মতো লেখা পাওয়া যায়নি। নোটপ্যাড বা Word-এ খুলুন, অথবা ছবির জন্য লেখা পড়ুন চাপুন, তারপর আবার জিজ্ঞাসা করুন।", sources: [], cites: [], actions: [], noText, scanned });
       return res.end();
     }
     const read = async f => ((await tget(`${P(id)}/t/${f.id}.txt`)) || "");
@@ -1037,11 +1095,11 @@ async function aiJob(req, res, id, body) {
       for (let g = 0; g < used.length; g++) {
         emit({ type: "progress", step: g + 1, of: used.length + 1, msg: used[g].map(x => x.f.path).join(", ") });
         const ctx = used[g].map(x => `[FILE: ${x.f.path}]\n${x.text}`).join("\n\n");
-        notes.push(await askAI(SYS("en"), `Make short factual notes for this task, keeping file names in [brackets].${wantsTable(q, fmt) ? " The final answer will be a table: give one line per item as 'item | field | field | [file]' so every value is kept." : ""}\nTASK: ${q}\n\n${ctx}\n\nQUESTION: notes only`, 900));
+        notes.push(await askAI(SYS("en"), `Read these files and write detailed factual notes for the task. Keep every important name, number, date, rule and decision. Cite the file in [brackets] after each fact. Write full sentences. Do not answer with a list of paths only.${wantsTable(q, fmt) ? " The final answer will be a table: give one line per item as 'item | field | field | [file]' so every value is kept." : ""}\nTASK: ${q}\n\n${ctx}\n\nWrite the notes.`, 1800));
       }
       emit({ type: "progress", step: used.length + 1, of: used.length + 1, msg: "combine" });
       const skipped = withText.length - used.flat().length;
-      answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
+      answer = await askAI(SYSX(lang), `Notes taken from the user's files are below. Write one complete answer. Use sections and full sentences. Include the important facts, numbers, dates and names. Cite the file in [brackets] after each fact. Do not dump file paths as the answer.\n\nNOTES:\n${notes.map((n, i) => `--- ${i + 1} ---\n${n}`).join("\n\n")}\n\nFILES READ: ${used.flat().map(x => x.f.path).join("; ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the limit. Say that in one line.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, 4000);
       sources = used.flat().map(x => x.f.path);
     } else {
       let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast, stream);
