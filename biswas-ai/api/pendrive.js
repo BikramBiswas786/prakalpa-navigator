@@ -17,7 +17,7 @@ if (!SECRET) {
   SECRET = crypto.randomBytes(32).toString("hex");
   console.warn("PENDRIVE_SECRET is not set: using a random one, so pendrive sessions end when the server restarts.");
 }
-// v103: a pool of S3-compatible backends. pool[0] is the primary: it holds all metadata (meta, index, text, bm25, stats);
+// a pool of S3-compatible backends. pool[0] is the primary: it holds all metadata (meta, index, text, bm25, stats);
 // file bytes go to whichever backend had the most free room when the file was uploaded (f.b / pending.b, default "1").
 export const pool = makePool(env, SECRET);
 export const storage = pool.length ? pool[0].st : null;
@@ -27,9 +27,9 @@ const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 5 * 1024 ** 3);   
 const MAX_FILE = Math.max(1, Number(env.PENDRIVE_MAX_FILE_BYTES) || 5 * 1024 ** 3);   // per file
 // Safety cap across ALL pendrives, so we refuse uploads before hitting the storage plan's limit (B2 free tier: 10 GB).
 const TOTAL_CAP = Math.max(1, Number(env.PENDRIVE_TOTAL_CAP_BYTES) || pool.reduce((a, b) => a + b.cap, 0) || 9 * 1024 ** 3);
-const SINGLE = 16 * 1024 * 1024;           // v110: below this a file is one presigned PUT
+const SINGLE = 16 * 1024 * 1024;           // below this a file is one presigned PUT
 const MIB = 1024 * 1024;
-// v110: 16–64 MB parts: aim for ~10 s per part at 1/6 of the measured browser speed, and never more than 10,000 parts
+// 16–64 MB parts: aim for ~10 s per part at 1/6 of the measured browser speed, and never more than 10,000 parts
 export const partSizeFor = (size, bps) => { let ps = bps > 0 ? Math.round(bps / 6 * 10 / MIB) * MIB : 16 * MIB; ps = Math.min(64 * MIB, Math.max(16 * MIB, ps, Math.ceil(size / 10000 / MIB) * MIB)); return ps; };
 const PART = 10 * 1024 * 1024;              // 10 MB parts; 5 GB = 512 parts (S3 allows 10,000)
 if (Math.ceil(MAX_FILE / PART) > 10000) throw new Error("PENDRIVE_MAX_FILE_BYTES needs more than 10,000 parts of 10 MB");
@@ -160,7 +160,7 @@ export function tokens(text) {
   return out;
 }
 async function bm(id) { return (await cget(`${P(id)}/bm25.json`)) || { v: 2, df: {}, n: 0, len: 0, files: {} }; }
-// v115: chunks with locations (page / heading path / sheet rows) live in c/<fid>.json; bm25 indexes those chunks.
+// chunks with locations (page / heading path / sheet rows) live in c/<fid>.json; bm25 indexes those chunks.
 const cKey = (id, fid) => `${P(id)}/c/${fid}.json`;
 async function putChunks(id, fid, text) { const built = rag.build(text); await storage.putText(cKey(id, fid), JSON.stringify(built)); return built; }
 async function loadChunks(id, f) {
@@ -177,7 +177,7 @@ function bmAddChunks(x, fileId, chunks) {
     return { tf, l: tk.length };
   });
 }
-// Lazy migration of pre-v115 pendrives: rebuild chunk files + bm25 once, the first time someone asks.
+// Lazy migration of older pendrives: rebuild chunk files + bm25 once, the first time someone asks.
 async function ragIndex(id, all, emit) {
   let x = await bm(id); if (x.v === 2) return x;
   return withLock("bm:" + id, async () => {
@@ -252,7 +252,7 @@ export function parseActions(text) {
   });
   return { text: body.trim(), actions };
 }
-// v108: output format rules. A table request (any language) must produce a GitHub markdown table.
+// output format rules. A table request (any language) must produce a GitHub markdown table.
 export const TABLE_RE = /\b(table|tables|tabular|tabulate|list|listing|compar\w*|matrix|spreadsheet|csv|excel|columns?|rows?)\b|টেবিল|সারণি|সারণী|তালিকা|তুলনা|ছক|কলাম|এক্সেল/i;
 export const wantsTable = (q, format) => format === "table" || (format !== "letter" && TABLE_RE.test(String(q || "")));
 export const hasMdTable = t => /^\s*\|.*\|\s*\n\s*\|?\s*:?-{2,}/m.test(String(t || ""));
@@ -308,7 +308,7 @@ export async function handle(req, res, url, body, send) {
     });
   }
 
-  const id = req.pdAs || session(req); // v113: share upload-request links act on the owner's pendrive with a fixed op set
+  const id = req.pdAs || session(req); // share upload-request links act on the owner's pendrive with a fixed op set
   if (op === "list") {
     const [m, ix] = await Promise.all([meta(id), index(id)]);
     const files = Object.values(ix.files).filter(f => f.state === "ok").map(({ id, path, size, type, mtime, text, note }) => ({ id, path, size, type, mtime, text, ...(note ? { note } : {}) }));
@@ -320,7 +320,7 @@ export async function handle(req, res, url, body, send) {
     if (!f || f.state !== "ok") fail(404, "not_found");
     return send(200, { url: await bk(f.b).st.presignGet(`${P(id)}/f/${f.id}`, body.inline ? "" : baseOf(f.path)) });
   }
-  if (op === "download-urls") { // v106: short-lived GET links (no attachment header) so the browser can stream files into a ZIP
+  if (op === "download-urls") { // short-lived GET links (no attachment header) so the browser can stream files into a ZIP
     const ix = await index(id); const want = Array.isArray(body.ids) ? body.ids.slice(0, 500).map(String) : [];
     const urls = {};
     for (const fid of want) { const f = ix.files[fid]; if (f && f.state === "ok") urls[fid] = await bk(f.b).st.presignGet(`${P(id)}/f/${f.id}`, ""); }
@@ -332,7 +332,7 @@ export async function handle(req, res, url, body, send) {
     return send(200, { text: ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "").slice(0, 200000) });
   }
 
-  const writeTexts = async (ix, list) => { // v110: text sidecars in parallel, one bm25 write
+  const writeTexts = async (ix, list) => { // text sidecars in parallel, one bm25 write
     let x = await bm(id); const ok = list.filter(t => ix.files[String(t.id)]);
     for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(t => storage.putText(`${P(id)}/t/${String(t.id)}.txt`, String(t.text || "").slice(0, TEXT_MAX))));
     const built = {};
@@ -343,7 +343,7 @@ export async function handle(req, res, url, body, send) {
     if (ok.length) await cset(`${P(id)}/bm25.json`, x);
     return ok.length;
   };
-  // v110: placement + reservation shared by upload/init and upload/batch-init. Small files (< 16 MB) get one presigned PUT;
+  // placement + reservation shared by upload/init and upload/batch-init. Small files (< 16 MB) get one presigned PUT;
   // big ones get a multipart upload with 16–64 MB parts sized from the browser's measured speed.
   const planOne = async (m, ix, it, use, ctx) => {
     const p = cleanPath(it.path); const size = Math.floor(Number(it.size));
@@ -358,7 +358,7 @@ export async function handle(req, res, url, body, send) {
     if (ctx.total + m.used - freed + reserved + size > TOTAL_CAP) fail(507, "total_cap", { cap: TOTAL_CAP });
     const fileId = hex(12);
     // Placement: healthy backends that can hold the file. Most free room first, but when free room is within 20% of the best,
-    // the backend with the lowest measured latency wins (v110). Browsers PUT straight to the bucket, so CORS must be in place.
+    // the backend with the lowest measured latency wins. Browsers PUT straight to the bucket, so CORS must be in place.
     let cands = pool.filter(b => placeable(b) && b.cap - (use[b.id] || 0) - (ctx.add[b.id] || 0) >= size);
     const free = b => b.cap - (use[b.id] || 0) - (ctx.add[b.id] || 0);
     const best = Math.max(0, ...cands.map(free));
@@ -401,7 +401,7 @@ export async function handle(req, res, url, body, send) {
       return send(200, r);
     });
   }
-  if (op === "upload/batch-init") { // v110: reserve up to 100 files in one call (one meta write); errors are per file
+  if (op === "upload/batch-init") { // reserve up to 100 files in one call (one meta write); errors are per file
     const items = (Array.isArray(body.files) ? body.files : []).slice(0, 100);
     return withLock(id, async () => {
       const [m, ix] = await Promise.all([meta(id), index(id)]);
@@ -415,7 +415,7 @@ export async function handle(req, res, url, body, send) {
       return send(200, { files: out });
     });
   }
-  if (op === "hosts") { // v110: storage origins the browser may upload to, so it can probe which ones it can reach
+  if (op === "hosts") { // storage origins the browser may upload to, so it can probe which ones it can reach
     return send(200, { hosts: [...new Set(pool.filter(placeable).map(b => b.st.origin).filter(Boolean))] });
   }
   if (op === "upload/status") { // is this upload (saved in the browser's IndexedDB) still resumable?
@@ -431,7 +431,7 @@ export async function handle(req, res, url, body, send) {
     for (const n of ns) urls[n] = pend.single ? await bk(pend.b).st.presignPut(`${P(id)}/f/${body.fileId}`) : await bk(pend.b).st.presignPart(`${P(id)}/f/${body.fileId}`, pend.uploadId, n);
     return send(200, { urls });
   }
-  // v110: finish one upload: bytes check, index entry. Network work is done before (finishBytes) so a batch can run it in parallel.
+  // finish one upload: bytes check, index entry. Network work is done before (finishBytes) so a batch can run it in parallel.
   const finishBytes = async (m, it) => {
     const fid = String(it.fileId); const pend = (m.pending || {})[fid];
     if (!pend || pend.uploadId !== it.uploadId) return { fid, error: "no_upload" };
@@ -465,7 +465,7 @@ export async function handle(req, res, url, body, send) {
       return send(200, { ...done, ...publicMeta(m) });
     });
   }
-  if (op === "upload/batch-complete") { // v110: up to 100 finished uploads (+ their AI text) in one call: one index/meta/bm25 write
+  if (op === "upload/batch-complete") { // up to 100 finished uploads (+ their AI text) in one call: one index/meta/bm25 write
     const items = (Array.isArray(body.items) ? body.items : []).slice(0, 100);
     return withLock(id, async () => {
       const [m, ix] = await Promise.all([meta(id), index(id)]);
@@ -496,7 +496,7 @@ export async function handle(req, res, url, body, send) {
       return send(200, { ok: true });
     });
   }
-  if (op === "text-batch") { // v110: AI text for many files in one call
+  if (op === "text-batch") { // AI text for many files in one call
     const list = (Array.isArray(body.items) ? body.items : []).slice(0, 100);
     return withLock(id, async () => { const ix = await index(id); const n = await writeTexts(ix, list); await saveIndex(id, ix); return send(200, { ok: true, n }); });
   }
@@ -551,7 +551,7 @@ export async function handle(req, res, url, body, send) {
       const folders = (body.folders || []).map(s => cleanPath(s));
       for (const f of Object.values(ix.files)) if (folders.some(d => under(f.path, d))) ids.add(f.id);
       let freed = 0;
-      // v111: delete objects 8 at a time and rewrite the search index once (was 4 sequential storage calls per file)
+      // delete objects 8 at a time and rewrite the search index once (was 4 sequential storage calls per file)
       const list = [...ids].filter(fid => ix.files[fid]);
       for (const fid of list) freed += ix.files[fid].size;
       await dropFiles(id, ix, list);
@@ -571,7 +571,7 @@ function moveTree(ix, old, np) {
 }
 async function dropFiles(id, ix, list) {
   const withText = list.filter(fid => ix.files[fid].text);
-  // v113: one flaky storage call used to fail the whole delete with "server" (objects gone, index unchanged).
+  // one flaky storage call used to fail the whole delete with "server" (objects gone, index unchanged).
   // Now each object delete is retried; if a backend still refuses, the key is parked in ix.gc and retried by the next delete.
   const keys = [];
   for (const fid of list) { keys.push({ b: ix.files[fid].b, k: `${P(id)}/f/${fid}` }); if (ix.files[fid].text || ix.files[fid].note) keys.push({ b: null, k: `${P(id)}/t/${fid}.txt` }, { b: null, k: cKey(id, fid) }); }
@@ -600,7 +600,7 @@ async function dropFile(id, ix, fid) {
 
 const NOT_FOUND = { en: "Not found in your files. The selected files don't contain enough evidence to answer this, so I won't guess.", bn: "আপনার ফাইলে পাওয়া যায়নি। বেছে নেওয়া ফাইলগুলোতে এর উত্তরের যথেষ্ট প্রমাণ নেই, তাই আন্দাজে কিছু বলছি না।" };
 const locLabel = l => !l ? "" : l.page ? `page ${l.page}` : l.sheet ? `sheet "${l.sheet}" rows ${l.r1}–${l.r2}` : l.h ? `section: ${l.h}` : "";
-// v115: retrieval for "ask": expanded BM25 (top 40) → optional embeddings/reranker → lexical rerank → top 6, numbered [n].
+// retrieval for "ask": expanded BM25 (top 40) → optional embeddings/reranker → lexical rerank → top 6, numbered [n].
 // Spreadsheet maths is computed here (rag.aggregate, no eval) and handed to the model as an exact, citable fact.
 async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote) {
   const x = await ragIndex(id, all, emit);
@@ -642,7 +642,7 @@ async function aiJob(req, res, id, body) {
   if (!q) fail(400, "no_question");
   const lang = body.lang === "en" ? "en" : "bn";
   const fmt = ["auto", "table", "report", "letter"].includes(body.format) ? body.format : "auto";
-  // v109: optional skill + attachment note from the shared client module (plain text, capped).
+  // optional skill + attachment note from the shared client module (plain text, capped).
   const skillNote = String(body.skillNote || "").replace(/[\u0000-\u0008]/g, "").slice(0, 4000);
   const SYSX = l => SYS(l) + skillNote;
   const ix = await index(id);
@@ -651,7 +651,7 @@ async function aiJob(req, res, id, body) {
   let inScope = all;
   if (Array.isArray(scope.ids) && scope.ids.length) { const s = new Set(scope.ids.map(String)); inScope = all.filter(f => s.has(f.id)); }
   else if (scope.folder) { const d = cleanPath(scope.folder); inScope = all.filter(f => under(f.path, d)); }
-  if (typeof scope.branch === "string") { // v123: branches are folders under "⎇/"; the default branch is everything else
+  if (typeof scope.branch === "string") { // branches are folders under "⎇/"; the default branch is everything else
     const r = scope.branch ? "⎇/" + cleanPath(scope.branch) : "";
     inScope = inScope.filter(f => r ? under(f.path, r) : !under(f.path, "⎇"));
   }
@@ -690,7 +690,7 @@ async function aiJob(req, res, id, body) {
       sources = used.flat().map(x => x.f.path);
     } else {
       let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote);
-      // v120: a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
+      // a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
       const transform = /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
       const picked = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
       if (r.notFound && transform && picked) {
@@ -703,7 +703,7 @@ async function aiJob(req, res, id, body) {
       if (r.notFound) { emit({ type: "answer", text: NOT_FOUND[lang], sources: [], cites: [], actions: [], noText, notFound: true, scanned }); return res.end(); }
       ({ answer, sources, cites } = r);
     }
-    if (wantsTable(q, fmt) && !hasMdTable(answer)) { // v108: the model ignored the format: ask once more to reshape its own answer
+    if (wantsTable(q, fmt) && !hasMdTable(answer)) { // the model ignored the format: ask once more to reshape its own answer
       emit({ type: "progress", msg: "table" });
       try { const again = await askAI(SYS(lang), `Rewrite this answer so it includes a GitHub-style markdown table (header row, | --- | separator, one row per item). Keep every fact and every [file] citation; keep any pendrive-write block and any \`\`\`attachment block unchanged.\n\nANSWER:\n${answer}\n\nQUESTION: ${q}`, 2000); if (hasMdTable(again)) answer = again; } catch (e) { /* keep the first answer */ }
     }
@@ -715,10 +715,10 @@ async function aiJob(req, res, id, body) {
   res.end();
 }
 export { HttpError };
-// v113: helpers for api/share.js (share links, upload-request links)
+// helpers for api/share.js (share links, upload-request links)
 export const internals = { session, meta, index, cget, cset, withLock, bk, P, hex, scrypt, cleanPath, under, fail, aiJob, limitedKey: null };
 
-// v119: empty leftover automated-test pendrives. Only names starting "zz-test-" that are over 30 minutes old;
+// empty leftover automated-test pendrives. Only names starting "zz-test-" that are over 30 minutes old;
 // every other pendrive is skipped before its files are read. Files and reservations go; the empty pendrive stays.
 export async function gcTestPendrives({ minAgeMs = 30 * 60 * 1000 } = {}) {
   const st = (await cget("stats/usage.json")) || { by: {} }; const out = [];

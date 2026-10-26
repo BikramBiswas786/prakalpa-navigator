@@ -1,4 +1,4 @@
-// v113: share links (/s/<id>) and upload-request links for AI Pendrive.
+// share links (/s/<id>) and upload-request links for AI Pendrive.
 //   shares/<sid>.json              one link: what it shares, options, counters, recent activity
 //   pendrives/<pid>/shares.json    { ids: [sid…] } so the owner can list their links
 //   stats/egress.json              today's download bytes per storage backend and per pendrive (budgets)

@@ -1,4 +1,4 @@
-/* v113: share-link receiver page. No login: the link id + (optional) password give a short-lived token. */
+/* share-link receiver page. No login: the link id + (optional) password give a short-lived token. */
 "use strict";
 const SID = (location.pathname.match(/^\/s\/([a-f0-9]{32})/) || [])[1] || "";
 const XLSX_URL = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
@@ -167,7 +167,7 @@ function xlsxView(body, buf, hi) {
   const show = name => { const html = XLSX.utils.sheet_to_html(wb.Sheets[name], { header: "", footer: "" });
     body(`<div class="tabs" id="pv-tabs">${wb.SheetNames.map(n => `<button class="btn small${n === name ? " primary" : ""}" type="button" data-sheet="${esc(n)}">${esc(n)}</button>`).join("")}</div><div class="doc" id="pv-sheet">${clean(html)}</div>`);
     const tb = $("#pv-tabs"); if (tb) tb.onclick = ev => { const b = ev.target.closest("[data-sheet]"); if (b) show(b.dataset.sheet); };
-    // v115: highlight the cited rows (row numbers are the sheet's own, 1-based from its first used row)
+    // highlight the cited rows (row numbers are the sheet's own, 1-based from its first used row)
     const ws = wb.Sheets[name]; const r0 = ws["!ref"] ? XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
     const want = hi && name === (hi.sheet || name) ? (hi.rows && hi.rows.length ? hi.rows : hi.r1 ? Array.from({ length: Math.min(500, (hi.r2 || hi.r1) - hi.r1 + 1) }, (_, i) => hi.r1 + i) : Number(hi.row) ? [Number(hi.row)] : []) : [];
     const trs = document.querySelectorAll("#pv-sheet tr"); let first = null;
@@ -180,7 +180,7 @@ function xlsxView(body, buf, hi) {
 function clean(html) { const d = new DOMParser().parseFromString(html, "text/html"); const tb = d.querySelector("table"); if (!tb) return ""; let out = "<table>";
   for (const tr of tb.querySelectorAll("tr")) { out += "<tr>"; for (const td of tr.children) out += `<td${td.colSpan > 1 ? ` colspan="${td.colSpan | 0}"` : ""}${td.rowSpan > 1 ? ` rowspan="${td.rowSpan | 0}"` : ""}>${esc(td.textContent)}</td>`; out += "</tr>"; } return out + "</table>"; }
 
-/* ---- download everything as one ZIP (same v106 writer as the pendrive) ---- */
+/* ---- download everything as one ZIP (same writer as the pendrive) ---- */
 async function zipAll() {
   const i = S.info, st = $("#s-zipst"), btn = $("#s-zip"); if (!i.files.length) return;
   btn.disabled = true;
@@ -212,7 +212,7 @@ async function ask(q) {
       while ((k = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, k); buf = buf.slice(k + 1); if (!line) continue; let o; try { o = JSON.parse(line); } catch (e) { continue; }
         if (o.type === "answer") ans = o; else if (o.type === "error") throw new Error(o.error || o.message || "ai"); } }
     if (!ans) throw new Error("no answer");
-    // v115: [n] markers become chips; each opens the file at the cited page / sheet rows / section with the passage highlighted
+    // [n] markers become chips; each opens the file at the cited page / sheet rows / section with the passage highlighted
     const cites = ans.cites || []; const byN = new Map(cites.map(c => [c.n, c]));
     const label = l => !l ? "" : l.page ? (lang === "en" ? "p. " : "পৃ. ") + l.page : l.sheet ? `${l.sheet} ${lang === "en" ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}` : l.h ? l.h.split(" › ").pop() : "";
     const chip = c => `<button class="chip cite" type="button" data-cite="${c.n}" title="${esc(c.path + (label(c.loc) ? " · " + label(c.loc) : ""))}">[${c.n}]</button>`;

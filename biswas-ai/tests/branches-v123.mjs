@@ -53,7 +53,7 @@ if (!z) console.log("  dl box:", await p.evaluate(() => (document.querySelector(
 const zb = z ? fs.readFileSync(DL + "/" + z) : Buffer.alloc(0);
 ok(zb.slice(0, 2).toString() === "PK" && zb.includes("land.txt") && !zb.includes("main.txt"), `15 whole-branch zip (${z}, ${zb.length} B) has branch files only`);
 if (AI) {
-  await p.$eval("#pd-q", e => { e.value = ""; }); await p.type("#pd-q", "What is the salary amount and what is the mutation fee?");
+  await p.$eval("#pd-q", e => { e.value = ""; }); await p.type("#pd-q", "What is the mutation fee and who owns plot 12?");
   await p.$eval("#pd-ai-form", f => f.requestSubmit()); await p.waitForFunction(() => pd.outs.length && !document.querySelector("#pd-ai-progress")?.textContent, { timeout: 240000, polling: 500 }).catch(() => {}); await sl(3000);
   const used = await p.$eval("#pd-answer", e => e.innerText).catch(() => "");
   ok(/note\.txt|land\.txt/.test(used) && !/main\.txt/.test(used), "16 AI answer uses only this branch's files: " + used.replace(/\s+/g, " ").slice(0, 160));
