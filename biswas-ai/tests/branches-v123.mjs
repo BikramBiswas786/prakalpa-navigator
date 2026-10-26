@@ -64,7 +64,7 @@ await p.click("[data-pd-home]"); await sl(500);
 globalThis.PROMPT = "Land"; await p.click('.pd-bcard[data-pd-br="Land Records"] .pd-br-more summary'); await sl(200); await shot("04-card-menu"); await p.click('[data-pd-br-ren="Land Records"]'); await sl(1500);
 ok(await p.evaluate(() => pdBranches().join() === "Land" && pd.files.some(f => f.path === "⎇/Land/brdir/land.txt")), "17 rename keeps the files");
 await shot("05-home");
-await p.click('.pd-bcard[data-pd-br="Land"] .pd-br-more summary'); await sl(200); await p.click('[data-pd-br-del="Land"]'); await sl(1500);
+await p.click('.pd-bcard[data-pd-br="Land"] .pd-br-more summary'); await sl(200); await p.click('[data-pd-br-del="Land"]'); await p.waitForFunction(() => !pdBranches().length && pd.files.map(f => f.path).join() === "main.txt", { timeout: 20000 }).catch(() => {});
 ok(/2 file/.test(lastDialog) && /for good/.test(lastDialog), "18 delete asks a clear confirm: " + lastDialog);
 ok(await p.evaluate(() => !pdBranches().length && pd.files.map(f => f.path).join() === "main.txt"), "19 branch deleted, Main file kept");
 await p.setViewport({ width: 390, height: 844 }); await sl(500); await shot("06-home-mobile");

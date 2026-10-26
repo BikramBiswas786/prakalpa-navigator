@@ -6,7 +6,8 @@
 const ED = window.BA_ED; if (!ED || !ED.xl) return;
 const { h, T, MIME } = ED; const { xEngine, colName, colNum, shiftRefs, XErr } = ED.xl;
 ED.addTX({
-  en: { x_b: "Bold", x_i: "Italic", x_u: "Underline", x_s: "Strikethrough", x_font: "Font", x_size: "Size", x_color: "Font colour", x_fill: "Fill colour", x_al: "Align left", x_ac: "Centre", x_ar: "Align right",
+  en: { x_note: "Note", x_noteq: "Note for this cell (empty to remove):", x_dv: "Data validation", x_dv_type: "Allow", x_dv_list: "List", x_dv_whole: "Whole number", x_dv_dec: "Decimal", x_dv_none: "Any value (remove)", x_dv_items: "List items (comma separated)", x_dv_min: "Minimum", x_dv_max: "Maximum", x_dv_bad: "Not allowed in {0}: {1}", x_name: "Define name", x_nameq: "Name for the selected cells (e.g. Budget):", x_namebad: "Use letters, numbers and _ only; it cannot look like a cell (A1).", x_named: "Name {0} = {1}. Use it in formulas, e.g. =SUM({0}).", x_dup: "Remove duplicates", x_dups: "{0} duplicate row(s) removed.", x_pivot: "Pivot table", x_pv_rows: "Rows", x_pv_cols: "Columns", x_pv_vals: "Values", x_pv_agg: "Summarise by", x_pv_sum: "Sum", x_pv_count: "Count", x_pv_avg: "Average", x_pv_total: "Grand Total", x_pv_done: "Pivot table made on sheet {0} ({1} rows). It updates when the data changes.",
+    x_b: "Bold", x_i: "Italic", x_u: "Underline", x_s: "Strikethrough", x_font: "Font", x_size: "Size", x_color: "Font colour", x_fill: "Fill colour", x_al: "Align left", x_ac: "Centre", x_ar: "Align right",
     x_wrap: "Wrap text", x_bd: "Borders", x_bd_all: "All borders", x_bd_out: "Outside border", x_bd_none: "No border", x_bd_bot: "Bottom border", x_merge: "Merge & centre", x_unmerge: "Unmerge", x_clearf: "Clear formatting",
     x_nf: "Number format", nf_gen: "General", nf_num: "Number 0.00", nf_int: "Number 1,234", nf_inr: "₹ Rupees", nf_pct: "Percent %", nf_pct2: "Percent 0.00%", nf_date: "Date dd-mm-yyyy", nf_ldate: "Date 26 Oct 2026", nf_text: "Text",
     x_dec_up: "More decimals", x_dec_dn: "Fewer decimals", x_sort_az: "Sort A→Z", x_sort_za: "Sort Z→A", x_filter: "Filter", x_filter_off: "Clear filter", x_copy: "Copy", x_cut: "Cut", x_paste: "Paste", x_filld: "Fill down", x_fillr: "Fill right",
@@ -14,7 +15,8 @@ ED.addTX({
     x_sum: "AutoSum", x_fn: "Insert function", x_dup: "Duplicate sheet", x_left: "Move sheet left", x_right: "Move sheet right", x_ren: "Rename", x_del: "Delete", x_print: "Print", x_zoom: "Zoom", x_sel_sum: "Sum", x_sel_avg: "Average", x_sel_cnt: "Count",
     x_chart_need: "Select a range first: labels in the first column, numbers next to them.", x_chart_dl: "Download PNG", x_chart_rm: "Remove chart", x_all: "(Select all)", x_ok: "OK", x_cancel: "Cancel", x_merge_lose: "Merging keeps only the top-left value. Continue?",
     x_hide: "Hide columns/rows", x_cf: "Highlight rule", x_cf_ask: "Highlight cells where value is (e.g. >1000, <0, =Pending):", x_cf_clear: "Clear highlight rules", x_tbl_hint: "Charts are shown here and can be downloaded as PNG; they are not stored inside the .xlsx." },
-  bn: { x_b: "মোটা", x_i: "বাঁকা", x_u: "নিচে দাগ", x_s: "কাটা দাগ", x_font: "ফন্ট", x_size: "মাপ", x_color: "লেখার রং", x_fill: "ঘরের রং", x_al: "বাঁয়ে", x_ac: "মাঝে", x_ar: "ডানে",
+  bn: { x_note: "নোট", x_noteq: "এই ঘরের নোট (মুছতে ফাঁকা রাখুন):", x_dv: "ডেটা যাচাই", x_dv_type: "অনুমতি", x_dv_list: "তালিকা", x_dv_whole: "পূর্ণ সংখ্যা", x_dv_dec: "দশমিক", x_dv_none: "যেকোনো (মুছুন)", x_dv_items: "তালিকার জিনিস (কমা দিয়ে)", x_dv_min: "সর্বনিম্ন", x_dv_max: "সর্বোচ্চ", x_dv_bad: "{0}-এ চলবে না: {1}", x_name: "নাম দিন", x_nameq: "বাছাই করা ঘরগুলির নাম (যেমন Budget):", x_namebad: "শুধু অক্ষর, সংখ্যা ও _; ঘরের ঠিকানার মতো (A1) হবে না।", x_named: "নাম {0} = {1}। সূত্রে লিখুন, যেমন =SUM({0})।", x_dup: "একই সারি বাদ", x_dups: "{0}টি একই সারি বাদ গেল।", x_pivot: "পিভট টেবিল", x_pv_rows: "সারি", x_pv_cols: "কলাম", x_pv_vals: "মান", x_pv_agg: "হিসাব", x_pv_sum: "যোগফল", x_pv_count: "গণনা", x_pv_avg: "গড়", x_pv_total: "মোট", x_pv_done: "{0} শিটে পিভট টেবিল হল ({1} সারি)। ডেটা বদলালে নিজে বদলাবে।",
+    x_b: "মোটা", x_i: "বাঁকা", x_u: "নিচে দাগ", x_s: "কাটা দাগ", x_font: "ফন্ট", x_size: "মাপ", x_color: "লেখার রং", x_fill: "ঘরের রং", x_al: "বাঁয়ে", x_ac: "মাঝে", x_ar: "ডানে",
     x_wrap: "লেখা মোড়ানো", x_bd: "বর্ডার", x_bd_all: "সব বর্ডার", x_bd_out: "বাইরের বর্ডার", x_bd_none: "বর্ডার নেই", x_bd_bot: "নিচের বর্ডার", x_merge: "মিলিয়ে মাঝে", x_unmerge: "আলাদা করুন", x_clearf: "ফরম্যাট মুছুন",
     x_nf: "সংখ্যার ধরন", nf_gen: "সাধারণ", nf_num: "সংখ্যা 0.00", nf_int: "সংখ্যা 1,234", nf_inr: "₹ টাকা", nf_pct: "শতাংশ %", nf_pct2: "শতাংশ 0.00%", nf_date: "তারিখ dd-mm-yyyy", nf_ldate: "তারিখ 26 Oct 2026", nf_text: "লেখা",
     x_dec_up: "দশমিক বাড়ান", x_dec_dn: "দশমিক কমান", x_sort_az: "সাজান A→Z", x_sort_za: "সাজান Z→A", x_filter: "ফিল্টার", x_filter_off: "ফিল্টার তুলুন", x_copy: "কপি", x_cut: "কাট", x_paste: "পেস্ট", x_filld: "নিচে ভরুন", x_fillr: "ডানে ভরুন",
@@ -153,7 +155,7 @@ xEngine.ext = ({ flat, nums, num, str, cellVal, ERR, book }) => {
 /* ---------- the editor ---------- */
 ED.kinds.excel = (() => {
   const MAXR = 2000;
-  let book, eng, si = 0, sel = { r: 0, c: 0 }, anc = { r: 0, c: 0 }, wrap, inner, tbl, fx, addr, tabs, frzSel, nfSel, fontSel, sizeSel, stat, fh, findBar, charts, curExt = "xlsx", editing = false, zoom = 1;
+  let noteBox = null; let book, eng, si = 0, sel = { r: 0, c: 0 }, anc = { r: 0, c: 0 }, wrap, inner, tbl, fx, addr, tabs, frzSel, nfSel, fontSel, sizeSel, stat, fh, findBar, charts, curExt = "xlsx", editing = false, zoom = 1;
   let undo = [], redo = [], clip = null, mdrag = false, fdrag = null;
   const S = () => book.sheets[si];
   const K = (r, c) => r + "," + c;
@@ -161,19 +163,22 @@ ED.kinds.excel = (() => {
   const gen = v => v == null ? "" : v instanceof XErr ? v.c : typeof v === "number" ? (Number.isInteger(v) ? String(v) : String(+v.toPrecision(10))) : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
   const show = (v, f) => (f && f.nf && typeof v === "number" ? fmtNum(v, f.nf) : null) ?? gen(v);
   const used = s => { let r = 0, c = 0; for (const k of s.cells.keys()) { const [a, b] = k.split(",").map(Number); r = Math.max(r, a + 1); c = Math.max(c, b + 1); } for (const k of s.fmt.keys()) { const [a, b] = k.split(",").map(Number); r = Math.max(r, a + 1); c = Math.max(c, b + 1); } return { r, c }; };
-  function newSheet(name) { return { name, cells: new Map(), fmt: new Map(), merges: [], colW: [], nr: 50, nc: 12, frz: { r: 0, c: 0 }, filter: null, cf: [], charts: [] }; }
+  function newSheet(name) { return { name, cells: new Map(), fmt: new Map(), merges: [], colW: [], nr: 50, nc: 12, frz: { r: 0, c: 0 }, filter: null, cf: [], charts: [], notes: new Map(), dv: [] }; }
   const val = (r, c, s = si) => { const raw = book.sheets[s].cells.get(K(r, c)); return raw == null || raw === "" ? null : eng.get(s, r, c); };
   /* undo / redo: whole-book snapshots (structuredClone keeps Maps and Sets) */
-  const snapBook = () => ({ sheets: structuredClone(book.sheets), si });
+  const snapBook = () => ({ sheets: structuredClone(book.sheets), si, names: { ...(book.names || {}) } });
   function snap() { undo.push(snapBook()); if (undo.length > 100) undo.shift(); redo = []; }
-  function undoDo(back) { const from = back ? undo : redo, to = back ? redo : undo; if (!from.length) return; to.push(snapBook()); const s = from.pop(); book.sheets = s.sheets; si = Math.min(s.si, book.sheets.length - 1); eng = xEngine(book); ED.dirty("excel"); render(); }
+  function undoDo(back) { const from = back ? undo : redo, to = back ? redo : undo; if (!from.length) return; to.push(snapBook()); const s = from.pop(); book.sheets = s.sheets; book.names = s.names || {}; si = Math.min(s.si, book.sheets.length - 1); eng = xEngine(book); ED.dirty("excel"); render(); }
   function edit(fn) { snap(); fn(); ED.dirty("excel"); render(); }
   /* ---------- cell styling ---------- */
+  // cells with their own fill keep the file's text colour (or dark/white for contrast), whatever the app theme
+  const lum = c => { const m = /^#?([0-9a-f]{6})$/i.exec(String(c || "").trim()); if (!m) return null; const v = [0, 2, 4].map(i => { const x = parseInt(m[1].slice(i, i + 2), 16) / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const inkOn = (bg, fg) => { const lb = lum(bg); if (lb == null) return fg || "#000000"; const ink = lb > 0.18 ? "#000000" : "#ffffff"; if (!fg) return ink; const lf = lum(fg); if (lf == null) return fg; const cr = (Math.max(lb, lf) + 0.05) / (Math.min(lb, lf) + 0.05); return cr < 2.2 ? ink : fg; };
   const fontStack = n => (ED.FONTS && ED.FONTS[n]) || `"${n}", sans-serif`;
   function cssOf(f, v) {
     let s = ""; if (!f) return s;
     if (f.b) s += "font-weight:700;"; if (f.i) s += "font-style:italic;"; const dec = [f.u && "underline", f.s && "line-through"].filter(Boolean).join(" "); if (dec) s += `text-decoration:${dec};`;
-    if (f.font) s += `font-family:${fontStack(f.font)};`; if (f.sz) s += `font-size:${f.sz}pt;`; if (f.color) s += `color:${f.color};`; if (f.bg) s += `background:${f.bg};`;
+    if (f.font) s += `font-family:${fontStack(f.font)};`; if (f.sz) s += `font-size:${f.sz}pt;`; if (f.bg) { s += `background:${f.bg};color:${inkOn(f.bg, f.color)};`; } else if (f.color) s += `color:${f.color};`;
     if (f.al) s += `text-align:${f.al};`; if (f.wrap) s += "white-space:normal;word-break:break-word;";
     if (f.bd) { const B = "1px solid #222"; if (f.bd.t) s += `border-top:${B};`; if (f.bd.b) s += `border-bottom:${B};`; if (f.bd.l) s += `border-left:${B};`; if (f.bd.r) s += `border-right:${B};`; }
     return s;
@@ -196,7 +201,7 @@ ED.kinds.excel = (() => {
     for (let r = 0; r < nr; r++) {
       body += `<tr data-row="${r}"${hid.has(r) ? ' hidden' : ""}${s.rowH && s.rowH[r] ? ` style="height:${s.rowH[r]}px"` : ""}><th scope="row" data-r="${r}">${r + 1}</th>`;
       for (let c = 0; c < s.nc; c++) { const k = K(r, c); if (cover.has(k)) continue; const raw = s.cells.get(k); const f = s.fmt.get(k); const v = raw == null || raw === "" ? null : eng.get(si, r, c);
-        const m = span.get(k); const hit = cfHit(s, r, c, v); const cls = (typeof v === "number" ? "n" : v instanceof XErr ? "e" : "") + (F && r === F.r && c >= F.c1 && c <= F.c2 ? " xs-fh-on" + (F.hide[c] && F.hide[c].size ? " xs-fon" : "") : "");
+        const m = span.get(k); const hit = cfHit(s, r, c, v); const cls = (typeof v === "number" ? "n" : v instanceof XErr ? "e" : "") + (s.notes && s.notes.has(k) ? " xs-hasnote" : "") + (s.dv && s.dv.length && dvAt(s, r, c) && dvAt(s, r, c).type === "list" ? " xs-hasdv" : "") + (F && r === F.r && c >= F.c1 && c <= F.c2 ? " xs-fh-on" + (F.hide[c] && F.hide[c].size ? " xs-fon" : "") : "");
         body += `<td data-r="${r}" data-c="${c}"${cls.trim() ? ` class="${cls.trim()}"` : ""}${m ? ` rowspan="${m.r2 - m.r1 + 1}" colspan="${m.c2 - m.c1 + 1}"` : ""}${f || hit ? ` style="${esc(cssOf(f) + (hit ? `background:${hit.bg};color:${hit.fg || "#9c0006"};` : ""))}"` : ""}>${esc(show(v, f))}</td>`; }
       body += "</tr>"; }
     tbl.innerHTML = cg + th + `<tbody>${body}</tbody>`; tbl.style.width = (46 + Array.from({ length: s.nc }, (_, c) => s.colW[c] || 90).reduce((a, b) => a + b, 0)) + "px";
@@ -233,7 +238,7 @@ ED.kinds.excel = (() => {
     fontSel.value = f.font || "Calibri"; sizeSel.value = String(f.sz || 11);
     // status bar: sum / average / count of the selection
     let n = 0, cnt = 0, sum = 0; if (multi) for (let r = g.r1; r <= Math.min(g.r2, g.r1 + 5000); r++) for (let c = g.c1; c <= g.c2; c++) { const v = val(r, c); if (v != null && v !== "") cnt++; if (typeof v === "number") { n++; sum += v; } }
-    stat.textContent = multi && cnt ? `${T("x_sel_sum")}: ${gen(+sum.toPrecision(12))}   ${T("x_sel_avg")}: ${n ? gen(+(sum / n).toPrecision(10)) : "—"}   ${T("x_sel_cnt")}: ${cnt}` : "";
+    noteLine(); stat.textContent = multi && cnt ? `${T("x_sel_sum")}: ${gen(+sum.toPrecision(12))}   ${T("x_sel_avg")}: ${n ? gen(+(sum / n).toPrecision(10)) : "—"}   ${T("x_sel_cnt")}: ${cnt}` : "";
     placeFh();
   }
   function placeFh() { const g = R(); const a = anchorOf(g.r2, g.c2); let td = cellTd(a.r, a.c); if (!td) { fh.hidden = true; return; } const m = S().merges.find(m => m.r1 === a.r && m.c1 === a.c); if (m && (m.r2 > g.r2 || m.c2 > g.c2)) {} fh.hidden = false; fh.style.left = (tbl.offsetLeft + (td.offsetLeft + td.offsetWidth) * zoom - 4) + "px"; fh.style.top = (tbl.offsetTop + (td.offsetTop + td.offsetHeight) * zoom - 4) + "px"; }
@@ -245,6 +250,8 @@ ED.kinds.excel = (() => {
     const s = S(); const a = anchorOf(r, c); r = a.r; c = a.c; const k = K(r, c); const old = s.cells.get(k) || "";
     let nf = null; const f = s.fmt.get(k) || {};
     if (raw && raw[0] !== "=" && f.nf !== "@") { const p = parseEntry(raw); if (p) { raw = p.raw; if (!f.nf || (isDateFmt(p.nf) !== isDateFmt(f.nf))) nf = p.nf; } }
+    const rule = dvAt(s, r, c); if (raw && raw[0] !== "=" && !dvOk(rule, raw)) { ED.st.excel.msg.textContent = T("x_dv_bad", colName(c) + (r + 1), dvText(rule)); render(); return; }
+    if (rule && rule.type === "list" && raw) raw = rule.list.find(x => x.toLowerCase() === String(raw).toLowerCase()) || raw;
     if (old === raw && !nf) return; snap(); putRaw(s, r, c, raw); if (nf) setFmt(s, r, c, { nf }); ED.dirty("excel"); render();
   }
   function move(dr, dc, extend = false) { const s = S(); let r = sel.r, c = sel.c; const m = S().merges.find(m => r >= m.r1 && r <= m.r2 && c >= m.c1 && c <= m.c2); if (m && !extend) { if (dr > 0) r = m.r2; if (dc > 0) c = m.c2; }
@@ -341,6 +348,71 @@ ED.kinds.excel = (() => {
         h("button", { type: "button", class: "btn primary", id: "xs-fok", onclick: () => { const hs = new Set(boxes.filter(b => !b.firstChild.checked).map(b => b.firstChild.value)); d.close(); d.remove(); edit(() => { F.hide[c] = hs; }); } }, T("x_ok"))));
     document.body.append(d); d.showModal();
   }
+  /* ---- round 2: notes, data validation, pivot tables, named ranges, remove duplicates ---- */
+  const A1r = g => colName(g.c1) + (g.r1 + 1) + (g.r2 > g.r1 || g.c2 > g.c1 ? ":" + colName(g.c2) + (g.r2 + 1) : "");
+  const qn = n => /^[A-Za-z_][A-Za-z0-9_]*$/.test(n) ? n : "'" + n.replace(/'/g, "''") + "'";
+  function dlg(title, fields, onOk) {
+    const d = h("dialog", { class: "wd-dlg", "aria-label": title }, h("h3", {}, title), ...fields.map(([l, el]) => h("label", { class: "xs-fl" }, h("span", {}, l + " "), el)),
+      h("div", { class: "ed-pk-act" }, h("button", { type: "button", class: "btn", onclick: () => { d.close(); d.remove(); } }, T("x_cancel")),
+        h("button", { type: "button", class: "btn primary", id: "xs-dlg-ok", onclick: () => { if (onOk() !== false) { d.close(); d.remove(); } } }, T("x_ok"))));
+    document.body.append(d); d.showModal(); return d;
+  }
+  function setNote() { const s = S(), k = K(sel.r, sel.c); if (!s.notes) s.notes = new Map(); const t = prompt(T("x_noteq"), s.notes.get(k) || ""); if (t == null) return;
+    edit(() => { if (t.trim()) s.notes.set(k, t.trim()); else s.notes.delete(k); }); }
+  const dvAt = (s, r, c) => (s.dv || []).find(v => r >= v.r1 && r <= v.r2 && c >= v.c1 && c <= v.c2);
+  function dvOk(rule, raw) { if (!rule || raw === "" || raw == null) return true; const t = String(raw);
+    if (rule.type === "list") return rule.list.some(x => x.toLowerCase() === t.toLowerCase());
+    const n = Number(t.replace(/[,₹\s]/g, "")); if (!isFinite(n)) return false; if (rule.type === "whole" && !Number.isInteger(n)) return false;
+    return (rule.min === "" || rule.min == null || n >= +rule.min) && (rule.max === "" || rule.max == null || n <= +rule.max); }
+  const dvText = v => v.type === "list" ? T("x_dv_list") + ": " + v.list.join(", ") : (v.type === "whole" ? T("x_dv_whole") : T("x_dv_dec")) + (v.min !== "" ? " ≥ " + v.min : "") + (v.max !== "" ? " ≤ " + v.max : "");
+  function addValidation() {
+    const g = R(); const ty = h("select", { id: "xs-dv-type" }, h("option", { value: "list" }, T("x_dv_list")), h("option", { value: "whole" }, T("x_dv_whole")), h("option", { value: "decimal" }, T("x_dv_dec")), h("option", { value: "none" }, T("x_dv_none")));
+    const li = h("input", { id: "xs-dv-list", placeholder: "Yes, No", value: "" }), mn = h("input", { id: "xs-dv-min", type: "number" }), mx = h("input", { id: "xs-dv-max", type: "number" });
+    dlg(T("x_dv") + " · " + A1r(g), [[T("x_dv_type"), ty], [T("x_dv_items"), li], [T("x_dv_min"), mn], [T("x_dv_max"), mx]], () => {
+      const s = S(); edit(() => { s.dv = (s.dv || []).filter(v => v.r2 < g.r1 || v.r1 > g.r2 || v.c2 < g.c1 || v.c1 > g.c2);
+        if (ty.value === "list") { const list = li.value.split(",").map(x => x.trim()).filter(Boolean); if (list.length) s.dv.push({ ...g, type: "list", list }); }
+        else if (ty.value !== "none") s.dv.push({ ...g, type: ty.value, min: mn.value, max: mx.value }); }); });
+  }
+  function noteLine() { if (!noteBox) return; const s = S(), k = K(sel.r, sel.c); const n = s.notes && s.notes.get(k), v = dvAt(s, sel.r, sel.c); noteBox.textContent = "";
+    if (n) noteBox.append(h("span", { id: "xs-note-text" }, "💬 " + n));
+    if (v) { noteBox.append(h("span", { class: "muted" }, " ✔ " + dvText(v)));
+      if (v.type === "list") { const cur = s.cells.get(k) || ""; noteBox.append(h("select", { id: "xs-dvpick", "aria-label": T("x_dv_list"), onchange: e => { if (e.target.value !== "") setCell(sel.r, sel.c, e.target.value); } }, h("option", { value: "" }, "▾"), ...v.list.map(x => h("option", { value: x, selected: x === cur }, x)))); } }
+    noteBox.hidden = !n && !v; }
+  function defineName() { const g = R(); const n = (prompt(T("x_nameq"), "") || "").trim(); if (!n) return; if (!/^[A-Za-z_][A-Za-z0-9_.]*$/.test(n) || /^[A-Z]{1,3}\d+$/i.test(n)) { ED.st.excel.msg.textContent = T("x_namebad"); return; }
+    edit(() => { book.names = book.names || {}; book.names[n] = qn(S().name) + "!$" + colName(g.c1) + "$" + (g.r1 + 1) + ":$" + colName(g.c2) + "$" + (g.r2 + 1); eng = xEngine(book); }); ED.st.excel.msg.textContent = T("x_named", n, A1r(g)); }
+  function removeDup() { const g = region(), s = S(); let removed = 0; edit(() => { const seen = new Set(), keep = [];
+      for (let r = g.r1 + 1; r <= g.r2; r++) { const row = []; for (let c = g.c1; c <= g.c2; c++) row.push(s.cells.get(K(r, c)) ?? ""); const key = JSON.stringify(row.map(x => String(x).trim().toLowerCase())); if (seen.has(key)) { removed++; continue; } seen.add(key); keep.push(row); }
+      for (let r = g.r1 + 1; r <= g.r2; r++) for (let c = g.c1; c <= g.c2; c++) putRaw(s, r, c, "");
+      keep.forEach((row, i) => row.forEach((v, j) => putRaw(s, g.r1 + 1 + i, g.c1 + j, v))); });
+    ED.st.excel.msg.textContent = T("x_dups", removed); }
+  function pivot() {
+    const g = region(), s = S(); if (g.r2 <= g.r1) { ED.st.excel.msg.textContent = T("x_chart_need"); return; }
+    const heads = []; for (let c = g.c1; c <= g.c2; c++) heads.push([c, show(val(g.r1, c), s.fmt.get(K(g.r1, c))) || colName(c)]);
+    const opt = (id, sel0) => h("select", { id }, ...heads.map(([c, t], i) => h("option", { value: String(c), selected: i === sel0 }, t)));
+    const rowF = opt("xs-pv-row", 0), colF = h("select", { id: "xs-pv-col" }, h("option", { value: "" }, "—"), ...heads.map(([c, t]) => h("option", { value: String(c) }, t))), valF = opt("xs-pv-val", Math.min(1, heads.length - 1));
+    const agg = h("select", { id: "xs-pv-agg" }, ...[["SUM", T("x_pv_sum")], ["COUNT", T("x_pv_count")], ["AVERAGE", T("x_pv_avg")], ["MAX", "Max"], ["MIN", "Min"]].map(([v, t]) => h("option", { value: v }, t)));
+    dlg(T("x_pivot") + " · " + A1r(g), [[T("x_pv_rows"), rowF], [T("x_pv_cols"), colF], [T("x_pv_vals"), valF], [T("x_pv_agg"), agg]], () => {
+      const rc = +rowF.value, cc = colF.value === "" ? null : +colF.value, vc = +valF.value, A = agg.value, src = qn(s.name) + "!";
+      const rng = c => `${src}$${colName(c)}$${g.r1 + 2}:$${colName(c)}$${g.r2 + 1}`;
+      const uniq = c => { const m = new Map(); for (let r = g.r1 + 1; r <= g.r2; r++) { const raw = s.cells.get(K(r, c)); if (raw == null || raw === "") continue; const v = val(r, c); const key = String(v); if (!m.has(key)) m.set(key, raw[0] === "=" ? (typeof v === "number" ? String(v) : String(v)) : raw); } return [...m.values()].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })); };
+      const rows = uniq(rc), cols = cc == null ? [null] : uniq(cc);
+      const crit = (c, ref) => `${rng(c)},${ref}`;
+      const F = (rRef, cRef) => { const conds = [crit(rc, rRef)].concat(cRef ? [crit(cc, cRef)] : []);
+        if (A === "SUM") return `=SUMIFS(${rng(vc)},${conds.join(",")})`; if (A === "COUNT") return `=COUNTIFS(${conds.join(",")})`; if (A === "AVERAGE") return `=IFERROR(AVERAGEIFS(${rng(vc)},${conds.join(",")}),"")`;
+        return `=${A}IFS(${rng(vc)},${conds.join(",")})`; };
+      let n = 1; while (book.sheets.some(x => x.name === "Pivot" + n)) n++; const ps = newSheet("Pivot" + n);
+      const lbl = { SUM: T("x_pv_sum"), COUNT: T("x_pv_count"), AVERAGE: T("x_pv_avg"), MAX: "Max", MIN: "Min" }[A] + " — " + heads.find(x => x[0] === vc)[1];
+      ps.cells.set(K(0, 0), lbl); ps.fmt.set(K(0, 0), { b: true });
+      ps.cells.set(K(1, 0), heads.find(x => x[0] === rc)[1]); ps.fmt.set(K(1, 0), { b: true, bg: "#dde7f3" });
+      cols.forEach((cv, j) => { ps.cells.set(K(1, 1 + j), cv == null ? lbl.split(" — ")[0] : String(cv)); ps.fmt.set(K(1, 1 + j), { b: true, bg: "#dde7f3" }); });
+      const tc = 1 + cols.length; if (cols.length > 1) { ps.cells.set(K(1, tc), T("x_pv_total")); ps.fmt.set(K(1, tc), { b: true, bg: "#dde7f3" }); }
+      rows.forEach((rv, i) => { const r = 2 + i; ps.cells.set(K(r, 0), String(rv)); cols.forEach((cv, j) => ps.cells.set(K(r, 1 + j), F(`$A${r + 1}`, cv == null ? null : `${colName(1 + j)}$2`)));
+        if (cols.length > 1 && A !== "AVERAGE") ps.cells.set(K(r, tc), `=${A === "COUNT" || A === "SUM" ? "SUM" : A}(B${r + 1}:${colName(tc - 1)}${r + 1})`); });
+      const tr = 2 + rows.length; ps.cells.set(K(tr, 0), T("x_pv_total")); ps.fmt.set(K(tr, 0), { b: true });
+      if (A === "SUM" || A === "COUNT") for (let c = 1; c <= (cols.length > 1 ? tc : 1); c++) { ps.cells.set(K(tr, c), `=SUM(${colName(c)}3:${colName(c)}${tr})`); ps.fmt.set(K(tr, c), { b: true }); }
+      ps.colW[0] = 140; edit(() => { book.sheets.splice(si + 1, 0, ps); si++; eng = xEngine(book); });
+      ED.st.excel.msg.textContent = T("x_pv_done", ps.name, rows.length); });
+  }
   /* insert / delete rows and columns (cells, formats, merges, widths and formulas all shift) */
   function structural(axis, d) {
     const s = S(), at = axis === "r" ? sel.r : sel.c;
@@ -432,7 +504,9 @@ ED.kinds.excel = (() => {
   const BUILTIN = { 0: "General", 1: "0", 2: "0.00", 3: "#,##0", 4: "#,##0.00", 9: "0%", 10: "0.00%", 11: "0.00E+00", 12: "# ?/?", 14: "dd-mm-yyyy", 15: "d-mmm-yy", 16: "d-mmm", 17: "mmm-yy", 18: "h:mm AM/PM", 19: "h:mm:ss AM/PM", 20: "h:mm", 21: "h:mm:ss", 22: "dd-mm-yyyy h:mm", 37: "#,##0 ;(#,##0)", 38: "#,##0 ;[Red](#,##0)", 39: "#,##0.00;(#,##0.00)", 40: "#,##0.00;[Red](#,##0.00)", 45: "mm:ss", 46: "[h]:mm:ss", 47: "mmss.0", 48: "##0.0E+0", 49: "@" };
   const els = (n, t) => n ? [...n.getElementsByTagNameNS("*", t)] : [];
   const kid = (n, t) => n ? [...n.children].find(c => c.localName === t) : null;
-  const rgb = n => { const v = n && n.getAttribute("rgb"); return v && /^[0-9a-f]{8}$/i.test(v) ? "#" + v.slice(2).toUpperCase() : v && /^[0-9a-f]{6}$/i.test(v) ? "#" + v.toUpperCase() : null; };
+  const THEMEC = ["FFFFFF", "000000", "E7E6E6", "44546A", "4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47"];
+  const tintC = (hex, t) => "#" + [0, 2, 4].map(i => { let x = parseInt(hex.slice(i, i + 2), 16); x = t < 0 ? x * (1 + t) : x + (255 - x) * t; return Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0"); }).join("").toUpperCase();
+  const rgb = n => { const th = n && n.getAttribute("theme"); if (th != null && !n.getAttribute("rgb") && THEMEC[+th]) return tintC(THEMEC[+th], +(n.getAttribute("tint") || 0)); const v = n && n.getAttribute("rgb"); return v && /^[0-9a-f]{8}$/i.test(v) ? "#" + v.slice(2).toUpperCase() : v && /^[0-9a-f]{6}$/i.test(v) ? "#" + v.toUpperCase() : null; };
   const onAttr = n => n && n.getAttribute("val") !== "0" && n.getAttribute("val") !== "false";
   async function readStyles(buf) {
     await load("jszip"); const z = await JSZip.loadAsync(buf); const P = s => new DOMParser().parseFromString(s, "application/xml"); const out = {};
@@ -456,7 +530,11 @@ ED.kinds.excel = (() => {
       const x = P(await f.async("string")); const cells = new Map(); for (const c of els(x, "c")) { const s = c.getAttribute("s"); if (s && xfs[+s]) { const d = XLSX.utils.decode_cell(c.getAttribute("r")); cells.set(d.r + "," + d.c, xfs[+s]); } }
       const pane = els(x, "pane")[0]; const frz = pane && pane.getAttribute("state") !== "split" ? { r: Math.round(+pane.getAttribute("ySplit") || 0), c: Math.round(+pane.getAttribute("xSplit") || 0) } : { r: 0, c: 0 };
       const rowH = []; for (const r of els(x, "row")) if (r.getAttribute("customHeight") === "1" && r.getAttribute("ht")) rowH[+r.getAttribute("r") - 1] = Math.round(+r.getAttribute("ht") * 4 / 3);
-      out.sheets[sh.getAttribute("name")] = { cells, frz, rowH }; }
+      const dv = []; for (const v of els(x, "dataValidation")) { const ty = v.getAttribute("type"); if (!/^(list|whole|decimal)$/.test(ty || "")) continue; const f1 = (els(v, "formula1")[0] || {}).textContent || "", f2 = (els(v, "formula2")[0] || {}).textContent || "", op = v.getAttribute("operator") || "between";
+        for (const ref of (v.getAttribute("sqref") || "").split(/\s+/).filter(Boolean)) { const g = XLSX.utils.decode_range(ref); const base = { r1: g.s.r, c1: g.s.c, r2: g.e.r, c2: g.e.c };
+          if (ty === "list") { if (/^".*"$/.test(f1)) dv.push({ ...base, type: "list", list: f1.slice(1, -1).split(",").map(z => z.trim()) }); }
+          else dv.push({ ...base, type: ty, min: op === "lessThanOrEqual" || op === "lessThan" ? "" : f1, max: op === "between" ? f2 : op === "lessThanOrEqual" || op === "lessThan" ? f1 : "" }); } }
+      out.sheets[sh.getAttribute("name")] = { cells, frz, rowH, dv }; }
     return out;
   }
   const NFID = { General: 0, "0": 1, "0.00": 2, "#,##0": 3, "#,##0.00": 4, "0%": 9, "0.00%": 10, "@": 49 };
@@ -527,7 +605,10 @@ ED.kinds.excel = (() => {
         btn("xs-filld", "⤓", T("x_filld"), fillDown), btn("xs-fillr", "⇥⇥", T("x_fillr"), fillRight), h("span", { class: "sep" }), frzSel,
         btn("xs-find", "🔍", T("x_find"), () => { findBar.hidden = false; fi.focus(); }), btn("xs-sum", "Σ", T("x_sum"), autoSum), fnSel, chSel,
         btn("xs-cf", "🎨", T("x_cf"), addRule), btn("xs-cfx", "🎨✕", T("x_cf_clear"), () => edit(() => { S().cf = []; })), zm, btn("xs-print", "🖨", T("x_print"), printSheet),
-        h("button", { type: "button", class: "btn small", id: "xs-delsheet", onclick: delSheet }, T("delsheet")));
+        h("button", { type: "button", class: "btn small", id: "xs-delsheet", onclick: delSheet }, T("delsheet")), h("span", { class: "sep" }),
+        btn("xs-noteb", "💬 " + T("x_note"), T("x_note"), setNote), btn("xs-dvb", "✔ " + T("x_dv"), T("x_dv"), addValidation), btn("xs-pivotb", "⊞ " + T("x_pivot"), T("x_pivot"), pivot),
+        btn("xs-nameb", "🏷 " + T("x_name"), T("x_name"), defineName), btn("xs-dupb", "⧉✕ " + T("x_dup"), T("x_dup"), removeDup));
+      noteBox = h("div", { class: "xs-note", id: "xs-notebox", role: "status", hidden: true });
       tbl = h("table", { class: "xs", id: "xs-grid" }); fh = h("div", { class: "xs-fh", id: "xs-fh", title: "Fill" }); inner = h("div", { class: "xs-in" }, tbl, fh);
       wrap = h("div", { class: "xs-wrap", tabindex: "0", "aria-label": T("excel") }, inner);
       tabs = h("div", { class: "xs-tabs", role: "tablist" }); stat = h("span", { class: "xs-stat", id: "xs-stat", role: "status" }); charts = h("div", { class: "xs-charts", id: "xs-charts" });
@@ -563,7 +644,7 @@ ED.kinds.excel = (() => {
       tbl.addEventListener("mousedown", e => { const g = e.target.closest("[data-rz]"); if (!g) return; e.preventDefault(); e.stopPropagation(); const c = +g.dataset.rz; rz = { c, x: e.clientX, w: S().colW[c] || 90 }; });
       document.addEventListener("mousemove", e => { if (!rz) return; const w = Math.max(24, Math.min(800, rz.w + (e.clientX - rz.x) / zoom)); S().colW[rz.c] = w; const col = tbl.querySelectorAll("col")[rz.c + 1]; if (col) col.style.width = w + "px"; });
       document.addEventListener("mouseup", () => { if (rz) { rz = null; ED.dirty("excel"); render(); } });
-      body.append(tb1, tb2, findBar, h("div", { class: "xs-bar" }, addr, h("span", { class: "xs-fxl", "aria-hidden": "true" }, "ƒx"), fx), wrap, h("div", { class: "xs-foot" }, tabs, stat), charts);
+      body.append(tb1, tb2, findBar, h("div", { class: "xs-bar" }, addr, h("span", { class: "xs-fxl", "aria-hidden": "true" }, "ƒx"), fx), noteBox, wrap, h("div", { class: "xs-foot" }, tabs, stat), charts);
     },
     blank() { book = { sheets: [newSheet("Sheet1")] }; eng = xEngine(book); si = 0; sel = { r: 0, c: 0 }; anc = { ...sel }; undo = []; redo = []; clip = null; curExt = "xlsx"; render(); },
     async load(buf, e) {
@@ -574,12 +655,14 @@ ED.kinds.excel = (() => {
         for (const a of Object.keys(ws)) { if (a[0] === "!") continue; const cell = ws[a]; const d = XLSX.utils.decode_cell(a); let raw;
           if (cell.f) raw = "=" + cell.f.replace(/_xlfn\.|_xlws\./gi, ""); else if (cell.t === "b") raw = cell.v ? "TRUE" : "FALSE"; else if (cell.t === "e") raw = cell.w || "#ERR!"; else raw = cell.v == null ? "" : String(cell.v);
           if (raw !== "") s.cells.set(K(d.r, d.c), raw);
+          if (cell.c && cell.c.length) s.notes.set(K(d.r, d.c), cell.c.map(x => x.t).join("\n").trim());
           if (!ss && cell.t === "n" && cell.z && cell.z !== "General") s.fmt.set(K(d.r, d.c), { nf: String(cell.z) }); }
-        if (ss) { for (const [k, f] of ss.cells) s.fmt.set(k, { ...f }); s.frz = ss.frz; s.rowH = ss.rowH; }
+        if (ss) { for (const [k, f] of ss.cells) s.fmt.set(k, { ...f }); s.frz = ss.frz; s.rowH = ss.rowH; s.dv = ss.dv || []; }
         s.merges = (ws["!merges"] || []).map(m => ({ r1: m.s.r, c1: m.s.c, r2: m.e.r, c2: m.e.c }));
         (ws["!cols"] || []).forEach((c, i) => { if (c && (c.wpx || c.wch || c.width)) s.colW[i] = Math.round(c.wpx || (c.wch || c.width) * 7 + 5); });
         return s; }) };
       if (!book.sheets.length) book.sheets.push(newSheet("Sheet1"));
+      book.names = {}; for (const nm of (wb.Workbook && wb.Workbook.Names) || []) if (nm.Name && nm.Ref && nm.Sheet == null && !/^_xlnm\./.test(nm.Name)) book.names[nm.Name] = nm.Ref;
       eng = xEngine(book); si = 0; sel = { r: 0, c: 0 }; anc = { ...sel }; undo = []; redo = []; clip = null; curExt = e; ED.st.excel.msg.textContent = ""; render();
     },
     async export(e) {
@@ -593,6 +676,7 @@ ED.kinds.excel = (() => {
           if (f && f.nf) cell.z = f.nf;
           ws[XLSX.utils.encode_cell({ r, c })] = cell; }
         if (e !== "csv") for (const k of s.fmt.keys()) if (!s.cells.has(k)) { const [r, c] = k.split(",").map(Number); mr = Math.max(mr, r); mc = Math.max(mc, c); ws[XLSX.utils.encode_cell({ r, c })] = { t: "s", v: "" }; }
+        if (e !== "csv" && s.notes) for (const [k, t] of s.notes) { const [r, c] = k.split(",").map(Number); mr = Math.max(mr, r); mc = Math.max(mc, c); const a = XLSX.utils.encode_cell({ r, c }); if (!ws[a]) ws[a] = { t: "s", v: "" }; ws[a].c = [{ a: "Biswas AI", t }]; ws[a].c.hidden = true; }
         for (const m of s.merges) { mr = Math.max(mr, m.r2); mc = Math.max(mc, m.c2); }
         ws["!ref"] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: mr, c: mc } });
         ws["!cols"] = Array.from({ length: mc + 1 }, (_, c) => ({ wch: Math.round(((s.colW[c] || 90) - 5) / 7 * 100) / 100 }));
@@ -600,6 +684,7 @@ ED.kinds.excel = (() => {
         const hid = hiddenRows(s); if (hid.size || (s.rowH && s.rowH.length)) { ws["!rows"] = []; for (let r = 0; r <= mr; r++) ws["!rows"][r] = hid.has(r) ? { hidden: true } : s.rowH && s.rowH[r] ? { hpx: s.rowH[r] } : {}; }
         if (s.filter) ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: s.filter.r, c: s.filter.c1 }, e: { r: Math.max(mr, s.filter.r), c: s.filter.c2 } }) };
         XLSX.utils.book_append_sheet(wb, ws, s.name); });
+      if (e !== "csv" && book.names && Object.keys(book.names).length) wb.Workbook = { Names: Object.entries(book.names).map(([Name, Ref]) => ({ Name, Ref })) };
       const bt = e === "csv" ? "csv" : e === "xls" ? "biff8" : "xlsx";
       let out = e === "csv" ? XLSX.utils.sheet_to_csv(wb.Sheets[sheets[0].name]) : XLSX.write(wb, { bookType: bt, type: "array", compression: true });
       if (e === "xlsx") { // formatting, frozen panes and highlight rules go into the package directly
@@ -613,6 +698,11 @@ ED.kinds.excel = (() => {
           if (s.cf && s.cf.length) { let pr = 1; const cfx = s.cf.map(rule => { const ref = colName(rule.c1) + (rule.r1 + 1) + ":" + colName(rule.c2) + (rule.r2 + 1); const fv = isNaN(+rule.val) || rule.val === "" ? '"' + XA(String(rule.val).replace(/"/g, '""')) + '"' : rule.val;
               return `<conditionalFormatting sqref="${ref}"><cfRule type="cellIs" dxfId="${W.dxfOf(rule)}" priority="${pr++}" operator="${OPS[rule.op] || "equal"}"><formula>${fv}</formula></cfRule></conditionalFormatting>`; }).join("");
             const at = x.search(/<dataValidations|<hyperlinks|<printOptions|<pageMargins|<pageSetup|<headerFooter|<drawing|<legacyDrawing|<tableParts|<extLst|<\/worksheet>/); x = x.slice(0, at) + cfx + x.slice(at); }
+          if (s.dv && s.dv.length) { const dvx = `<dataValidations count="${s.dv.length}">` + s.dv.map(v => { const ref = colName(v.c1) + (v.r1 + 1) + ":" + colName(v.c2) + (v.r2 + 1);
+              if (v.type === "list") return `<dataValidation type="list" allowBlank="1" showErrorMessage="1" sqref="${ref}"><formula1>"${XA(v.list.join(","))}"</formula1></dataValidation>`;
+              const has1 = v.min !== "" && v.min != null, has2 = v.max !== "" && v.max != null; const op = has1 && has2 ? "between" : has1 ? "greaterThanOrEqual" : "lessThanOrEqual";
+              return `<dataValidation type="${v.type}" operator="${op}" allowBlank="1" showErrorMessage="1" sqref="${ref}"><formula1>${has1 ? +v.min : has2 ? +v.max : 0}</formula1>${has1 && has2 ? `<formula2>${+v.max}</formula2>` : ""}</dataValidation>`; }).join("") + "</dataValidations>";
+            const at = x.search(/<hyperlinks|<printOptions|<pageMargins|<pageSetup|<headerFooter|<drawing|<legacyDrawing|<tableParts|<extLst|<\/worksheet>/); x = x.slice(0, at) + dvx + x.slice(at); }
           z.file(n, x); }
         z.file("xl/styles.xml", W.xml());
         out = await z.generateAsync({ type: "arraybuffer", compression: "DEFLATE" }); }
@@ -634,6 +724,10 @@ const css = `
 #ed-excel .wd-b[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 #ed-excel .ed-tool { flex-wrap: wrap; } #ed-excel .wd-sel { max-width: 150px; }
 .xs-wrap { height: calc(100vh - 380px); }
+.xs td.xs-hasnote { position: relative; } .xs td.xs-hasnote::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 7px 7px 0; border-color: transparent #d00 transparent transparent; }
+.xs td.xs-hasdv { box-shadow: inset -3px 0 0 #2f6db5; }
+.xs-note { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .85rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; margin: 4px 0; }
+.xs-note[hidden] { display: none; }
 `;
 document.head.append(h("style", { id: "xs-css" }, css));
 })();

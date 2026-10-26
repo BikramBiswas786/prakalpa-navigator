@@ -7,14 +7,14 @@ const ED = window.BA_ED; if (!ED) return;
 const { h, T } = ED;
 ED.addTX({
   en: { a_ph: "Write what to edit or change in this file…", a_send: "Send", a_fast: "⚡ Fast", a_attach: "📎 Attach", a_frompd: "📂 From pendrive", a_working: "Working…",
-    a_reading: "Reading {0}…", a_applied: "Applied {0} change(s).", a_noops: "No changes were needed.", a_undo: "↶ Undo", a_keep: "✓ Apply", a_undone: "Undone.", a_kept: "Kept.",
+    a_reading: "Reading {0}…", a_applied: "Applied {0} change(s).", a_curpic: "the picture", a_copy: "Copy", a_copied: "Copied", a_tonote: "To Notepad", a_toword: "To Word", a_undo: "↶ Undo", a_keep: "✓ Apply", a_undone: "Undone.", a_kept: "Kept.",
     a_failed: "{0} change(s) could not be applied.", a_ocr: "Only the OCR text of {0} was used (no vision model).", a_vision: "Text of {0} read by the vision model.", a_fmt: "Loaded the format of {0}; the AI filled in the new content.",
     a_err: "AI error: {0}", a_drop: "Drop files here to attach", a_cv: "Conversations", a_open: "Open", a_ren: "Rename", a_del: "Delete", a_dl: "Download", a_none: "No saved conversations yet.",
     a_saved: "Saved to Conversations: {0}", a_empty: "Nothing to save: the page is empty or unchanged.", a_newdone: "New blank page.", a_delq: "Delete “{0}”?", a_renq: "New name:",
     a_lost: "Open this saved conversation? Unsaved changes in the editor will be lost.", a_pick: "Attach a file from the pendrive", a_filter: "Filter…", a_cancel: "Cancel", a_you: "You", a_ai: "AI",
     a_tables: "Tables: {0}", a_totals: "Formulas recalculated: {0}", a_errs: "Formula errors: {0}", a_badtype: "Can't attach this file type: {0}" },
   bn: { a_ph: "এই ফাইলে কী বদলাতে বা লিখতে চান লিখুন…", a_send: "পাঠান", a_fast: "⚡ দ্রুত", a_attach: "📎 সংযুক্ত", a_frompd: "📂 পেনড্রাইভ থেকে", a_working: "কাজ চলছে…",
-    a_reading: "{0} পড়া হচ্ছে…", a_applied: "{0}টি পরিবর্তন করা হল।", a_noops: "কোনো পরিবর্তন লাগেনি।", a_undo: "↶ আগের মতো", a_keep: "✓ রাখুন", a_undone: "আগের মতো করা হল।", a_kept: "রাখা হল।",
+    a_reading: "{0} পড়া হচ্ছে…", a_applied: "{0}টি পরিবর্তন করা হল।", a_curpic: "ছবিটি", a_copy: "কপি", a_copied: "কপি হল", a_tonote: "নোটপ্যাডে", a_toword: "ওয়ার্ডে", a_undo: "↶ আগের মতো", a_keep: "✓ রাখুন", a_undone: "আগের মতো করা হল।", a_kept: "রাখা হল।",
     a_failed: "{0}টি পরিবর্তন করা গেল না।", a_ocr: "{0}: শুধু OCR-এ পড়া লেখা ব্যবহার হয়েছে (ভিশন মডেল নেই)।", a_vision: "{0}: ভিশন মডেলে লেখা পড়া হয়েছে।", a_fmt: "{0}-এর ফরম্যাট লোড করে AI নতুন বিষয় বসিয়েছে।",
     a_err: "AI ত্রুটি: {0}", a_drop: "সংযুক্ত করতে ফাইল এখানে ছাড়ুন", a_cv: "কথোপকথন", a_open: "খুলুন", a_ren: "নাম বদল", a_del: "মুছুন", a_dl: "ডাউনলোড", a_none: "এখনও কোনো কথোপকথন রাখা হয়নি।",
     a_saved: "কথোপকথনে রাখা হল: {0}", a_empty: "রাখার কিছু নেই: পাতা ফাঁকা বা বদলায়নি।", a_newdone: "নতুন ফাঁকা পাতা।", a_delq: "“{0}” মুছবেন?", a_renq: "নতুন নাম:",
@@ -103,6 +103,15 @@ function replaceAll(root, find, rep) {
   return n;
 }
 const clean = html => { const d = new DOMParser().parseFromString(String(html || ""), "text/html"); d.querySelectorAll("script,style,iframe,object,link,meta").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || /javascript:/i.test(a.value)) n.removeAttribute(a.name); }); d.querySelectorAll("table").forEach(t => t.classList.add("wd-tbl")); return d.body.innerHTML; };
+const CLR = c => /^#[0-9a-f]{3,8}$/i.test(String(c || "")) ? c : /^[a-z]{3,20}$/i.test(String(c || "")) ? c : "#000000";
+const CSSOK = /^(color|background(-color)?|font-(size|weight|style|family)|text-(align|transform|decoration)|letter-spacing|line-height|margin(-(top|bottom|left|right))?|padding(-(top|bottom|left|right))?|border(-(top|bottom|left|right))?(-(width|style|color))?)$/i;
+function safeCss(el, css) { for (const d of String(css || "").split(";")) { const i = d.indexOf(":"); if (i < 0) continue; const k = d.slice(0, i).trim().toLowerCase(), v = d.slice(i + 1).trim(); if (CSSOK.test(k) && !/url\(|expression|javascript/i.test(v)) el.style.setProperty(k, v); } }
+function fitOne(page) { const W = ED.kinds.word._ai, g = W.pg;
+  for (let i = 0; i < 14 && W.pages() > 1; i++) {
+    if (i < 4) for (const k of ["mt", "mb", "ml", "mr"]) g[k] = Math.max(12.7, g[k] - 3);
+    for (const x of page.querySelectorAll("p,h1,h2,h3,h4,li,td,th")) { const cs = getComputedStyle(x); x.style.marginTop = Math.max(0, parseFloat(cs.marginTop) * .7) + "px"; x.style.marginBottom = Math.max(0, parseFloat(cs.marginBottom) * .7) + "px"; if (i >= 2) x.style.fontSize = Math.max(7, parseFloat(cs.fontSize) * .93) + "px"; if (i >= 2 && !x.style.lineHeight) x.style.lineHeight = "1.1"; }
+    for (const pb of page.querySelectorAll("hr.ed-pb")) pb.remove();
+    W.applyGeo(); } }
 function applyWord(ops) {
   const { map } = wordBlocks(); let ok = 0, bad = 0; const page = wordPage();
   for (const o of ops) { try {
@@ -119,9 +128,27 @@ function applyWord(ops) {
       [...n.cells].forEach((c, i) => { const p = c.querySelector("p,h1,h2,h3,li") || c; setText(p, String((o.cells || [])[i] ?? "")); }); src.after(n); ok++; }
     else if (o.op === "row_del" && el && el.rows[o.r]) { el.rows[o.r].remove(); ok++; }
     else if (o.op === "html") { page.innerHTML = clean(o.html) || "<p><br></p>"; ok++; }
+    else if (o.op === "style") { const els = o.id === "all" ? [...page.querySelectorAll("p,h1,h2,h3,h4,li")] : el ? [el] : []; if (!els.length) { bad++; continue; } for (const x of els) safeCss(x, o.css); ok++; }
+    else if (o.op === "rule") { if (!el) { bad++; continue; } const side = o.side === "top" ? "Top" : "Bottom", w = Math.max(.5, Math.min(12, +o.weight || 2)); el.style["border" + side] = `${w}pt ${o.style === "double" ? "double" : "solid"} ${CLR(o.color)}`; el.style["padding" + side] = "3pt"; ok++; }
+    else if (o.op === "page") { const W = ED.kinds.word._ai, g = W.pg, mm = v => Math.max(5, Math.min(60, +v));
+      for (const k of ["mt", "mb", "ml", "mr"]) if (o[k] != null && isFinite(+o[k])) g[k] = mm(o[k]);
+      if (o.border != null) g.pbd = o.border === "left" || o.border === "box" ? o.border : ""; if (o.border_weight) g.pbw = Math.max(.5, Math.min(6, +o.border_weight)); if (o.border_color) g.pbc = CLR(o.border_color);
+      if (o.font) g.font = String(o.font).slice(0, 60); if (o.size) g.size = Math.max(6, Math.min(36, +o.size)); W.applyGeo(); ok++; }
+    else if (o.op === "fit_one_page") { fitOne(page); ok++; }
+    else if (o.op === "insert_html") { const frag = document.createElement("div"); frag.innerHTML = clean(o.html); const nodes = [...frag.childNodes]; if (!nodes.length) { bad++; continue; }
+      const at = o.after === "start" ? null : o.after === "end" || !map.get(o.after) ? "end" : map.get(o.after);
+      if (at === null) page.prepend(...nodes); else if (at === "end") page.append(...nodes); else at.after(...nodes); ok++; }
+    else if (o.op === "table_cols" && el && el.rows && Array.isArray(o.widths)) { const tot = o.widths.reduce((a, b) => a + (+b || 0), 0) || 1; let cg = el.querySelector("colgroup"); if (cg) cg.remove(); cg = document.createElement("colgroup"); o.widths.forEach(w => { const c = document.createElement("col"); c.style.width = (100 * (+w || 0) / tot).toFixed(1) + "%"; cg.append(c); }); el.prepend(cg); el.style.width = (o.table_width ? Math.max(20, Math.min(100, +o.table_width)) : 100) + "%"; ok++; }
     else bad++;
   } catch (e) { bad++; } }
   wordRelayout(); return { ok, bad };
+}
+// AI values like "1,20,000", "₹ 500", "Rs. 45", "১২০" become plain numbers so formulas/totals don't read them as 0
+function xlVal(v) {
+  if (typeof v === "number") return String(v); let t = String(v ?? ""); if (t[0] === "=") return t;
+  const d = t.replace(/[০-৯]/g, ch => String(ch.charCodeAt(0) - 0x9E6)).trim();
+  const m = d.replace(/^(₹|rs\.?|inr)\s*/i, "").replace(/\s*(\/-|\/–)$/, "").replace(/,/g, "");
+  return /^[+-]?(\d+\.?\d*|\.\d+)%?$/.test(m) && /\d/.test(d) && (m !== d.replace(/,/g, "") || /[০-৯,]/.test(t)) ? m : t;
 }
 function applyExcel(ops) {
   const a = ED.kinds.excel._api(); let ok = 0, bad = 0;
@@ -132,8 +159,8 @@ function applyExcel(ops) {
     for (const o of ops) { try {
       if (o.op === "add_sheet") { if (!book.sheets.some(s => s.name === o.name)) book.sheets.push(newSheet(String(o.name || "Sheet" + (book.sheets.length + 1)).slice(0, 31))); ok++; continue; }
       const s = sh(o.sheet);
-      if (o.op === "set") { const p = RC(o.cell); if (!p) { bad++; continue; } putRaw(s, p.r, p.c, String(o.v ?? "")); grow(s, p.r, p.c); ok++; }
-      else if (o.op === "set_range") { const p = RC(o.from); if (!p || !Array.isArray(o.rows)) { bad++; continue; } o.rows.slice(0, 2000).forEach((row, i) => (Array.isArray(row) ? row : [row]).forEach((v, j) => { putRaw(s, p.r + i, p.c + j, String(v ?? "")); grow(s, p.r + i, p.c + j); })); ok++; }
+      if (o.op === "set") { const p = RC(o.cell); if (!p) { bad++; continue; } putRaw(s, p.r, p.c, xlVal(o.v)); grow(s, p.r, p.c); ok++; }
+      else if (o.op === "set_range") { const p = RC(o.from); if (!p || !Array.isArray(o.rows)) { bad++; continue; } o.rows.slice(0, 2000).forEach((row, i) => (Array.isArray(row) ? row : [row]).forEach((v, j) => { putRaw(s, p.r + i, p.c + j, xlVal(v)); grow(s, p.r + i, p.c + j); })); ok++; }
       else if (o.op === "style") { const R = rng(s, o.range); if (!R) { bad++; continue; } const patch = {}; if (o.b != null) patch.b = !!o.b; if (o.bg) patch.bg = o.bg; if (o.nf) patch.nf = o.nf; if (o.al) patch.al = o.al; if (o.color) patch.color = o.color;
         for (let r = R.r1; r <= R.r2; r++) for (let c = R.c1; c <= R.c2; c++) setFmt(s, r, c, patch); ok++; }
       else if (o.op === "clear") { const R = rng(s, o.range); if (!R) { bad++; continue; } for (let r = R.r1; r <= R.r2; r++) for (let c = R.c1; c <= R.c2; c++) putRaw(s, r, c, ""); ok++; }
@@ -242,25 +269,69 @@ async function send(k) {
       ED.st[k].file = null; ED.st[k].name = "New " + fmtAtt.name.replace(/\.[^.]+$/, "") + "." + (k === "excel" && fmtAtt.e === "csv" ? "xlsx" : fmtAtt.e); ED.dirty(k); ED.label(k);
       notes.push(T("a_fmt", fmtAtt.name)); before.tables = k === "word" ? wordPage().querySelectorAll("table").length : 0;
     }
+    const memo0 = fmtAtt && (k === "word" || k === "note") ? memoLines(k).map(x => x.text) : null;
     for (const a of atts) if (a.how === "tesseract") notes.push(T("a_ocr", a.name)); else if (a.how === "vision") notes.push(T("a_vision", a.name));
+    // the AI always sees what is open: for a picture, the text on the canvas is read (vision model first, OCR fallback) and kept for follow-ups
+    const extra = []; s.mem = s.mem || [];
+    if (k === "image" && window.BA_OCR) { try { const cur = sig(k); if (s.picSig !== cur) { say(k, T("a_reading", T("a_curpic")));
+          const c = ED.kinds.image._api().flat(), sc = Math.min(1, 1600 / Math.max(c.width, c.height)); const d = document.createElement("canvas"); d.width = Math.round(c.width * sc); d.height = Math.round(c.height * sc); d.getContext("2d").drawImage(c, 0, 0, d.width, d.height);
+          const blob = await new Promise(r => d.toBlob(r, "image/png")); const o = await BA_OCR.read(blob, "canvas.png"); s.picSig = cur; s.picText = String(o.text || "").trim(); s.picHow = o.how; say(k, T("a_working")); }
+        extra.push({ name: "CURRENT PICTURE ON THE CANVAS (its text, read just now" + (s.picHow === "tesseract" ? " by OCR" : " by the vision model") + ")", text: s.picText || "(no readable text on the picture now)", how: s.picHow, image: true, current: true });
+        if (s.picText && !s.mem.some(m => m.text === s.picText)) s.mem.push({ name: "Picture text read earlier in this chat", text: s.picText }); } catch (e) { /* the request still goes ahead */ } }
+    for (const a of atts) if (a.text && !s.mem.some(m => m.text === a.text)) s.mem.push({ name: "Earlier attachment " + a.name, text: a.text });
+    if (s.mem.length > 6) s.mem = s.mem.slice(-6);
+    const earlier = s.mem.filter(m => !(k === "image" && m.text === s.picText) && !atts.some(a => a.text === m.text)).map(m => ({ name: m.name, text: m.text, how: "", earlier: true }));
     const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc: struct(k), fast: s.el.fast.checked, lang: lang(),
-      thread: s.thread.slice(-4), attachments: atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })) });
+      thread: s.thread.slice(-12).map(t => ({ q: t.q, a: t.a })), attachments: [...extra, ...atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })), ...earlier].slice(0, 8) });
     const ops = r.ops || []; let res = { ok: 0, bad: 0 };
     if (ops.length) res = k === "word" ? applyWord(ops) : k === "excel" ? applyExcel(ops) : k === "note" ? applyNote(ops) : await applyImage(ops, atts);
+    if (memo0) { const n = memoFix(k, q, memo0); if (n) res.ok += n; }
     if (ops.length || fmtAtt) { ED.dirty(k); s.undo = before; }
     notes.push(...verify(k, before));
-    const msg = [r.reply || "", ops.length ? T("a_applied", res.ok) : (fmtAtt ? "" : T("a_noops")), res.bad ? T("a_failed", res.bad) : "", ...notes].filter(Boolean).join("\n");
+    const msg = [r.reply || "", ops.length ? T("a_applied", res.ok) : "", res.bad ? T("a_failed", res.bad) : "", ...notes].filter(Boolean).join("\n");
     s.thread.push({ q, a: msg, at: Date.now(), atts: atts.map(a => a.name), ops: ops.length });
     s.el.q.value = ""; s.atts = []; chips(k); thread(k);
     s.el.res.hidden = !s.undo; say(k, `${((performance.now() - t0) / 1000).toFixed(1)} s`);
   } catch (e) { say(k, T("a_err", (e && e.message) || String(e))); try { if (before.snap) { /* nothing applied */ } } catch (x) { /* ignore */ } }
   finally { s.busy = false; s.el.go.disabled = false; }
 }
+/* Format copy: the copied letter's own Memo No. / Date must not survive. Lines the AI left unchanged get the new number (from the request, else a blank to fill) and today's date. */
+const MEMO_RE = /(memo\s*no\.?|memo\s*number|no\.|স্মারক\s*নং|মেমো\s*নং)\s*[:.]?\s*/i, DATE_RE = /(date[d]?|তারিখ)\s*[:.\-]?\s*/i;
+function memoLines(k) {
+  if (k === "note") return noteTa().value.split("\n").map((text, i) => ({ text, i })).filter(x => MEMO_RE.test(x.text) && /\d/.test(x.text) || /^\s*(date|তারিখ)\b/i.test(x.text));
+  return [...wordPage().querySelectorAll("p,td,th,h1,h2,h3,div:not(:has(p,td,div))")].filter(e => e.childElementCount < 40 && e.textContent.length < 300 && ((MEMO_RE.test(e.textContent) && /\d/.test(e.textContent)) || /(^|\s)(date|তারিখ)\s*[:.\-]/i.test(e.textContent))).map(el => ({ el, text: el.textContent }));
+}
+function memoFix(k, q, old) {
+  const d = new Date(), two = n => String(n).padStart(2, "0"), today = `${two(d.getDate())}.${two(d.getMonth() + 1)}.${d.getFullYear()}`;
+  const wantNo = (q.match(/(?:memo\s*no\.?|memo\s*number|স্মারক\s*নং|মেমো\s*নং)\s*[:.]?\s*([^\s,;]+(?:\s*\/\s*[^\s,;]+)*)/i) || [])[1];
+  const wantDate = (q.match(/(?:date[d]?|তারিখ)\s*[:.]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})/i) || [])[1] || today;
+  const DT = /\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}(st|nd|rd|th)?\s+[A-Za-z]{3,9},?\s+\d{4}/g;
+  const fix = t => { let x = t;
+    if (MEMO_RE.test(x)) x = x.replace(new RegExp(MEMO_RE.source + "([^\\s,;]*(?:\\s*\\/\\s*[^\\s,;]+)*)", "i"), (m, lab) => m.slice(0, m.length - (m.match(/[^\s,;]*(?:\s*\/\s*[^\s,;]+)*$/) || [""])[0].length) + (wantNo || "______"));
+    x = x.replace(new RegExp("(" + DATE_RE.source + ")(" + DT.source + ")", "i"), (m, lab) => lab + wantDate);
+    return x; };
+  let n = 0;
+  for (const x of memoLines(k)) { if (!old.includes(x.text)) continue; const nt = fix(x.text); if (nt === x.text) continue; n++;
+    if (k === "note") { const ta = noteTa(), L = ta.value.split("\n"); L[x.i] = nt; ta.value = L.join("\n"); ta.dispatchEvent(new Event("input", { bubbles: true })); }
+    else { const w = document.createTreeWalker(x.el, NodeFilter.SHOW_TEXT); const ts = []; while (w.nextNode()) ts.push(w.currentNode); if (!ts.length) continue;
+      let all = ts.map(t => t.nodeValue).join(""); const fixed = fix(all); // put the new text back keeping the first run's formatting for changed parts
+      let i = 0; while (i < all.length && all[i] === fixed[i]) i++; let j = 0; while (j < all.length - i && all[all.length - 1 - j] === fixed[fixed.length - 1 - j]) j++;
+      const mid = fixed.slice(i, fixed.length - j); let pos = 0, put = false;
+      for (const t of ts) { const a = pos, b = pos + t.nodeValue.length; pos = b; const s0 = Math.max(a, i), e0 = Math.min(b, all.length - j);
+        if (b <= i || a >= all.length - j) { if (!put && a >= all.length - j && a === i) { t.nodeValue = mid + t.nodeValue; put = true; } continue; }
+        const v = t.nodeValue; t.nodeValue = v.slice(0, s0 - a) + (put ? "" : mid) + v.slice(e0 - a); put = true; }
+      if (!put) ts[ts.length - 1].nodeValue += mid; } }
+  if (n && k === "word") wordRelayout();
+  return n;
+}
 async function undo(k) { const s = S[k]; if (!s.undo) return; const b = s.undo; s.undo = null; await restore(k, b.snap); ED.st[k].name = b.name; ED.st[k].file = b.file; ED.st[k].dirty = b.dirty; ED.label(k); s.el.res.hidden = true; s.thread.push({ q: "↶", a: T("a_undone"), at: Date.now() }); thread(k); say(k, T("a_undone")); }
 function keep(k) { S[k].undo = null; S[k].el.res.hidden = true; say(k, T("a_kept")); }
 function thread(k) {
   const s = S[k], box = s.el.thread; box.textContent = "";
-  for (const t of s.thread) box.append(h("div", { class: "ea-turn" }, h("div", { class: "ea-you" }, h("b", {}, T("a_you") + ": "), t.q + (t.atts && t.atts.length ? "  📎 " + t.atts.join(", ") : "")), h("div", { class: "ea-ai" }, h("b", {}, T("a_ai") + ": "), t.a)));
+  for (const t of s.thread) box.append(h("div", { class: "ea-turn" }, h("div", { class: "ea-you" }, h("b", {}, T("a_you") + ": "), t.q + (t.atts && t.atts.length ? "  📎 " + t.atts.join(", ") : "")), h("div", { class: "ea-ai" }, h("b", {}, T("a_ai") + ": "), t.a), t.a && t.a.length > 160 ? h("div", { class: "ea-row" },
+    h("button", { type: "button", class: "btn small ea-copy", onclick: e => { navigator.clipboard && navigator.clipboard.writeText(t.a).catch(() => {}); e.target.textContent = "✓ " + T("a_copied"); } }, "📋 " + T("a_copy")),
+    k !== "note" ? h("button", { type: "button", class: "btn small ea-tonote", onclick: () => { ED.show("note"); const ta = noteTa(); ta.value = (ta.value ? ta.value.replace(/\s*$/, "\n\n") : "") + t.a; ta.dispatchEvent(new Event("input", { bubbles: true })); } }, "🗒 " + T("a_tonote")) : null,
+    k !== "word" ? h("button", { type: "button", class: "btn small ea-toword", onclick: () => { ED.show("word"); const pg = wordPage(); for (const line of t.a.split("\n")) { const p = document.createElement("p"); p.textContent = line; pg.append(p); } wordRelayout(); ED.dirty("word"); } }, "📄 " + T("a_toword")) : null) : null));
   box.hidden = !s.thread.length; box.scrollTop = box.scrollHeight;
 }
 const say = (k, m) => { S[k].el.st.textContent = m || ""; };
@@ -286,7 +357,7 @@ async function newPage(k) {
   if (isEmpty(k) || unchanged) say(k, T("a_empty"));
   else { try { await save(k, true); } catch (e) { say(k, T("a_err", e.message)); return; } }
   if (k === "note" && ED.kinds.note._api) { ED.kinds.note.blank(); } else ED.kinds[k].blank();
-  st.file = null; st.name = DEFNAME[k]; st.dirty = false; ED.label(k); s.thread = []; s.undo = null; s.atts = []; s.lastSig = null; chips(k); thread(k); s.el.res.hidden = true; say(k, T("a_newdone"));
+  st.file = null; st.name = DEFNAME[k]; st.dirty = false; ED.label(k); s.thread = []; s.undo = null; s.atts = []; s.lastSig = null; s.mem = []; s.picSig = null; chips(k); thread(k); s.el.res.hidden = true; say(k, T("a_newdone"));
   if (k === "note") { const ta = noteTa(); if (ta.value) { ta.value = ""; ta.dispatchEvent(new Event("input", { bubbles: true })); ED.st.note.dirty = false; ED.label("note"); } }
 }
 async function openRow(k, id) {
@@ -347,7 +418,7 @@ function mount(k) {
 }
 // pendrive closed: forget everything
 const main = document.getElementById("pd-main");
-if (main) new MutationObserver(() => { if (main.hidden) for (const k of Object.keys(S)) { const s = S[k]; s.thread = []; s.atts = []; s.undo = null; s.rows = []; s.lastSig = null; chips(k); thread(k); rows(k); s.el.res.hidden = true; } else for (const k of Object.keys(S)) loadRows(k); }).observe(main, { attributes: true, attributeFilter: ["hidden"] });
+if (main) new MutationObserver(() => { if (main.hidden) for (const k of Object.keys(S)) { const s = S[k]; s.thread = []; s.atts = []; s.undo = null; s.rows = []; s.lastSig = null; s.mem = []; s.picSig = null; chips(k); thread(k); rows(k); s.el.res.hidden = true; } else for (const k of Object.keys(S)) loadRows(k); }).observe(main, { attributes: true, attributeFilter: ["hidden"] });
 document.head.append(h("style", { id: "ea-css" }, `
 .ea-panel { margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: grid; gap: 6px; background: var(--surface); }
 .ea-panel.ea-drag { outline: 2px dashed var(--accent); }
