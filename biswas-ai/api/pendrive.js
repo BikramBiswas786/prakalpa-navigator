@@ -921,7 +921,7 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extracts marked COMPUTED are exact values calculated in code over every row of the spreadsheet: give those numbers exactly as written, keep their scope (a filtered value is only for that filter; 'ALL rows' means the whole sheet) and cite them; never recompute or estimate from the other extracts. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
   let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || stream || {});
   if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
-  answer = answer.replace(/\bNOT_FOUND\b/g, "");
+  answer = answer.replace(/\bNOT_FOUND\b/g, "").replace(/【\s*(\d+)\s*(?:†[^】]*)?】/g, "[$1]"); // some models cite with 【1】
   const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
   const cites = ev.map((e, i) => ({ n: i + 1, id: e.fid, path: ix.files[e.fid].path, loc: e.loc, quote: e.quote, ocr: /^ocr/.test(ix.files[e.fid].note || "") || undefined })).filter(c => !used.size || used.has(c.n));
   return { answer, cites, sources: [...new Set(cites.map(c => c.path))] };
