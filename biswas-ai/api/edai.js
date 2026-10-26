@@ -17,6 +17,7 @@ Operations (JSON objects):
 {"op":"insert_html","after":"b3|start|end","html":"<p>…</p>"}   (new blocks, lines <hr class=\\"wd-hr\\">, tables)
 {"op":"table_cols","id":"t2","widths":[30,70],"table_width":100}
 {"op":"html","html":"<h1>…</h1><p>…</p><table>…</table>"}   (rewrites the whole document: for an empty document, a completely new document, OR as a last resort when no other operation can do what was asked — keep ALL the existing text; inline styles allowed: <p style=\\"text-align:center;border-bottom:3pt solid #000\\">, <b>, <table border=1>)
+Blocks marked SELECTED are what the user highlighted. "Rectify", "correct", "improve", "make it better", "replace it with better", "rewrite": rewrite the SELECTED blocks (or, if none is selected, every text block) into clearer, correct, formal text IN PLACE with one "text" op per block — keep every name, number, date and fact exactly; never reply with the text instead of changing it.
 Letterhead = the top block(s) as a bold, large, centred, uppercase black heading with a black "rule" under it (often a thick one plus a thin one).`,
   excel: `Sheets are listed as "SHEET <name>" then one line per used cell: "A1 = raw value or =FORMULA  {style}" (style: b=bold, bg=fill, nf=number format, al=align).
 Operations:
@@ -25,6 +26,7 @@ Operations:
 {"op":"style","sheet":"Sheet1","range":"A1:D1","b":true,"bg":"#dbeafe","nf":"#,##0.00","al":"center"}
 {"op":"add_sheet","name":"Summary"}
 {"op":"clear","sheet":"Sheet1","range":"A2:D20"}
+Look at EVERY sheet (used range and row-1 headers are given) before deciding. Change only the cells the request needs; never clear or overwrite data that was not asked about. In "reply" explain in plain sentences what you did or found; when you report numbers, write them as short lines "Item: value" (one per line), never raw JSON or cell dumps.
 Keep existing formulas and styles; put totals as formulas, not typed numbers.\nEvery number cell gets the REAL value from the request, the attachments, the earlier messages or the sheet (plain digits, no commas or ₹). Never fill cells with 0 or placeholders; if a value is truly unknown leave the cell empty and say which values are missing.`,
   note: `The text is given with line numbers "12| text".
 Operations:
