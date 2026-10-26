@@ -152,9 +152,10 @@ function ensure(kind) {
   ED.kinds[kind].init(st.body, kind); ED.kinds[kind].blank(); label(kind);
 }
 async function doOpen(kind, file) {
-  const st = ED.st[kind];
-  if (st.dirty && !confirm(T("lost"))) return;
+  const st = ED.st[kind], tabs = ED.kinds[kind].newTab;
+  if (st.dirty && !tabs && !confirm(T("lost"))) return;
   if (!file) { const r = await pick(kind, "open"); if (!r) return; file = r.file; }
+  if (tabs) { const same = ED.kinds[kind].findTab && ED.kinds[kind].findTab(file.path); if (same) return; ED.kinds[kind].newTab(); }
   const e = ext(file.path);
   if (!TYPES[kind].includes(e)) { say(kind, T("badtype")); return; }
   if (kind === "word" && e === "doc") { say(kind, T("docold")); return; }
@@ -163,7 +164,8 @@ async function doOpen(kind, file) {
   catch (er) { say(kind, (er && er.message) || String(er)); }
 }
 function doNew(kind) {
-  const st = ED.st[kind]; if (st.dirty && !confirm(T("lost"))) return;
+  const st = ED.st[kind]; if (ED.kinds[kind].newTab) { ED.kinds[kind].newTab(true); say(kind, ""); return; }
+  if (st.dirty && !confirm(T("lost"))) return;
   ED.kinds[kind].blank(); st.file = null; st.name = DEFNAME[kind]; st.dirty = false; label(kind); say(kind, "");
 }
 function confirmSave(path) {
