@@ -364,17 +364,17 @@ async function exportBlob(k) {
 }
 async function save(k, quiet) {
   const s = S[k], st = ED.st[k];
-  if (isEmpty(k) && !s.thread.length) { if (!quiet) say(k, T("a_empty")); return null; }
+  if (isEmpty(k) && !s.thread.length) { if (quiet !== true) say(k, T("a_empty")); return null; }
   let { blob, e } = await exportBlob(k);
   if (blob.size > 4000000 && k === "image") { const c = ED.kinds.image._api().flat(); blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85)); e = "jpg"; } // stays under the 5.5 MB row limit
   if (blob.size > 4000000) throw new Error(T("a_toolarge"));
   const name = st.file ? st.file.path.split("/").pop() : st.name;
   const row = await pdApi("edconv/save", { area: k, title: `${name} · ${stamp()}`, name: name.replace(/\.[^.]+$/, "") + "." + e, ext: e, mime: blob.type, data: await b64of(blob), thread: s.thread.map(t => ({ q: t.q, a: t.a, at: t.at })) });
-  s.lastSig = sig(k); s.rows.unshift(row); rows(k); toastT(T("a_saved", row.title)); say(k, T("a_saved", row.title)); return row;
+  s.lastSig = sig(k); s.rows.unshift(row); rows(k); if (quiet !== "conv") { toastT(T("a_saved", row.title)); say(k, T("a_saved", row.title)); } return row;
 }
 async function saveConv(k) { // 💾 Save to conversation: always a NEW row; clear inline result, never silent
   const s = S[k], btn = document.getElementById("ed-conv-" + k); if (s.saving) return; s.saving = true; if (btn) btn.disabled = true;
-  try { say(k, T("a_saving")); const row = await save(k);
+  try { say(k, T("a_saving")); const row = await save(k, "conv");
     if (row) { await loadRows(k); if (!s.rows.some(r => r.id === row.id)) { s.rows.unshift(row); rows(k); } if (s.el.cv) s.el.cv.open = true; const m = T("a_savedn", row.title, s.rows.length); say(k, m); toastT(m); } }
   catch (e) { const m = T("a_savefail", (window.pdErrText ? pdErrText(e) : "") || e.message || String(e)); say(k, m); toastT(m); }
   finally { s.saving = false; if (btn) btn.disabled = false; }
