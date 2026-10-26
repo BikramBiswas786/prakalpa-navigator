@@ -31,6 +31,7 @@ async function pdAskWait(p, q) {
 const p = await page(); await p.click("#sec-pendrive"); await sl(500);
 await p.type("#pd-c-name", "zz-test-v122-" + Date.now().toString(36)); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit());
 await p.waitForSelector("#pd-main", { visible: true, timeout: 20000 });
+if (await p.$(".pd-bgo[data-pd-br=\"\"]")) { await p.click(".pd-bgo[data-pd-br=\"\"]"); await sl(500); } // branches home (v123+): open Main
 fs.writeFileSync("/tmp/kharcha.txt", "Office expenses October\nElectricity: 1200\nWater: 300\nStationery: 850\nTea: 400\n");
 await (await p.$("#pd-file-in")).uploadFile("/tmp/kharcha.txt"); await sl(800);
 if (await p.$("#pd-confirm:not([hidden]) [data-pd-sum-go]")) await p.click("[data-pd-sum-go]");

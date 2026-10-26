@@ -2258,7 +2258,7 @@ async function toPdf(md, headHtml) {
       margin: [15, 15, 15, 15], image: { type: "jpeg", quality: 0.95 },
       html2canvas: { scale: 2, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       pagebreak: { mode: ["css", "legacy"] }
-  }).from(sheet).outputPdf("blob");
+  }).from(sheet).outputPdf("blob").then(b => window.BA ? BA.cleanPdf(b) : b);
 }
 async function toXlsx(md) {
   await load("xlsx");
@@ -2320,7 +2320,7 @@ async function htmlToPdf(html, landscape) {
     margin: [12, 12, 12, 12], image: { type: "jpeg", quality: 0.95 },
     html2canvas: { scale: 2, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: landscape ? "landscape" : "portrait" },
     pagebreak: { mode: ["css", "legacy"] }
-  }).from(sheet).outputPdf("blob");
+  }).from(sheet).outputPdf("blob").then(b => window.BA ? BA.cleanPdf(b) : b);
 }
 async function offer(name, data) {
   try { await saveFile(name, data); toast(t("file_ready")); }
