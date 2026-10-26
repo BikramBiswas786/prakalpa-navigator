@@ -828,6 +828,7 @@ const server = http.createServer(async (req, res) => {
       const okTok = A && tok.length === A.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(A));
       const J = (st, o) => res.writeHead(st, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(o));
       if (!okTok) return J(403, { error: "forbidden" });
+      if (url.searchParams.get("do") === "offline") { const ok = pd.simOffline(url.searchParams.get("pd") || "", url.searchParams.get("on") === "1"); return J(ok ? 200 : 400, ok ? { ok: true } : { error: "zz-test pendrives only" }); }
       const ms = pd.metaStore; if (!ms) return J(200, { replicated: false });
       const act = url.searchParams.get("do") || "status", name = String(url.searchParams.get("b") || "");
       const b = pd.pool.find(x => x.name === name);
