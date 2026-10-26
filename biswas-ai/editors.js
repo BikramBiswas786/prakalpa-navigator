@@ -10,7 +10,7 @@ const TX = {
     nofile: "New file (not on the pendrive yet)", pick_open: "Open a file", pick_save: "Save as", branch: "Branch", main: "Main", fname: "File name",
     cancel: "Cancel", newfolder: "New folder", nofiles: "No matching files here.", keepold: "Keep the old version (moved to the folder “Old versions”)",
     replace: "Replace “{0}” with your edited version?", saved: "Saved: {0}", saving: "Saving…", opening: "Opening…", lost: "You have unsaved changes. Discard them?",
-    badtype: "This editor can’t open that file type.", docold: "Old .doc files can’t be read in the browser. Open the file in Word and save it as .docx first.",
+    badtype: "This editor can’t open that file type.", docold: "Old .doc files can’t be read in the browser. Open the file in Word and save it as .docx first.", docold_short: "old .doc: save it as .docx in Word first",
     big: "This file is large; only the first {0} rows are shown.", fail: "Could not save: {0}", find: "Find", repl: "Replace with", next: "Next", rone: "Replace", rall: "Replace all",
     mcase: "Match case", found: "{0} replaced", nomatch: "Not found", rows: "Row", cols: "Column", insR: "+ Row", delR: "− Row", insC: "+ Column", delC: "− Column",
     freeze: "Freeze first row", addsheet: "+ Sheet", delsheet: "Delete sheet", rensheet: "Rename sheet (double-click a tab)", tbl: "Table", img: "Picture", pb: "Page break",
@@ -22,7 +22,7 @@ const TX = {
     nofile: "নতুন ফাইল (এখনও পেনড্রাইভে নেই)", pick_open: "ফাইল খুলুন", pick_save: "অন্য নামে সেভ", branch: "শাখা", main: "মূল", fname: "ফাইলের নাম",
     cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এখানে মেলে এমন ফাইল নেই।", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
     replace: "“{0}” আপনার সম্পাদিত সংস্করণ দিয়ে বদলাবেন?", saved: "সেভ হয়েছে: {0}", saving: "সেভ হচ্ছে…", opening: "খোলা হচ্ছে…", lost: "সেভ না করা পরিবর্তন আছে। বাদ দেবেন?",
-    badtype: "এই এডিটর এই ধরনের ফাইল খুলতে পারে না।", docold: "পুরনো .doc ফাইল ব্রাউজারে পড়া যায় না। Word-এ খুলে .docx হিসেবে সেভ করুন।",
+    badtype: "এই এডিটর এই ধরনের ফাইল খুলতে পারে না।", docold: "পুরনো .doc ফাইল ব্রাউজারে পড়া যায় না। Word-এ খুলে .docx হিসেবে সেভ করুন।", docold_short: "পুরনো .doc: Word-এ .docx হিসেবে সেভ করুন",
     big: "ফাইলটি বড়; প্রথম {0}টি সারি দেখানো হচ্ছে।", fail: "সেভ হয়নি: {0}", find: "খুঁজুন", repl: "বদলে দিন", next: "পরের", rone: "বদলান", rall: "সব বদলান",
     mcase: "বড়/ছোট হাতের অক্ষর মেলান", found: "{0}টি বদলানো হয়েছে", nomatch: "পাওয়া যায়নি", rows: "সারি", cols: "কলাম", insR: "+ সারি", delR: "− সারি", insC: "+ কলাম", delC: "− কলাম",
     freeze: "প্রথম সারি আটকে রাখুন", addsheet: "+ শিট", delsheet: "শিট মুছুন", rensheet: "শিটের নাম বদলাতে ট্যাবে ডাবল-ক্লিক করুন", tbl: "টেবিল", img: "ছবি", pb: "পৃষ্ঠা বিরতি",
@@ -89,7 +89,7 @@ function pick(kind, mode, suggest) { // mode "open" | "save"; resolves to { file
       const list = h("ul", { class: "ed-pk-list", role: "list" },
         ...folders.map(f => h("li", {}, h("button", { type: "button", class: "ed-pk-folder", "data-path": f, onclick: () => { cur = f; draw(); } }, "📁 " + base(f)))),
         ...files.map(f => { const good = TYPES[kind].includes(ext(f.path)); return h("li", {}, h("button", { type: "button", class: "ed-pk-file" + (good ? "" : " dim"), "data-path": f.path,
-          onclick: () => { if (mode === "open") close({ file: f }); else name.value = base(f.path); }, ondblclick: () => { if (mode === "save") go(); } }, (good ? "📄 " : "· ") + base(f.path))); }));
+          onclick: () => { if (mode === "open") close({ file: f }); else name.value = base(f.path); }, ondblclick: () => { if (mode === "save") go(); } }, (good ? "📄 " : "· ") + base(f.path) + (kind === "word" && ext(f.path) === "doc" ? "  — " + T("docold_short") : ""))); }));
       if (!folders.length && !files.length) list.append(h("li", { class: "hint" }, T("nofiles")));
       const name = h("input", { id: "ed-pk-name", value: suggest || st.name, "aria-label": T("fname"), maxlength: "200" });
       const go = () => { const n = name.value.trim(); if (!n || /[\/\\:*?"<>|]/.test(n)) { name.focus(); return; } close({ path: (cur ? cur + "/" : "") + n }); };
@@ -217,6 +217,9 @@ function mount() {
   top.after(bar()); $e("#ed-tabs").after(h("div", { class: "ed-host", id: "ed-host" }));
 }
 ED.relabel = relabel; ED.show = show; ED.open = doOpen; ED.pick = pick; ED.T = T;
+// shared with the per-editor modules (ed-*.js): helpers and a way to add their own words
+ED.h = h; ED.ext = ext; ED.base = base; ED.dirOf = dirOf; ED.MIME = MIME; ED.TYPES = TYPES; ED.say = say; ED.label = label;
+ED.addTX = o => { for (const l of Object.keys(o)) Object.assign(TX[l] || (TX[l] = {}), o[l]); };
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
 /* ---------- Notepad ---------- */
 ED.kinds.note = (() => {
@@ -420,9 +423,8 @@ ED.kinds.excel = (() => {
 })();
 /* ---------- Word: an A4 page you type into, docx in (mammoth) and docx out (own OOXML writer) ---------- */
 const XE = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
-const FONTS = ["Noto Serif Bengali", "Noto Sans Bengali", "Hind Siliguri", "Noto Serif", "Noto Sans", "Times New Roman", "Arial", "Calibri", "Georgia", "Courier New"];
 const pxToPt = px => Math.round(px * 0.75 * 2) / 2;
-async function htmlToDocx(root) {
+async function htmlToDocx(root, O = {}) {
   await load("jszip");
   const media = [], nums = [], rels = []; let pid = 1;
   const rid = (type, target) => { const id = "rId" + (rels.length + 10); rels.push(`<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${target}"/>`); return id; };
@@ -451,14 +453,15 @@ async function htmlToDocx(root) {
     if (s.color && s.color !== "000000") x += `<w:color w:val="${s.color}"/>`;
     if (s.sz) x += `<w:sz w:val="${s.sz}"/><w:szCs w:val="${s.sz}"/>`;
     if (s.u) x += '<w:u w:val="single"/>';
+    if (s.va) x += `<w:vertAlign w:val="${s.va}"/>`;
     if (s.hl) x += `<w:shd w:val="clear" w:color="auto" w:fill="${s.hl}"/>`;
     return x ? `<w:rPr>${x}</w:rPr>` : "";
   }
   function inlineStyle(el, s) {
     const n = { ...s }; const tag = el.tagName; const st = el.style;
-    if (tag === "B" || tag === "STRONG") n.b = true; if (tag === "I" || tag === "EM") n.i = true; if (tag === "U" || tag === "INS") n.u = true; if (tag === "S" || tag === "STRIKE" || tag === "DEL") n.strike = true;
+    if (tag === "B" || tag === "STRONG") n.b = true; if (tag === "I" || tag === "EM") n.i = true; if (tag === "U" || tag === "INS") n.u = true; if (tag === "S" || tag === "STRIKE" || tag === "DEL") n.strike = true; if (tag === "SUP") n.va = "superscript"; if (tag === "SUB") n.va = "subscript";
     if (tag === "FONT") { if (el.getAttribute("face")) n.font = el.getAttribute("face").split(",")[0].replace(/["']/g, "").trim(); if (el.getAttribute("color")) n.color = colorHex(el.getAttribute("color")); }
-    if (st) { if (st.fontWeight && (st.fontWeight === "bold" || +st.fontWeight >= 600)) n.b = true; if (st.fontWeight === "normal" || st.fontWeight === "400") n.b = false; if (st.fontStyle === "italic") n.i = true;
+    if (st) { if (st.fontWeight && (st.fontWeight === "bold" || +st.fontWeight >= 600)) n.b = true; if (st.fontWeight === "normal" || st.fontWeight === "400") n.b = false; if (st.fontStyle === "italic") n.i = true; if (st.verticalAlign === "super") n.va = "superscript"; if (st.verticalAlign === "sub") n.va = "subscript";
       if (/underline/.test(st.textDecoration || st.textDecorationLine || "")) n.u = true; if (/line-through/.test(st.textDecoration || "")) n.strike = true;
       if (st.fontFamily) n.font = st.fontFamily.split(",")[0].replace(/["']/g, "").trim();
       if (st.fontSize) { const m = /([\d.]+)(pt|px)/.exec(st.fontSize); if (m) n.sz = Math.round((m[2] === "pt" ? +m[1] : pxToPt(+m[1])) * 2); }
@@ -478,7 +481,13 @@ async function htmlToDocx(root) {
     return x;
   }
   const JC = { left: "left", start: "left", center: "center", right: "right", end: "right", justify: "both" };
-  function ppr(el, extra = "") { let x = extra; const al = (el.style && el.style.textAlign) || el.getAttribute("align") || ""; if (JC[al] && JC[al] !== "left") x += `<w:jc w:val="${JC[al]}"/>`; return x ? `<w:pPr>${x}</w:pPr>` : ""; }
+  const tw = v => { const m = /(-?[\d.]+)(px|pt|mm|cm|in|em)?/.exec(v || ""); if (!m) return 0; const k = { px: 15, pt: 20, mm: 56.7, cm: 567, in: 1440, em: 240 }[m[2] || "px"]; return Math.round(+m[1] * k); };
+  function pextra(el) { const st = el.style || {}; let x = "";
+    if (st.borderTopStyle && st.borderTopStyle !== "none") { const c = colorHex(st.borderTopColor) || "000000"; x += `<w:pBdr>${["top", "left", "bottom", "right"].map(b => `<w:${b} w:val="single" w:sz="6" w:space="4" w:color="${c}"/>`).join("")}</w:pBdr>`; }
+    const lh = parseFloat(st.lineHeight); if (lh && /^[\d.]+$/.test(st.lineHeight)) x += `<w:spacing w:line="${Math.round(240 * lh)}" w:lineRule="auto"/>`;
+    const ml = tw(st.marginLeft), ti = tw(st.textIndent); if (ml > 0 || ti) x += `<w:ind w:left="${Math.max(0, ml)}"${ti > 0 ? ` w:firstLine="${ti}"` : ti < 0 ? ` w:hanging="${-ti}"` : ""}/>`;
+    return x; }
+  function ppr(el, extra = "") { let x = extra + pextra(el); const al = (el.style && el.style.textAlign) || el.getAttribute("align") || ""; if (JC[al] && JC[al] !== "left") x += `<w:jc w:val="${JC[al]}"/>`; return x ? `<w:pPr>${x}</w:pPr>` : ""; }
   const isBlock = n => n.nodeType === 1 && /^(P|DIV|H[1-6]|UL|OL|TABLE|BLOCKQUOTE|HR|PRE|LI|SECTION|ARTICLE|FIGURE)$/.test(n.tagName);
   async function para(el, pp, s = {}) { return `<w:p>${pp}${await runs(el, s)}</w:p>`; }
   async function blocks(parent, ctx = {}) {
@@ -488,7 +497,9 @@ async function htmlToDocx(root) {
       if (!isBlock(n)) { if (n.nodeType === 3 && !n.nodeValue.trim() && !inl.length) continue; inl.push(n); continue; }
       await flush(); const tg = n.tagName;
       if (/^H[1-6]$/.test(tg)) x += await para(n, ppr(n, `<w:pStyle w:val="Heading${Math.min(+tg[1], 3)}"/>`), {});
+      else if (tg === "HR" && n.classList.contains("wd-hr")) x += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="1" w:color="000000"/></w:pBdr><w:spacing w:after="120"/></w:pPr></w:p>';
       else if (tg === "HR" || n.classList.contains("ed-pb")) x += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+      else if (n.classList.contains("wd-tbox")) { const w = Math.round(Math.min(9026, Math.max(1440, (n.offsetWidth || 300) * 15))); x += `<w:tbl><w:tblPr><w:tblW w:w="${w}" w:type="dxa"/><w:tblBorders>${["top", "left", "bottom", "right"].map(b => `<w:${b} w:val="single" w:sz="8" w:space="0" w:color="${colorHex(n.style.borderTopColor) || "333333"}"/>`).join("")}</w:tblBorders><w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:left w:w="140" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="140" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="${w}"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${colorHex(n.style.backgroundColor) && colorHex(n.style.backgroundColor) !== "FFFFFF" ? `<w:shd w:val="clear" w:color="auto" w:fill="${colorHex(n.style.backgroundColor)}"/>` : ""}</w:tcPr>${(await blocks(n)) || "<w:p/>"}</w:tc></w:tr></w:tbl><w:p/>`; }
       else if (tg === "UL" || tg === "OL") x += await list(n, 0);
       else if (tg === "TABLE") x += await table(n);
       else if (tg === "BLOCKQUOTE") x += await blocks(n, { pp: '<w:pPr><w:pStyle w:val="Quote"/></w:pPr>' });
@@ -506,7 +517,7 @@ async function htmlToDocx(root) {
       const inner = document.createElement("div"); const subs = [];
       for (const c of li.childNodes) { if (c.nodeType === 1 && (c.tagName === "UL" || c.tagName === "OL")) subs.push(c); else inner.append(c.cloneNode(true)); }
       const p = [...inner.children].find(c => c.tagName === "P"); const src = p && inner.children.length === 1 ? p : inner;
-      x += `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="${lvl}"/><w:numId w:val="${numId}"/></w:numPr>${(() => { const al = li.style.textAlign; return JC[al] && JC[al] !== "left" ? `<w:jc w:val="${JC[al]}"/>` : ""; })()}</w:pPr>${await runs(src, {})}</w:p>`;
+      x += `<w:p><w:pPr><w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="${lvl}"/><w:numId w:val="${numId}"/></w:numPr>${pextra(li).replace(/<w:ind [^>]*\/>/, "")}${(() => { const al = li.style.textAlign; return JC[al] && JC[al] !== "left" ? `<w:jc w:val="${JC[al]}"/>` : ""; })()}</w:pPr>${await runs(src, {})}</w:p>`;
       for (const s of subs) x += await list(s, Math.min(lvl + 1, 8), s.tagName === el.tagName ? numId : undefined);
     }
     return x;
@@ -527,78 +538,31 @@ async function htmlToDocx(root) {
   }
   let body = await blocks(root); if (!body) body = "<w:p/>";
   const NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"';
-  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-  const F = "Noto Serif Bengali", rf = f => `<w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}" w:eastAsia="${f}"/>`;
+  const G = O.page || {}, mmT = v => Math.round(v / 25.4 * 1440);
+  const hf = (tag, text, pn) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:${tag} ${NS}>${text ? `<w:p><w:pPr><w:jc w:val="${JC[(O.hfAlign || {})[tag]] || "center"}"/></w:pPr><w:r><w:t xml:space="preserve">${XE(text)}</w:t></w:r></w:p>` : ""}${pn ? `<w:p><w:pPr><w:jc w:val="${JC[pn] || "center"}"/></w:pPr><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>` : ""}${!text && !pn ? "<w:p/>" : ""}</w:${tag}>`;
+  const hdrX = O.header || (O.pnum && O.pnumPos === "top") ? hf("hdr", O.header, O.pnum && O.pnumPos === "top" ? O.pnumAlign : "") : "", ftrX = O.footer || (O.pnum && O.pnumPos !== "top") ? hf("ftr", O.footer, O.pnum && O.pnumPos !== "top" ? O.pnumAlign : "") : "";
+  const hdrId = hdrX && rid("header", "header1.xml"), ftrId = ftrX && rid("footer", "footer1.xml");
+  const pw = mmT(G.w || 210), ph = mmT(G.h || 297), land = pw > ph;
+  const sect = `<w:sectPr>${hdrId ? `<w:headerReference w:type="default" r:id="${hdrId}"/>` : ""}${ftrId ? `<w:footerReference w:type="default" r:id="${ftrId}"/>` : ""}<w:pgSz w:w="${pw}" w:h="${ph}"${land ? ' w:orient="landscape"' : ""}/><w:pgMar w:top="${mmT(G.mt ?? 25.4)}" w:right="${mmT(G.mr ?? 25.4)}" w:bottom="${mmT(G.mb ?? 25.4)}" w:left="${mmT(G.ml ?? 25.4)}" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>`;
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}${sect}</w:body></w:document>`;
+  const F = O.font || "Noto Serif Bengali", FSZ = Math.round((O.size || 12) * 2), rf = f => `<w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}" w:eastAsia="${f}"/>`;
   const hd = (n, sz, sp) => `<w:style w:type="paragraph" w:styleId="Heading${n}"><w:name w:val="heading ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="${sp}" w:after="120"/><w:outlineLvl w:val="${n - 1}"/></w:pPr><w:rPr><w:b/><w:bCs/><w:color w:val="1F3864"/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr></w:style>`;
-  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr>${rf(F)}<w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-IN" w:bidi="bn-IN"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>${hd(1, 36, 360)}${hd(2, 30, 240)}${hd(3, 26, 200)}<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="34"/><w:qFormat/><w:pPr><w:spacing w:after="60"/><w:ind w:left="720"/><w:contextualSpacing/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:left="720"/></w:pPr><w:rPr><w:i/><w:color w:val="555555"/></w:rPr></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style><w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:tblPr><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(b => `<w:${b} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`).join("")}</w:tblBorders></w:tblPr></w:style></w:styles>`;
+  const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr>${rf(XE(F))}<w:sz w:val="${FSZ}"/><w:szCs w:val="${FSZ}"/><w:lang w:val="en-IN" w:bidi="bn-IN"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="${O.line ? Math.round(240 * O.line) : 300}" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>${hd(1, 36, 360)}${hd(2, 30, 240)}${hd(3, 26, 200)}<w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="34"/><w:qFormat/><w:pPr><w:spacing w:after="60"/><w:ind w:left="720"/><w:contextualSpacing/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:left="720"/></w:pPr><w:rPr><w:i/><w:color w:val="555555"/></w:rPr></w:style><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style><w:style w:type="table" w:styleId="TableGrid"><w:name w:val="Table Grid"/><w:basedOn w:val="TableNormal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:tblPr><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map(b => `<w:${b} w:val="single" w:sz="4" w:space="0" w:color="auto"/>`).join("")}</w:tblBorders></w:tblPr></w:style></w:styles>`;
   const lvlX = (kind, i) => kind === "num" ? `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="${["decimal", "lowerLetter", "lowerRoman"][i % 3]}"/><w:lvlText w:val="%${i + 1}."/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (i + 1)}" w:hanging="360"/></w:pPr></w:lvl>` : `<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${["•", "◦", "▪"][i % 3]}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720 * (i + 1)}" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr></w:lvl>`;
   const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${Array.from({ length: 9 }, (_, i) => lvlX("bul", i)).join("")}</w:abstractNum><w:abstractNum w:abstractNumId="1"><w:multiLevelType w:val="hybridMultilevel"/>${Array.from({ length: 9 }, (_, i) => lvlX("num", i)).join("")}</w:abstractNum>${nums.map((k, i) => `<w:num w:numId="${i + 1}"><w:abstractNumId w:val="${k === "num" ? 1 : 0}"/>${k === "num" ? '<w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride>' : ""}</w:num>`).join("")}</w:numbering>`;
   const zip = new JSZip();
-  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`);
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>${hdrX ? '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>' : ""}${ftrX ? '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' : ""}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>`);
   zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>`);
   const now = new Date().toISOString().replace(/\.\d+Z$/, "Z");
   zip.file("docProps/core.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>Biswas AI</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`);
   zip.file("docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Biswas AI</Application></Properties>`);
   zip.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>${rels.join("")}</Relationships>`);
-  zip.file("word/document.xml", doc); zip.file("word/styles.xml", styles); zip.file("word/numbering.xml", numbering);
+  zip.file("word/document.xml", doc); zip.file("word/styles.xml", styles); zip.file("word/numbering.xml", numbering); if (hdrX) zip.file("word/header1.xml", hdrX); if (ftrX) zip.file("word/footer1.xml", ftrX);
   for (const m of media) zip.file("word/media/" + m.name, m.bytes);
   return await zip.generateAsync({ type: "blob", mimeType: MIME.docx, compression: "DEFLATE" });
 }
 ED.htmlToDocx = htmlToDocx;
-ED.kinds.word = (() => {
-  let page, fontSel, sizeSel, blockSel, imgIn;
-  const cmd = (c, v = null) => { page.focus(); document.execCommand("styleWithCSS", false, c === "fontName" || c === "foreColor"); document.execCommand(c, false, v); ED.dirty("word"); sync(); };
-  function setSize(pt) { page.focus(); document.execCommand("styleWithCSS", false, false); document.execCommand("fontSize", false, "7");
-    for (const f of page.querySelectorAll('font[size="7"]')) { const s = document.createElement("span"); s.style.fontSize = pt + "pt"; while (f.firstChild) s.append(f.firstChild); f.replaceWith(s); } ED.dirty("word"); }
-  function sync() { try { blockSel.value = (document.queryCommandValue("formatBlock") || "p").toLowerCase().replace(/[<>]/g, "") || "p"; } catch (e) {}
-    for (const [b, c] of [["wd-b", "bold"], ["wd-i", "italic"], ["wd-u", "underline"]]) { const el = document.getElementById(b); if (el) el.setAttribute("aria-pressed", String(document.queryCommandState(c))); } }
-  function insertHTML(html) { page.focus(); document.execCommand("insertHTML", false, html); ED.dirty("word"); }
-  function insTable() { const r = Math.max(1, Math.min(50, parseInt(prompt(T("trows"), "3")) || 0)), c = Math.max(1, Math.min(12, parseInt(prompt(T("tcols"), "3")) || 0)); if (!r || !c) return;
-    insertHTML(`<table class="wd-tbl"><tbody>${Array.from({ length: r }, () => `<tr>${"<td><br></td>".repeat(c)}</tr>`).join("")}</tbody></table><p><br></p>`); }
-  const B = (id, label, title, fn) => h("button", { type: "button", class: "wd-b", id, title, "aria-label": title, onmousedown: e => e.preventDefault(), onclick: fn }, label);
-  async function alignFromDocx(buf) { // mammoth drops paragraph alignment; read w:jc ourselves and match paragraphs by text, in order
-    await load("jszip"); const z = await JSZip.loadAsync(buf); const xml = await z.file("word/document.xml").async("string");
-    const X = new DOMParser().parseFromString(xml, "application/xml"); const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
-    const blocks = [...page.querySelectorAll("p,h1,h2,h3,h4,h5,h6,li")]; let k = 0;
-    for (const wp of X.getElementsByTagNameNS(W, "p")) {
-      const txt = [...wp.getElementsByTagNameNS(W, "t")].map(t => t.textContent).join("").trim(); if (!txt) continue;
-      const jcEl = [...wp.getElementsByTagNameNS(W, "jc")].find(j => j.parentNode.localName === "pPr"); const jc = jcEl && jcEl.getAttributeNS(W, "val");
-      let j = k; while (j < blocks.length && blocks[j].textContent.trim() !== txt) j++; if (j >= blocks.length) continue; k = j + 1;
-      const al = { center: "center", right: "right", end: "right", both: "justify", distribute: "justify" }[jc]; if (al) blocks[j].style.textAlign = al;
-    }
-  }
-  return {
-    exts: () => ["docx"],
-    init(body) {
-      fontSel = h("select", { id: "wd-font", "aria-label": "Font", onchange: () => cmd("fontName", fontSel.value) }, ...FONTS.map(f => h("option", { value: f, style: `font-family:'${f}'` }, f)));
-      sizeSel = h("select", { id: "wd-size", "aria-label": "Size", onchange: () => setSize(sizeSel.value) }, ...[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48].map(s => h("option", { value: s, selected: s === 12 }, String(s))));
-      blockSel = h("select", { id: "wd-block", "aria-label": "Style", onchange: () => cmd("formatBlock", "<" + blockSel.value + ">") }, h("option", { value: "p" }, "Normal"), h("option", { value: "h1" }, "Heading 1"), h("option", { value: "h2" }, "Heading 2"), h("option", { value: "h3" }, "Heading 3"));
-      const color = h("input", { type: "color", id: "wd-color", value: "#000000", title: "Colour", "aria-label": "Colour", onchange: e => cmd("foreColor", e.target.value) });
-      imgIn = h("input", { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp", hidden: true, onchange: () => { const f = imgIn.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => insertHTML(`<img src="${r.result}" style="max-width:100%">`); r.readAsDataURL(f); imgIn.value = ""; } });
-      const tb = h("div", { class: "ed-tool wd-tool", role: "toolbar", "aria-label": "Formatting" },
-        B("wd-undo", "↶", T("undo"), () => cmd("undo")), B("wd-redo", "↷", T("redo"), () => cmd("redo")), h("span", { class: "sep" }),
-        blockSel, fontSel, sizeSel, h("span", { class: "sep" }),
-        B("wd-b", h("b", {}, "B"), "Bold (Ctrl+B)", () => cmd("bold")), B("wd-i", h("i", {}, "I"), "Italic (Ctrl+I)", () => cmd("italic")), B("wd-u", h("u", {}, "U"), "Underline (Ctrl+U)", () => cmd("underline")), color, h("span", { class: "sep" }),
-        B("wd-al", "⯇≡", "Align left", () => cmd("justifyLeft")), B("wd-ac", "≡", "Centre", () => cmd("justifyCenter")), B("wd-ar", "≡⯈", "Align right", () => cmd("justifyRight")), B("wd-aj", "☰", "Justify", () => cmd("justifyFull")), h("span", { class: "sep" }),
-        B("wd-ul", "• ≡", "Bullets", () => cmd("insertUnorderedList")), B("wd-ol", "1. ≡", "Numbering", () => cmd("insertOrderedList")), h("span", { class: "sep" }),
-        B("wd-tbl", "▦ " + T("tbl"), T("tbl"), insTable), B("wd-img", "🖼 " + T("img"), T("img"), () => imgIn.click()), B("wd-pb", "⤓ " + T("pb"), T("pb"), () => insertHTML('<hr class="ed-pb"><p><br></p>')), imgIn);
-      page = h("div", { class: "wd-page", id: "wd-page", contenteditable: "true", spellcheck: "true", role: "textbox", "aria-multiline": "true", "aria-label": T("word") });
-      page.addEventListener("input", () => ED.dirty("word")); document.addEventListener("selectionchange", () => { if (ED.tab === "word" && page.contains(document.getSelection().anchorNode)) sync(); });
-      page.addEventListener("paste", e => { const html = e.clipboardData.getData("text/html"); if (!html) return; e.preventDefault(); const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (a.name === "href" && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name); }); insertHTML(d.body.innerHTML); });
-      body.append(tb, h("div", { class: "wd-desk" }, page));
-    },
-    blank() { page.innerHTML = "<p><br></p>"; },
-    async load(buf) {
-      await load("mammoth");
-      const r = await mammoth.convertToHtml({ arrayBuffer: buf }, { styleMap: ["u => u", "strike => s", "p[style-name='Title'] => h1:fresh", "p[style-name='Subtitle'] => h2:fresh"], includeDefaultStyleMap: true });
-      const d = new DOMParser().parseFromString(r.value, "text/html"); d.querySelectorAll("script,style,iframe,object").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
-      d.querySelectorAll("table").forEach(t => t.classList.add("wd-tbl"));
-      page.innerHTML = d.body.innerHTML || "<p><br></p>";
-      try { await alignFromDocx(buf); } catch (e) { /* alignment is a nicety */ }
-    },
-    async export() { return { blob: await htmlToDocx(page) }; }
-  };
-})();
+ED.XE = XE; // the Word editor itself lives in ed-word.js
 /* ---------- Image ---------- */
 ED.kinds.image = (() => {
   let cv, ov, ctx, octx, tool = "pen", color, lw, bri, con, rw, rh, keep, undo = [], redo = [], drag = null, crop = null, curExt = "png", stage;

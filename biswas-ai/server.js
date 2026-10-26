@@ -26,11 +26,13 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "129";
+const BUILD = "130";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
-const EDITORS_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "editors.js"))).digest("hex").slice(0, 10);
-const PAGE_HTML = fs.readFileSync(PAGE, "utf8").replace(/\/attach\.js\?h=[^"]*/, "/attach.js?h=" + ATTACH_TAG).replace(/\/editors\.js\?h=[^"]*/, "/editors.js?h=" + EDITORS_TAG);
+// the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
+const ED_FILES = ["editors.js", ...fs.readdirSync(DIR).filter(f => /^ed-[a-z]+\.js$/.test(f)).sort()];
+const tagOf = f => crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, f))).digest("hex").slice(0, 10);
+const PAGE_HTML = ED_FILES.reduce((html, f) => html.replace(new RegExp("/" + f.replace(".", "\\.") + "\\?h=[^\"]*"), "/" + f + "?h=" + tagOf(f)), fs.readFileSync(PAGE, "utf8").replace(/\/attach\.js\?h=[^"]*/, "/attach.js?h=" + ATTACH_TAG));
 const FAVICON = fs.readFileSync(path.join(DIR, "favicon.svg"));
 const MAX_BODY = 12 * 1024 * 1024;
 // Security headers for the app page. The page has one inline <script>; it is allowed by its
@@ -956,7 +958,7 @@ const server = http.createServer(async (req, res) => {
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
-    if (url.pathname === "/editors.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "editors.js"))); return; }
+    if (ED_FILES.includes(url.pathname.slice(1))) { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, url.pathname.slice(1)))); return; }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
     if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store", "x-build": BUILD }).end("ok"); return; }
