@@ -358,6 +358,23 @@ export async function handle(req, res, url, body, send) {
   }
 
   const id = req.pdAs || session(req); // share upload-request links act on the owner's pendrive with a fixed op set
+  // Change the PIN: owner session only, the current PIN must match (wrong tries count toward the same lock as opening).
+  if (op === "pin") {
+    if (req.pdAs) fail(403, "forbidden");
+    checkPin(body.pin); checkPin(body.newPin);
+    return withLock(id, async () => {
+      const m = await meta(id);
+      if (m.lockUntil > Date.now()) fail(423, "locked", { retryAfter: Math.ceil((m.lockUntil - Date.now()) / 1000) });
+      const h = await scrypt(body.pin, m.salt);
+      if (!crypto.timingSafeEqual(Buffer.from(h, "hex"), Buffer.from(m.hash, "hex"))) {
+        m.fails = (m.fails || 0) + 1;
+        if (m.fails >= LOCK_TRIES) { m.fails = 0; m.lockUntil = Date.now() + LOCK_MS; await saveMeta(id, m); fail(423, "locked", { retryAfter: LOCK_MS / 1000 }); }
+        await saveMeta(id, m); fail(401, "wrong", { left: LOCK_TRIES - m.fails });
+      }
+      m.salt = hex(16); m.hash = await scrypt(body.newPin, m.salt); m.fails = 0; m.lockUntil = 0; await saveMeta(id, m);
+      return send(200, { ok: true });
+    });
+  }
   // Saved conversations (thread of questions, answers, edits, revisions). One small index + one JSON per conversation.
   // Owner only (PIN session); share links never reach these ops.
   if (op.startsWith("conv/")) {

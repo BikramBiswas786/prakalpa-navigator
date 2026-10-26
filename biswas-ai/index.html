@@ -242,6 +242,27 @@ dialog::backdrop { background: rgba(10, 10, 30, .45); }
 #v-draft:not([hidden]) { display: grid; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; }
 #v-draft .page-inner { min-height: 0; overflow: auto; max-width: none; width: 100%; }
 .nav-toggle { display: none; }
+
+/* AI Pendrive: no sidebar, the rail opens as a drawer from ☰; name + pendrive info live in the header */
+body.pd-wide .body { grid-template-columns: minmax(0, 1fr); }
+body.pd-wide .nav-toggle { display: inline-flex !important; }
+body.pd-wide .nav-toggle::before { content: "☰ "; }
+body.pd-wide .rail { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(300px, 88vw); transform: translateX(-105%); transition: transform .18s ease; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+body.pd-wide .rail.open { transform: none; }
+body.pd-wide button.brand > span, body.pd-wide button.brand > h1 { display: none; }
+body.pd-wide header.top { gap: 8px; }
+body.pd-wide #lang-label { display: none; }
+.pd-hdr { display: none; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+body.pd-wide .pd-hdr { display: flex; }
+.pd-hdr .hdr-who { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; white-space: nowrap; }
+.pd-hdr .hdr-who b { max-width: 14ch; overflow: hidden; text-overflow: ellipsis; }
+.pd-hdr .pd-top { margin: 0; gap: 8px; flex-wrap: nowrap; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2, transparent); }
+.pd-hdr .pd-top b { max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-hdr .pd-top .pd-usage { min-width: 90px; } .pd-hdr .pd-top .pd-bar { width: 60px; }
+.pd-hdr .btn.small { padding: 2px 8px; }
+#pd-pin-dlg { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--surface); color: inherit; max-width: 340px; }
+#pd-pin-dlg label { display: grid; gap: 4px; margin-bottom: 8px; } #pd-pin-dlg .row { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 900px) { .pd-hdr .pd-top .pd-usage { min-width: 70px; } .pd-hdr .pd-top { flex-wrap: wrap; border-radius: 10px; } .pd-hdr .hdr-who .btn { display: none; } }
 button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: inherit; font: inherit; }
 .rail-brand { display: grid; gap: 2px; }
 .rail-brand b { font-family: var(--f-display); font-size: 1.15rem; color: var(--accent); }
@@ -600,6 +621,11 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
       <button type="button" id="sec-public" aria-pressed="false" data-t="public">জনসাধারণ</button>
       <button type="button" id="sec-pendrive" aria-pressed="false" data-t="pd_tab">এআই পেনড্রাইভ</button>
     </div>
+    <div class="pd-hdr" id="pd-hdr">
+      <span class="hdr-who"><span aria-hidden="true">👤</span><b id="hdr-who-name"></b><button class="btn small" type="button" id="hdr-switch-user" data-t="switch_user"></button></span>
+      <span id="pd-top-slot"></span>
+      <button class="btn small" type="button" id="pd-chpin" hidden>🔑 PIN</button>
+    </div>
     <div class="langbox" role="group" aria-labelledby="lang-label">
       <span id="lang-label">ভাষা / Language</span>
       <div class="seg">
@@ -873,7 +899,8 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
           <p class="status-line" id="pd-start-msg" role="status"></p>
         </div>
         <div id="pd-main" hidden>
-          <div class="pd-top">
+          <div class="pd-top pd-anchor" hidden></div>
+          <div class="pd-top" id="pd-top-real">
             <b id="pd-name"></b>
             <div class="pd-usage"><div class="pd-bar"><i id="pd-bar"></i></div><span id="pd-used"></span></div>
             <button class="btn small" type="button" id="pd-close" data-t="pd_close"></button>
@@ -2560,6 +2587,7 @@ function showView() {
   $("#sec-office").setAttribute("aria-pressed", mode === "office");
   $("#sec-public").setAttribute("aria-pressed", mode === "public");
   $("#sec-pendrive").setAttribute("aria-pressed", mode === "pendrive");
+  document.body.classList.toggle("pd-wide", mode === "pendrive"); if (mode !== "pendrive") closeRail();
   $("#open-settings").hidden = mode !== "office";
   $("#subnav").hidden = mode === "pendrive";
   $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
@@ -3703,7 +3731,7 @@ function openHistory() {
 }
 function renderConv() {
   if (mode !== "ai" || tabs.ai !== "chat") return;
-  const name = $("#who-name"); if (name) name.textContent = userName || "";
+  const name = $("#who-name"); if (name) name.textContent = userName || ""; const hn = $("#hdr-who-name"); if (hn) hn.textContent = userName || "";
   const q = (($("#sheet-q") && $("#sheet-q").value) || "").trim().toLowerCase();
   const rows = threads.filter(t => (t.messages || []).length && !!t.archived === convArch && (!q || String(t.title || "").toLowerCase().includes(q)));
   const html = rows.length ? rows.map(t => convCard(t, "chat")).join("") : `<p class="lead">${esc(convArch ? t("arch_empty") : t("conv_empty"))}</p>`;
@@ -6338,7 +6366,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && pd.brForm 
 document.addEventListener("click", async e => {
   const el = s => e.target.closest(s);
   let x;
-  if (!el("#v-pendrive")) return;
+  if (!el("#v-pendrive") && !el("#pd-hdr")) return;
   try {
     if ((x = el("[data-pd-br]")) && !el(".pd-br-more")) { const b = x.dataset.pdBr; if (b !== pdBranch()) { pd.aiSel.clear(); pdAiSave(); } pdCd(pdBrRoot(b)); return; }
     if ((x = el("[data-pd-br-new]"))) { pd.brForm = true; renderPdList(); return; }
@@ -6437,6 +6465,31 @@ function resume() {
 }
 applyLang();
 resume();
+
+/* AI Pendrive header: pendrive name/usage/close and Change PIN sit in the top bar while the sidebar is hidden */
+(() => {
+  const top = $("#pd-top-real"), slot = $("#pd-top-slot"), main = $("#pd-main"), chpin = $("#pd-chpin");
+  if (!top || !slot || !main) return;
+  slot.replaceWith(top);
+  const sync = () => { top.hidden = main.hidden; chpin.hidden = main.hidden; };
+  new MutationObserver(sync).observe(main, { attributes: true, attributeFilter: ["hidden"] }); sync();
+  $("#hdr-switch-user").addEventListener("click", () => $("#switch-user").click());
+  const W = () => settings.lang === "en" ? { t: "Change pendrive PIN", o: "Current PIN", n: "New PIN (4–8 digits)", r: "New PIN again", go: "Change PIN", c: "Cancel", mm: "The new PINs do not match.", bad: "PIN must be 4–8 digits.", ok: "PIN changed. Use the new PIN next time.", wrong: "Current PIN is wrong." }
+    : { t: "পেনড্রাইভের PIN বদল", o: "এখনকার PIN", n: "নতুন PIN (৪–৮ সংখ্যা)", r: "নতুন PIN আবার", go: "PIN বদলান", c: "বাতিল", mm: "নতুন PIN দুটো মিলছে না।", bad: "PIN ৪–৮ সংখ্যার হতে হবে।", ok: "PIN বদলেছে। এরপর নতুন PIN দিন।", wrong: "এখনকার PIN ভুল।" };
+  chpin.addEventListener("click", () => {
+    const w = W(); const d = document.createElement("dialog"); d.id = "pd-pin-dlg";
+    const inp = id => `<input id="${id}" type="password" inputmode="numeric" maxlength="8" autocomplete="off" required>`;
+    d.innerHTML = `<form method="dialog"><h3 style="margin:0 0 10px">🔑 ${esc(w.t)}</h3><label>${esc(w.o)}${inp("pp-old")}</label><label>${esc(w.n)}${inp("pp-new")}</label><label>${esc(w.r)}${inp("pp-new2")}</label><p class="status-line" id="pp-msg" role="status"></p><div class="row"><button class="btn" type="button" id="pp-cancel">${esc(w.c)}</button><button class="btn primary" type="submit" id="pp-go">${esc(w.go)}</button></div></form>`;
+    document.body.append(d); d.showModal();
+    const fin = () => { d.close(); d.remove(); };
+    d.querySelector("#pp-cancel").onclick = fin; d.addEventListener("cancel", e => { e.preventDefault(); fin(); });
+    d.querySelector("form").addEventListener("submit", async e => { e.preventDefault(); const o = d.querySelector("#pp-old").value, n = d.querySelector("#pp-new").value, n2 = d.querySelector("#pp-new2").value, msg = d.querySelector("#pp-msg");
+      if (!/^\d{4,8}$/.test(n) || !/^\d{4,8}$/.test(o)) { msg.textContent = w.bad; return; } if (n !== n2) { msg.textContent = w.mm; return; }
+      d.querySelector("#pp-go").disabled = true;
+      try { await pdApi("pin", { pin: o, newPin: n }); fin(); toast(w.ok); }
+      catch (er) { msg.textContent = er && (er.code === "wrong" || er.status === 401) ? w.wrong : pdErrText(er); d.querySelector("#pp-go").disabled = false; } });
+  });
+})();
 </script>
 <script src="/attach.js?h=0" defer></script>
 <script src="/editors.js?h=0" defer></script>
