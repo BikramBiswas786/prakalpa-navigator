@@ -325,16 +325,17 @@ export function parseActions(text) {
 const HEX = v => /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(v || "")) ? String(v) : "";
 function imageAction(a) {
   if (!a || typeof a !== "object") return null;
-  const kind = ["text", "poster", "chart"].includes(a.kind) ? a.kind : "text";
+  const kind = ["text", "poster", "chart", "picture"].includes(a.kind) ? a.kind : "text";
+  const scene = String(a.scene || "").replace(/\s+/g, " ").trim().slice(0, 600);
   const text = String(a.text || "").slice(0, 20000), title = String(a.title || "").slice(0, 300);
   let chart = null;
   if (kind === "chart" && a.chart && Array.isArray(a.chart.labels) && Array.isArray(a.chart.values)) {
     const n = Math.min(a.chart.labels.length, a.chart.values.length, 40);
     chart = { type: ["bar", "line", "pie"].includes(a.chart.type) ? a.chart.type : "bar", labels: a.chart.labels.slice(0, n).map(x => String(x).slice(0, 40)), values: a.chart.values.slice(0, n).map(Number).map(v => isFinite(v) ? v : 0) };
   }
-  if (!text.trim() && !title.trim() && !chart) return null;
+  if (!text.trim() && !title.trim() && !chart && !scene) return null;
   let name = cleanPath(String(a.name || a.path || "AI image")).replace(/\.(png|jpe?g|webp)$/i, "") + ".png";
-  return { type: "image", kind: chart ? "chart" : kind === "chart" ? "text" : kind, path: name, format: "png", bg: HEX(a.bg) || "#ffffff", fg: HEX(a.fg) || "#111111", accent: HEX(a.accent) || "", align: a.align === "center" ? "center" : "left", title, text, chart };
+  return { type: "image", kind: chart ? "chart" : kind === "chart" ? "text" : kind, path: name, format: "png", bg: HEX(a.bg) || "#ffffff", fg: HEX(a.fg) || "#111111", accent: HEX(a.accent) || "", align: a.align === "center" ? "center" : "left", title, text, chart, scene: chart ? "" : scene };
 }
 // "write this as an image", "make a poster", "a chart of…", "…on a black background" — the user wants a picture back, not prose
 export const IMAGE_OUT_RE = /\b(make|create|generate|draw|write|render|put|turn|convert|give|produce|design|export|save)\b[^.?!\n]{0,140}\b(a|an|as|into|to|one)\s+((?!this\b|that\b|these\b|those\b|the\b|my\b|of\b)[\w-]+\s+){0,4}(image|picture|png|jpe?g|poster|chart|graph|banner|wallpaper)\b|\b(on|in|with|onto)\s+(a|an|one)?\s*([\w-]+\s+){0,3}background\b|ছবি\s*(বানা|তৈরি|কর)|ছবিতে|পোস্টার|চার্ট/i;
@@ -363,6 +364,7 @@ export function fmtRule(q, format) {
   if (wantsTable(q, format)) r.push("OUTPUT FORMAT (mandatory): the answer MUST contain a GitHub-style markdown table: a header row, then a separator row like | --- | --- |, then one row per item, every row starting and ending with |. Use short cell text, keep [file] citations in a 'File'/'ফাইল' column. Do not use HTML, tabs or code blocks for the table. A one-line intro before the table and short notes after it are fine.");
   if (format === "report") r.push("OUTPUT FORMAT: a structured report in markdown: a # title, ## sections (Summary, Details, Conclusion), bullet points, and a markdown table where data fits.");
   if (IMAGE_OUT_RE.test(String(q || ""))) r.push("OUTPUT: the user wants an IMAGE back. Reply with one short line, then the ```pendrive-image block holding the complete requested text (colours as asked). Do not add commentary inside the text.");
+  if (/tally|voucher|ভাউচার|ট্যালি/i.test(String(q || "")) && /\b(make|create|prepare|build|convert|export|import|entry|entries|বানাও|তৈরি)\b/i.test(String(q || ""))) r.push("OUTPUT FORMAT (Tally): give the vouchers as ONE markdown table with exactly these columns: | Date | Voucher type | Voucher no | Debit ledger | Credit ledger | Amount | Narration |. Dates as dd-mm-yyyy, Amount as a plain number. No total row. Then one line telling the user to press ⬇ Tally XML (in More) and import it in Tally (Gateway of Tally → Import → Vouchers).");
   if (format === "letter") r.push("OUTPUT FORMAT: a formal office letter/notesheet: To, Subject, salutation, body paragraphs, closing and signature lines. No tables unless asked.");
   return r.length ? "\n\n" + r.join("\n") : "";
 }
@@ -376,7 +378,9 @@ If the user asks for an IMAGE / picture / PNG / poster / notice / chart (for exa
 \`\`\`pendrive-image
 {"name":"Short name","kind":"text","bg":"#000000","fg":"#ffffff","title":"","text":"the full text, line breaks kept","align":"left"}
 \`\`\`
-kind is "text" (plain text on a background), "poster" (title + body, centred, for notices) or "chart" (add "chart":{"type":"bar|line|pie","labels":[...],"values":[numbers]}). Put the COMPLETE text in "text" in its original language and script; the app draws the PNG. Never say you cannot make images. Never claim you deleted or overwrote anything; the user confirms that in the app.`;
+kind is "picture" (a real AI-generated picture/photo/illustration), "text" (plain text on a background), "poster" (title + body, centred, for notices) or "chart" (add "chart":{"type":"bar|line|pie","labels":[...],"values":[numbers]}). Put the COMPLETE text in "text" in its original language and script; the app draws the PNG.
+When the user wants a real picture, photo, illustration, drawing of a scene, or a poster/banner/card with a picture, ALSO add "scene":"a short ENGLISH description of what to draw (people, place, objects, mood), with NO words or letters in it". The app generates that picture with an image model and writes your "title"/"text" on top of it (so Bengali stays correct). For a picture only, use kind "picture" with "scene" and empty "text". For a plain text image or a notice without a picture, leave "scene" out. Never say you cannot make images.
+Files whose text starts with "[Tally export]" are Tally Prime / Tally ERP 9 data already decoded for you: the summary lines give voucher totals by type, each ledger's Dr/Cr movement and GST ledgers, and the [Sheet: Vouchers] rows list every ledger entry. Answer ledger balances, voucher totals and GST questions from those numbers exactly and cite the file. Tally Excel/PDF exports are read like any sheet or PDF. Never claim you deleted or overwrote anything; the user confirms that in the app.`;
 
 /* ---------- API ---------- */
 export async function handle(req, res, url, body, send) {

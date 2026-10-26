@@ -87,7 +87,38 @@ function wrap(g, text, maxW) {
   }
   return lines;
 }
+/* real picture from the server's image model (free providers first); null when none answers */
+async function genPicture(prompt, w = 1216, h = 832) {
+  try {
+    const r = await fetch("/api/imagegen", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, w, h }) });
+    if (!r.ok) return null; const j = await r.json(); if (!j.b64) return null;
+    const bin = Uint8Array.from(atob(j.b64), ch => ch.charCodeAt(0));
+    return { bm: await createImageBitmap(new Blob([bin], { type: j.mime || "image/png" })), provider: j.provider };
+  } catch (e) { return null; }
+}
+// cover-fit the picture, then write the title/text on dark bands so Bengali and English stay exact
+async function drawScene(a) {
+  const W = 1216, H = 832, pic = await genPicture(a.scene, W, H); if (!pic) return null;
+  try { await document.fonts.load(`bold 56px ${FONT}`, "অআ abc"); await document.fonts.load(`30px ${FONT}`, "অআ abc"); } catch (e) { /* system fonts */ }
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const k = Math.max(W / pic.bm.width, H / pic.bm.height), dw = pic.bm.width * k, dh = pic.bm.height * k;
+  g.drawImage(pic.bm, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  const P = 48; g.textAlign = "center"; g.textBaseline = "top";
+  const band = (y0, y1, top) => { const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(top ? 0 : 1, "rgba(0,0,0,0.78)"); gr.addColorStop(top ? 1 : 0, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, y0, W, y1 - y0); };
+  if (a.title) {
+    let sz = 64, tl; for (;;) { g.font = `bold ${sz}px ${FONT}`; tl = wrap(g, a.title, W - 2 * P); if (tl.length * sz * 1.3 <= H * 0.32 || sz <= 28) break; sz -= 4; }
+    const th = tl.length * sz * 1.3 + P; band(0, th + 60, true);
+    g.fillStyle = "#ffffff"; g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = 6; let y = P * 0.7; for (const l of tl) { g.fillText(l, W / 2, y); y += sz * 1.3; } g.shadowBlur = 0;
+  }
+  if (a.text && a.text.trim()) {
+    let sz = 34, tl; for (;;) { g.font = `${sz}px ${FONT}`; tl = wrap(g, a.text, W - 2 * P); if (tl.length * sz * 1.45 <= H * 0.4 || sz <= 16) break; sz -= 2; }
+    const bh = tl.length * sz * 1.45 + P; band(H - bh - 60, H, false);
+    g.fillStyle = "#ffffff"; g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = 5; let y = H - bh + P * 0.4; for (const l of tl) { g.fillText(l, W / 2, y); y += sz * 1.45; } g.shadowBlur = 0;
+  }
+  c.dataset.provider = pic.provider || ""; return c;
+}
 async function draw(a) {
+  if (a.scene && a.kind !== "chart") { const c = await drawScene(a); if (c) return c; a.genFailed = true; if (a.kind === "picture" && !(a.title || a.text)) a.text = a.scene; }
   try { await document.fonts.load(`32px ${FONT}`, "অআ abc"); await document.fonts.load(`bold 48px ${FONT}`, "অআ abc"); } catch (e) { /* fall back to system fonts */ }
   const W = a.kind === "poster" ? 1240 : 1200, P = 64;
   const c = document.createElement("canvas"); let g = c.getContext("2d");
@@ -146,6 +177,8 @@ async function cards(out, actions) {
     out.append(box);
     const c = await draw(a); const blob = await toBlob(c); imgs.set(i, { blob, a });
     box.querySelector("img").src = URL.createObjectURL(blob); box.dataset.ready = "1"; box.dataset.w = c.width; box.dataset.h = c.height;
+    if (c.dataset.provider) { box.dataset.gen = c.dataset.provider; const n = document.createElement("small"); n.className = "muted"; n.textContent = L("Picture made by an AI image model; the text is written on top by the app.", "ছবিটি এআই ইমেজ মডেলে তৈরি; লেখা অ্যাপ নিজে বসিয়েছে।"); box.querySelector("img").after(n); }
+    else if (a.genFailed) { box.dataset.gen = "failed"; const n = document.createElement("small"); n.className = "muted"; n.textContent = L("The picture service is busy, so a text-only image was made. Ask again in a minute for a picture.", "ছবি তৈরির পরিষেবা ব্যস্ত, তাই শুধু লেখার ছবি দেওয়া হল। এক মিনিট পরে আবার চাইলে ছবি পাবেন।"); box.querySelector("img").after(n); }
   }
 }
 async function openInImage(blob, name) {
@@ -164,5 +197,6 @@ document.addEventListener("click", async e => {
   let path = it.a.path; if (!path.includes("/") && typeof pd !== "undefined" && pd.cwd) path = pd.cwd + "/" + path;
   pdQueue([{ file: new File([it.blob], name, { type: "image/png" }), path, text: it.a.text || "" }]); toast(t("pd_saved", path));
 });
+window.BA_IMG = { gen: genPicture };
 window.BA_OCR = { read, canOcr, draw, cards, openInImage, _state: () => ({ visionOff, tess: !!window.Tesseract }) };
 })();
