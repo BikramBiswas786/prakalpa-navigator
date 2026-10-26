@@ -31,6 +31,7 @@
   --f-doc: "Noto Serif", "Noto Serif Bengali", Georgia, serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --r: 10px;
+  --card: var(--surface); --bg: var(--surface); --tbl-line: #9aa4b2; --th: #dde4f2;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -40,6 +41,8 @@
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] { --tbl-line: #4d5570; --th: #2b2f45; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --tbl-line: #4d5570; --th: #2b2f45; } }
 :root[data-theme="dark"] {
   --paper: #12141b; --surface: #1a1d27; --sheet: #1f2230; --ink: #e5e7ef; --muted: #9ba2b5; --line: #2d3242;
   --accent: #a99df2; --accent-ink: #15122b; --accent-soft: #29254a; --user: #2a2650;
@@ -488,6 +491,32 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 @media (max-width: 900px) { .pd-grid.pd-flow { grid-template-columns: minmax(0, 1fr) !important; } .pd-out-doc { padding: 12px 14px; font-size: 15px; } }
 @media print { body.pd-printing * { visibility: hidden; } body.pd-printing #pd-out-doc, body.pd-printing #pd-out-doc * { visibility: visible; } body.pd-printing #pd-out-doc { position: absolute; left: 0; top: 0; overflow: visible; } }
 .pd-answer .src { font-size: .8rem; color: var(--muted); }
+/* readable answer panel in both themes (all text uses the theme ink/muted on the theme surface) */
+.pd-out { background: var(--surface); color: var(--ink); }
+.pd-out-doc, .pd-out-doc p, .pd-out-doc li, .pd-out-doc td, .pd-out-doc h1, .pd-out-doc h2, .pd-out-doc h3, .pd-out-doc h4, .pd-out-doc h5, .pd-out-doc h6, .pd-out-bar h3 { color: var(--ink); }
+.pd-out-doc th, .doc th { background: var(--th) !important; color: var(--ink); }
+.pd-out-doc th, .pd-out-doc td, .doc table th, .doc table td { border-color: var(--tbl-line) !important; }
+.pd-out-bar { background: var(--accent-soft) !important; }
+.pd-menu button:hover, .pd-out-hist button:hover { background: var(--accent-soft); }
+.pd-br-new { color: var(--accent); }
+.pd-cite { color: var(--accent); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; font: inherit; font-size: .85em; cursor: pointer; }
+.pd-out-doc[contenteditable="true"] { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; background: var(--sheet); }
+.pd-edit-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--accent-soft); position: sticky; bottom: 0; }
+.pd-edit-bar .sp { flex: 1; } .pd-edit-bar .hint { text-align: left; color: var(--ink); }
+.pd-revise { display: grid; gap: 6px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.pd-revise label { font-weight: 600; font-size: 14px; color: var(--ink); }
+.pd-revise .row { display: flex; gap: 8px; align-items: flex-end; } .pd-revise textarea { flex: 1; font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; resize: vertical; min-height: 44px; }
+.pd-out-hist { padding: 10px 14px 12px; } .pd-out-hist h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.pd-out-hist ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.pd-out-hist button { color: var(--ink); white-space: normal; } .pd-out-hist .k { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 0 7px; margin-right: 6px; background: var(--accent-soft); color: var(--accent); } .pd-out-hist small { color: var(--muted); margin-left: 6px; }
+.pd-convs { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin: 0 0 12px; }
+.pd-convs > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 14px; flex-wrap: wrap; } .pd-convs > summary::-webkit-details-marker { display: none; }
+.pd-convs > summary b { font-size: 15px; } .pd-convs > summary .cur { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-convs > summary::after { content: "▾"; color: var(--muted); } .pd-convs[open] > summary::after { content: "▴"; }
+.pd-conv-list { list-style: none; margin: 0; padding: 0 8px 8px; display: grid; gap: 4px; max-height: 320px; overflow: auto; }
+.pd-conv-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; } .pd-conv-row[aria-current="true"] { background: var(--accent-soft); }
+.pd-conv-row .t { flex: 1; min-width: 0; display: flex; flex-direction: column; } .pd-conv-row .t b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--ink); } .pd-conv-row .t small { color: var(--muted); font-size: 12px; }
+.pd-conv-row .pd-br-more { position: relative; } .pd-conv-empty { color: var(--muted); font-size: 14px; padding: 4px 14px 12px; margin: 0; }
 .pd-act { border: 1px solid var(--accent); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
 @media (max-width: 900px) { .pd-two, .pd-grid { grid-template-columns: minmax(0, 1fr); } .pd-wrap { padding: 10px; } .pd-list th:nth-child(4), .pd-list td:nth-child(4) { display: none; } }
 @media print { .app > header, .subnav, .rail, #scrim, #lock { display: none !important; } .body, .stage { display: block; } }
@@ -783,6 +812,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
             <div class="pd-usage"><div class="pd-bar"><i id="pd-bar"></i></div><span id="pd-used"></span></div>
             <button class="btn small" type="button" id="pd-close" data-t="pd_close"></button>
           </div>
+          <details class="pd-convs" id="pd-convs"></details>
           <section class="pd-home" id="pd-home" hidden aria-labelledby="pd-home-h"></section>
           <div class="pd-grid pd-3 pd-flow" id="pd-work">
             <div class="pd-files">
@@ -837,6 +867,8 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
                 <button class="btn small primary" type="button" data-pd-out="pdf">⬇ PDF</button>
                 <button class="btn small" type="button" data-pd-out="csv" id="pd-out-csv">⬇ Excel/CSV</button>
                 <button class="btn small" type="button" data-pd-out="copy" data-t="pd_out_copy"></button>
+                <button class="btn small" type="button" data-pd-out="edit" id="pd-edit-btn" data-t="pd_ed"></button>
+                <button class="btn small" type="button" data-pd-out="conv" data-t="pd_cv_save"></button>
                 <details class="pd-more"><summary class="btn small" data-t="pd_moremenu"></summary><div class="pd-menu">
                   <button type="button" data-pd-out="txt">⬇ .txt</button>
                   <button type="button" data-pd-out="md">⬇ .md</button>
@@ -847,7 +879,21 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
               </div>
               <div class="pd-answer" id="pd-answer"></div>
               <div class="pd-out-doc doc" id="pd-out-doc"></div>
-              <details class="pd-out-hist" id="pd-out-hist"><summary data-t="pd_out_hist"></summary><div id="pd-out-list"></div></details>
+              <div class="pd-edit-bar" id="pd-edit-bar" hidden>
+                <button class="btn small" type="button" data-pd-fmt="bold" aria-label="Bold"><b>B</b></button>
+                <button class="btn small" type="button" data-pd-fmt="italic" aria-label="Italic"><i>I</i></button>
+                <button class="btn small" type="button" data-pd-fmt="insertUnorderedList" aria-label="Bulleted list">• ≡</button>
+                <button class="btn small" type="button" data-pd-fmt="insertOrderedList" aria-label="Numbered list">1. ≡</button>
+                <span class="hint sp" data-t="pd_ed_hint"></span>
+                <button class="btn small" type="button" data-pd-ed="cancel" data-t="pd_ed_cancel"></button>
+                <button class="btn small primary" type="button" data-pd-ed="save" data-t="pd_ed_save"></button>
+              </div>
+              <form class="pd-revise" id="pd-revise">
+                <label for="pd-rev-q" data-t="pd_rev_h"></label>
+                <div class="row"><textarea id="pd-rev-q" rows="2" maxlength="2000"></textarea><button class="btn primary" type="submit" id="pd-rev-go" data-t="pd_rev_go"></button></div>
+                <div class="pd-progress" id="pd-rev-progress" aria-live="polite"></div>
+              </form>
+              <section class="pd-out-hist" id="pd-out-hist"><h4 data-t="pd_thread"></h4><ol id="pd-out-list"></ol></section>
             </section>
           </div>
         </div>
@@ -5191,7 +5237,7 @@ Object.assign(STR.bn, {
   pd_sh_folder: "কোন ফোল্ডারে আসবে", pd_sh_maxf: "সর্বোচ্চ ফাইল", pd_sh_maxmb: "প্রতি ফাইল সর্বোচ্চ (MB)", pd_sh_none: "এখনো কোনো লিংক নেই।", pd_sh_dl: n => `${n} বার ডাউনলোড`, pd_sh_up: n => `${n}টি ফাইল এসেছে`, pd_sh_act: "সাম্প্রতিক কার্যকলাপ", pd_sh_ev: { download: "ডাউনলোড", zip: "ZIP ডাউনলোড", upload: "আপলোড", ai: "AI প্রশ্ন" },
   pd_sh_state: { active: "চালু", revoked: "বন্ধ", expired: "মেয়াদ শেষ", limit: "সীমা শেষ" }, pd_sh_today: (a, b) => `আজকের শেয়ার ডাউনলোড: ${a} / ${b}`, pd_sh_kind_up: "ফাইল চাওয়া", pd_sh_kind_sh: "শেয়ার",
   pd_dl_row: "ডাউনলোড", pd_dl_zip_row: "ZIP হিসেবে ডাউনলোড", pd_dl_sel: "⬇ বাছাই করা ডাউনলোড", pd_dl_prep: "ZIP তৈরি হচ্ছে…", pd_dl_prog: (a, b, x, y) => `${a}/${b}টি ফাইল · ${x} / ${y}`, pd_dl_done: n => `ডাউনলোড শেষ: ${n}`, pd_dl_fail: e => `ডাউনলোড হয়নি: ${e}`, pd_dl_cancel: "বাতিল", pd_dl_big: n => `এই ফোল্ডারটি ${n}। এই ব্রাউজারে বড় ZIP সরাসরি ডিস্কে লেখা যায় না, পুরোটা মেমরিতে রাখতে হবে (২ GB-র বেশি হলে আটকে যেতে পারে)। Chrome/Edge ডেস্কটপে চেষ্টা করুন। তবুও চালাবেন?`, pd_dl_empty: "এই ফোল্ডারে কোনো ফাইল নেই", pd_ctx_ai: "🤖 AI-র জন্য বাছুন / সরান", pd_ctx_open: "খুলুন",
-  pd_moremenu: "আরও ▾", pd_br: "শাখা:", pd_br_home: "শাখাসমূহ", pd_br_home_p: "প্রতিটা শাখা আলাদা কাজের জায়গা, নিজের ফাইল-ফোল্ডার আর নিজের AI নিয়ে। একটা শাখা খুলুন বা নতুন বানান।", pd_br_back: "← সব শাখা", pd_br_go: "খুলুন →", pd_br_dl: "⬇ পুরো শাখা (zip)", pd_br_nfiles: n => `${n}টি ফাইল`, pd_br_upd: d => `শেষ বদল: ${d}`, pd_br_empty: "এখনও খালি", pd_br_default: "আগের সব ফাইল এখানে", pd_br_main: "মূল", pd_br_new: "+ নতুন শাখা", pd_br_ph: "শাখার নাম", pd_br_make: "তৈরি করুন", pd_br_cancel: "বাতিল", pd_br_ren: "✏️ নাম বদলান", pd_br_del: "🗑 শাখা মুছুন", pd_br_ren_q: "শাখার নতুন নাম?", pd_br_del_q: (b, n) => n ? `"${b}" শাখায় ${n}টি ফাইল আছে। শাখা মুছলে এই সব ফাইলও চিরতরে মুছে যাবে। সত্যিই মুছবেন?` : `"${b}" শাখা মুছবেন? (খালি)`, pd_br_bad: "এই নাম চলবে না (/ \\ : * ? \" < > | বাদ দিন)", pd_br_exists: "এই নামে শাখা আগে থেকেই আছে", pd_br_made: b => `শাখা তৈরি: ${b}`, pd_br_gone: b => `শাখা মোছা হল: ${b}`, pd_out_h: "📄 উত্তর", pd_out_copy: "কপি", pd_out_share: "শেয়ার", pd_out_save: "💾 পেনড্রাইভে রাখুন", pd_out_hist: "আগের ফলাফল", pd_out_empty: "AI-কে প্রশ্ন করলে উত্তর এখানে সুন্দর করে সাজানো দেখাবে। তারপর Word, PDF, Excel বা পেনড্রাইভে রাখতে পারবেন।", pd_out_copied: "কপি হয়েছে", pd_out_notable: "এই ফলাফলে কোনো টেবিল নেই", pd_out_save_q: "পেনড্রাইভে কোন নামে রাখবেন? (.docx, .md, .txt বা .csv)", pd_out_save_ok: p => `পেনড্রাইভে রাখা হচ্ছে: ${p}`, pd_out_none: "আগে AI-কে কিছু জিজ্ঞেস করুন", pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
+  pd_moremenu: "আরও ▾", pd_ed: "✎ এডিট", pd_ed_save: "সেভ", pd_ed_cancel: "বাতিল", pd_ed_hint: "উত্তরের মধ্যেই লিখুন। সেভ করলে ডাউনলোডে এই লেখাই যাবে।", pd_ed_saved: "এডিট সেভ হয়েছে", pd_rev_h: "AI দিয়ে বদলান", pd_rev_go: "AI দিয়ে বদলান", pd_rev_ph: "যেমন: আরও ছোট করুন, একটা টেবিল যোগ করুন…", pd_thread: "এই কথোপকথন", pd_k_ask: "প্রশ্ন", pd_k_edit: "এডিট", pd_k_revise: "বদল", pd_cv_save: "💾 কথোপকথনে রাখুন", pd_cv_saved: "কথোপকথনে রাখা হয়েছে", pd_cv_h: "💬 কথোপকথন", pd_cv_new: "+ নতুন কথোপকথন", pd_cv_open: "খুলুন", pd_cv_ren: "নাম বদল", pd_cv_del: "মুছুন", pd_cv_del_q: n => `"${n}" কথোপকথনটা মুছবেন? এটা ফেরানো যাবে না।`, pd_cv_ren_q: "নতুন নাম", pd_cv_none: "এখনও কোনো কথোপকথন রাখা হয়নি। উত্তরের নিচে “কথোপকথনে রাখুন” চাপুন।", pd_cv_cur: n => "খোলা: " + n, pd_cv_turns: n => `${n}টা ধাপ`, pd_br: "শাখা:", pd_br_home: "শাখাসমূহ", pd_br_home_p: "প্রতিটা শাখা আলাদা কাজের জায়গা, নিজের ফাইল-ফোল্ডার আর নিজের AI নিয়ে। একটা শাখা খুলুন বা নতুন বানান।", pd_br_back: "← সব শাখা", pd_br_go: "খুলুন →", pd_br_dl: "⬇ পুরো শাখা (zip)", pd_br_nfiles: n => `${n}টি ফাইল`, pd_br_upd: d => `শেষ বদল: ${d}`, pd_br_empty: "এখনও খালি", pd_br_default: "আগের সব ফাইল এখানে", pd_br_main: "মূল", pd_br_new: "+ নতুন শাখা", pd_br_ph: "শাখার নাম", pd_br_make: "তৈরি করুন", pd_br_cancel: "বাতিল", pd_br_ren: "✏️ নাম বদলান", pd_br_del: "🗑 শাখা মুছুন", pd_br_ren_q: "শাখার নতুন নাম?", pd_br_del_q: (b, n) => n ? `"${b}" শাখায় ${n}টি ফাইল আছে। শাখা মুছলে এই সব ফাইলও চিরতরে মুছে যাবে। সত্যিই মুছবেন?` : `"${b}" শাখা মুছবেন? (খালি)`, pd_br_bad: "এই নাম চলবে না (/ \\ : * ? \" < > | বাদ দিন)", pd_br_exists: "এই নামে শাখা আগে থেকেই আছে", pd_br_made: b => `শাখা তৈরি: ${b}`, pd_br_gone: b => `শাখা মোছা হল: ${b}`, pd_out_h: "📄 উত্তর", pd_out_copy: "কপি", pd_out_share: "শেয়ার", pd_out_save: "💾 পেনড্রাইভে রাখুন", pd_out_hist: "আগের ফলাফল", pd_out_empty: "AI-কে প্রশ্ন করলে উত্তর এখানে সুন্দর করে সাজানো দেখাবে। তারপর Word, PDF, Excel বা পেনড্রাইভে রাখতে পারবেন।", pd_out_copied: "কপি হয়েছে", pd_out_notable: "এই ফলাফলে কোনো টেবিল নেই", pd_out_save_q: "পেনড্রাইভে কোন নামে রাখবেন? (.docx, .md, .txt বা .csv)", pd_out_save_ok: p => `পেনড্রাইভে রাখা হচ্ছে: ${p}`, pd_out_none: "আগে AI-কে কিছু জিজ্ঞেস করুন", pd_ai_h: "AI দিয়ে কাজ", pd_ai_add: "🤖 AI-র জন্য বাছুন", pd_ai_btn: "AI-র জন্য", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI ব্যবহার করবে:", pd_ai_whole: n => `কিছু বাছা নেই, তাই AI পুরো পেনড্রাইভ (${n}টি ফাইল) পড়বে। নির্দিষ্ট ফোল্ডার/ফাইল দিতে সারিতে "AI-র জন্য" টিপুন।`, pd_ai_clear: "সব সরান", pd_ai_nfiles: n => `${n}টি ফাইল`, pd_ai_used: "AI যে ফাইলগুলো পড়েছে", pd_ai_none_in: "বাছা ফোল্ডারে কোনো ফাইল নেই।", pd_up: "উপরে", pd_back: "পিছনে", pd_scope: "কোন ফাইল পড়বে", pd_scope_sel: "বেছে নেওয়া ফাইল", pd_scope_folder: "এই ফোল্ডার", pd_scope_all: "পুরো পেনড্রাইভ",
   pd_mode: "কাজের ধরন", pd_mode_ask: "প্রশ্ন (দরকারি অংশ খুঁজে)", pd_mode_analyse: "সব ফাইল বিশ্লেষণ", pd_ask: "AI-কে বলুন", pd_q_ph: "যেমন: বারাসতের জমির মামলার শুনানি কবে? বা: সব ফাইলের সারাংশ করে একটা নোটশিট লিখুন।",
   pd_pin_mismatch: "দুটো PIN মিলছে না।", pd_bad_pin: "PIN ৪ থেকে ৮টা সংখ্যার হতে হবে।", pd_bad_name: "নাম ৩ থেকে ৬০ অক্ষরের হতে হবে।", pd_name_taken: "এই নামে পেনড্রাইভ আগেই আছে। অন্য নাম দিন।",
   pd_wrong: n => `নাম বা PIN ভুল।${n != null ? ` আর ${n} বার চেষ্টা করা যাবে।` : ""}`, pd_locked: m => `অনেকবার ভুল PIN। ${m} মিনিট পরে আবার চেষ্টা করুন।`, pd_expired: "সময় শেষ, আবার PIN দিয়ে খুলুন।",
@@ -5219,7 +5265,7 @@ Object.assign(STR.en, {
   pd_sh_folder: "Save into folder", pd_sh_maxf: "Max files", pd_sh_maxmb: "Max size per file (MB)", pd_sh_none: "No links yet.", pd_sh_dl: n => `${n} downloads`, pd_sh_up: n => `${n} files received`, pd_sh_act: "Recent activity", pd_sh_ev: { download: "Downloaded", zip: "Downloaded ZIP", upload: "Uploaded", ai: "AI question" },
   pd_sh_state: { active: "Active", revoked: "Revoked", expired: "Expired", limit: "Limit reached" }, pd_sh_today: (a, b) => `Today's share downloads: ${a} / ${b}`, pd_sh_kind_up: "Request", pd_sh_kind_sh: "Share",
   pd_dl_row: "Download", pd_dl_zip_row: "Download as ZIP", pd_dl_sel: "⬇ Download selected", pd_dl_prep: "Making ZIP…", pd_dl_prog: (a, b, x, y) => `${a}/${b} files · ${x} / ${y}`, pd_dl_done: n => `Downloaded: ${n}`, pd_dl_fail: e => `Download failed: ${e}`, pd_dl_cancel: "Cancel", pd_dl_big: n => `This folder is ${n}. This browser can't write a big ZIP straight to disk, so it must be held in memory (may fail above 2 GB). Chrome/Edge on desktop works best. Continue?`, pd_dl_empty: "This folder has no files", pd_ctx_ai: "🤖 Select / unselect for AI", pd_ctx_open: "Open",
-  pd_moremenu: "More ▾", pd_br: "Branch:", pd_br_home: "Branches", pd_br_home_p: "Each branch is a separate workspace with its own files, folders and AI. Open a branch or make a new one.", pd_br_back: "← All branches", pd_br_go: "Open →", pd_br_dl: "⬇ Whole branch (zip)", pd_br_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_br_upd: d => `Updated ${d}`, pd_br_empty: "Empty so far", pd_br_default: "All earlier files are here", pd_br_main: "Main", pd_br_new: "+ New branch", pd_br_ph: "Branch name", pd_br_make: "Create", pd_br_cancel: "Cancel", pd_br_ren: "✏️ Rename branch", pd_br_del: "🗑 Delete branch", pd_br_ren_q: "New name for the branch?", pd_br_del_q: (b, n) => n ? `Branch "${b}" has ${n} file(s). Deleting the branch deletes all of them for good. Delete it?` : `Delete the empty branch "${b}"?`, pd_br_bad: "That name can't be used (avoid / \\ : * ? \" < > |)", pd_br_exists: "A branch with this name already exists", pd_br_made: b => `Branch created: ${b}`, pd_br_gone: b => `Branch deleted: ${b}`, pd_out_h: "📄 Answer", pd_out_copy: "Copy", pd_out_share: "Share", pd_out_save: "💾 Save to pendrive", pd_out_hist: "Recent outputs", pd_out_empty: "Ask the AI and the answer appears here as a formatted document. Then export to Word, PDF, Excel or save it to the pendrive.", pd_out_copied: "Copied", pd_out_notable: "This output has no table", pd_out_save_q: "Save to the pendrive as? (.docx, .md, .txt or .csv)", pd_out_save_ok: p => `Saving to pendrive: ${p}`, pd_out_none: "Ask the AI something first", pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
+  pd_moremenu: "More ▾", pd_ed: "✎ Edit", pd_ed_save: "Save", pd_ed_cancel: "Cancel", pd_ed_hint: "Type in the answer. After Save, downloads use this text.", pd_ed_saved: "Edit saved", pd_rev_h: "Revise with AI", pd_rev_go: "Revise with AI", pd_rev_ph: "e.g. make it shorter, add a table…", pd_thread: "This conversation", pd_k_ask: "Asked", pd_k_edit: "Edited", pd_k_revise: "Revised", pd_cv_save: "💾 Save to conversation", pd_cv_saved: "Saved to conversation", pd_cv_h: "💬 Conversations", pd_cv_new: "+ New conversation", pd_cv_open: "Open", pd_cv_ren: "Rename", pd_cv_del: "Delete", pd_cv_del_q: n => `Delete the conversation "${n}"? This cannot be undone.`, pd_cv_ren_q: "New name", pd_cv_none: "No saved conversations yet. Use “Save to conversation” under an answer.", pd_cv_cur: n => "Open: " + n, pd_cv_turns: n => `${n} step${n === 1 ? "" : "s"}`, pd_br: "Branch:", pd_br_home: "Branches", pd_br_home_p: "Each branch is a separate workspace with its own files, folders and AI. Open a branch or make a new one.", pd_br_back: "← All branches", pd_br_go: "Open →", pd_br_dl: "⬇ Whole branch (zip)", pd_br_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_br_upd: d => `Updated ${d}`, pd_br_empty: "Empty so far", pd_br_default: "All earlier files are here", pd_br_main: "Main", pd_br_new: "+ New branch", pd_br_ph: "Branch name", pd_br_make: "Create", pd_br_cancel: "Cancel", pd_br_ren: "✏️ Rename branch", pd_br_del: "🗑 Delete branch", pd_br_ren_q: "New name for the branch?", pd_br_del_q: (b, n) => n ? `Branch "${b}" has ${n} file(s). Deleting the branch deletes all of them for good. Delete it?` : `Delete the empty branch "${b}"?`, pd_br_bad: "That name can't be used (avoid / \\ : * ? \" < > |)", pd_br_exists: "A branch with this name already exists", pd_br_made: b => `Branch created: ${b}`, pd_br_gone: b => `Branch deleted: ${b}`, pd_out_h: "📄 Answer", pd_out_copy: "Copy", pd_out_share: "Share", pd_out_save: "💾 Save to pendrive", pd_out_hist: "Recent outputs", pd_out_empty: "Ask the AI and the answer appears here as a formatted document. Then export to Word, PDF, Excel or save it to the pendrive.", pd_out_copied: "Copied", pd_out_notable: "This output has no table", pd_out_save_q: "Save to the pendrive as? (.docx, .md, .txt or .csv)", pd_out_save_ok: p => `Saving to pendrive: ${p}`, pd_out_none: "Ask the AI something first", pd_ai_h: "Work with AI", pd_ai_add: "🤖 Select for AI", pd_ai_btn: "Select for AI", pd_ai_btn_on: "✓ AI", pd_ai_uses: "AI will use:", pd_ai_whole: n => `Nothing selected, so the AI will read the whole pendrive (${n} files). Press "Select for AI" on a row to pick folders or files.`, pd_ai_clear: "Clear", pd_ai_nfiles: n => `${n} file${n === 1 ? "" : "s"}`, pd_ai_used: "Files the AI used", pd_ai_none_in: "The selected folders have no files.", pd_up: "Up", pd_back: "Back", pd_scope: "Files to read", pd_scope_sel: "Selected files", pd_scope_folder: "This folder", pd_scope_all: "Whole pendrive",
   pd_mode: "Task", pd_mode_ask: "Question (finds the relevant parts)", pd_mode_analyse: "Analyse every file", pd_ask: "Ask the AI", pd_q_ph: "e.g. When is the hearing in the Barasat land case? Or: summarise all files and write a notesheet.",
   pd_pin_mismatch: "The two PINs don't match.", pd_bad_pin: "The PIN must be 4 to 8 digits.", pd_bad_name: "The name must be 3 to 60 characters.", pd_name_taken: "A pendrive with this name already exists. Pick another name.",
   pd_wrong: n => `Wrong name or PIN.${n != null ? ` ${n} tries left.` : ""}`, pd_locked: m => `Too many wrong PINs. Try again in ${m} minutes.`, pd_expired: "Session ended. Open it again with the PIN.",
@@ -5274,7 +5320,7 @@ function renderPendrive() {
   const on = !!pd.token;
   $("#pd-start").hidden = on; $("#pd-main").hidden = !on;
   $("#pd-q").placeholder = t("pd_q_ph");
-  if (on) { $("#pd-name").textContent = pd.name; renderPdList(); if (!pd.loaded) { pd.loaded = true; pdRefresh().catch(e => toast(pdErrText(e))); } }
+  if (on) { $("#pd-name").textContent = pd.name; renderPdList(); if (!pd.loaded) { pd.loaded = true; pdRefresh().catch(e => toast(pdErrText(e))); pdConvList(); } renderPdConvs(); }
 }
 /* branches. A branch is the folder "⎇/<name>"; the default branch ("Main") is everything outside "⎇". Existing files never move. */
 const PD_BR = "⎇";
@@ -5571,8 +5617,8 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") pdMenuClose(
 /* ---- output panel ---- */
 pd.outs = []; pd.outCur = -1;
 const pdOutKey = () => "pd:out:" + (pd.name || "").toLowerCase();
-function pdOutLoad() { try { pd.outs = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); } catch (e) { pd.outs = []; } pd.outCur = pd.outs.length ? 0 : -1; pd.outShown = false; renderPdOut(); }
-function pdOutSave() { try { localStorage.setItem(pdOutKey(), JSON.stringify(pd.outs.slice(0, 20))); } catch (e) { /* full */ } }
+function pdOutLoad() { try { const j = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); pd.outs = Array.isArray(j) ? j : (j.outs || []); pd.conv = Array.isArray(j) ? null : (j.conv || null); } catch (e) { pd.outs = []; pd.conv = null; } pd.outCur = pd.outs.length ? 0 : -1; pd.outShown = false; renderPdOut(); }
+function pdOutSave() { try { localStorage.setItem(pdOutKey(), JSON.stringify({ outs: pd.outs.slice(0, 20), conv: pd.conv || null })); } catch (e) { /* full */ } }
 /* make any table the AI returns (HTML, tab-separated, pipes without a separator row) a GitHub markdown table */
 function pdNormTables(md) {
   let s = String(md || "").replace(/\r/g, "");
@@ -5604,7 +5650,7 @@ function pdNormTables(md) {
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-function pdOutAdd(md, sources, cites) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); }
+function pdOutAdd(md, sources, cites, opt = {}) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: (opt.q != null ? opt.q : ($("#pd-q").value || "").trim()).slice(0, 2000), kind: opt.kind || "ask", at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 60); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); if (pd.conv) pdConvSave(true).catch(() => {}); }
 // [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
 function pdLocLabel(l) { if (!l) return ""; const en = settings.lang === "en"; if (l.page) return (en ? "p. " : "পৃ. ") + l.page; if (l.sheet) return `${l.sheet} ${en ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}`; if (l.h) return l.h.split(" › ").pop(); return ""; }
 function pdChipify(root, cites) {
@@ -5625,8 +5671,9 @@ function renderPdOut() {
   if (o && o.cites && o.cites.length) pdChipify(doc, o.cites);
   const hasTable = !!(o && parseMd(o.md).some(b => b.t === "table")); const c = $("#pd-out-csv"); c.disabled = !hasTable; c.title = hasTable ? "" : t("pd_out_notable");
   document.querySelectorAll("[data-pd-out]").forEach(b => { if (b.dataset.pdOut !== "csv") b.disabled = !o; });
-  $("#pd-out-list").innerHTML = pd.outs.map((x, i) => `<button type="button" data-pd-outh="${i}" ${i === pd.outCur ? 'aria-current="true"' : ""}>${esc(new Date(x.at).toLocaleString())} · ${esc(x.q || x.md.slice(0, 60))}</button>`).join("");
-  $("#pd-out-hist").hidden = !pd.outs.length;
+  $("#pd-out-list").innerHTML = pd.outs.map((x, i) => [x, i]).reverse().map(([x, i]) => `<li><button type="button" data-pd-outh="${i}" ${i === pd.outCur ? 'aria-current="true"' : ""}><span class="k">${esc(t("pd_k_" + (x.kind || "ask")))}</span>${esc((x.q || x.md).slice(0, 140))}<small>${esc(new Date(x.at).toLocaleString(settings.lang === "bn" ? "bn-IN" : "en-IN", { dateStyle: "medium", timeStyle: "short" }))}</small></button></li>`).join("");
+  $("#pd-out-hist").hidden = pd.outs.length < 2;
+  pd.editing = false; doc.contentEditable = "false"; $("#pd-edit-bar").hidden = true; $("#pd-revise").hidden = !o; $("#pd-rev-q").placeholder = t("pd_rev_ph");
 }
 const pdCsvCell = v => /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 function pdOutCsv(md) { return "\ufeff" + parseMd(md).filter(b => b.t === "table").map(b => b.rows.map(r => r.map(c => pdCsvCell(plain(c))).join(",")).join("\r\n")).join("\r\n\r\n") + "\r\n"; }
@@ -5644,6 +5691,8 @@ async function pdOutAct(a) {
     if (navigator.share) { try { await navigator.share({ title: o.q || "AI", text: pdOutText() }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     try { await navigator.clipboard.writeText(pdOutText()); } catch (e) { /* ignore */ } toast(t("pd_out_copied")); return;
   }
+  if (a === "edit") return pdEditStart();
+  if (a === "conv") { await pdConvSave(false); toast(t("pd_cv_saved")); return; }
   if (a === "save") {
     let path = prompt(t("pd_out_save_q"), (pd.cwd ? pd.cwd + "/" : "") + pdOutBase() + ".docx"); if (!path || !path.trim()) return;
     path = path.trim().replace(/^\/+/, ""); let fmt = (path.match(/\.(docx|md|txt|csv)$/i) || [])[1]; if (!fmt) { fmt = "docx"; path += ".docx"; } fmt = fmt.toLowerCase();
@@ -6085,16 +6134,92 @@ async function pdAsk() {
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.classList.remove("idle"); prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
-    const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang, skillNote: window.BA ? (BA.lastPdQ = String(($("#pd-q") || {}).value || ""), BA.addendum()) : "" }) });
-    if (!r.ok) { const j = await r.json().catch(() => ({})); const e = new Error(j.error || "http_" + r.status); e.info = j; throw e; }
-    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
-    for (;;) {
-      const { value, done } = await reader.read(); if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); if (line.trim()) pdAiEvent(JSON.parse(line)); }
-    }
+    await pdAiStream({ question: q, scope, mode: $("#pd-mode").value, format: ($("#pd-fmt") || {}).value || "auto", lang: settings.lang, skillNote: window.BA ? (BA.lastPdQ = String(($("#pd-q") || {}).value || ""), BA.addendum()) : "" }, pdAiEvent);
   } catch (e) { prog.classList.add("idle"); prog.innerHTML = `<span>${esc(pdErrText(e))}</span>`; }
   $("#pd-ask").disabled = false;
+}
+/* Edit in place: the answer becomes editable (rich text); Save turns it back into markdown as a new "edited" step. */
+function pdEditStart() {
+  const doc = $("#pd-out-doc"); if (!doc || pd.editing) return; pd.editing = true;
+  doc.querySelectorAll(".pd-used").forEach(e => e.remove());
+  doc.contentEditable = "true"; $("#pd-edit-bar").hidden = false; $("#pd-revise").hidden = true; doc.focus();
+}
+function pdHtmlToMd(root) {
+  const inl = n => [...n.childNodes].map(c => {
+    if (c.nodeType === 3) return c.nodeValue.replace(/\s+/g, " ");
+    if (c.nodeType !== 1 || /^(SCRIPT|STYLE)$/.test(c.tagName) || c.closest(".ba-att, .ba-auto")) return "";
+    const tg = c.tagName, x = inl(c);
+    if (tg === "BR") return "\n"; if ((tg === "B" || tg === "STRONG") && x.trim()) return "**" + x.trim() + "**"; if ((tg === "I" || tg === "EM") && x.trim()) return "*" + x.trim() + "*";
+    if (tg === "CODE") return "`" + c.textContent + "`"; return x; }).join("");
+  const blk = n => [...n.childNodes].map(c => {
+    if (c.nodeType === 3) return c.nodeValue.trim() ? c.nodeValue.trim() + "\n\n" : "";
+    if (c.nodeType !== 1 || c.matches(".ba-att, .ba-auto, .pd-used, .ba-copy")) return "";
+    const tg = c.tagName, h = tg.match(/^H([1-6])$/);
+    if (h) return "#".repeat(+h[1]) + " " + inl(c).trim() + "\n\n";
+    if (tg === "UL" || tg === "OL") return [...c.children].filter(li => li.tagName === "LI").map((li, i) => (tg === "OL" ? (i + 1) + ". " : "- ") + inl(li).trim()).join("\n") + "\n\n";
+    if (tg === "PRE") return "```\n" + c.textContent.replace(/\n$/, "") + "\n```\n\n";
+    if (tg === "TABLE") { const rows = [...c.querySelectorAll("tr")].map(tr => [...tr.children].map(td => inl(td).trim().replace(/\|/g, "\\|").replace(/\n/g, " "))); if (!rows.length) return "";
+      const w = Math.max(...rows.map(r => r.length)); const line = r => "| " + Array.from({ length: w }, (_, i) => r[i] || "").join(" | ") + " |";
+      return [line(rows[0]), "| " + Array(w).fill("---").join(" | ") + " |", ...rows.slice(1).map(line)].join("\n") + "\n\n"; }
+    if (tg === "HR") return "---\n\n";
+    if (tg === "BLOCKQUOTE") return blk(c).trim().split("\n").map(l => "> " + l).join("\n") + "\n\n";
+    if (/^(DIV|SECTION|ARTICLE)$/.test(tg) && c.querySelector("p,h1,h2,h3,h4,h5,h6,ul,ol,table,pre,div")) return blk(c);
+    const x = inl(c).trim(); return x ? x + "\n\n" : ""; }).join("");
+  return blk(root).replace(/\n{3,}/g, "\n\n").trim();
+}
+function pdEditSave() {
+  const doc = $("#pd-out-doc"), o = pd.outs[pd.outCur]; if (!doc || !o) return;
+  const md = pdHtmlToMd(doc); if (!md) { toast(t("pd_out_none")); return; }
+  if (md !== o.md) pdOutAdd(md, o.sources, o.cites, { q: o.q, kind: "edit" }); else renderPdOut();
+  toast(t("pd_ed_saved"));
+}
+/* NDJSON stream from /api/pd/ai */
+async function pdAiStream(body, onEv) {
+  const r = await fetch("/api/pd/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + pd.token }, body: JSON.stringify(body) });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); const e = new Error(j.error || "http_" + r.status); e.info = j; throw e; }
+  const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+  for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
+    let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i); buf = buf.slice(i + 1); if (line.trim()) onEv(JSON.parse(line)); } }
+}
+/* Revise with AI: the current (maybe edited) answer + an instruction -> a revised answer as a new step; earlier steps stay. */
+async function pdRevise() {
+  const q = $("#pd-rev-q").value.trim(), o = pd.outs[pd.outCur]; if (!q || !o) return;
+  const prog = $("#pd-rev-progress"), go = $("#pd-rev-go");
+  prog.classList.remove("idle"); prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; go.disabled = true; $("#pd-out").setAttribute("aria-busy", "true");
+  try {
+    await pdAiStream({ question: q, revise: o.md, scope: { branch: pdBranch() }, format: "auto", lang: settings.lang, skillNote: window.BA ? BA.addendum() : "" }, ev => {
+      if (ev.type === "progress") return;
+      if (ev.type === "error") { prog.classList.add("idle"); prog.innerHTML = `<span>${esc(t("pd_err", ev.error))}</span>`; return; }
+      if (ev.type === "answer") { prog.innerHTML = ""; $("#pd-rev-q").value = ""; $("#pd-out").removeAttribute("aria-busy"); pdOutAdd(ev.text || "", o.sources, o.cites, { q, kind: "revise" }); }
+    });
+  } catch (e) { prog.classList.add("idle"); prog.innerHTML = `<span>${esc(pdErrText(e))}</span>`; }
+  go.disabled = false; $("#pd-out").removeAttribute("aria-busy");
+}
+/* Conversations: saved threads on the pendrive (PIN-protected), with the branch they belong to. */
+pd.convs = pd.convs || [];
+async function pdConvList() { try { pd.convs = (await pdApi("conv/list")).convs || []; } catch (e) { pd.convs = []; } renderPdConvs(); }
+async function pdConvSave(quiet) {
+  if (!pd.outs.length) { if (!quiet) toast(t("pd_out_none")); return; }
+  const turns = pd.outs.slice().reverse().map(o => ({ q: o.q, md: o.md, at: o.at, kind: o.kind || "ask", sources: o.sources || [], cites: o.cites || [] }));
+  const row = await pdApi("conv/save", { cid: pd.conv ? pd.conv.id : "", branch: pd.conv ? pd.conv.branch : pdBranch(), turns });
+  pd.conv = { id: row.id, title: row.title, branch: row.branch }; pdOutSave();
+  const i = pd.convs.findIndex(c => c.id === row.id); if (i >= 0) pd.convs[i] = row; else pd.convs.unshift(row); renderPdConvs();
+}
+async function pdConvOpen(cid) {
+  const c = await pdApi("conv/get", { cid });
+  pd.conv = { id: c.id, title: c.title, branch: c.branch || "" };
+  pd.outs = (c.turns || []).slice().reverse(); pd.outCur = 0; pd.outShown = true; pdOutSave();
+  const root = pdBrRoot(pd.conv.branch); pdCd(root && !(pd.folders || []).includes(root) ? "" : root);
+  $("#pd-convs").open = false; renderPdConvs(); renderPdOut();
+  const box = $("#pd-out"); if (box) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+}
+function pdConvNew() { pd.conv = null; pd.outs = []; pd.outCur = -1; pd.outShown = false; pdOutSave(); renderPdConvs(); renderPdOut(); const q = $("#pd-q"); if (q) { q.value = ""; if (!pd.home) q.focus(); } }
+function renderPdConvs() {
+  const box = $("#pd-convs"); if (!box) return; const wasOpen = box.open;
+  const when = ms => new Date(ms).toLocaleString(settings.lang === "bn" ? "bn-IN" : "en-IN", { dateStyle: "medium", timeStyle: "short" });
+  const rows = pd.convs.slice().sort((a, b) => b.at - a.at).map(c => `<li class="pd-conv-row" ${pd.conv && pd.conv.id === c.id ? 'aria-current="true"' : ""}><span class="t"><b title="${esc(c.title)}">${esc(c.title)}</b><small>${esc(when(c.at))} · ${c.branch ? "⎇ " + esc(c.branch) : "🏠 " + esc(t("pd_br_main"))} · ${esc(t("pd_cv_turns", c.n || 0))}</small></span><button type="button" class="btn small" data-pd-cv-open="${c.id}">${esc(t("pd_cv_open"))}</button><details class="pd-br-more"><summary aria-label="${esc(t("pd_moremenu"))}" title="${esc(t("pd_moremenu"))}">⋯</summary><div class="pd-menu"><button type="button" data-pd-cv-ren="${c.id}">${esc(t("pd_cv_ren"))}</button><button type="button" data-pd-cv-del="${c.id}">${esc(t("pd_cv_del"))}</button></div></details></li>`).join("");
+  box.innerHTML = `<summary><b>${esc(t("pd_cv_h"))} · ${pd.convs.length}</b><span class="cur">${pd.conv ? esc(t("pd_cv_cur", pd.conv.title)) : ""}</span><button type="button" class="btn small primary" data-pd-cv-new>${esc(t("pd_cv_new"))}</button></summary>` + (rows ? `<ul class="pd-conv-list">${rows}</ul>` : `<p class="pd-conv-empty">${esc(t("pd_cv_none"))}</p>`);
+  box.open = wasOpen;
 }
 pd.actions = [];
 function pdAiEvent(ev) {
@@ -6148,6 +6273,12 @@ document.addEventListener("click", async e => {
     if ((x = el("[data-pd-dlcancel]"))) { if (pd.dl) pd.dl.cancel = true; return; }
     if ((x = el("[data-pd-out]"))) { const m = x.closest("details.pd-more"); if (m) m.open = false; return pdOutAct(x.dataset.pdOut); }
     if ((x = el("[data-pd-outh]"))) { pd.outCur = Number(x.dataset.pdOuth); renderPdOut(); return; }
+    if ((x = el("[data-pd-fmt]"))) { document.execCommand(x.dataset.pdFmt); $("#pd-out-doc").focus(); return; }
+    if ((x = el("[data-pd-ed]"))) { if (x.dataset.pdEd === "save") pdEditSave(); else renderPdOut(); return; }
+    if ((x = el("[data-pd-cv-new]"))) { e.preventDefault(); pdConvNew(); return; }
+    if ((x = el("[data-pd-cv-open]"))) return pdConvOpen(x.dataset.pdCvOpen);
+    if ((x = el("[data-pd-cv-ren]"))) { x.closest("details").open = false; const c = pd.convs.find(y => y.id === x.dataset.pdCvRen); const n = prompt(t("pd_cv_ren_q"), c ? c.title : ""); if (!n || !n.trim()) return; const row = await pdApi("conv/rename", { cid: x.dataset.pdCvRen, title: n.trim() }); if (c) c.title = row.title; if (pd.conv && pd.conv.id === row.id) { pd.conv.title = row.title; pdOutSave(); } renderPdConvs(); return; }
+    if ((x = el("[data-pd-cv-del]"))) { x.closest("details").open = false; const c = pd.convs.find(y => y.id === x.dataset.pdCvDel); if (!confirm(t("pd_cv_del_q", c ? c.title : ""))) return; await pdApi("conv/delete", { cid: x.dataset.pdCvDel }); pd.convs = pd.convs.filter(y => y.id !== x.dataset.pdCvDel); if (pd.conv && pd.conv.id === x.dataset.pdCvDel) { pd.conv = null; pdOutSave(); } renderPdConvs(); return; }
     if ((x = el("[data-pd-ai]"))) { pdAiToggle(x.dataset.pdAi); return; }
     if ((x = el("[data-pd-ai-x]"))) { pdAiToggle(x.dataset.pdAiX, false); return; }
     if (el("[data-pd-ai-clear]")) { pd.aiSel.clear(); pdAiSave(); renderPdList(); return; }
@@ -6220,6 +6351,7 @@ $("#pd-open-form").addEventListener("submit", async e => {
 });
 $("#pd-c-pin").addEventListener("input", e => { $("#pd-pin-hint").style.fontWeight = e.target.value.length && e.target.value.length < 6 ? "700" : ""; });
 $("#pd-ai-form").addEventListener("submit", e => { e.preventDefault(); pdAsk(); });
+$("#pd-revise").addEventListener("submit", e => { e.preventDefault(); pdRevise(); });
 function resume() {
   if (!isOpen()) { showLock(true); showGate(false); return; }
   showGate(true);
