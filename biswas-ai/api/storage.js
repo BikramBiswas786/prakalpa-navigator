@@ -93,13 +93,13 @@ export class S3Storage {
   async getText(key) {
     const r = await this.request("GET", key);
     if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`storage get ${r.status}`);
+    if (!r.ok) throw new Error(`storage get ${r.status} ${((await r.text().catch(() => "")).match(/<Code>([^<]+)/) || [])[1] || ""}`.trim());
     return r.text();
   }
   async getJson(key) { const t = await this.getText(key); return t == null ? null : JSON.parse(t); }
   async putText(key, text, type = "text/plain; charset=utf-8") {
     const r = await this.request("PUT", key, {}, Buffer.from(text, "utf8"), { "content-type": type });
-    if (!r.ok) throw new Error(`storage put ${r.status}`);
+    if (!r.ok) throw new Error(`storage put ${r.status} ${((await r.text().catch(() => "")).match(/<Code>([^<]+)/) || [])[1] || ""}`.trim());
   }
   putJson(key, obj) { return this.putText(key, JSON.stringify(obj), "application/json"); }
   // cheap liveness check before handing out a single presigned PUT (no server round-trip to the bucket otherwise).
