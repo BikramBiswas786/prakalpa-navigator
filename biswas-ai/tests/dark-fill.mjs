@@ -1,0 +1,33 @@
+// Dark theme: Excel cells with their own fill stay readable (file colour or contrasting ink); Word page readable.
+import puppeteer from "puppeteer-core"; import fs from "node:fs"; import { execSync } from "node:child_process";
+const B = process.env.BASE || "http://localhost:3998", SH = process.env.SH || "/workspace/v-dark-fill";
+fs.mkdirSync(SH, { recursive: true });
+const b = await puppeteer.launch({ executablePath: "/usr/bin/google-chrome", args: ["--no-sandbox"] });
+const sl = ms => new Promise(r => setTimeout(r, ms)); let fails = 0; const ok = (c, m) => { console.log((c ? "PASS " : "FAIL ") + m); if (!c) fails++; };
+const p = await b.newPage(); await p.setViewport({ width: 1366, height: 900 }); p.on("pageerror", e => { fails++; console.log("FAIL PAGEERR", String(e)); });
+let PROMPT = null; p.on("dialog", d => { d.type() === "prompt" ? d.accept(PROMPT ?? d.defaultValue()) : d.accept(); });
+const shot = n => p.screenshot({ path: `${SH}/${n}.png` });
+await p.goto(B + "/", { waitUntil: "networkidle0" });
+for (let i = 0; i < 2; i++) { if (await p.$eval("#langpick", d => d.open).catch(() => false)) await p.click('[data-pick-lang="en"]'); if (await p.$eval("#gate", g => !g.hidden).catch(() => false)) { await p.type("#gate-name", "zz tester"); await p.$eval("#gate-form", f => f.requestSubmit()).catch(() => {}); } await sl(400); }
+await p.click("#sec-pendrive"); await sl(500);
+await p.type("#pd-c-name", "zz-test-x2r-" + Date.now().toString(36)); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit());
+await p.waitForSelector("#pd-main", { visible: true, timeout: 30000 }); await sl(800);
+await p.click("#ed-tab-excel"); await sl(600);
+const FX = process.env.FX || "/tmp/fx-dark";
+const b64 = fs.readFileSync(FX + "/fills.xlsx").toString("base64");
+await p.evaluate(async b64 => { await pdApi("mkdir", { path: "Docs" }).catch(() => {}); const u = Uint8Array.from(atob(b64), c => c.charCodeAt(0)); if (!/localhost/.test(location.host)) await BA_ED.io.upload("Docs/fills.xlsx", new Blob([u])); await BA_ED.kinds.excel.load(u.buffer, "xlsx"); }, b64);
+await p.evaluate(() => document.documentElement.setAttribute("data-theme", "dark")); await sl(600);
+const cr = await p.evaluate(() => { const L = s => { const m = s.match(/\d+(\.\d+)?/g).map(Number); const v = m.slice(0, 3).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const bgOf = el => { while (el) { const b = getComputedStyle(el).backgroundColor; if (b && !/rgba\(0, 0, 0, 0\)|transparent/.test(b)) return b; el = el.parentElement; } return "rgb(255,255,255)"; };
+  const o = {}; for (const td of document.querySelectorAll("#xs-grid td[data-r]")) { if (!td.textContent.trim()) continue; const a = L(getComputedStyle(td).color), b = L(bgOf(td)); o[td.dataset.c + "," + td.dataset.r] = +((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2); } return o; });
+console.log(JSON.stringify(cr));
+const vals = Object.values(cr); ok(vals.length >= 20 && vals.every(v => v >= 3), "D1 every filled/unfilled Excel cell readable in dark theme (contrast >= 3): min " + Math.min(...vals));
+await shot("d1-excel-dark");
+await p.click("#ed-tab-word"); await sl(500);
+await p.evaluate(() => { BA_ED.kinds.word.page().innerHTML = "<h1>Heading</h1><p>Body text on the page.</p><table><tr><td style='background:#fcd5b4'>peach cell</td></tr></table>"; }); await sl(300);
+const wc = await p.evaluate(() => { const L = s => { const m = s.match(/\d+(\.\d+)?/g).map(Number); const v = m.slice(0, 3).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+  const bgOf = el => { while (el) { const b = getComputedStyle(el).backgroundColor; if (b && !/rgba\(0, 0, 0, 0\)|transparent/.test(b)) return b; el = el.parentElement; } return "rgb(255,255,255)"; };
+  return ["h1", "p", "td"].map(s => { const el = document.querySelector("#wd-page " + s); const a = L(getComputedStyle(el).color), b = L(bgOf(el)); return +((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toFixed(2); }); });
+ok(wc.every(v => v >= 3), "D2 Word page text readable in dark theme " + JSON.stringify(wc));
+await shot("d2-word-dark");
+console.log(fails ? fails + " FAILED" : "ALL PASS"); await b.close(); process.exit(fails ? 1 : 0);

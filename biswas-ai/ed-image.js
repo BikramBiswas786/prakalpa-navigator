@@ -227,7 +227,9 @@ ED.kinds.image = (() => {
   const fontCss = () => { const f = (ED.FONTS || []).find(x => x[0] === fontSel.value); return f ? f[1] : fontSel.value + ", sans-serif"; };
   function swatch() { const s = document.getElementById("im-sw"); if (s) { s.style.setProperty("--c1", c1.value); s.style.setProperty("--c2", c2.value); } }
   let transp;
-  const B = (id, label, title, fn, extra = {}) => h("button", { type: "button", class: "wd-b", id, title, "aria-label": title, onmousedown: e => e.preventDefault(), onclick: fn, ...extra }, label);
+  // a bare symbol gets its name written next to it, so every button is readable without hovering
+  const B = (id, label, title, fn, extra = {}) => h("button", { type: "button", class: "wd-b", id, title, "aria-label": title, onmousedown: e => e.preventDefault(), onclick: fn, ...extra },
+    label, typeof label === "string" && !/\p{L}{2,}/u.test(label) && !/^[BI]$/.test(label) && !/%$/.test(label) ? h("span", { class: "im-bl" }, " " + String(title).replace(/\s*\(.*$/, "")) : null);
   const TB = (k, ic, key) => B("im-t-" + k, ic, T(key), () => setTool(k), { "data-im-tool": k, "aria-pressed": "false" });
   const sep = () => h("span", { class: "sep" });
   const pick = (id, title, opts, fn) => { const s = h("select", { id, title, "aria-label": title, class: "wd-sel" }, ...opts.map(([v, l]) => h("option", { value: v }, l))); s.addEventListener("change", () => fn(s.value, s)); return s; };
@@ -316,6 +318,7 @@ ED.kinds.image = (() => {
 .im-lbtn { display: flex; flex-wrap: wrap; gap: 2px; } .im-lbtn .wd-b { min-width: 24px; padding: 2px 4px; }
 .im-lrow { display: flex; align-items: center; gap: 4px; padding: 3px 4px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; } .im-lrow.on { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: var(--accent); }
 .im-lrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.im-bl { font-size: .78em; }
 .im-pal { display: grid; grid-template-columns: repeat(10, 14px); gap: 2px; } .im-pc { width: 14px; height: 14px; padding: 0; border: 1px solid #888; border-radius: 2px; cursor: pointer; }
 .im-sw { position: relative; width: 28px; height: 26px; display: inline-block; } .im-sw::before, .im-sw::after { content: ""; position: absolute; width: 16px; height: 16px; border: 1px solid #555; }
 .im-sw::after { left: 0; top: 0; background: var(--c1); z-index: 1; } .im-sw::before { right: 0; bottom: 0; background: var(--c2); }

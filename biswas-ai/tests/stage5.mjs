@@ -15,6 +15,7 @@ await gate(); await p.click("#sec-pendrive"); await sl(500);
 const name = "zz-test-s5-" + Date.now().toString(36);
 await p.type("#pd-c-name", name); await p.type("#pd-c-pin", "482915"); await p.type("#pd-c-pin2", "482915"); await p.$eval("#pd-create-form", f => f.requestSubmit());
 await p.waitForSelector("#pd-main", { visible: true, timeout: 20000 }); await sl(800);
+const waitRows = (k, n) => p.waitForFunction((k, n) => document.querySelectorAll(`#ea-cvlist-${k} .ea-cvrow`).length === n, { timeout: 20000 }, k, n).catch(() => {});
 const rowsN = k => p.$$eval(`#ea-cvlist-${k} .ea-cvrow`, r => r.length);
 const ask = async (k, q, files = []) => {
   if (files.length) { const inp = await p.$("#ea-file-" + k); await inp.uploadFile(...files); await p.waitForFunction(k => BA_ED.ai.S[k].atts.length && BA_ED.ai.S[k].atts.every(a => !a.busy), { timeout: 180000 }, k); }
@@ -23,12 +24,12 @@ const ask = async (k, q, files = []) => {
   return p.evaluate(k => ({ st: document.getElementById("ea-st-" + k).textContent, last: (BA_ED.ai.S[k].thread.slice(-1)[0] || {}).a || "" }), k);
 };
 // ---------- Word basics ----------
-await p.click("#ed-tab-word"); await sl(600);
-ok(await p.evaluate(() => !document.querySelector("[data-ed=ask]") && ["word", "excel", "image", "note"].every(k => document.querySelector(`#ed-${k} [data-ed=conv]`) && document.querySelector(`#ed-${k} [data-ed=newpage]`)) || true), "S1 no Ask AI button; Save to conversation + New page present");
+for (const k of ["excel", "image", "note", "word"]) { await p.click("#ed-tab-" + k); await sl(500); }
+ok(await p.evaluate(() => !document.querySelector("[data-ed=ask]") && ["word", "excel", "image", "note"].every(k => !document.querySelector(`#ed-${k} [data-ed=conv]`) && document.querySelector(`#ed-${k} [data-ed=newpage]`))), "S1 no Ask AI button, no Save to conversation button; New page present");
 ok(await p.evaluate(() => { const pan = document.getElementById("ea-word"), body = BA_ED.st.word.body; return !!pan && !!(body.compareDocumentPosition(pan) & Node.DOCUMENT_POSITION_FOLLOWING) && document.getElementById("ea-q-word").placeholder === "Write what to edit or change in this file…" && !pan.querySelector(".chip,.chips"); }), "S2 AI panel below the editor, placeholder right, no example chips");
 await p.evaluate(() => { BA_ED.kinds.word.page().innerHTML = "<h1>Report</h1><p>The budget is low.</p>"; BA_ED.kinds.word.page().dispatchEvent(new Event("input", { bubbles: true })); });
-await p.click("#ed-word [data-ed=conv]"); await sl(1200); await p.click("#ed-word [data-ed=conv]"); await sl(1200);
-ok(await rowsN("word") === 2, "S3 Save to conversation twice → 2 rows: " + await rowsN("word"));
+await p.evaluate(() => BA_ED.ai.save("word")); await waitRows("word", 1); await p.evaluate(() => BA_ED.ai.save("word")); await waitRows("word", 2);
+ok(await rowsN("word") === 2, "S3 (internal save used by New page) twice → 2 rows: " + await rowsN("word"));
 ok(await p.$$eval("#ea-cvlist-word .ea-cvrow", r => new Set(r.map(x => x.dataset.eaRow)).size === 2 && r.every(x => /^word-[0-9a-f]{16}$/.test(x.dataset.eaRow) && /Untitled\.docx · \d{4}-/.test(x.textContent))), "S4 rows have unique area-tagged ids and file name + time titles");
 await p.$eval("#ea-cv-word", d => { d.open = true; }); await shot("s01-two-rows");
 // AI edit + undo
@@ -42,7 +43,7 @@ ok(/MOCK answer|\S/.test(r.last) && await p.evaluate(() => /budget is low/.test(
 ok(await p.$$eval("#ea-thread-word .ea-turn", t => t.length) === 3, "S9 per-document thread shows the exchanges");
 // New page
 await p.evaluate(() => { const pg = BA_ED.kinds.word.page(); pg.querySelector("h1").textContent = "Report v2"; pg.dispatchEvent(new Event("input", { bubbles: true })); });
-await p.click("#ed-word [data-ed=newpage]"); await sl(1500);
+await p.click("#ed-word [data-ed=newpage]"); await waitRows("word", 3); await p.waitForFunction(() => !BA_ED.kinds.word.page().innerText.trim(), { timeout: 15000 }).catch(() => {});
 ok(await rowsN("word") === 3 && await p.evaluate(() => !BA_ED.kinds.word.page().innerText.trim() && !BA_ED.ai.S.word.thread.length), "S10 New page auto-saves the old document then leaves a blank one");
 await shot("s03-newpage");
 await p.click("#ed-word [data-ed=newpage]"); await sl(800);
@@ -54,7 +55,7 @@ ok(await p.evaluate(() => /Report v2/.test(BA_ED.kinds.word.page().innerText) &&
 await shot("s04-row-restored");
 PROMPT = "My renamed report"; await p.$eval("#ea-cv-word", d => { d.open = true; }); await p.click(`[data-ea-ren="${first}"]`); await p.waitForFunction(f => (document.querySelector(`[data-ea-row="${f}"] .ea-cvt`) || {}).textContent === "My renamed report", { timeout: 15000 }, first).catch(() => {}); await sl(2500);
 ok(await p.$eval(`[data-ea-row="${first}"] .ea-cvt`, e => e.textContent) === "My renamed report", "S13 rename row");
-await p.click(`[data-ea-del="${first}"]`); await sl(800); ok(await rowsN("word") === 2, "S14 delete row");
+await p.click(`[data-ea-del="${first}"]`); await waitRows("word", 2); ok(await rowsN("word") === 2, "S14 delete row");
 ok(await p.evaluate(async () => (await pdApi("edconv/list", { area: "excel" })).rows.length === 0), "S15 conversations are separate per editor");
 // ---------- Government memo format ----------
 const memo = await p.evaluate(async () => {
@@ -92,13 +93,13 @@ await p.click("#ed-tab-note"); await sl(500);
 await p.evaluate(() => { const t = document.getElementById("np-ta"); t.value = "alpha\nbeta"; t.dispatchEvent(new Event("input", { bubbles: true })); });
 r = await ask("note", 'replace "beta" with "gamma"'); ok(await p.$eval("#np-ta", e => e.value) === "alpha\ngamma", "S21 Notepad AI edit");
 await p.click("#ea-undo-note"); await sl(300); ok(await p.$eval("#np-ta", e => e.value) === "alpha\nbeta", "S22 Notepad undo");
-await p.click("#ed-note [data-ed=conv]"); await sl(1000); ok(await rowsN("note") === 1, "S23 Notepad conversation row");
+await p.click("#ed-note [data-ed=newpage]"); await waitRows("note", 1); ok(await rowsN("note") === 1, "S23 Notepad conversation row");
 await p.click("#ed-tab-image"); await sl(600);
-r = await ask("image", 'make a poster "Hello Stage 5"'); const px = await p.evaluate(() => { const c = BA_ED.kinds.image._api().flat(); const d = c.getContext("2d").getImageData(2, 2, 1, 1).data; return [...d].slice(0, 3); });
-const MOCK = process.env.MOCK === "1"; ok(MOCK ? px.join() === "0,0,0" : px.join() !== "255,255,255", "S24 Image AI edit (black background + text): " + px);
-await p.click("#ed-image [data-ed=conv]"); await sl(1500); ok(await rowsN("image") === 1, "S25 Image conversation row");
+r = await ask("image", 'make a poster "Hello Stage 5"'); let px = await p.evaluate(() => { const c = BA_ED.kinds.image._api().flat(); const d = c.getContext("2d").getImageData(2, 2, 1, 1).data; return [...d].slice(0, 3); });
+const MOCK = process.env.MOCK === "1"; ok(MOCK ? px.join() === "0,0,0" : px.join() !== "255,255,255", "S24 Image AI edit (black background + text): " + px + " " + r.st + " " + r.last.slice(0, 120));
 await p.click("#ea-undo-image"); await sl(800); const px2 = await p.evaluate(() => [...BA_ED.kinds.image._api().flat().getContext("2d").getImageData(2, 2, 1, 1).data].slice(0, 4));
 ok(px2.join() !== "0,0,0,255", "S26 Image undo: " + px2);
+r = await ask("image", 'make a poster "Hello Stage 5"'); px = await p.evaluate(() => [...BA_ED.kinds.image._api().flat().getContext("2d").getImageData(2, 2, 1, 1).data].slice(0, 3)); await p.click("#ed-image [data-ed=newpage]"); await waitRows("image", 1); ok(await rowsN("image") === 1, "S25 Image conversation row");
 await p.$eval("#ea-cv-image", d => { d.open = true; }); const ir = await p.$eval("#ea-cvlist-image .ea-cvrow", e => e.dataset.eaRow); await p.click(`[data-ea-open="${ir}"]`); await sl(1500);
 const px3 = await p.evaluate(() => [...BA_ED.kinds.image._api().flat().getContext("2d").getImageData(2, 2, 1, 1).data].slice(0, 4));
 ok(px3.slice(0, 3).join() === px.join() && px3[3] === 255, "S27 Image row reopens the saved picture: " + px3);
