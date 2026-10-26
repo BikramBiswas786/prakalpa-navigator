@@ -131,6 +131,7 @@ function frame(kind) {
       h("button", { type: "button", class: "btn small primary", "data-ed": "save", onclick: () => doSave(kind) }, "💾 " + T("save")),
       h("button", { type: "button", class: "btn small", "data-ed": "saveas", onclick: () => doSave(kind, true) }, T("saveas")),
       h("button", { type: "button", class: "btn small", "data-ed": "dl", onclick: () => doDownload(kind) }, "⬇ " + T("dl")),
+      h("button", { type: "button", class: "btn small", "data-ed": "conv", id: "ed-conv-" + kind, title: T("conv_t"), onclick: () => ED.ai && ED.ai.saveConv(kind) }, "💾 " + T("conv")),
       h("button", { type: "button", class: "btn small", "data-ed": "newpage", title: T("newpage_t"), onclick: () => ED.ai && ED.ai.newPage(kind) }, "📄 " + T("newpage"))));
   const body = h("div", { class: "ed-body" });
   const msg = h("p", { class: "status-line ed-msg", role: "status" });

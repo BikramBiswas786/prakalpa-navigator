@@ -11,14 +11,14 @@ ED.addTX({
     a_failed: "{0} change(s) could not be applied.", a_ocr: "Only the OCR text of {0} was used (no vision model).", a_vision: "Text of {0} read by the vision model.", a_fmt: "Loaded the format of {0}; the AI filled in the new content.",
     a_err: "AI error: {0}", a_drop: "Drop files here to attach", a_cv: "Conversations", a_open: "Open", a_ren: "Rename", a_del: "Delete", a_dl: "Download", a_none: "No saved conversations yet.",
     a_saved: "Saved to Conversations: {0}", a_empty: "Nothing to save: the page is empty or unchanged.", a_newdone: "New blank page.", a_delq: "Delete “{0}”?", a_renq: "New name:",
-    a_hist: "History", a_xdiff: "Changed {0} cell(s) (Keep or Undo):", a_lost: "Open this saved conversation? Unsaved changes in the editor will be lost.", a_pick: "Attach a file from the pendrive", a_filter: "Filter…", a_cancel: "Cancel", a_you: "You", a_ai: "AI",
+    a_hist: "History", a_toolarge: "the file is over 4 MB; save it to the pendrive instead", a_saving: "Saving to Conversations…", a_savefail: "Could not save to Conversations: {0}", a_savedn: "✓ Saved to Conversations ({1} saved): {0}", a_xdiff: "Changed {0} cell(s) (Keep or Undo):", a_lost: "Open this saved conversation? Unsaved changes in the editor will be lost.", a_pick: "Attach a file from the pendrive", a_filter: "Filter…", a_cancel: "Cancel", a_you: "You", a_ai: "AI",
     a_tables: "Tables: {0}", a_totals: "Formulas recalculated: {0}", a_errs: "Formula errors: {0}", a_badtype: "Can't attach this file type: {0}" },
   bn: { a_ph: "এই ফাইলে কী বদলাতে বা লিখতে চান লিখুন…", a_send: "পাঠান", a_fast: "⚡ দ্রুত", a_attach: "📎 সংযুক্ত", a_frompd: "📂 পেনড্রাইভ থেকে", a_working: "কাজ চলছে…",
     a_reading: "{0} পড়া হচ্ছে…", a_applied: "{0}টি পরিবর্তন করা হল।", a_curpic: "ছবিটি", a_copy: "কপি", a_copied: "কপি হল", a_tonote: "নোটপ্যাডে", a_toword: "ওয়ার্ডে", a_undo: "↶ আগের মতো", a_keep: "✓ রাখুন", a_undone: "আগের মতো করা হল।", a_kept: "রাখা হল।",
     a_failed: "{0}টি পরিবর্তন করা গেল না।", a_ocr: "{0}: শুধু OCR-এ পড়া লেখা ব্যবহার হয়েছে (ভিশন মডেল নেই)।", a_vision: "{0}: ভিশন মডেলে লেখা পড়া হয়েছে।", a_fmt: "{0}-এর ফরম্যাট লোড করে AI নতুন বিষয় বসিয়েছে।",
     a_err: "AI ত্রুটি: {0}", a_drop: "সংযুক্ত করতে ফাইল এখানে ছাড়ুন", a_cv: "কথোপকথন", a_open: "খুলুন", a_ren: "নাম বদল", a_del: "মুছুন", a_dl: "ডাউনলোড", a_none: "এখনও কোনো কথোপকথন রাখা হয়নি।",
     a_saved: "কথোপকথনে রাখা হল: {0}", a_empty: "রাখার কিছু নেই: পাতা ফাঁকা বা বদলায়নি।", a_newdone: "নতুন ফাঁকা পাতা।", a_delq: "“{0}” মুছবেন?", a_renq: "নতুন নাম:",
-    a_hist: "ইতিহাস", a_xdiff: "{0}টি ঘর বদলেছে (রাখুন বা Undo):", a_lost: "এই কথোপকথন খুলবেন? এডিটরের সেভ না করা বদল হারাবে।", a_pick: "পেনড্রাইভ থেকে ফাইল সংযুক্ত করুন", a_filter: "খুঁজুন…", a_cancel: "বাতিল", a_you: "আপনি", a_ai: "AI",
+    a_hist: "ইতিহাস", a_toolarge: "ফাইলটি ৪ MB-র বেশি; পেনড্রাইভে সেভ করুন", a_saving: "কথোপকথনে রাখা হচ্ছে…", a_savefail: "কথোপকথনে রাখা গেল না: {0}", a_savedn: "✓ কথোপকথনে রাখা হল (মোট {1}): {0}", a_xdiff: "{0}টি ঘর বদলেছে (রাখুন বা Undo):", a_lost: "এই কথোপকথন খুলবেন? এডিটরের সেভ না করা বদল হারাবে।", a_pick: "পেনড্রাইভ থেকে ফাইল সংযুক্ত করুন", a_filter: "খুঁজুন…", a_cancel: "বাতিল", a_you: "আপনি", a_ai: "AI",
     a_tables: "টেবিল: {0}", a_totals: "সূত্র আবার হিসাব হল: {0}", a_errs: "সূত্রে ত্রুটি: {0}", a_badtype: "এই ধরনের ফাইল সংযুক্ত করা যায় না: {0}" }
 });
 const DEFEXT = { word: "docx", excel: "xlsx", image: "png", note: "txt" };
@@ -365,10 +365,19 @@ async function exportBlob(k) {
 async function save(k, quiet) {
   const s = S[k], st = ED.st[k];
   if (isEmpty(k) && !s.thread.length) { if (!quiet) say(k, T("a_empty")); return null; }
-  const { blob, e } = await exportBlob(k);
+  let { blob, e } = await exportBlob(k);
+  if (blob.size > 4000000 && k === "image") { const c = ED.kinds.image._api().flat(); blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85)); e = "jpg"; } // stays under the 5.5 MB row limit
+  if (blob.size > 4000000) throw new Error(T("a_toolarge"));
   const name = st.file ? st.file.path.split("/").pop() : st.name;
   const row = await pdApi("edconv/save", { area: k, title: `${name} · ${stamp()}`, name: name.replace(/\.[^.]+$/, "") + "." + e, ext: e, mime: blob.type, data: await b64of(blob), thread: s.thread.map(t => ({ q: t.q, a: t.a, at: t.at })) });
   s.lastSig = sig(k); s.rows.unshift(row); rows(k); toastT(T("a_saved", row.title)); say(k, T("a_saved", row.title)); return row;
+}
+async function saveConv(k) { // 💾 Save to conversation: always a NEW row; clear inline result, never silent
+  const s = S[k], btn = document.getElementById("ed-conv-" + k); if (s.saving) return; s.saving = true; if (btn) btn.disabled = true;
+  try { say(k, T("a_saving")); const row = await save(k);
+    if (row) { await loadRows(k); if (!s.rows.some(r => r.id === row.id)) { s.rows.unshift(row); rows(k); } if (s.el.cv) s.el.cv.open = true; const m = T("a_savedn", row.title, s.rows.length); say(k, m); toastT(m); } }
+  catch (e) { const m = T("a_savefail", (window.pdErrText ? pdErrText(e) : "") || e.message || String(e)); say(k, m); toastT(m); }
+  finally { s.saving = false; if (btn) btn.disabled = false; }
 }
 async function newPage(k) {
   const s = S[k], st = ED.st[k];
@@ -453,6 +462,6 @@ document.head.append(h("style", { id: "ea-css" }, `
 .ea-cvrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .85rem; } .ea-cvt { font-weight: 600; } .ea-cvb { margin-left: auto; display: inline-flex; gap: 4px; }
 .ea-pklist { display: grid; gap: 2px; max-height: 50vh; overflow: auto; min-width: 360px; margin: 6px 0; } .ea-pkrow { text-align: left; border: 0; background: none; padding: 4px; cursor: pointer; color: inherit; } .ea-pkrow:hover { background: var(--accent-soft); }
 `));
-ED.ai = { mount, save: k => save(k).catch(e => say(k, T("a_err", e.message))), newPage: k => newPage(k), send, undo, S, struct };
+ED.ai = { mount, saveConv, save: k => save(k).catch(e => say(k, T("a_err", e.message))), newPage: k => newPage(k), send, undo, S, struct };
 for (const k of ["word", "excel", "image", "note"]) if (ED.st[k] && ED.st[k].ready) mount(k);
 })();

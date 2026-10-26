@@ -822,7 +822,7 @@ const NOT_FOUND = { en: "Not found in your files. The selected files don't conta
 const locLabel = l => !l ? "" : l.page ? `page ${l.page}` : l.sheet ? `sheet "${l.sheet}" rows ${l.r1}–${l.r2}` : l.h ? `section: ${l.h}` : "";
 // retrieval for "ask": expanded BM25 (top 40) → optional embeddings/reranker → lexical rerank → top 6, numbered [n].
 // Spreadsheet maths is computed here (rag.aggregate, no eval) and handed to the model as an exact, citable fact.
-async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast = null) {
+async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast = null, stream = null) {
   const x = await ragIndex(id, all, emit);
   const allowed = new Set(withText.map(f => f.id)); const ex = rag.expand(q, tokens);
   const hits = bmSearch(x, [...ex.base, ...ex.extra].join(" "), allowed, 40);
@@ -853,7 +853,7 @@ async function askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNo
   const cardsTxt = cardIds.length ? `\nAbout these files (memory; for orientation only, cite the extracts):\n${cardIds.map(f => `- ${ix.files[f].path}: ${memText(memo.files[f]).replace(/\n/g, " · ")}`).join("\n")}\n` : "";
   const ctx = ev.map((e, i) => `[${i + 1}] [FILE: ${ix.files[e.fid].path}]${/^ocr/.test(ix.files[e.fid].note || "") ? " (image text, read by OCR)" : ""}${locLabel(e.loc) ? ` (${locLabel(e.loc)})` : ""}\n${e.text}`).join("\n\n");
   const rules = `\nRULES: Use only the numbered extracts. After each fact write the extract number in square brackets, like [1] or [2][3] (not file names). ${agg ? "Extract [1] is an exact COMPUTED value from the spreadsheet: give that number as the answer, do not recompute it. " : ""}${overview ? "This is an overview question: describe what the extracts contain." : "If the extracts do not answer the question, reply with exactly NOT_FOUND and nothing else."}`;
-  let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || {});
+  let answer = await askAI(SYSX(lang), `Numbered file extracts:\n\n${ctx}\n${cardsTxt}${rules}\nQUESTION: ${q}${fmtRule(q, fmt)}`, skillNote ? 3600 : 1800, fast || stream || {});
   if (!overview && /^\W*NOT_FOUND\W*$/.test(answer.trim()) || (/NOT_FOUND/.test(answer) && answer.length < 80)) return { notFound: true };
   answer = answer.replace(/\bNOT_FOUND\b/g, "");
   const used = new Set([...answer.matchAll(/\[(\d{1,2})\]/g)].map(m => Number(m[1])).filter(n => n >= 1 && n <= ev.length));
@@ -898,6 +898,8 @@ async function aiJob(req, res, id, body) {
   const fastOn = body.fast === true && body.mode !== "analyse";
   const t0 = Date.now(); let tFirst = 0;
   const fast = fastOn ? { fast: true, meta: {}, onDelta: d => { if (!tFirst) tFirst = Date.now() - t0; emit({ type: "delta", text: d }); } } : null;
+  // Normal mode streams too (same models, same final answer event): the first words show while the rest is written.
+  const stream = !fastOn && body.mode !== "analyse" && body.stream !== false ? { meta: {}, onDelta: d => { if (!tFirst) tFirst = Date.now() - t0; emit({ type: "delta", text: d }); } } : null;
   const ck = fastOn ? acSig([q.toLowerCase().replace(/\s+/g, " "), lang, fmt, body.mode || "ask", skillNote], inScope) : "";
   const done = async o => { const total = Date.now() - t0; if (fastOn && !o.notFound && !o.cached) await acPut(id, ck, o).catch(e => console.warn("pendrive: answer cache", e.message)); emit({ ...o, ms: { first: tFirst || total, total }, fast: fastOn }); };
   try {
@@ -939,7 +941,7 @@ async function aiJob(req, res, id, body) {
       answer = await askAI(SYSX(lang), `Notes made from the files (each fact has its file name):\n\n${notes.map((n, i) => `[FILE: notes ${i + 1}]\n${n}`).join("\n\n")}\n\n${used.flat().map(x => `[FILE: ${x.f.path}]`).join(" ")}\n${skipped > 0 ? `(${skipped} more files were not read because of the job limit; say so.)\n` : ""}\nQUESTION: ${q}${fmtRule(q, fmt)}${wantsTable(q, fmt) ? "\nKeep every row from the notes in the table; merge duplicates, do not drop items." : ""}`, skillNote ? 3600 : 2000);
       sources = used.flat().map(x => x.f.path);
     } else {
-      let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast);
+      let r = await askCited(id, ix, all, withText, q, lang, fmt, emit, SYSX, skillNote, fast, stream);
       // a format/accounts transform over files the user picked is not a fact lookup; give the AI their text instead of refusing.
       const transform = IMAGE_OUT_RE.test(q) || /excel|xlsx|spreadsheet|\bsheet\b|table|csv|json|convert|format|account|ledger|budget|expense|total|summar|translat|letter|হিসাব|এক্সেল|শিট|টেবিল|খরচ|মোট|সারাংশ|অনুবাদ|চিঠি/i.test(q) || /SKILL: (Excel|Drafting|Summary|Translation|Coding|Analysis)/.test(skillNote);
       const picked = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
