@@ -176,12 +176,14 @@ function openaiRequest(p, model, key, body, signal) {
 }
 
 /* ---------- stream parsers: SSE line -> {text, finish} ---------- */
+const tokText = v => typeof v === "string" ? v : typeof v === "number" && isFinite(v) ? String(v) : "";
+export const _test = { openaiEvent: e => openaiEvent(e), geminiEvent: e => geminiEvent(e) };
 function geminiEvent(ev) {
   const out = { text: "", finish: "" };
   if (ev.promptFeedback && ev.promptFeedback.blockReason) out.finish = "BLOCKED";
   const cand = ev.candidates && ev.candidates[0];
   if (!cand) return out;
-  out.text = ((cand.content && cand.content.parts) || []).map(p => (p.thought ? "" : p.text || "")).join("");
+  out.text = ((cand.content && cand.content.parts) || []).map(p => (p.thought ? "" : tokText(p.text))).join("");
   if (cand.finishReason === "MAX_TOKENS") out.finish = "MAX_TOKENS";
   else if (["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT"].includes(cand.finishReason)) out.finish = "BLOCKED";
   return out;
@@ -191,7 +193,8 @@ function openaiEvent(ev) {
   const ch = ev.choices && ev.choices[0];
   if (!ch) return out;
   const c = ch.delta && ch.delta.content;
-  out.text = typeof c === "string" ? c : Array.isArray(c) ? c.map(x => x.text || "").join("") : "";
+  // some providers stream a numeric token as a JSON number ("content":47), not a string: keep it, or every number in an answer is lost
+  out.text = typeof c === "string" ? c : typeof c === "number" ? String(c) : Array.isArray(c) ? c.map(x => tokText(x.text)).join("") : "";
   if (ch.finish_reason === "length") out.finish = "MAX_TOKENS";
   else if (ch.finish_reason === "content_filter") out.finish = "BLOCKED";
   return out;
@@ -273,7 +276,7 @@ async function attempt(p, model, body, signal, firstMs = FIRST_TEXT_MS) {
     // Provider ignored stream:true and sent one JSON answer.
     try {
       const j = JSON.parse(raw);
-      const t = p.kind === "gemini" ? geminiEvent(Array.isArray(j) ? j[0] : j).text : ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || "");
+      const t = p.kind === "gemini" ? geminiEvent(Array.isArray(j) ? j[0] : j).text : tokText(j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content);
       if (t) pending.push(t);
     } catch { /* fall through */ }
   }
