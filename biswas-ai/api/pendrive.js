@@ -351,10 +351,15 @@ export function imageColors(q) {
   return { bg, fg: t ? C[t[1]] : dark ? "#ffffff" : "#111111" };
 }
 // the model forgot the block: make one from its answer so the user still gets the picture
+const PIC_RE = /\b(picture|photo|illustration|drawing|scene|poster|banner|flyer)\b|ছবি|পোস্টার/i;
+// the user asked for a real picture but the block has no scene: paint from the request itself
+const sceneFrom = q => String(q || "").replace(/\b(make|create|generate|draw|give|produce|design|render|as an image|an image|image|png|please|me)\b/gi, " ").replace(/\s+/g, " ").trim().slice(0, 300);
 export function ensureImage(q, text, actions) {
+  if (PIC_RE.test(String(q || ""))) for (const a of actions) if (a.type === "image" && a.kind !== "chart" && !a.scene) { a.scene = sceneFrom(q); if (a.kind === "text") a.kind = "picture"; }
   if (!IMAGE_OUT_RE.test(String(q || "")) || actions.some(a => a.type === "image")) return actions;
   const body = String(text || "").replace(/\s*\[\d{1,2}\]/g, "").replace(/^MOCK answer[^\n]*\n?/, "").trim() || String(text || "").trim();
-  const a = imageAction({ kind: /poster|notice|banner|পোস্টার/i.test(q) ? "poster" : "text", name: "AI image " + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ""), text: body, ...imageColors(q) });
+  const a = imageAction({ kind: /poster|notice|banner|পোস্টার/i.test(q) ? "poster" : "text", name: "AI image " + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, ""), text: body, ...(PIC_RE.test(String(q || "")) ? { scene: sceneFrom(q) } : {}), ...imageColors(q) });
+  if (a && PIC_RE.test(String(q || "")) && !a.scene) { a.scene = sceneFrom(q); if (a.kind === "text") a.kind = "picture"; }
   return a ? [...actions, a] : actions;
 }
 // output format rules. A table request (any language) must produce a GitHub markdown table.
