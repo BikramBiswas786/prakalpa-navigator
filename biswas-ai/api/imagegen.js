@@ -51,7 +51,7 @@ const PROVIDERS = [
   } }
 ];
 export const imageProviders = () => PROVIDERS.filter(x => x.ok()).map(x => x.name);
-const STYLE = " Photograph, high quality, realistic. Wide calm composition with plain open sky in the top third and plain ground in the bottom quarter, kept empty for a caption added later. Absolutely no text, no letters, no numbers, no signs, no banners, no flags with writing, no posters, no labels, no logos, no watermark. Shot outdoors in an open space away from buildings; any building is far in the background with blank walls and no signboard; no shop fronts, no writing on vehicles, tractors, tents, clothing or boards. Leave the top third as clean empty sky (reserved for the caption).";
+const STYLE = " Photograph, high quality, realistic. Wide calm composition with plain open sky in the top third and plain ground in the bottom quarter, kept empty for a caption added later. Absolutely no text, no letters, no numbers, no signs, no banners, no flags with writing, no posters, no labels, no logos, no watermark. Shot outdoors in an open space away from buildings; any building is far in the background with blank walls and no signboard. The scene shows only people in plain clothes, trees, open fields and plain unmarked tents. Leave the top third as clean empty sky (reserved for the caption).";
 // words that make image models paint fake lettering (the app writes the real text itself)
 // named places/buildings make models paint a signboard with the name: drop proper names and send building scenes outdoors
 const PLACE = /\b(at|in|inside|near|outside|of|from)\s+(the\s+)?([\w-]+\s+){0,2}(block\s+office|office|hospital|school|college|panchayat|bhavan|bhawan|hall|station|bank|shop|store|market|building|centre|center|clinic|court)\b/g;
