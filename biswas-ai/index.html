@@ -5361,7 +5361,7 @@ Object.assign(STR.bn, {
   pd_confirm_del: n => `${n}টা জিনিস মুছে ফেলবেন? এটা ফেরানো যাবে না।`, pd_pick: "আগে বাঁদিকের ঘরে টিক দিয়ে বাছুন।", pd_pick_one: "একটাই বাছুন।",
   pd_up_wait: "অপেক্ষায়", pd_up_go: "তুলছি", pd_up_read: "লেখা পড়ছি", pd_up_done: "হয়ে গেছে", pd_up_fail: "আটকে গেছে", pd_up_cancel: "বাতিল", pd_retry: "আবার চেষ্টা", pd_cancel: "বাতিল",
   pd_no_text: "লেখা এখনও পড়া হয়নি", pd_ocr_done: "🔍 OCR দিয়ে পড়া লেখা", pd_ocr_btn: "🔍 লেখা পড়ুন (OCR)", pd_ocr_again: "🔍 আবার পড়ুন", pd_ocr_run: "লেখা পড়া হচ্ছে…", pd_ocr_ok: (n, how) => `পড়া হল: ${n} অক্ষর (${how === "vision" ? "ভিশন মডেল" : "OCR"})`, pd_ocr_none: "ছবিতে কোনো লেখা পাওয়া গেল না।", pd_ocr_fail: "লেখা পড়া গেল না", pd_imgtext: "ছবির লেখা", pd_preview_big: "ফাইল বড়, দেখতে ডাউনলোড করুন।", pd_preview_none: "এই ফাইল এখানে দেখা যায় না, ডাউনলোড করুন।",
-  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_scanned: "স্ক্যান করা, লেখা পড়া হয়নি", pd_cites: "প্রমাণ", pd_notfound_hint: "প্রশ্নটা অন্যভাবে লিখে দেখুন, বা ঠিক ফাইলগুলো বেছে নিন।", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই (ফাইলের সারিতে “🔍 লেখা পড়ুন (OCR)” চাপুন)।`,
+  pd_sources: "সূত্র", pd_save_as: "পেনড্রাইভে রাখুন", pd_saved: p => `রাখা হল: ${p}`, pd_thinking: "AI পড়ছে…", pd_scanned: "স্ক্যান করা, লেখা পড়া হয়নি", pd_cites: "প্রমাণ", pd_notfound_hint: "প্রশ্নটা অন্যভাবে লিখে দেখুন, বা ঠিক ফাইলগুলো বেছে নিন।", pd_no_text_files: n => `${n}টা ফাইলে পড়ার মতো লেখা নেই। OCR শুধু ছবির জন্য, আর সেটা ঐচ্ছিক।`,
   pd_leave: "ফাইল তোলা চলছে। সত্যিই পাতা ছাড়বেন?"
 });
 Object.assign(STR.en, {
@@ -5389,7 +5389,7 @@ Object.assign(STR.en, {
   pd_confirm_del: n => `Delete ${n} item(s)? This can't be undone.`, pd_pick: "Tick items in the left column first.", pd_pick_one: "Pick just one.",
   pd_up_wait: "Waiting", pd_up_go: "Uploading", pd_up_read: "Reading text", pd_up_done: "Done", pd_up_fail: "Stopped", pd_up_cancel: "Cancelled", pd_retry: "Retry", pd_cancel: "Cancel",
   pd_no_text: "Text not read yet", pd_ocr_done: "🔍 Text read by OCR", pd_ocr_btn: "🔍 Read text (OCR)", pd_ocr_again: "🔍 Read again", pd_ocr_run: "Reading the text…", pd_ocr_ok: (n, how) => `Read ${n} characters (${how === "vision" ? "vision model" : "OCR"})`, pd_ocr_none: "No text was found in this image.", pd_ocr_fail: "Could not read the text", pd_imgtext: "image text", pd_preview_big: "Large file: download it to view.", pd_preview_none: "This file can't be shown here; download it.",
-  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_scanned: "scanned, text not read yet", pd_cites: "Evidence", pd_notfound_hint: "Try rephrasing, or pick the right files for the AI.", pd_no_text_files: n => `${n} file(s) have no readable text (use “🔍 Read text (OCR)” on the file row).`,
+  pd_sources: "Sources", pd_save_as: "Save to pendrive", pd_saved: p => `Saved: ${p}`, pd_thinking: "The AI is reading…", pd_scanned: "scanned, text not read yet", pd_cites: "Evidence", pd_notfound_hint: "Try rephrasing, or pick the right files for the AI.", pd_no_text_files: n => `${n} file(s) had no text the AI could read. OCR is only for pictures, and it is optional.`,
   pd_leave: "Uploads are running. Leave the page anyway?"
 });
 const pd = { token: "", name: "", files: [], folders: [], cwd: "", sel: new Set(), quota: 0, used: 0, ups: [], running: 0 };
@@ -6213,12 +6213,26 @@ async function pdExtract(f) {
   if (["xlsx", "xls", "ods"].includes(ext)) {
     await load("xlsx");
     const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array", cellDates: true });
-    // "[Sheet: name @firstRow]" + tab rows; dates as yyyy-mm-dd and plain numbers so the server can do exact maths
     const iso = d => { const x = new Date(d.getTime() + 12 * 3600e3); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
     return wb.SheetNames.map(n => { const ws = wb.Sheets[n]; const r0 = ws["!ref"] ? window.XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
       const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "", blankrows: true });
       return `[Sheet: ${n} @${r0}]\n` + rows.map(r => r.map(c => c instanceof Date ? iso(c) : String(c).replace(/[\t\n]+/g, " ")).join("\t")).join("\n"); }).join("\n\n").slice(0, PD_TEXT);
   }
+  if (ext === "policy" || ext === "zip") {
+    try {
+      await load("jszip"); const z = await JSZip.loadAsync(await f.arrayBuffer()); const bits = [];
+      for (const n of Object.keys(z.files).filter(n => !z.files[n].dir).slice(0, 30)) {
+        if (/\.(png|jpe?g|gif|webp|woff2?|ttf|bin)$/i.test(n)) continue;
+        let s = ""; try { s = await z.file(n).async("string"); } catch (err) { continue; }
+        if (s && (s.slice(0, 200).match(/[\u0000-\u0008]/g) || []).length < 2) bits.push(n + "\n" + s.slice(0, 20000));
+      }
+      if (bits.length) return bits.join("\n\n").slice(0, PD_TEXT);
+    } catch (err) { return ""; }
+  }
+  try {
+    const sniff = await f.slice(0, Math.min(f.size || 0, 200000)).text();
+    if (sniff && (sniff.slice(0, 500).match(/[\u0000-\u0008]/g) || []).length < 2) return sniff.slice(0, PD_TEXT);
+  } catch (err) { /* not text */ }
   return "";
 }
 
@@ -6315,6 +6329,22 @@ async function pdAutoOcr(scope, say) {
   }
   return n;
 }
+/* Before asking: read office files that have no text yet. OCR stays optional and only for pictures. */
+async function pdAutoRead(scope, say) {
+  const inBr = f => { const b = scope.branch || ""; return !b || f.path === b || f.path.startsWith(b + "/"); };
+  const todo = (pd.files || []).filter(f => !f.text && !pdCanOcr(f.path) && (scope.ids ? scope.ids.includes(f.id) : inBr(f)) && (f.size || 0) <= 40 * 1024 * 1024).slice(0, 8);
+  for (const f of todo) {
+    try {
+      say(f.path.split("/").pop());
+      const j = await pdApi("download-urls", { ids: [f.id] }); const u = j.urls && j.urls[f.id]; if (!u) continue;
+      const rr = await fetch(u); if (!rr.ok) continue;
+      const blob = await rr.blob();
+      const file = new File([blob], f.path.split("/").pop(), { type: blob.type || f.type || "" });
+      const text = await pdExtract(file);
+      if (text && text.trim()) { await pdApi("text", { id: f.id, text: text.slice(0, PD_TEXT), note: "read" }); f.text = true; }
+    } catch (e) { /* this file stays unread */ }
+  }
+}
 async function pdAsk() {
   const q = $("#pd-q").value.trim(); if (!q) return;
   const scope = {};
@@ -6322,6 +6352,7 @@ async function pdAsk() {
   else scope.branch = pdBranch();
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.classList.remove("idle"); prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
+  try { await pdAutoRead(scope, m => { prog.innerHTML = `<span>${esc(t("pd_thinking"))} ${esc(m)}</span>`; }); } catch (e) { /* the answer still lists unread files */ }
   try { await pdAutoOcr(scope, m => { prog.innerHTML = `<span>${esc(m)}</span>`; }); } catch (e) { /* the answer still lists unread files */ }
   const fast = !!($("#pd-fast") || {}).checked; pd.t0 = performance.now(); pd.tFirst = 0; $("#pd-ai-speed").textContent = ""; const st = $("#pd-stream"); st.textContent = ""; st.hidden = true;
   try {
@@ -6590,15 +6621,15 @@ resume();
   });
 })();
 </script>
-<script src="/attach.js?h=0" defer></script>
-<script src="/editors.js?h=0" defer></script>
-<script src="/ed-offline.js?h=0" defer></script>
-<script src="/ed-word.js?h=0" defer></script>
-<script src="/ed-excel.js?h=0" defer></script>
-<script src="/ed-image.js?h=0" defer></script>
-<script src="/ed-note.js?h=0" defer></script>
-<script src="/ed-ocr.js?h=0" defer></script>
-<script src="/ed-tally.js?h=0" defer></script>
-<script src="/ed-ai.js?h=0" defer></script>
+<script src="/attach.js?h=158" defer></script>
+<script src="/editors.js?h=158" defer></script>
+<script src="/ed-offline.js?h=158" defer></script>
+<script src="/ed-word.js?h=158" defer></script>
+<script src="/ed-excel.js?h=158" defer></script>
+<script src="/ed-image.js?h=158" defer></script>
+<script src="/ed-note.js?h=158" defer></script>
+<script src="/ed-ocr.js?h=158" defer></script>
+<script src="/ed-tally.js?h=158" defer></script>
+<script src="/ed-ai.js?h=158" defer></script>
 </body>
 </html>
