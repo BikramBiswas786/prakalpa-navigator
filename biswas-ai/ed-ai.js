@@ -31,7 +31,7 @@ const stamp = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.g
 const lang = () => (typeof settings !== "undefined" && settings.lang === "bn") ? "bn" : "en";
 const b64of = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ""; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
 const bufOf = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; };
-const toastT = m => { try { toast(m); } catch (e) { /* ignore */ } };
+const toastT = () => { /* no pop-ups in the editors: status stays inline */ };
 const A1 = (r, c) => { let s = "", n = c + 1; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s + (r + 1); };
 const RC = ref => { const m = /^([A-Z]+)(\d+)$/i.exec(String(ref || "").trim()); if (!m) return null; let c = 0; for (const ch of m[1].toUpperCase()) c = c * 26 + ch.charCodeAt(0) - 64; return { r: +m[2] - 1, c: c - 1 }; };
 
@@ -210,7 +210,7 @@ async function addFiles(k, files) {
 }
 function chips(k) {
   const s = S[k], box = s.el.chips; box.textContent = "";
-  s.atts.forEach((a, i) => box.append(h("span", { class: "ea-chip", "data-ea-chip": String(i), title: a.text ? a.text.slice(0, 300) : "" }, (a.isImg ? "🖼 " : "📄 ") + a.name + (a.busy ? " ⏳" : a.how === "tesseract" ? " · OCR" : ""),
+  s.atts.forEach((a, i) => box.append(h("span", { class: "ea-chip", "data-ea-chip": String(i), title: a.name }, (a.isImg ? "🖼 " : "📄 ") + a.name + (a.busy ? " ⏳" : a.how === "tesseract" ? " · OCR" : ""),
     h("button", { type: "button", class: "ea-x", "aria-label": "Remove " + a.name, onclick: () => { s.atts.splice(i, 1); chips(k); } }, "×"))));
   box.hidden = !s.atts.length;
 }
@@ -272,7 +272,7 @@ async function exportBlob(k) {
 }
 async function save(k, quiet) {
   const s = S[k], st = ED.st[k];
-  if (isEmpty(k) && !s.thread.length) { if (!quiet) toastT(T("a_empty")); return null; }
+  if (isEmpty(k) && !s.thread.length) { if (!quiet) say(k, T("a_empty")); return null; }
   const { blob, e } = await exportBlob(k);
   const name = st.file ? st.file.path.split("/").pop() : st.name;
   const row = await pdApi("edconv/save", { area: k, title: `${name} · ${stamp()}`, name: name.replace(/\.[^.]+$/, "") + "." + e, ext: e, mime: blob.type, data: await b64of(blob), thread: s.thread.map(t => ({ q: t.q, a: t.a, at: t.at })) });
@@ -281,7 +281,7 @@ async function save(k, quiet) {
 async function newPage(k) {
   const s = S[k], st = ED.st[k];
   const unchanged = s.lastSig != null && s.lastSig === sig(k);
-  if (isEmpty(k) || unchanged) toastT(T("a_empty"));
+  if (isEmpty(k) || unchanged) say(k, T("a_empty"));
   else { try { await save(k, true); } catch (e) { say(k, T("a_err", e.message)); return; } }
   if (k === "note" && ED.kinds.note._api) { ED.kinds.note.blank(); } else ED.kinds[k].blank();
   st.file = null; st.name = DEFNAME[k]; st.dirty = false; ED.label(k); s.thread = []; s.undo = null; s.atts = []; s.lastSig = null; chips(k); thread(k); s.el.res.hidden = true; say(k, T("a_newdone"));
@@ -316,7 +316,7 @@ function mount(k) {
   const st = ED.st[k]; if (!st.sec || S[k]) return;
   const s = S[k] = { thread: [], atts: [], undo: null, lastSig: null, rows: [], el: {} };
   const fin = h("input", { type: "file", multiple: true, accept: ACCEPT, hidden: true, id: "ea-file-" + k, onchange: e => { addFiles(k, [...e.target.files]); e.target.value = ""; } });
-  s.el.q = h("textarea", { class: "ea-q", id: "ea-q-" + k, rows: "3", placeholder: T("a_ph"), "aria-label": T("a_ph") });
+  s.el.q = h("textarea", { class: "ea-q", id: "ea-q-" + k, rows: "3", placeholder: T("a_ph"), autocomplete: "off", "aria-label": T("a_ph") });
   s.el.q.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(k); } });
   s.el.q.addEventListener("paste", e => { const fs = [...(e.clipboardData && e.clipboardData.files || [])]; if (fs.length) { e.preventDefault(); e.stopPropagation(); addFiles(k, fs); } });
   s.el.fast = h("input", { type: "checkbox", id: "ea-fast-" + k, checked: true });

@@ -199,7 +199,7 @@ async function doSave(kind, as = false) {
   try {
     const { blob, text } = await E.export(ext(path));
     const f = await upload(path, blob, { overwrite, text });
-    st.file = f ? { id: f.id, path: f.path } : { id: "", path }; st.name = base(path); st.dirty = false; label(kind); say(kind, T("saved", path)); toast(T("saved", base(path)));
+    st.file = f ? { id: f.id, path: f.path } : { id: "", path }; st.name = base(path); st.dirty = false; label(kind); say(kind, T("saved", path));
   } catch (er) { say(kind, T("fail", (er && er.message) || String(er))); }
 }
 async function doDownload(kind) {
