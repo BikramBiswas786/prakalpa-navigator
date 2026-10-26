@@ -26,7 +26,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "138";
+const BUILD = "139";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -862,7 +862,8 @@ const server = http.createServer(async (req, res) => {
       try { await pd.handle(req, res, url, body, sendJson); }
       catch (e) {
         if (e instanceof pd.HttpError) { if (!res.headersSent) sendJson(e.status, { error: e.code, ...(e.extra || {}) }); else res.end(); }
-        else { console.error("pendrive:", e.message); if (!res.headersSent) sendJson(500, { error: "server" }); else res.end(); }
+        else { console.error("pendrive:", e.message); const why = /cap exceeded|transaction cap|download cap|storage cap/i.test(e.message || "") ? "storage_cap" : /AccessDenied|403/.test(e.message || "") ? "storage_denied" : /timeout|ETIMEDOUT|ECONNRESET|socket|network/i.test(e.message || "") ? "storage_network" : /\b5\d\d\b|ServiceUnavailable|InternalError/.test(e.message || "") ? "storage_5xx" : "other";
+          if (!res.headersSent) sendJson(500, { error: "server", why, detail: /^storage [a-z]+ \d{3}( [A-Za-z_]{1,40})?$/.test(e.message || "") ? e.message : undefined }); else res.end(); }
       }
       return;
     }
