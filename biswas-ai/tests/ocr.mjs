@@ -89,9 +89,17 @@ if (await btn.asElement()) { await btn.asElement().click(); await p.waitForFunct
 ok(await p.evaluate(() => /Read \d+ characters/.test(document.body.innerText)), "O12b Read text (OCR) re-reads the picture");
 await shot("o06-read-text-action");
 
+/* O15 asking about a picture whose text was never read: Files & AI reads it with OCR first, never "no text read yet" */
+await p.evaluate(async () => { const f = pd.files.find(x => /Untitled\.png$/.test(x.path)); await pdApi("text", { id: f.id, text: "", note: "" }).catch(() => {}); await pdRefresh(); pd.aiSel = new Set(["f:" + f.id]); pdAiSave && pdAiSave(); });
+await p.evaluate(() => { $("#pd-q").value = "What does this notice say?"; }); await p.click("#pd-ask");
+await p.waitForFunction(() => !$("#pd-ask").disabled && /\S/.test(($("#pd-answer").innerText || "") + ($("#pd-out-doc").innerText || "")), { timeout: 240000 }).catch(() => {});
+const ans15 = await p.evaluate(() => ($("#pd-answer").innerText || "") + " " + ($("#pd-out-doc").innerText || "") + " " + $("#pd-ai-progress").innerText);
+ok(!/no text read yet|isn't supported|without text/i.test(ans15), "O15 ask on an unread picture runs OCR first: " + ans15.slice(0, 120).replace(/\s+/g, " "));
+ok(await p.evaluate(() => !!pd.files.find(x => /Untitled\.png$/.test(x.path)).text), "O16 the picture's text is saved after the ask");
+await shot("o07-ask-auto-ocr");
 /* O13 no "OCR not supported" anywhere */
 const page = await (await fetch(B + "/")).text();
-ok(!/OCR not supported|OCR এখনও নেই|isn't supported yet/.test(page), "O13 no 'OCR not supported' text left in the app");
+ok(!/OCR not supported|OCR এখনও নেই|isn't supported yet|has readable text|scanned PDF without text/.test(page) && !/isn't supported yet|scanned PDF without text/.test(await (await fetch(B + "/ed-ai.js")).text()), "O13 no 'OCR not supported' text left in the app");
 ok(!errs.length, "O14 no page errors " + errs.slice(0, 3).join(" | "));
 await p.evaluate(async () => { try { await pdApi("delete-pendrive", {}); } catch (e) { /* ignore */ } });
 await b.close();
