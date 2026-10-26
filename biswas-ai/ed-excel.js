@@ -490,7 +490,7 @@ ED.kinds.excel = (() => {
   function cellAt(e) { const el = document.elementFromPoint(e.clientX, e.clientY); const td = el && el.closest && el.closest("#xs-grid td[data-r]"); return td ? { r: +td.dataset.r, c: +td.dataset.c } : null; }
   return {
     exts: () => [curExt, "xlsx", "csv", "xls"],
-    _api: () => ({ book, sel: () => R(), setSel: (a, b) => { anc = a; sel = b || a; paintSel(); }, render, fmtNum, parseEntry, eng: () => eng, si: () => si }),
+    _api: () => ({ get book() { return book; }, val: (r, c, s) => val(r, c, s), show, si: () => si, aiEdit: fn => { snap(); fn({ book, putRaw, setFmt, newSheet, K }); eng = xEngine(book); si = Math.min(si, book.sheets.length - 1); ED.dirty("excel"); render(); drawTabs(); drawCharts(); }, sel: () => R(), setSel: (a, b) => { anc = a; sel = b || a; paintSel(); }, render, fmtNum, parseEntry, eng: () => eng }),
     init(body) {
       addr = h("span", { class: "xs-addr", id: "xs-addr" }); fx = h("input", { class: "xs-fx", id: "xs-fx", "aria-label": "Formula", spellcheck: "false" });
       fx.addEventListener("input", () => { editing = true; const a = anchorOf(sel.r, sel.c); const td = cellTd(a.r, a.c); if (td) td.textContent = fx.value; });

@@ -6,7 +6,7 @@
 const L = () => (window.settings && settings.lang === "bn") ? "bn" : "en";
 const TX = {
   en: { files: "Files & AI", word: "Drafting Desk Word", excel: "Drafting Desk Excel", image: "Drafting Image", note: "Notepad",
-    open: "Open…", newb: "New blank", save: "Save", saveas: "Save as…", dl: "Download", ask: "Ask AI about this file", unsaved: "not saved yet",
+    open: "Open…", newb: "New blank", save: "Save", saveas: "Save as…", dl: "Download", conv: "Save to conversation", conv_t: "Save a copy of this document and its AI thread as a new row in Conversations", newpage: "New page", newpage_t: "Save this document as a conversation row, then start a blank one", unsaved: "not saved yet",
     nofile: "New file (not on the pendrive yet)", pick_open: "Open a file", pick_save: "Save as", branch: "Branch", main: "Main", fname: "File name",
     cancel: "Cancel", newfolder: "New folder", nofiles: "No matching files here.", keepold: "Keep the old version (moved to the folder “Old versions”)",
     replace: "Replace “{0}” with your edited version?", saved: "Saved: {0}", saving: "Saving…", opening: "Opening…", lost: "You have unsaved changes. Discard them?",
@@ -18,7 +18,7 @@ const TX = {
     apply: "Apply", pen: "Pen", box: "Box", arrow: "Arrow", text: "Text", width: "Width", height: "Height", typetext: "Text to place:", trows: "Rows?", tcols: "Columns?",
     sheetname: "Sheet name:", fmt: "Format", nfolder: "Folder name:", empty: "Open a file or start a new blank one.", dropcrop: "Drag on the picture to choose the crop area." },
   bn: { files: "ফাইল ও AI", word: "ড্রাফটিং ডেস্ক Word", excel: "ড্রাফটিং ডেস্ক Excel", image: "ড্রাফটিং ছবি", note: "নোটপ্যাড",
-    open: "খুলুন…", newb: "নতুন ফাঁকা", save: "সেভ", saveas: "অন্য নামে সেভ…", dl: "ডাউনলোড", ask: "এই ফাইল নিয়ে AI-কে জিজ্ঞেস করুন", unsaved: "এখনও সেভ হয়নি",
+    open: "খুলুন…", newb: "নতুন ফাঁকা", save: "সেভ", saveas: "অন্য নামে সেভ…", dl: "ডাউনলোড", conv: "কথোপকথনে রাখুন", conv_t: "এই নথি ও AI-আলাপের একটি কপি কথোপকথনে নতুন সারি হিসেবে রাখুন", newpage: "নতুন পাতা", newpage_t: "এই নথি কথোপকথনে রেখে নতুন ফাঁকা পাতা শুরু করুন", unsaved: "এখনও সেভ হয়নি",
     nofile: "নতুন ফাইল (এখনও পেনড্রাইভে নেই)", pick_open: "ফাইল খুলুন", pick_save: "অন্য নামে সেভ", branch: "শাখা", main: "মূল", fname: "ফাইলের নাম",
     cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এখানে মেলে এমন ফাইল নেই।", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
     replace: "“{0}” আপনার সম্পাদিত সংস্করণ দিয়ে বদলাবেন?", saved: "সেভ হয়েছে: {0}", saving: "সেভ হচ্ছে…", opening: "খোলা হচ্ছে…", lost: "সেভ না করা পরিবর্তন আছে। বাদ দেবেন?",
@@ -131,7 +131,8 @@ function frame(kind) {
       h("button", { type: "button", class: "btn small primary", "data-ed": "save", onclick: () => doSave(kind) }, "💾 " + T("save")),
       h("button", { type: "button", class: "btn small", "data-ed": "saveas", onclick: () => doSave(kind, true) }, T("saveas")),
       h("button", { type: "button", class: "btn small", "data-ed": "dl", onclick: () => doDownload(kind) }, "⬇ " + T("dl")),
-      h("button", { type: "button", class: "btn small", "data-ed": "ask", onclick: () => doAsk(kind) }, "✨ " + T("ask"))));
+      h("button", { type: "button", class: "btn small", "data-ed": "conv", title: T("conv_t"), onclick: () => ED.ai && ED.ai.save(kind) }, "💾 " + T("conv")),
+      h("button", { type: "button", class: "btn small", "data-ed": "newpage", title: T("newpage_t"), onclick: () => ED.ai && ED.ai.newPage(kind) }, "📄 " + T("newpage"))));
   const body = h("div", { class: "ed-body" });
   const msg = h("p", { class: "status-line ed-msg", role: "status" });
   sec.append(head, msg, body); st.sec = sec; st.body = body; st.msg = msg;
@@ -142,7 +143,7 @@ function label(kind) {
   $e(".ed-fname", st.sec).textContent = st.file ? base(st.file.path) : st.name;
   const d = st.file ? dirOf(st.file.path) : ""; const br = d.startsWith(PD_BR + "/") ? d.split("/")[1] : "";
   $e(".ed-where", st.sec).textContent = st.file ? " — " + (br ? "⎇ " + br : "🏠 " + T("main")) + (d.replace(/^⎇\/[^/]+\/?/, "") ? " › " + d.replace(/^⎇\/[^/]+\/?/, "").split("/").join(" › ") : "") : " — " + T("nofile");
-  $e(".ed-dirty", st.sec).hidden = !st.dirty; $e('[data-ed="ask"]', st.sec).disabled = !st.file;
+  $e(".ed-dirty", st.sec).hidden = !st.dirty;
 }
 function dirty(kind, v = true) { const st = ED.st[kind]; if (st.dirty !== v) { st.dirty = v; label(kind); } }
 ED.dirty = dirty;
@@ -150,6 +151,7 @@ const say = (kind, m) => { ED.st[kind].msg.textContent = m || ""; };
 function ensure(kind) {
   const st = ED.st[kind]; if (st.ready) return; st.ready = true; $e("#ed-host").append(frame(kind)); st.sec.hidden = false;
   ED.kinds[kind].init(st.body, kind); ED.kinds[kind].blank(); label(kind);
+  if (ED.ai) ED.ai.mount(kind);
 }
 async function doOpen(kind, file) {
   const st = ED.st[kind], tabs = ED.kinds[kind].newTab;
@@ -204,12 +206,6 @@ async function doDownload(kind) {
   const st = ED.st[kind]; const E = ED.kinds[kind]; const name = st.file ? base(st.file.path) : st.name;
   const { blob } = await E.export(ext(name) || E.exts()[0]);
   const a = h("a", { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
-}
-function doAsk(kind) {
-  const st = ED.st[kind]; if (!st.file) return;
-  show("files");
-  try { if (typeof pdCd === "function") { pd.home = false; pdCd(dirOf(st.file.path)); } } catch (e) {}
-  const q = $e("#pd-q"); if (q) { q.value = (L() === "bn" ? `“${base(st.file.path)}” ফাইলটি সম্পর্কে: ` : `About the file “${base(st.file.path)}”: `); q.focus(); }
 }
 window.addEventListener("beforeunload", e => { if (KINDS.some(k => ED.st[k].dirty)) { e.preventDefault(); e.returnValue = ""; } });
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && KINDS.includes(ED.tab)) { e.preventDefault(); doSave(ED.tab, e.shiftKey); } });

@@ -10,6 +10,7 @@
 import crypto from "node:crypto";
 import { makePool } from "./storage.js";
 import * as rag from "./rag.js";
+import { edAI } from "./edai.js";
 
 const env = process.env;
 let SECRET = env.PENDRIVE_SECRET || "";
@@ -418,6 +419,32 @@ export async function handle(req, res, url, body, send) {
       return send(200, { ok: true });
     });
   }
+  // Editor conversations: one list per editor area (word/excel/image/note). Each row = a snapshot of the document + its AI thread.
+  // Always a NEW row on save (never overwrite or merge). Owner only.
+  if (op.startsWith("edconv/")) {
+    if (req.pdAs) fail(403, "forbidden");
+    const area = String(body.area || ""); if (!["word", "excel", "image", "note"].includes(area)) fail(400, "bad_area");
+    const IK = `${P(id)}/edconv/${area}.json`, rKey = r => `${P(id)}/edconv/${r}.json`;
+    const rid = String(body.rid || ""); const okId = new RegExp(`^${area}-[a-f0-9]{16}$`).test(rid);
+    const title = x => String(x || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 140);
+    const listR = async () => ((await cget(IK)) || { rows: [] }).rows;
+    if (op === "edconv/list") return send(200, { rows: (await listR()).sort((a, b) => b.at - a.at) });
+    if (op === "edconv/get") { if (!okId) fail(400, "bad_id"); const r = await storage.getJson(rKey(rid)); if (!r) fail(404, "not_found"); return send(200, r); }
+    return withLock("edconv:" + id + area, async () => {
+      const rows = await listR(); const i = rows.findIndex(r => r.id === rid);
+      if (op === "edconv/delete") { if (i < 0) fail(404, "not_found"); await storage.del(rKey(rid)); rows.splice(i, 1); await cset(IK, { rows }); return send(200, { ok: true }); }
+      if (op === "edconv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const r = await storage.getJson(rKey(rid)); if (r) { r.title = tt; await storage.putJson(rKey(rid), r); } rows[i].title = tt; await cset(IK, { rows }); return send(200, rows[i]); }
+      if (op !== "edconv/save") fail(404, "unknown_op");
+      const data = String(body.data || ""); if (!/^[A-Za-z0-9+/=]*$/.test(data)) fail(400, "bad_data"); if (data.length > 5500000) fail(413, "too_large");
+      const thread = (Array.isArray(body.thread) ? body.thread : []).slice(-80).map(t => ({ q: String(t.q || "").slice(0, 4000), a: String(t.a || "").slice(0, 8000), at: Number(t.at) || Date.now() }));
+      if (rows.length >= 300) fail(409, "too_many");
+      const nid = area + "-" + crypto.randomBytes(8).toString("hex");
+      const rec = { id: nid, area, title: title(body.title) || "Untitled", name: title(body.name) || "Untitled", ext: String(body.ext || "").replace(/[^a-z0-9]/gi, "").slice(0, 8), mime: String(body.mime || "").slice(0, 120), at: Date.now(), data, thread };
+      await storage.putJson(rKey(nid), rec);
+      const row = { id: nid, area, title: rec.title, name: rec.name, ext: rec.ext, at: rec.at, n: thread.length, size: data.length };
+      rows.push(row); await cset(IK, { rows }); return send(200, row);
+    });
+  }
   // Saved conversations (thread of questions, answers, edits, revisions). One small index + one JSON per conversation.
   // Owner only (PIN session); share links never reach these ops.
   if (op.startsWith("conv/")) {
@@ -436,6 +463,7 @@ export async function handle(req, res, url, body, send) {
         q: String(t.q || "").slice(0, 2000), md: String(t.md || "").slice(0, 200000), at: Number(t.at) || Date.now(),
         kind: ["ask", "revise", "edit"].includes(t.kind) ? t.kind : "ask",
         sources: (Array.isArray(t.sources) ? t.sources : []).slice(0, 50).map(x => String(x).slice(0, 500)),
+        ...(Array.isArray(t.imgs) && t.imgs.length ? { imgs: t.imgs.slice(0, 4).map(imageAction).filter(Boolean) } : {}),
         cites: (Array.isArray(t.cites) ? t.cites : []).slice(0, 20).map(c => ({ n: Number(c.n) || 0, path: String(c.path || "").slice(0, 500), id: String(c.id || "").slice(0, 64), quote: String(c.quote || "").slice(0, 600), loc: c.loc && typeof c.loc === "object" ? JSON.parse(JSON.stringify(c.loc).slice(0, 400) || "null") : null }))
       })).filter(t => t.md || t.q);
       if (!turns.length) fail(400, "empty");
@@ -707,6 +735,7 @@ export async function handle(req, res, url, body, send) {
     });
   }
   if (op === "ai") return aiJob(req, res, id, body);
+  if (op === "ed-ai") { const r = await edAI(body, askAI, env.PENDRIVE_MOCK_AI === "1"); if (r.error) fail(400, r.error); return send(200, r); }
   if (op === "ocr") { // read the text in up to 4 page images with a vision model; the browser falls back to Tesseract when this says no_vision
     const imgs = (Array.isArray(body.images) ? body.images : []).slice(0, 4).filter(im => im && /^image\/(jpeg|png|webp)$/.test(im.mime) && typeof im.data === "string" && im.data.length < 2500000);
     if (!imgs.length) fail(400, "no_image");

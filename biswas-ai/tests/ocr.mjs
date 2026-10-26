@@ -68,6 +68,8 @@ const ed = await p.evaluate(() => ({ tab: BA_ED.tab, W: BA_ED.kinds.image._api()
 ok(ed.tab === "image" && pix && ed.W === pix.w, "O9 opened in Drafting Image: " + JSON.stringify(ed));
 await shot("o04-open-in-drafting-image");
 await p.click("#ed-tab-files"); await sl(600);
+{ const r = await p.evaluate(async () => { await pdConvSave(true); const id = pd.conv.id; pdConvNew(); await new Promise(r => setTimeout(r, 300)); const gone = !document.querySelector("#pd-out-doc .pd-imgact"); await pdConvOpen(id); await new Promise(r => setTimeout(r, 1500)); return { gone, back: !!document.querySelector("#pd-out-doc .pd-imgact img") }; });
+  ok(r.gone && r.back, "O9b image answer saved with the conversation and restored on reopen: " + JSON.stringify(r)); }
 
 /* O10–O11 scanned PDF */
 await up(FX + "/scanned-letter.pdf");

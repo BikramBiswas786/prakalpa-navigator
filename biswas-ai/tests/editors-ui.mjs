@@ -116,7 +116,7 @@ await shot("08-notepad");
 m = await save("note"); ok(/^Saved/.test(m), "29 Notepad Save: " + m);
 await reopen("note", "Docs/notes.txt"); ok(await p.$eval("#np-ta", e => /Second line with আম/.test(e.value)), "30 reopened text has the replacement");
 // Ask AI
-await p.click("#ed-note [data-ed=ask]"); await sl(400); ok(await p.evaluate(() => !$("#pd-main").classList.contains("ed-on") && /notes\.txt/.test($("#pd-q").value)), "31 Ask AI about this file goes to the AI box with the file named");
+ok(await p.evaluate(() => !document.querySelector("[data-ed=ask]") && !!document.querySelector("#ed-note [data-ed=conv]") && !!document.querySelector("#ed-note [data-ed=newpage]") && !!document.querySelector("#ea-note #ea-q-note")), "31 Ask AI top button replaced by Save to conversation + New page, AI panel under Notepad");
 // dark theme + 1366 fit
 await p.evaluate(() => document.documentElement.setAttribute("data-theme", "dark")); await p.click("#ed-tab-excel"); await sl(300); await shot("09-excel-dark");
 await p.click("#ed-tab-word"); await sl(300); await shot("10-word-dark");

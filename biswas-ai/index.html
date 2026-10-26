@@ -5752,7 +5752,7 @@ function pdNormTables(md) {
   }
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-function pdOutAdd(md, sources, cites, opt = {}) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: (opt.q != null ? opt.q : ($("#pd-q").value || "").trim()).slice(0, 2000), kind: opt.kind || "ask", at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 60); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); if (pd.conv) pdConvSave(true).catch(() => {}); }
+function pdOutAdd(md, sources, cites, opt = {}) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: (opt.q != null ? opt.q : ($("#pd-q").value || "").trim()).slice(0, 2000), kind: opt.kind || "ask", at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20), ...(opt.imgs && opt.imgs.length ? { imgs: opt.imgs.slice(0, 4) } : {}) }); pd.outs = pd.outs.slice(0, 60); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); if (pd.conv) pdConvSave(true).catch(() => {}); }
 // [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
 function pdLocLabel(l) { if (!l) return ""; const en = settings.lang === "en"; if (l.page) return (en ? "p. " : "পৃ. ") + l.page; if (l.sheet) return `${l.sheet} ${en ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}`; if (l.h) return l.h.split(" › ").pop(); return ""; }
 function pdChipify(root, cites) {
@@ -5771,6 +5771,7 @@ function renderPdOut() {
   const doc = $("#pd-out-doc"); if (!doc) return; const o = pd.outs[pd.outCur]; $("#pd-out").hidden = !(o && pd.outShown); doc.dataset.q = o ? o.q || "" : "";
   doc.innerHTML = o ? mdToHtml(o.md) + (o.sources && o.sources.length ? `<p class="src pd-used"><b>${esc(t("pd_ai_used"))} (${o.sources.length}):</b> ${o.sources.map(s => "📄 " + esc(s)).join(" · ")}</p>` : "") : `<p class="hint">${esc(t("pd_out_empty"))}</p>`;
   if (o && o.cites && o.cites.length) pdChipify(doc, o.cites);
+  if (o && o.imgs && o.imgs.length && window.BA_OCR) BA_OCR.cards(doc, o.imgs);
   const hasTable = !!(o && parseMd(o.md).some(b => b.t === "table")); const c = $("#pd-out-csv"); c.disabled = !hasTable; c.title = hasTable ? "" : t("pd_out_notable");
   document.querySelectorAll("[data-pd-out]").forEach(b => { if (b.dataset.pdOut !== "csv") b.disabled = !o; });
   $("#pd-out-list").innerHTML = pd.outs.map((x, i) => [x, i]).reverse().map(([x, i]) => `<li><button type="button" data-pd-outh="${i}" ${i === pd.outCur ? 'aria-current="true"' : ""}><span class="k">${esc(t("pd_k_" + (x.kind || "ask")))}</span>${esc((x.q || x.md).slice(0, 140))}<small>${esc(new Date(x.at).toLocaleString(settings.lang === "bn" ? "bn-IN" : "en-IN", { dateStyle: "medium", timeStyle: "short" }))}</small></button></li>`).join("");
@@ -6322,7 +6323,7 @@ pd.convs = pd.convs || [];
 async function pdConvList() { try { pd.convs = (await pdApi("conv/list")).convs || []; } catch (e) { pd.convs = []; } renderPdConvs(); }
 async function pdConvSave(quiet) {
   if (!pd.outs.length) { if (!quiet) toast(t("pd_out_none")); return; }
-  const turns = pd.outs.slice().reverse().map(o => ({ q: o.q, md: o.md, at: o.at, kind: o.kind || "ask", sources: o.sources || [], cites: o.cites || [] }));
+  const turns = pd.outs.slice().reverse().map(o => ({ q: o.q, md: o.md, at: o.at, kind: o.kind || "ask", sources: o.sources || [], cites: o.cites || [], ...(o.imgs ? { imgs: o.imgs } : {}) }));
   const row = await pdApi("conv/save", { cid: pd.conv ? pd.conv.id : "", branch: pd.conv ? pd.conv.branch : pdBranch(), turns });
   pd.conv = { id: row.id, title: row.title, branch: row.branch }; pdOutSave();
   const i = pd.convs.findIndex(c => c.id === row.id); if (i >= 0) pd.convs[i] = row; else pd.convs.unshift(row); renderPdConvs();
@@ -6358,13 +6359,12 @@ function pdAiEvent(ev) {
     $("#pd-ai-speed").textContent = ev.cached ? t("pd_aitime_cached", f(tot)) : ev.fast ? t("pd_aitime", f(first), f(tot)) : t("pd_aitime_slow", f(tot)); }
   pd.actions = ev.actions || [];
   pd.cites = ev.cites || [];
-  pdOutAdd(ev.text || "", ev.sources || [], pd.cites);
+  pdOutAdd(ev.text || "", ev.sources || [], pd.cites, { imgs: pd.actions.filter(a => a.type === "image") });
   out.innerHTML = ""
     + (ev.notFound ? `<div class="src pd-notfound"><b>${esc(ev.text)}</b> ${esc(t("pd_notfound_hint"))}</div>` : "")
     + (pd.cites.length ? `<div class="src pd-cites"><b>${esc(t("pd_cites"))}:</b> ${pd.cites.map(c => `<button type="button" class="pd-cite" data-pd-cite="${c.n}" title="${esc(c.quote || "")}">[${c.n}] ${esc(c.path.split("/").pop())}${pdLocLabel(c.loc) ? " · " + esc(pdLocLabel(c.loc)) : ""}${c.ocr ? " · " + esc(t("pd_imgtext")) : ""}</button>`).join(" ")}</div>` : "")
     + (ev.sources && ev.sources.length ? `<div class="src pd-used"><b>${esc(t("pd_ai_used"))} (${ev.sources.length}):</b> ${ev.sources.map(s => "📄 " + esc(s)).join(" · ")}</div>` : "")
     + (ev.noText && ev.noText.length ? `<div class="src">${esc(t("pd_no_text_files", ev.noText.length))}</div>` : "");
-  if (window.BA_OCR) BA_OCR.cards(out, pd.actions);
   const box = $("#pd-out"); if (box) setTimeout(() => box.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 async function pdSaveAction(i) {
@@ -6522,5 +6522,6 @@ resume();
 <script src="/ed-image.js?h=0" defer></script>
 <script src="/ed-note.js?h=0" defer></script>
 <script src="/ed-ocr.js?h=0" defer></script>
+<script src="/ed-ai.js?h=0" defer></script>
 </body>
 </html>

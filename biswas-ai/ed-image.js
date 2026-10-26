@@ -299,7 +299,7 @@ ED.kinds.image = (() => {
       return { blob: await new Promise(r => src.toBlob(r, mime, 0.92)) }; },
     exts: () => [curExt, "png", "jpg", "jpeg", "webp"],
     fit: () => { if (zoom === "fit") { applyZoom(); over(); } },
-    _api: () => ({ get W() { return W; }, get H() { return H; }, layers: () => layers, act: () => act, sel: () => sel, setSel: s => { sel = s; ac.disabled = !s; over(); }, flat, tool: () => tool, scale: () => scale, undoN: () => undo.length, pasteSrc })
+    _api: () => ({ get W() { return W; }, get H() { return H; }, layers: () => layers, act: () => act, sel: () => sel, setSel: s => { sel = s; ac.disabled = !s; over(); }, flat, tool: () => tool, scale: () => scale, undoN: () => undo.length, pasteSrc, filt, rotate, flip, mk, g2, xform, aiEdit: fn => { snap(); fn({ g: LG(), W, H, L: AL() }); layersUI(); render(); dirty(); }, resizeTo: (w, hh) => xform(w, hh, (g, f) => { g.imageSmoothingQuality = "high"; g.drawImage(f, 0, 0, w, hh); }) })
   };
   function css() { if (document.getElementById("im-css")) return; document.head.append(h("style", { id: "im-css" }, `
 .im-work { display: flex; gap: 8px; align-items: flex-start; }
