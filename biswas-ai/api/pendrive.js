@@ -651,6 +651,10 @@ async function aiJob(req, res, id, body) {
   let inScope = all;
   if (Array.isArray(scope.ids) && scope.ids.length) { const s = new Set(scope.ids.map(String)); inScope = all.filter(f => s.has(f.id)); }
   else if (scope.folder) { const d = cleanPath(scope.folder); inScope = all.filter(f => under(f.path, d)); }
+  if (typeof scope.branch === "string") { // v123: branches are folders under "⎇/"; the default branch is everything else
+    const r = scope.branch ? "⎇/" + cleanPath(scope.branch) : "";
+    inScope = inScope.filter(f => r ? under(f.path, r) : !under(f.path, "⎇"));
+  }
   res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
   const emit = o => res.write(JSON.stringify(o) + "\n");
   const noText = inScope.filter(f => !f.text).map(f => f.path);
