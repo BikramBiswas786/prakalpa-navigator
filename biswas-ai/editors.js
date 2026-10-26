@@ -510,6 +510,9 @@ async function htmlToDocx(root, O = {}) {
       if (!isBlock(n)) { if (n.nodeType === 3 && !n.nodeValue.trim() && !inl.length) continue; inl.push(n); continue; }
       await flush(); const tg = n.tagName;
       if (/^H[1-6]$/.test(tg)) x += await para(n, ppr(n, `<w:pStyle w:val="Heading${Math.min(+tg[1], 3)}"/>`), {});
+      else if (tg === "DIV" && n.classList.contains("wd-vline")) { // straight vertical line: a VML line in its own paragraph (Word, LibreOffice and Google Docs read it)
+        const bw = parseFloat(n.style.borderLeftWidth) || 2, bc = colorHex(n.style.borderLeftColor) || "000000", hh = parseFloat(n.style.height) || 160, ml = parseFloat(n.style.marginLeft) || 0, pt = v => (v * 0.75).toFixed(1);
+        x += `<w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:pict><v:line xmlns:v="urn:schemas-microsoft-com:vml" from="${pt(ml)}pt,0" to="${pt(ml)}pt,${pt(hh)}pt" strokecolor="#${bc}" strokeweight="${pt(bw)}pt" style="position:absolute;mso-position-horizontal-relative:text;mso-position-vertical-relative:text"/></w:pict></w:r></w:p><w:p><w:pPr><w:spacing w:before="${Math.round(hh * 15)}" w:after="0"/></w:pPr></w:p>`; }
       else if (tg === "HR" && n.classList.contains("wd-hr")) { const bw = parseFloat(n.style.borderTopWidth) || 1.5, bc = colorHex(n.style.borderTopColor) || "000000", wpx = /px$/.test(n.style.width) ? parseFloat(n.style.width) : 0, ml = parseFloat(n.style.marginLeft) || 0, right = wpx ? Math.max(0, 9026 - Math.round((wpx + ml) * 15)) : 0;
         x += `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="${Math.max(2, Math.min(96, Math.round(bw * 6)))}" w:space="1" w:color="${bc}"/></w:pBdr><w:spacing w:after="120"/>${ml || right ? `<w:ind w:left="${Math.round(ml * 15)}" w:right="${right}"/>` : ""}</w:pPr></w:p>`; }
       else if (tg === "HR" || n.classList.contains("ed-pb")) x += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';

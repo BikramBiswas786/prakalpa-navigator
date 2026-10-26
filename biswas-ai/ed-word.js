@@ -9,7 +9,7 @@ ED.addTX({
   en: { w_tsize: "Drag to resize the table", w_del: "Delete", w_cmt: "Comment", w_cmtq: "Comment on the selected text:", w_cmts: "Comments", w_track: "Track changes", w_acc: "Accept all changes", w_rej: "Reject all changes", w_cols: "Columns", w_col1: "One column", w_col2: "Two columns", w_col3: "Three columns", w_toc: "Table of contents", w_tocT: "Contents", w_selfirst: "Select some text first.", w_trackon: "Track changes is on: new text is green, deleted text is struck out.", w_trackoff: "Track changes is off.", w_nohead: "Add Heading 1–3 paragraphs first, then insert the contents.", w_wm: "Watermark", w_wmq: "Watermark text (empty to remove):", w_fn: "Footnote", w_fnq: "Footnote text:", w_fns: "Footnotes",
     w_font: "Font", w_size: "Size", w_style: "Style", w_grow: "Bigger text", w_shrink: "Smaller text", w_strike: "Strikethrough", w_sup: "Superscript", w_sub: "Subscript",
     w_hl: "Highlight", w_color: "Font colour", w_clear: "Clear formatting", w_case: "Change case", w_upper: "UPPER CASE", w_lower: "lower case", w_title: "Title Case",
-    w_out: "Decrease indent", w_in: "Increase indent", w_ls: "Line spacing", w_border: "Paragraph border", w_hr: "Horizontal line", w_shape: "Shapes", w_tbox: "Text box",
+    w_out: "Decrease indent", w_in: "Increase indent", w_ls: "Line spacing", w_border: "Paragraph border", w_hr: "Horizontal line", w_vl: "Vertical line", w_shape: "Shapes", w_tbox: "Text box",
     w_wa: "WordArt", w_link: "Link", w_sym: "Symbol", w_date: "Date", w_addpg: "+ Add page", w_setup: "Page setup", w_hf: "Header & footer", w_findr: "Find & replace",
     w_zoom: "Zoom", w_print: "Print", w_painter: "Format painter", w_painter_on: "Select text to paint the copied format onto it.", w_url: "Link address (https://…):",
     w_pgof: "Page {0} of {1}", w_words: "{0} words", w_chars: "{0} characters", w_pgsize: "Paper size", w_orient: "Orientation", w_port: "Portrait", w_land: "Landscape",
@@ -20,7 +20,7 @@ ED.addTX({
   bn: { w_tsize: "টেবিলের মাপ বদলাতে টানুন", w_del: "মুছুন", w_cmt: "মন্তব্য", w_cmtq: "বাছাই করা লেখায় মন্তব্য:", w_cmts: "মন্তব্য", w_track: "পরিবর্তন ট্র্যাক", w_acc: "সব পরিবর্তন মেনে নিন", w_rej: "সব পরিবর্তন বাতিল", w_cols: "কলাম", w_col1: "এক কলাম", w_col2: "দুই কলাম", w_col3: "তিন কলাম", w_toc: "সূচিপত্র", w_tocT: "সূচিপত্র", w_selfirst: "আগে কিছু লেখা বাছুন।", w_trackon: "ট্র্যাক চালু: নতুন লেখা সবুজ, মোছা লেখা কাটা দাগে।", w_trackoff: "ট্র্যাক বন্ধ।", w_nohead: "আগে Heading 1–3 অনুচ্ছেদ দিন, তারপর সূচিপত্র।", w_wm: "জলছাপ", w_wmq: "জলছাপের লেখা (মুছতে ফাঁকা রাখুন):", w_fn: "পাদটীকা", w_fnq: "পাদটীকার লেখা:", w_fns: "পাদটীকা",
     w_font: "ফন্ট", w_size: "আকার", w_style: "শৈলী", w_grow: "লেখা বড়", w_shrink: "লেখা ছোট", w_strike: "কাটা দাগ", w_sup: "উপরে ছোট লেখা", w_sub: "নিচে ছোট লেখা",
     w_hl: "হাইলাইট", w_color: "লেখার রং", w_clear: "ফরম্যাট মুছুন", w_case: "অক্ষরের ধরন", w_upper: "বড় হাতের", w_lower: "ছোট হাতের", w_title: "প্রথম অক্ষর বড়",
-    w_out: "ইনডেন্ট কমান", w_in: "ইনডেন্ট বাড়ান", w_ls: "লাইনের ফাঁক", w_border: "অনুচ্ছেদের বর্ডার", w_hr: "আনুভূমিক রেখা", w_shape: "আকৃতি", w_tbox: "টেক্সট বক্স",
+    w_out: "ইনডেন্ট কমান", w_in: "ইনডেন্ট বাড়ান", w_ls: "লাইনের ফাঁক", w_border: "অনুচ্ছেদের বর্ডার", w_hr: "আনুভূমিক রেখা", w_vl: "খাড়া লাইন", w_shape: "আকৃতি", w_tbox: "টেক্সট বক্স",
     w_wa: "ওয়ার্ডআর্ট", w_link: "লিংক", w_sym: "চিহ্ন", w_date: "তারিখ", w_addpg: "+ পাতা যোগ", w_setup: "পাতার সেটআপ", w_hf: "হেডার ও ফুটার", w_findr: "খুঁজুন ও বদলান",
     w_zoom: "জুম", w_print: "প্রিন্ট", w_painter: "ফরম্যাট পেইন্টার", w_painter_on: "যে লেখায় ফরম্যাট বসাতে চান সেটি সিলেক্ট করুন।", w_url: "লিংকের ঠিকানা (https://…):",
     w_pgof: "পাতা {0} / {1}", w_words: "{0} শব্দ", w_chars: "{0} অক্ষর", w_pgsize: "কাগজের মাপ", w_orient: "দিক", w_port: "লম্বালম্বি", w_land: "আড়াআড়ি",
@@ -65,6 +65,7 @@ const css = `
 #wd-track[aria-pressed="true"] { background: #1a7f37; color: #fff; }
 .wd-desk .wd-page { position: relative; width: auto; max-width: none; min-height: 0; margin: 0; background: transparent; box-shadow: none; box-sizing: border-box; line-height: 1.15; }
 .wd-page p { margin: 0 0 8pt; } .wd-page li { margin: 0; }
+.wd-page div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; margin: 4pt 0; padding: 0 4px 0 0; cursor: move; }
 .wd-page hr.wd-hr { border: 0; border-top: 1.5px solid #000; margin: 4pt 0 8pt; padding: 3px 0; background-clip: content-box; cursor: move; }
 .wd-selbox { position: absolute; border: 1px dashed #1f6feb; z-index: 6; cursor: move; box-sizing: border-box; }
 .wd-hnd { position: absolute; width: 9px; height: 9px; background: #fff; border: 1.5px solid #1f6feb; border-radius: 2px; }
@@ -227,26 +228,26 @@ ED.kinds.word = (() => {
   function drag(e, move, done) { e.preventDefault(); e.stopPropagation(); const x0 = e.clientX, y0 = e.clientY;
     const mm = ev => move((ev.clientX - x0) / zoom, (ev.clientY - y0) / zoom); const up = () => { removeEventListener("mousemove", mm); removeEventListener("mouseup", up); if (done) done(); dirty(); placeSel(); };
     addEventListener("mousemove", mm); addEventListener("mouseup", up); }
-  const isObj = el => el && el.nodeType === 1 && (el.matches("img") || el.matches("hr.wd-hr") || el.matches(".wd-tbox"));
+  const isObj = el => el && el.nodeType === 1 && (el.matches("img") || el.matches("hr.wd-hr") || el.matches("div.wd-vline") || el.matches(".wd-tbox"));
   function selectObj(el) { selObj = el; if (!selBox) { selBox = h("div", { class: "wd-selbox", id: "wd-selbox" }); stack.append(selBox); } placeSel(); }
   function unselect() { selObj = null; if (selBox) { selBox.remove(); selBox = null; } }
-  function placeSel() { if (!selObj || !selObj.isConnected) { unselect(); return; } const r = relRect(selObj), line = selObj.matches("hr");
-    selBox.style.cssText = `left:${r.x - 3}px;top:${r.y - 3 - (line ? 5 : 0)}px;width:${r.w + 6}px;height:${r.h + 6 + (line ? 10 : 0)}px`;
-    selBox.replaceChildren(...(line ? ["w", "e"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map(d => h("div", { class: "wd-hd-" + d + " wd-hnd", "data-d": d, onmousedown: e => resizeObj(e, d) })), objBar()); }
-  function objBar() { const el = selObj, line = el.matches("hr"), box = el.matches(".wd-tbox"); const cs = getComputedStyle(el);
+  function placeSel() { if (!selObj || !selObj.isConnected) { unselect(); return; } const r = relRect(selObj), line = selObj.matches("hr"), vl = selObj.matches(".wd-vline");
+    selBox.style.cssText = `left:${r.x - 3 - (vl ? 5 : 0)}px;top:${r.y - 3 - (line ? 5 : 0)}px;width:${r.w + 6 + (vl ? 10 : 0)}px;height:${r.h + 6 + (line ? 10 : 0)}px`;
+    selBox.replaceChildren(...(line ? ["w", "e"] : vl ? ["n", "s"] : ["nw", "n", "ne", "e", "se", "s", "sw", "w"]).map(d => h("div", { class: "wd-hd-" + d + " wd-hnd", "data-d": d, onmousedown: e => resizeObj(e, d) })), objBar()); }
+  function objBar() { const el = selObj, vl = el.matches(".wd-vline"), line = el.matches("hr") || vl, box = el.matches(".wd-tbox"); const cs = getComputedStyle(el);
     const set = fn => { fn(); dirty(); placeSel(); };
     const wIn = h("input", { type: "number", id: "wd-ob-w", title: T("width"), value: Math.round(relRect(el).w), style: "width:62px", onchange: e => set(() => { const v = Math.max(10, +e.target.value); if (el.tagName === "IMG") { const k = el.height / el.width; el.width = v; if (!e.shiftKey) el.height = Math.round(v * k); } else el.style.width = v + "px"; }) });
     const kids = [h("span", {}, "↔"), wIn];
     if (el.tagName === "IMG") kids.push(h("span", {}, "↕"), h("input", { type: "number", id: "wd-ob-h", title: T("height"), value: el.height, style: "width:62px", onchange: e => set(() => { el.height = Math.max(5, +e.target.value); }) }));
-    if (line || box) { const side = line ? "borderTop" : "border"; kids.push(h("span", {}, "▬"), h("input", { type: "number", id: "wd-ob-t", title: T("w_lw"), min: "0.5", step: "0.5", value: parseFloat(cs[line ? "borderTopWidth" : "borderTopWidth"]) || 1.5, style: "width:52px", onchange: e => set(() => { el.style[side + "Width"] = Math.max(.5, +e.target.value) + "px"; if (!el.style[side + "Style"]) el.style[side + "Style"] = "solid"; }) }),
-      h("input", { type: "color", id: "wd-ob-c", title: T("w_outline"), value: rgbHex(cs.borderTopColor), onchange: e => set(() => { el.style[side + "Color"] = e.target.value; if (!el.style[side + "Style"]) el.style[side + "Style"] = "solid"; }) })); }
+    if (line || box) { const side = vl ? "borderLeft" : line ? "borderTop" : "border"; kids.push(h("span", {}, "▬"), h("input", { type: "number", id: "wd-ob-t", title: T("w_lw"), min: "0.5", step: "0.5", value: parseFloat(cs[vl ? "borderLeftWidth" : "borderTopWidth"]) || 1.5, style: "width:52px", onchange: e => set(() => { el.style[side + "Width"] = Math.max(.5, +e.target.value) + "px"; if (!el.style[side + "Style"]) el.style[side + "Style"] = "solid"; }) }),
+      h("input", { type: "color", id: "wd-ob-c", title: T("w_outline"), value: rgbHex(vl ? cs.borderLeftColor : cs.borderTopColor), onchange: e => set(() => { el.style[side + "Color"] = e.target.value; if (!el.style[side + "Style"]) el.style[side + "Style"] = "solid"; }) })); }
     if (el.dataset.obj) kids.push(h("button", { type: "button", class: "wd-b", title: T("w_edit_obj"), onclick: () => { try { objDialog(el.dataset.obj, JSON.parse(el.dataset.o), el); } catch (x) {} } }, "✎"));
     kids.push(h("button", { type: "button", class: "wd-b", id: "wd-ob-del", title: T("w_del"), onclick: () => { el.remove(); unselect(); dirty(); } }, "🗑"));
     return h("div", { class: "wd-objbar", onmousedown: e => e.stopPropagation() }, ...kids); }
   const rgbHex = c => { const m = String(c).match(/\d+/g); return m ? "#" + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, "0")).join("") : "#000000"; };
   function resizeObj(e, d) { const el = selObj, r0 = relRect(el), img = el.tagName === "IMG", ml0 = parseFloat(el.style.marginLeft) || 0;
     drag(e, (dx, dy) => { let w = r0.w + (/e/.test(d) ? dx : /w/.test(d) ? -dx : 0), hh = r0.h + (/s/.test(d) ? dy : /n/.test(d) ? -dy : 0); w = Math.max(12, w); hh = Math.max(4, hh);
-      if (img) { if (d.length === 2 && !e.shiftKey) hh = w * r0.h / r0.w; el.width = Math.round(w); el.height = Math.round(hh); } else { el.style.width = Math.round(w) + "px"; if (!el.matches("hr")) el.style.minHeight = Math.round(hh) + "px"; }
+      if (img) { if (d.length === 2 && !e.shiftKey) hh = w * r0.h / r0.w; el.width = Math.round(w); el.height = Math.round(hh); } else if (el.matches(".wd-vline")) { el.style.height = Math.round(hh) + "px"; if (/n/.test(d)) el.style.marginTop = Math.max(0, (parseFloat(el.style.marginTop) || 0) + 0) + "px"; } else { el.style.width = Math.round(w) + "px"; if (!el.matches("hr")) el.style.minHeight = Math.round(hh) + "px"; }
       if (/w/.test(d)) el.style.marginLeft = Math.max(0, ml0 + dx) + "px"; placeSel(); }); }
   function moveObj(e) { const el = selObj; const host = el.tagName === "IMG" && el.parentElement !== page && el.parentElement.textContent.trim() === "" && el.parentElement.querySelectorAll("img").length === 1 ? el.parentElement : el;
     const ml0 = parseFloat(host.style.marginLeft) || 0, mt0 = parseFloat(host.style.marginTop) || 0; if (host === el && el.tagName === "IMG") el.style.display = "block";
@@ -269,9 +270,9 @@ ED.kinds.word = (() => {
   function installManual() {
     page.addEventListener("mousemove", e => { if (e.buttons) return; const ed = tableEdge(e); page.style.cursor = ed ? (ed.kind === "col" ? "col-resize" : "row-resize") : ""; const t = e.target.closest && e.target.closest("table"); if (t && page.contains(t)) tableHandle(t); });
     page.addEventListener("mousedown", e => { const ed = tableEdge(e); if (ed) { startTable(e, ed); return; }
-      const o = e.target.closest && e.target.closest("img,hr.wd-hr,.wd-tbox"); if (o && page.contains(o) && isObj(o)) { if (o.matches(".wd-tbox") && selObj !== o) { selectObj(o); return; } if (o.matches(".wd-tbox")) return; selectObj(o); moveObj(e); return; }
+      const o = e.target.closest && e.target.closest("img,hr.wd-hr,div.wd-vline,.wd-tbox"); if (o && page.contains(o) && isObj(o)) { if (o.matches(".wd-tbox") && selObj !== o) { selectObj(o); return; } if (o.matches(".wd-tbox")) return; selectObj(o); moveObj(e); return; }
       unselect(); }, true);
-    page.addEventListener("keydown", e => { if (selObj && (e.key === "Delete" || e.key === "Backspace") && document.activeElement === page && !page.contains(document.getSelection().anchorNode === selObj ? null : null)) { if (selObj.matches("img,hr")) { e.preventDefault(); selObj.remove(); unselect(); dirty(); } } });
+    page.addEventListener("keydown", e => { if (selObj && (e.key === "Delete" || e.key === "Backspace") && document.activeElement === page && !page.contains(document.getSelection().anchorNode === selObj ? null : null)) { if (selObj.matches("img,hr,div.wd-vline")) { e.preventDefault(); selObj.remove(); unselect(); dirty(); } } });
     selBoxMove(); }
   function selBoxMove() { stack.addEventListener("mousedown", e => { if (selBox && e.target === selBox) moveObj(e); }); }
   function objDialog(kind, o, target) {
@@ -366,7 +367,7 @@ ED.kinds.word = (() => {
       if (pn && (pa !== "center" || !txt)) x += `@${pos}-${pa === "left" ? "left" : pa === "right" ? "right" : "center"} { content: counter(page); ${F} }`; return x; };
     d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${XE(ED.st.word.name || "Document")}</title>${document.getElementById("wd-fonts").outerHTML}<style>@page { size: ${pg.w}mm ${pg.h}mm; margin: ${pg.mt}mm ${pg.mr}mm ${pg.mb}mm ${pg.ml}mm; ${box("top")} ${box("bottom")} }
       body { margin: 0; font-family: ${stackOf(pg.font)}; font-size: ${pg.size}pt; line-height: ${pg.line || 1.15}; color: #111; } p { margin: 0 0 8pt; } table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #808080; padding: 4px 6px; vertical-align: top; }
-      hr.ed-pb { break-after: page; border: 0; margin: 0; } hr.wd-hr { border: 0; border-top: 1.5px solid #000; } .wd-tbox { border: 1.5px solid #333; padding: 6px 10px; width: 60%; } img { max-width: 100%; } h1,h2,h3 { color: #1f3864; }</style></head><body>${clean().innerHTML}</body></html>`); d.close();
+      hr.ed-pb { break-after: page; border: 0; margin: 0; } hr.wd-hr { border: 0; border-top: 1.5px solid #000; } div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; } .wd-tbox { border: 1.5px solid #333; padding: 6px 10px; width: 60%; } img { max-width: 100%; } h1,h2,h3 { color: #1f3864; }</style></head><body>${clean().innerHTML}</body></html>`); d.close();
     setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) {} setTimeout(() => f.remove(), 60000); }, 600);
   }
 
@@ -553,7 +554,7 @@ ED.kinds.word = (() => {
         B("wd-fp", "🖌", T("w_painter"), () => { if (painter) { painter = null; document.getElementById("wd-fp").setAttribute("aria-pressed", "false"); ED.say("word", ""); } else startPainter(); }, { "aria-pressed": "false" }), sep(),
         B("wd-al", "⯇≡", "Align left", () => cmd("justifyLeft")), B("wd-ac", "≡", "Centre", () => cmd("justifyCenter")), B("wd-ar", "≡⯈", "Align right", () => cmd("justifyRight")), B("wd-aj", "☰", "Justify", () => cmd("justifyFull")),
         B("wd-ul", "• ≡", "Bullets", () => cmd("insertUnorderedList")), B("wd-ol", "1. ≡", "Numbering", () => cmd("insertOrderedList")), B("wd-out", "⇤", T("w_out"), () => indent(-1)), B("wd-in", "⇥", T("w_in"), () => indent(1)), ls,
-        B("wd-bdr", "▭", T("w_border"), border), B("wd-hr", "―", T("w_hr"), () => insertHTML('<hr class="wd-hr"><p><br></p>')), sep(),
+        B("wd-bdr", "▭", T("w_border"), border), B("wd-hr", "―", T("w_hr"), () => insertHTML('<hr class="wd-hr"><p><br></p>')), B("wd-vl", "│", T("w_vl"), () => insertHTML('<div class="wd-vline" contenteditable="false"></div><p><br></p>')), sep(),
         B("wd-tbl", "▦ " + T("tbl"), T("tbl"), insTable), B("wd-img", "🖼 " + T("img"), T("img"), () => { save(); imgIn.click(); }), B("wd-shape", "◆ " + T("w_shape"), T("w_shape"), () => { save(); objDialog("shape"); }),
         B("wd-tbox", "▤ " + T("w_tbox"), T("w_tbox"), () => insertBlock(h("div", { class: "wd-tbox" }, h("p", {}, T("w_text"))))), B("wd-wa", "𝒜 " + T("w_wa"), T("w_wa"), () => { save(); objDialog("wa"); }),
         B("wd-link", "🔗", T("w_link"), () => { save(); const u = (prompt(T("w_url"), "https://") || "").trim(); restore(); if (/^(https?:\/\/|mailto:)\S+$/i.test(u)) { if (document.getSelection().isCollapsed) insertHTML(`<a href="${XE(u)}">${XE(u)}</a>`); else cmd("createLink", u); } }),

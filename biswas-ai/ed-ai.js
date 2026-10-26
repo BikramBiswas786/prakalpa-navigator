@@ -11,14 +11,14 @@ ED.addTX({
     a_failed: "{0} change(s) could not be applied.", a_ocr: "Only the OCR text of {0} was used (no vision model).", a_vision: "Text of {0} read by the vision model.", a_fmt: "Loaded the format of {0}; the AI filled in the new content.",
     a_err: "AI error: {0}", a_drop: "Drop files here to attach", a_cv: "Conversations", a_open: "Open", a_ren: "Rename", a_del: "Delete", a_dl: "Download", a_none: "No saved conversations yet.",
     a_saved: "Saved to Conversations: {0}", a_empty: "Nothing to save: the page is empty or unchanged.", a_newdone: "New blank page.", a_delq: "Delete “{0}”?", a_renq: "New name:",
-    a_lost: "Open this saved conversation? Unsaved changes in the editor will be lost.", a_pick: "Attach a file from the pendrive", a_filter: "Filter…", a_cancel: "Cancel", a_you: "You", a_ai: "AI",
+    a_hist: "History", a_xdiff: "Changed {0} cell(s) (Keep or Undo):", a_lost: "Open this saved conversation? Unsaved changes in the editor will be lost.", a_pick: "Attach a file from the pendrive", a_filter: "Filter…", a_cancel: "Cancel", a_you: "You", a_ai: "AI",
     a_tables: "Tables: {0}", a_totals: "Formulas recalculated: {0}", a_errs: "Formula errors: {0}", a_badtype: "Can't attach this file type: {0}" },
   bn: { a_ph: "এই ফাইলে কী বদলাতে বা লিখতে চান লিখুন…", a_send: "পাঠান", a_fast: "⚡ দ্রুত", a_attach: "📎 সংযুক্ত", a_frompd: "📂 পেনড্রাইভ থেকে", a_working: "কাজ চলছে…",
     a_reading: "{0} পড়া হচ্ছে…", a_applied: "{0}টি পরিবর্তন করা হল।", a_curpic: "ছবিটি", a_copy: "কপি", a_copied: "কপি হল", a_tonote: "নোটপ্যাডে", a_toword: "ওয়ার্ডে", a_undo: "↶ আগের মতো", a_keep: "✓ রাখুন", a_undone: "আগের মতো করা হল।", a_kept: "রাখা হল।",
     a_failed: "{0}টি পরিবর্তন করা গেল না।", a_ocr: "{0}: শুধু OCR-এ পড়া লেখা ব্যবহার হয়েছে (ভিশন মডেল নেই)।", a_vision: "{0}: ভিশন মডেলে লেখা পড়া হয়েছে।", a_fmt: "{0}-এর ফরম্যাট লোড করে AI নতুন বিষয় বসিয়েছে।",
     a_err: "AI ত্রুটি: {0}", a_drop: "সংযুক্ত করতে ফাইল এখানে ছাড়ুন", a_cv: "কথোপকথন", a_open: "খুলুন", a_ren: "নাম বদল", a_del: "মুছুন", a_dl: "ডাউনলোড", a_none: "এখনও কোনো কথোপকথন রাখা হয়নি।",
     a_saved: "কথোপকথনে রাখা হল: {0}", a_empty: "রাখার কিছু নেই: পাতা ফাঁকা বা বদলায়নি।", a_newdone: "নতুন ফাঁকা পাতা।", a_delq: "“{0}” মুছবেন?", a_renq: "নতুন নাম:",
-    a_lost: "এই কথোপকথন খুলবেন? এডিটরের সেভ না করা বদল হারাবে।", a_pick: "পেনড্রাইভ থেকে ফাইল সংযুক্ত করুন", a_filter: "খুঁজুন…", a_cancel: "বাতিল", a_you: "আপনি", a_ai: "AI",
+    a_hist: "ইতিহাস", a_xdiff: "{0}টি ঘর বদলেছে (রাখুন বা Undo):", a_lost: "এই কথোপকথন খুলবেন? এডিটরের সেভ না করা বদল হারাবে।", a_pick: "পেনড্রাইভ থেকে ফাইল সংযুক্ত করুন", a_filter: "খুঁজুন…", a_cancel: "বাতিল", a_you: "আপনি", a_ai: "AI",
     a_tables: "টেবিল: {0}", a_totals: "সূত্র আবার হিসাব হল: {0}", a_errs: "সূত্রে ত্রুটি: {0}", a_badtype: "এই ধরনের ফাইল সংযুক্ত করা যায় না: {0}" }
 });
 const DEFEXT = { word: "docx", excel: "xlsx", image: "png", note: "txt" };
@@ -38,6 +38,9 @@ const RC = ref => { const m = /^([A-Z]+)(\d+)$/i.exec(String(ref || "").trim());
 /* ---------- structure of the open document (what the AI sees) ---------- */
 const wordPage = () => ED.kinds.word.page();
 const noteTa = () => document.getElementById("np-ta");
+let wdSel = null; // last non-empty selection inside the Word page (kept when focus moves to the AI box)
+document.addEventListener("selectionchange", () => { const sl = getSelection(); if (!sl || !sl.rangeCount) return; const pg = document.querySelector("#ed-word .wd-page, #ed-word [contenteditable=true]");
+  const r = sl.getRangeAt(0); if (pg && pg.contains(r.commonAncestorContainer)) wdSel = r.collapsed ? null : r.cloneRange(); });
 function wordBlocks() {
   const page = wordPage(), map = new Map(); let nb = 0, nt = 0; const lines = [];
   const walk = el => {
@@ -47,20 +50,30 @@ function wordBlocks() {
       if (/^(UL|OL|DIV|SECTION|BLOCKQUOTE)$/.test(n.tagName) && n.children.length && !n.classList.contains("wd-pb")) { walk(n); continue; }
       const id = "b" + (++nb); map.set(id, n); const cs = getComputedStyle(n);
       const st = [n.tagName.toLowerCase(), cs.textAlign !== "start" && cs.textAlign !== "left" ? cs.textAlign : "", parseInt(cs.fontWeight) >= 700 ? "bold" : "", Math.round(parseFloat(cs.fontSize)) + "px"].filter(Boolean).join(" ");
-      lines.push(`${id} [${st}] ${n.innerText.replace(/\s+/g, " ").trim().slice(0, 600)}`);
+      lines.push(`${id} [${st}${wdSel && wdSel.intersectsNode(n) ? " SELECTED" : ""}] ${n.innerText.replace(/\s+/g, " ").trim().slice(0, 600)}`);
     }
   };
   walk(page); return { text: lines.join("\n"), map, tables: nt };
 }
 function excelStruct() {
   const a = ED.kinds.excel._api(); const out = []; let n = 0;
-  a.book.sheets.forEach((s, si) => { out.push("SHEET " + s.name);
+  a.book.sheets.forEach((s, si) => { let mr = 0, mc = 0; for (const kk of s.cells.keys()) { const [r, c] = kk.split(",").map(Number); mr = Math.max(mr, r); mc = Math.max(mc, c); }
+    const hdr = []; for (let c = 0; c <= Math.min(mc, 30); c++) { const v = s.cells.get("0," + c); if (v != null && v !== "") hdr.push(A1(0, c) + "=" + String(v).slice(0, 40)); }
+    out.push(`SHEET ${s.name} (used ${s.cells.size ? "A1:" + A1(mr, mc) : "empty"}; row-1 headers: ${hdr.join(" | ") || "none"})`);
     const keys = [...s.cells.keys()].map(k => k.split(",").map(Number)).sort((x, y) => x[0] - y[0] || x[1] - y[1]);
     for (const [r, c] of keys) { if (++n > 2500) break; const raw = s.cells.get(r + "," + c); const f = s.fmt.get(r + "," + c) || {};
       const sty = [f.b && "b", f.bg && "bg=" + f.bg, f.nf && "nf=" + f.nf, f.al && "al=" + f.al].filter(Boolean).join(",");
       let v = ""; if (String(raw)[0] === "=") { try { v = " → " + a.show(a.val(r, c, si), f); } catch (e) { /* ignore */ } }
       out.push(`${A1(r, c)} = ${String(raw).slice(0, 200)}${v}${sty ? "  {" + sty + "}" : ""}`); } });
   return out.join("\n");
+}
+function excelDiff(before) { // cells the AI changed: "Sheet!A1: old → new" (shown with Keep/Undo so nothing changes unseen)
+  if (!before || !before.snap || !before.snap.sheets) return [];
+  const a = ED.kinds.excel._api(), out = []; let n = 0;
+  a.book.sheets.forEach((s, si) => { const o = before.snap.sheets[si] || { cells: new Map() }; const keys = new Set([...s.cells.keys(), ...o.cells.keys()]);
+    for (const kk of keys) { const x = o.cells.get(kk), y = s.cells.get(kk); if (String(x ?? "") === String(y ?? "")) continue; n++;
+      if (out.length < 12) { const [r, c] = kk.split(",").map(Number); out.push(`${a.book.sheets.length > 1 ? s.name + "!" : ""}${A1(r, c)}: ${x == null || x === "" ? "(empty)" : String(x).slice(0, 40)} → ${y == null || y === "" ? "(cleared)" : String(y).slice(0, 40)}`); } } });
+  if (!n) return []; return [T("a_xdiff", n), ...out, ...(n > out.length ? ["… +" + (n - out.length)] : [])];
 }
 function noteStruct() { return (noteTa().value || "").split("\n").slice(0, 3000).map((l, i) => `${i + 1}| ${l}`).join("\n"); }
 function imageStruct() { const a = ED.kinds.image._api(); return `Picture ${a.W}×${a.H} px, ${a.layers().length} layer(s).`; }
@@ -287,8 +300,10 @@ async function send(k) {
     if (ops.length) res = k === "word" ? applyWord(ops) : k === "excel" ? applyExcel(ops) : k === "note" ? applyNote(ops) : await applyImage(ops, atts);
     if (memo0) { const n = memoFix(k, q, memo0); if (n) res.ok += n; }
     if (ops.length || fmtAtt) { ED.dirty(k); s.undo = before; }
+    if (k === "excel" && ops.length) notes.push(...excelDiff(before));
     notes.push(...verify(k, before));
     const msg = [r.reply || "", ops.length ? T("a_applied", res.ok) : "", res.bad ? T("a_failed", res.bad) : "", ...notes].filter(Boolean).join("\n");
+    if (k === "word") wdSel = null;
     s.thread.push({ q, a: msg, at: Date.now(), atts: atts.map(a => a.name), ops: ops.length });
     s.el.q.value = ""; s.atts = []; chips(k); thread(k);
     s.el.res.hidden = !s.undo; say(k, `${((performance.now() - t0) / 1000).toFixed(1)} s`);
@@ -327,12 +342,16 @@ function memoFix(k, q, old) {
 async function undo(k) { const s = S[k]; if (!s.undo) return; const b = s.undo; s.undo = null; await restore(k, b.snap); ED.st[k].name = b.name; ED.st[k].file = b.file; ED.st[k].dirty = b.dirty; ED.label(k); s.el.res.hidden = true; s.thread.push({ q: "↶", a: T("a_undone"), at: Date.now() }); thread(k); say(k, T("a_undone")); }
 function keep(k) { S[k].undo = null; S[k].el.res.hidden = true; say(k, T("a_kept")); }
 function thread(k) {
+  // Latest reply only, as a compact normal line (no selection look); older turns in a closed "History (n)" toggle. Never overlays the document.
   const s = S[k], box = s.el.thread; box.textContent = "";
-  for (const t of s.thread) box.append(h("div", { class: "ea-turn" }, h("div", { class: "ea-you" }, h("b", {}, T("a_you") + ": "), t.q + (t.atts && t.atts.length ? "  📎 " + t.atts.join(", ") : "")), h("div", { class: "ea-ai" }, h("b", {}, T("a_ai") + ": "), t.a), t.a && t.a.length > 160 ? h("div", { class: "ea-row" },
+  const turn = t => h("div", { class: "ea-turn" }, h("div", { class: "ea-you" }, h("b", {}, T("a_you") + ": "), t.q + (t.atts && t.atts.length ? "  📎 " + t.atts.join(", ") : "")), h("div", { class: "ea-ai" }, h("b", {}, T("a_ai") + ": "), t.a), t.a && t.a.length > 160 ? h("div", { class: "ea-row" },
     h("button", { type: "button", class: "btn small ea-copy", onclick: e => { navigator.clipboard && navigator.clipboard.writeText(t.a).catch(() => {}); e.target.textContent = "✓ " + T("a_copied"); } }, "📋 " + T("a_copy")),
     k !== "note" ? h("button", { type: "button", class: "btn small ea-tonote", onclick: () => { ED.show("note"); const ta = noteTa(); ta.value = (ta.value ? ta.value.replace(/\s*$/, "\n\n") : "") + t.a; ta.dispatchEvent(new Event("input", { bubbles: true })); } }, "🗒 " + T("a_tonote")) : null,
-    k !== "word" ? h("button", { type: "button", class: "btn small ea-toword", onclick: () => { ED.show("word"); const pg = wordPage(); for (const line of t.a.split("\n")) { const p = document.createElement("p"); p.textContent = line; pg.append(p); } wordRelayout(); ED.dirty("word"); } }, "📄 " + T("a_toword")) : null) : null));
-  box.hidden = !s.thread.length; box.scrollTop = box.scrollHeight;
+    k !== "word" ? h("button", { type: "button", class: "btn small ea-toword", onclick: () => { ED.show("word"); const pg = wordPage(); for (const line of t.a.split("\n")) { const p = document.createElement("p"); p.textContent = line; pg.append(p); } wordRelayout(); ED.dirty("word"); } }, "📄 " + T("a_toword")) : null) : null);
+  const all = s.thread, last = all[all.length - 1];
+  if (all.length > 1) { const d = h("details", { class: "ea-hist", id: "ea-hist-" + k }, h("summary", {}, T("a_hist") + " (" + (all.length - 1) + ")")); for (const t of all.slice(0, -1)) d.append(turn(t)); box.append(d); }
+  if (last) { const el = turn(last); el.classList.add("ea-last"); box.append(el); }
+  box.hidden = !all.length;
 }
 const say = (k, m) => { S[k].el.st.textContent = m || ""; };
 
@@ -426,7 +445,8 @@ document.head.append(h("style", { id: "ea-css" }, `
 .ea-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .ea-sp { flex: 1; } .ea-fastl { font-size: .85rem; display: inline-flex; gap: 4px; align-items: center; }
 .ea-chips { display: flex; gap: 6px; flex-wrap: wrap; } .ea-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border: 1px solid var(--accent); border-radius: 999px; font-size: .8rem; }
 .ea-x { border: 0; background: none; cursor: pointer; font-size: 1rem; line-height: 1; color: inherit; padding: 0 4px; }
-.ea-thread { max-height: 220px; overflow: auto; display: grid; gap: 6px; font-size: .88rem; } .ea-turn { border-left: 3px solid var(--accent); padding: 2px 8px; white-space: pre-wrap; }
+.ea-thread { position: static; max-height: 160px; overflow: auto; display: grid; gap: 4px; font-size: .85rem; } .ea-turn { padding: 2px 6px; white-space: pre-wrap; background: none; color: inherit; } .ea-turn ::selection { background: var(--accent-soft); }
+.ea-last .ea-you { display: none; } .ea-last .ea-ai { color: inherit; } .ea-hist summary { cursor: pointer; font-size: .82rem; color: var(--muted); } .ea-hist .ea-turn { border-left: 2px solid var(--line); margin: 2px 0; }
 .ea-ai { color: var(--muted); } .ea-res { display: flex; gap: 6px; }
 .ea-cv { margin: 6px 0; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; } .ea-cv summary { cursor: pointer; font-weight: 600; font-size: .88rem; }
 .ea-cvlist { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; max-height: 220px; overflow: auto; }
