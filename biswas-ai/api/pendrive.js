@@ -9,6 +9,7 @@
 // Renames and moves only change index.json; the stored bytes never move.
 import crypto from "node:crypto";
 import { makePool } from "./storage.js";
+import { MetaStore } from "./metastore.js";
 import * as rag from "./rag.js";
 import { edAI } from "./edai.js";
 
@@ -21,7 +22,11 @@ if (!SECRET) {
 // a pool of S3-compatible backends. pool[0] is the primary: it holds all metadata (meta, index, text, bm25, stats);
 // file bytes go to whichever backend had the most free room when the file was uploaded (f.b / pending.b, default "1").
 export const pool = makePool(env, SECRET);
-export const storage = pool.length ? pool[0].st : null;
+const metaStore = pool.length > 1 && pool.every(b => b.st.getTextV) && env.PD_META !== "primary" ? new MetaStore(pool, env) : null;
+export const storage = metaStore || (pool.length ? pool[0].st : null);
+export { metaStore };
+if (metaStore) { metaStore.init().then(() => console.log(`AI Pendrive metadata replicas: ${metaStore.provider}${metaStore.synced ? " (synced)" : ""}`));
+  let syncing = false; metaStore.onBack = b => { if (b === metaStore.legacy && !metaStore.synced && !syncing) { syncing = true; metaStore.sync(b).catch(e => console.warn("metadata sync:", e.message)).finally(() => { syncing = false; }); } }; }
 const BAD_MS = 10 * 60 * 1000;
 const bk = bid => pool.find(b => b.id === String(bid || "1")) || pool[0];
 const QUOTA = Math.max(1, Number(env.PENDRIVE_QUOTA_BYTES) || 5 * 1024 ** 3);       // per pendrive
@@ -95,6 +100,16 @@ async function cget(key) {
 }
 function cput(key, v) { cache.delete(key); cache.set(key, v == null ? null : structuredClone(v)); while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value); }
 async function cset(key, v) { await storage.putJson(key, v); cput(key, v); }
+/* Byte-bounded write-through cache for extracted text, chunk files, name lookups and conversation records (cuts B2 class-B GETs).
+   This server is the only writer of these keys, so every put/del updates the cache; entries still expire after TTL. */
+const tcache = new Map(); let tbytes = 0; const TC_MAX = process.env.PENDRIVE_CACHE === "0" ? 0 : 48 * 1024 * 1024, TC_TTL = 10 * 60 * 1000;
+function tdrop(key) { const e = tcache.get(key); if (e) { tbytes -= e.n; tcache.delete(key); } }
+function tkeep(key, v) { tdrop(key); const n = v == null ? 16 : v.length * 2; if (n > TC_MAX / 8) return; tcache.set(key, { v, n, t: Date.now() }); tbytes += n; while (tbytes > TC_MAX && tcache.size) tdrop(tcache.keys().next().value); }
+async function tget(key) { const e = tcache.get(key); if (e && Date.now() - e.t < TC_TTL) { tcache.delete(key); tcache.set(key, e); return e.v; } const v = await storage.getText(key); tkeep(key, v); return v; }
+async function tput(key, text, type) { await storage.putText(key, text, type); tkeep(key, text); }
+async function tdel(key) { await storage.del(key); tkeep(key, null); }
+async function jget(key) { const t = await tget(key); return t == null ? null : JSON.parse(t); }
+const jset = (key, v) => tput(key, JSON.stringify(v), "application/json");
 async function meta(id) { const m = await cget(`${P(id)}/meta.json`); if (!m) fail(404, "not_found"); return m; }
 async function index(id) { return (await cget(`${P(id)}/index.json`)) || { files: {}, folders: [] }; }
 const reservedOf = m => Object.values(m.pending || {}).reduce((a, b) => a + b.size, 0);
@@ -163,10 +178,10 @@ export function tokens(text) {
 async function bm(id) { return (await cget(`${P(id)}/bm25.json`)) || { v: 2, df: {}, n: 0, len: 0, files: {} }; }
 // chunks with locations (page / heading path / sheet rows) live in c/<fid>.json; bm25 indexes those chunks.
 const cKey = (id, fid) => `${P(id)}/c/${fid}.json`;
-async function putChunks(id, fid, text) { const built = rag.build(text); await storage.putText(cKey(id, fid), JSON.stringify(built)); return built; }
+async function putChunks(id, fid, text) { const built = rag.build(text); await tput(cKey(id, fid), JSON.stringify(built)); return built; }
 async function loadChunks(id, f) {
-  try { const t = await storage.getText(cKey(id, f.id)); if (t) return JSON.parse(t); } catch (e) { /* rebuild below */ }
-  return rag.build((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
+  try { const t = await tget(cKey(id, f.id)); if (t) return JSON.parse(t); } catch (e) { /* rebuild below */ }
+  return rag.build((await tget(`${P(id)}/t/${f.id}.txt`)) || "");
 }
 /* ---------- memory: one short card per file (what it is, key words, sheet columns), grown as files are indexed ----------
    pendrives/<id>/mem.json {v, files: {fid: {sum, kw, sheets, n, ai?}}}. A background job adds a 1–2 line AI summary (free models only). */
@@ -183,7 +198,7 @@ function memCard(text, built) {
 function memText(c) { return `${c.ai || c.sum}${c.sheets && c.sheets.length ? "\nSheets: " + c.sheets.map(s => `${s.name} (${s.rows} rows; columns: ${s.cols.join(" | ")})`).join("; ") : ""}${c.kw && c.kw.length ? "\nKey words: " + c.kw.join(", ") : ""}`; }
 async function memFill(id, files, getC) { // cards for files indexed before memory existed
   const m = await mem(id); const miss = files.filter(f => !m.files[f.id]).slice(0, 60); if (!miss.length) return m;
-  for (let i = 0; i < miss.length; i += 8) await Promise.all(miss.slice(i, i + 8).map(async f => { try { const t = (await storage.getText(`${P(id)}/t/${f.id}.txt`)) || ""; m.files[f.id] = memCard(t, await getC(f.id)); } catch (e) { /* skip */ } }));
+  for (let i = 0; i < miss.length; i += 8) await Promise.all(miss.slice(i, i + 8).map(async f => { try { const t = (await tget(`${P(id)}/t/${f.id}.txt`)) || ""; m.files[f.id] = memCard(t, await getC(f.id)); } catch (e) { /* skip */ } }));
   await cset(memKey(id), m); memGrow(id); return m;
 }
 const memBusy = new Set();
@@ -196,7 +211,7 @@ function memGrow(id) { // background: short AI summaries, one at a time, free mo
       const fid = Object.keys(m.files).find(k => ix.files[k] && !m.files[k].ai && !m.files[k].aiTry && m.files[k].n > 120); if (!fid) break;
       let ai = "";
       try {
-        const t = ((await storage.getText(`${P(id)}/t/${fid}.txt`)) || "").slice(0, 5000);
+        const t = ((await tget(`${P(id)}/t/${fid}.txt`)) || "").slice(0, 5000);
         ai = (await askAI("You write very short file descriptions.", `File: ${ix.files[fid].path}\n\n${t}\n\nIn one or two sentences (max 45 words), say what this file is and its key facts (who, what, when, main numbers). Write in the file's own language. No preamble.`, 160, { fast: true, freeOnly: true })).replace(/\s+/g, " ").slice(0, 320);
       } catch (e) { /* try once only */ }
       await withLock(id, async () => { const m2 = await mem(id); if (m2.files[fid]) { if (ai) m2.files[fid].ai = ai; else m2.files[fid].aiTry = 1; await cset(memKey(id), m2); } });
@@ -228,7 +243,7 @@ async function ragIndex(id, all, emit) {
     const nx = { v: 2, df: {}, n: 0, len: 0, files: {} }; const files = all.filter(f => f.text);
     emit && emit({ type: "progress", msg: `index ${files.length}` });
     for (let i = 0; i < files.length; i += 8) await Promise.all(files.slice(i, i + 8).map(async f => {
-      try { const built = await putChunks(id, f.id, (await storage.getText(`${P(id)}/t/${f.id}.txt`)) || ""); bmAddChunks(nx, f.id, built.chunks); } catch (e) { console.warn("pendrive: reindex", e.message); }
+      try { const built = await putChunks(id, f.id, (await tget(`${P(id)}/t/${f.id}.txt`)) || ""); bmAddChunks(nx, f.id, built.chunks); } catch (e) { console.warn("pendrive: reindex", e.message); }
     }));
     await cset(`${P(id)}/bm25.json`, nx); return nx;
   });
@@ -374,17 +389,18 @@ export async function handle(req, res, url, body, send) {
     checkPin(body.pin);
     const nk = nameKey(name);
     return withLock("names", async () => {
-      if (await storage.getJson(nk)) fail(409, "name_taken");
+      if (await jget(nk).catch(e => { if (/^storage_reset/.test(e.message || "")) fail(409, "name_taken"); throw e; })) fail(409, "name_taken");
       const id = hex(12), salt = hex(16);
       await saveMeta(id, { id, name, salt, hash: await scrypt(body.pin, salt), quota: QUOTA, used: 0, fails: 0, lockUntil: 0, pending: {}, created: Date.now() });
       await saveIndex(id, { files: {}, folders: [] });
-      await storage.putJson(nk, { id });
+      await jset(nk, { id });
+      for (const k of [`${P(id)}/conv/index.json`, ...["word", "excel", "image", "note"].map(a => `${P(id)}/edconv/${a}.json`)]) cput(k, null); // a new pendrive has none: skip 5 GETs
       return send(200, { token: issue(id), ...publicMeta(await meta(id)) });
     });
   }
   if (op === "open") {
     checkPin(body.pin);
-    const ref = await storage.getJson(nameKey(body.name));
+    const ref = await jget(nameKey(body.name));
     if (!ref) { await scrypt(body.pin, "00".repeat(16)); fail(401, "wrong"); } // same cost either way
     return withLock(ref.id, async () => {
       const m = await meta(ref.id);
@@ -429,18 +445,18 @@ export async function handle(req, res, url, body, send) {
     const title = x => String(x || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 140);
     const listR = async () => ((await cget(IK)) || { rows: [] }).rows;
     if (op === "edconv/list") return send(200, { rows: (await listR()).sort((a, b) => b.at - a.at) });
-    if (op === "edconv/get") { if (!okId) fail(400, "bad_id"); const r = await storage.getJson(rKey(rid)); if (!r) fail(404, "not_found"); return send(200, r); }
+    if (op === "edconv/get") { if (!okId) fail(400, "bad_id"); const r = await jget(rKey(rid)); if (!r) fail(404, "not_found"); return send(200, r); }
     return withLock("edconv:" + id + area, async () => {
       const rows = await listR(); const i = rows.findIndex(r => r.id === rid);
-      if (op === "edconv/delete") { if (i < 0) fail(404, "not_found"); await storage.del(rKey(rid)); rows.splice(i, 1); await cset(IK, { rows }); return send(200, { ok: true }); }
-      if (op === "edconv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const r = await storage.getJson(rKey(rid)); if (r) { r.title = tt; await storage.putJson(rKey(rid), r); } rows[i].title = tt; await cset(IK, { rows }); return send(200, rows[i]); }
+      if (op === "edconv/delete") { if (i < 0) fail(404, "not_found"); await tdel(rKey(rid)); rows.splice(i, 1); await cset(IK, { rows }); return send(200, { ok: true }); }
+      if (op === "edconv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const r = await jget(rKey(rid)); if (r) { r.title = tt; await jset(rKey(rid), r); } rows[i].title = tt; await cset(IK, { rows }); return send(200, rows[i]); }
       if (op !== "edconv/save") fail(404, "unknown_op");
       const data = String(body.data || ""); if (!/^[A-Za-z0-9+/=]*$/.test(data)) fail(400, "bad_data"); if (data.length > 5500000) fail(413, "too_large");
       const thread = (Array.isArray(body.thread) ? body.thread : []).slice(-80).map(t => ({ q: String(t.q || "").slice(0, 4000), a: String(t.a || "").slice(0, 8000), at: Number(t.at) || Date.now() }));
       if (rows.length >= 300) fail(409, "too_many");
       const nid = area + "-" + crypto.randomBytes(8).toString("hex");
       const rec = { id: nid, area, title: title(body.title) || "Untitled", name: title(body.name) || "Untitled", ext: String(body.ext || "").replace(/[^a-z0-9]/gi, "").slice(0, 8), mime: String(body.mime || "").slice(0, 120), at: Date.now(), data, thread };
-      await storage.putJson(rKey(nid), rec);
+      await jset(rKey(nid), rec);
       const row = { id: nid, area, title: rec.title, name: rec.name, ext: rec.ext, at: rec.at, n: thread.length, size: data.length };
       rows.push(row); await cset(IK, { rows }); return send(200, row);
     });
@@ -454,11 +470,11 @@ export async function handle(req, res, url, body, send) {
     const title = s => String(s || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 120);
     const listC = async () => ((await cget(CK)) || { convs: [] }).convs;
     if (op === "conv/list") return send(200, { convs: (await listC()).sort((a, b) => b.at - a.at) });
-    if (op === "conv/get") { if (!okId) fail(400, "bad_id"); const c = await storage.getJson(cKeyOf(cid)); if (!c) fail(404, "not_found"); return send(200, c); }
+    if (op === "conv/get") { if (!okId) fail(400, "bad_id"); const c = await jget(cKeyOf(cid)); if (!c) fail(404, "not_found"); return send(200, c); }
     if (op === "conv/save" || op === "conv/rename" || op === "conv/delete") return withLock("conv:" + id, async () => {
       const convs = await listC(); const i = convs.findIndex(c => c.id === cid);
-      if (op === "conv/delete") { if (i < 0) fail(404, "not_found"); await storage.del(cKeyOf(cid)); convs.splice(i, 1); await cset(CK, { convs }); return send(200, { ok: true }); }
-      if (op === "conv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const c = await storage.getJson(cKeyOf(cid)); if (c) { c.title = tt; await storage.putJson(cKeyOf(cid), c); } convs[i].title = tt; await cset(CK, { convs }); return send(200, convs[i]); }
+      if (op === "conv/delete") { if (i < 0) fail(404, "not_found"); await tdel(cKeyOf(cid)); convs.splice(i, 1); await cset(CK, { convs }); return send(200, { ok: true }); }
+      if (op === "conv/rename") { if (i < 0) fail(404, "not_found"); const tt = title(body.title); if (!tt) fail(400, "no_title"); const c = await jget(cKeyOf(cid)); if (c) { c.title = tt; await jset(cKeyOf(cid), c); } convs[i].title = tt; await cset(CK, { convs }); return send(200, convs[i]); }
       const turns = (Array.isArray(body.turns) ? body.turns : []).slice(-60).map(t => ({
         q: String(t.q || "").slice(0, 2000), md: String(t.md || "").slice(0, 200000), at: Number(t.at) || Date.now(),
         kind: ["ask", "revise", "edit"].includes(t.kind) ? t.kind : "ask",
@@ -472,7 +488,7 @@ export async function handle(req, res, url, body, send) {
       const rec = { id: nid, title: title(body.title) || title(turns[0].q) || "Conversation", branch, at: Date.now(), turns };
       const json = JSON.stringify(rec); if (json.length > 1500000) fail(413, "too_large");
       if (i < 0 && convs.length >= 200) fail(409, "too_many");
-      await storage.putJson(cKeyOf(nid), rec);
+      await jset(cKeyOf(nid), rec);
       const row = { id: nid, title: i >= 0 && !body.title ? convs[i].title : rec.title, branch, at: rec.at, n: turns.length, size: json.length };
       if (i >= 0) convs[i] = row; else convs.push(row);
       await cset(CK, { convs }); return send(200, row);
@@ -499,12 +515,12 @@ export async function handle(req, res, url, body, send) {
   if (op === "text-get") {
     const ix = await index(id); const f = ix.files[String(body.id)];
     if (!f || !f.text) fail(404, "not_found");
-    return send(200, { text: ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "").slice(0, 200000) });
+    return send(200, { text: ((await tget(`${P(id)}/t/${f.id}.txt`)) || "").slice(0, 200000) });
   }
 
   const writeTexts = async (ix, list) => { // text sidecars in parallel, one bm25 write
     let x = await bm(id); const ok = list.filter(t => ix.files[String(t.id)]);
-    for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(t => storage.putText(`${P(id)}/t/${String(t.id)}.txt`, String(t.text || "").slice(0, TEXT_MAX))));
+    for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(t => tput(`${P(id)}/t/${String(t.id)}.txt`, String(t.text || "").slice(0, TEXT_MAX))));
     const built = {};
     for (let i = 0; i < ok.length; i += 8) await Promise.all(ok.slice(i, i + 8).map(async t => { built[String(t.id)] = await putChunks(id, String(t.id), String(t.text || "").slice(0, TEXT_MAX)); }));
     if (x.v !== 2) { x = await ragIndex(id, Object.values(ix.files).filter(f => f.state === "ok" && f.text && !built[f.id]), null); }
@@ -769,7 +785,7 @@ async function dropFiles(id, ix, list) {
 async function delKeys(ix, keys) {
   for (let i = 0; i < keys.length; i += 8) await Promise.all(keys.slice(i, i + 8).map(async it => {
     for (let n = 0; ; n++) {
-      try { await (it.b === null ? storage : bk(it.b).st).del(it.k); return; }
+      try { await (it.b === null ? storage : bk(it.b).st).del(it.k); if (it.b === null) tkeep(it.k, null); return; }
       catch (e) { if (n >= 2) { console.warn("pendrive: delete deferred", e.message); (ix.gc = ix.gc || []).push(it); return; } await new Promise(r => setTimeout(r, 300 * (n + 1))); }
     }
   }));
@@ -778,7 +794,7 @@ async function delKeys(ix, keys) {
 async function dropFile(id, ix, fid) {
   await bk(ix.files[fid] && ix.files[fid].b).st.del(`${P(id)}/f/${fid}`);
   if (ix.files[fid] && ix.files[fid].text) {
-    await storage.del(`${P(id)}/t/${fid}.txt`); await storage.del(cKey(id, fid)).catch(() => {});
+    await tdel(`${P(id)}/t/${fid}.txt`); await tdel(cKey(id, fid)).catch(() => {});
     const x = await bm(id); bmRemove(x, fid); await cset(`${P(id)}/bm25.json`, x); await memDrop(id, [fid]).catch(() => {});
   }
   delete ix.files[fid];
@@ -872,7 +888,7 @@ async function aiJob(req, res, id, body) {
       emit({ type: "answer", text: lang === "en" ? "The selected files have no text read yet. Use “🔍 Read text (OCR)” on the file row, then ask again." : "বেছে নেওয়া ফাইলের লেখা এখনও পড়া হয়নি। ফাইলের সারিতে “🔍 লেখা পড়ুন (OCR)” চাপুন, তারপর আবার জিজ্ঞাসা করুন।", sources: [], cites: [], actions: [], noText, scanned });
       return res.end();
     }
-    const read = async f => ((await storage.getText(`${P(id)}/t/${f.id}.txt`)) || "");
+    const read = async f => ((await tget(`${P(id)}/t/${f.id}.txt`)) || "");
     let answer, sources, cites;
     const picked0 = (Array.isArray(scope.ids) && scope.ids.length) || withText.length <= 5;
     if (picked0 && withText.length <= 5 && IMAGE_OUT_RE.test(q) && /\b(all|whole|full|entire|every|exact)\b[^.?!]{0,40}\b(text|words|writing)\b|\b(text|words|writing) (of|from|in) (this|the|that|these)\b|সব লেখা|পুরো লেখা|লেখাগুলো/i.test(q)) {
