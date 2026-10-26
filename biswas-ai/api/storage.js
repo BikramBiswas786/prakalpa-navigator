@@ -87,7 +87,7 @@ export class S3Storage {
     const url = `${this.endpoint}${this.uri(key)}${cq ? "?" + cq : ""}`;
     const t0 = Date.now();
     const r = await fetch(url, { method, headers: h, body: method === "GET" || method === "HEAD" ? undefined : payload, signal: AbortSignal.timeout(this._to || 30000) });
-    const d = Date.now() - t0; this.okAt = Date.now(); this.lat = this.lat ? Math.round(this.lat * 0.7 + d * 0.3) : d; // v110: server→backend latency (EWMA), used for placement
+    const d = Date.now() - t0; this.okAt = Date.now(); this.lat = this.lat ? Math.round(this.lat * 0.7 + d * 0.3) : d; // server→backend latency (EWMA), used for placement
     return r;
   }
   async getText(key) {
@@ -102,7 +102,7 @@ export class S3Storage {
     if (!r.ok) throw new Error(`storage put ${r.status}`);
   }
   putJson(key, obj) { return this.putText(key, JSON.stringify(obj), "application/json"); }
-  // v110: cheap liveness check before handing out a single presigned PUT (no server round-trip to the bucket otherwise).
+  // cheap liveness check before handing out a single presigned PUT (no server round-trip to the bucket otherwise).
   alive() {
     if (!this._alive) this._alive = (async () => { this._to = 4000; try { await this.request("HEAD", "stats/usage.json"); } finally { this._to = 0; this._alive = null; } })();
     return this._alive;
@@ -121,7 +121,7 @@ export class S3Storage {
     if (!r.ok || !id) throw new Error(`storage multipart ${r.status}`);
     return id;
   }
-  async presignPut(key) { return this.presign("PUT", key, {}, 3600); } // v110: one PUT for a small file
+  async presignPut(key) { return this.presign("PUT", key, {}, 3600); } // one PUT for a small file
   async presignPart(key, uploadId, n) { return this.presign("PUT", key, { partNumber: String(n), uploadId }, 3600); }
   async completeMultipart(key, uploadId, parts) {
     const xml = `<CompleteMultipartUpload>${parts.map(p => `<Part><PartNumber>${Number(p.n)}</PartNumber><ETag>${String(p.etag).replace(/[<>&]/g, "")}</ETag></Part>`).join("")}</CompleteMultipartUpload>`;
@@ -145,7 +145,7 @@ export class S3Storage {
   }
   async presignGet(key, filename, opt = {}) {
     const q = filename ? { "response-content-disposition": disposition(filename) } : {};
-    if (opt.type) { q["response-content-type"] = opt.type; q["response-content-disposition"] = "inline"; } // v113: share-link previews
+    if (opt.type) { q["response-content-type"] = opt.type; q["response-content-disposition"] = "inline"; } // share-link previews
     return this.presign("GET", key, q, opt.expires || 900);
   }
 }
@@ -191,7 +191,7 @@ export class LocalStorage {
   async serve(req, res, url) {
     let v; try { v = this.verify(url.searchParams); } catch (e) { v = null; }
     if (!v) { res.writeHead(403).end(); return; }
-    if (v.op === "put" && req.method === "PUT" && v.extra === "single") { // v110: small file in one PUT
+    if (v.op === "put" && req.method === "PUT" && v.extra === "single") { // small file in one PUT
       const f = this.file(v.key); await fs.promises.mkdir(path.dirname(f), { recursive: true });
       const md5 = crypto.createHash("md5"); const out = fs.createWriteStream(f + ".up"); let size = 0;
       for await (const c of req) { size += c.length; if (size > 64 * 1024 * 1024) { out.destroy(); res.writeHead(413).end(); return; } md5.update(c); if (!out.write(c)) await new Promise(r => out.once("drain", r)); }
@@ -223,7 +223,7 @@ export class LocalStorage {
   }
 }
 
-/* ---------------- Pool of S3-compatible backends (v103) ----------------
+/* ---------------- Pool of S3-compatible backends ----------------
  * Backend "1" is the primary (S3_* vars, also holds all pendrive metadata). Extra backends: S3_<n>_NAME, _ENDPOINT, _REGION,
  * _BUCKET, _ACCESS_KEY_ID, _SECRET_ACCESS_KEY (n = 2..6), optional _ADDRESSING=path|virtual and _CAP_BYTES.
  * A backend with any required var missing is skipped. Default caps stay under each provider's free tier. */

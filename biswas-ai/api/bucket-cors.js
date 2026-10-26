@@ -21,7 +21,7 @@ export function parseCors(xml) {
     headers: all(r, "AllowedHeader").sort(), expose: all(r, "ExposeHeader").map(s => s.toLowerCase()).sort(),
     maxAge: Number(all(r, "MaxAgeSeconds")[0] || 0) }));
 }
-// v104: some rule set (e.g. made in the provider's console) already lets every origin GET/PUT/HEAD with any header and read ETag.
+// some rule set (e.g. made in the provider's console) already lets every origin GET/PUT/HEAD with any header and read ETag.
 const wild = (pat, o) => pat === "*" || pat === o || (pat.includes("*") && new RegExp("^" + pat.split("*").map(x => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$").test(o));
 export const allows = (rules, origins) => origins.every(o => rules.some(r => r.origins.some(p => wild(p, o)) && ["GET", "PUT", "HEAD"].every(m => r.methods.includes(m)) && r.headers.includes("*") && r.expose.includes("etag")));
 // Exactly one rule, equal to what we want.

@@ -1,4 +1,4 @@
-// v106: streams a ZIP built in the page to a normal browser download, with back-pressure (one chunk per pull).
+// streams a ZIP built in the page to a normal browser download, with back-pressure (one chunk per pull).
 const jobs = new Map();
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));

@@ -1,4 +1,4 @@
-// v110: reads text for the AI off the main thread, after a file is uploaded. Plain text files and .docx (no libraries:
+// reads text for the AI off the main thread, after a file is uploaded. Plain text files and .docx (no libraries:
 // the docx ZIP is read here and word/document.xml is inflated with DecompressionStream).
 self.onmessage = async e => {
   const { id, file, cap } = e.data;
@@ -27,7 +27,7 @@ async function entry(file, want) {
   }
   throw new Error("no " + want);
 }
-// v115: headings become "#", "##"… lines (Heading1..6 / Title / outline level) so answers can cite the section path.
+// headings become "#", "##"… lines (Heading1..6 / Title / outline level) so answers can cite the section path.
 async function docx(file) {
   const xml = await entry(file, "word/document.xml");
   const ent = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");

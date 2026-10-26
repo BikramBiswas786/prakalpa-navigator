@@ -1,4 +1,4 @@
-// v115: cited answers. Structure-aware chunking, query expansion, hybrid retrieval + rerank, a safe spreadsheet
+// cited answers. Structure-aware chunking, query expansion, hybrid retrieval + rerank, a safe spreadsheet
 // aggregate engine (no eval), and short quotes for highlighting. Pure functions except the optional remote rerankers.
 //
 // Text sidecars come from the browser with light markers:

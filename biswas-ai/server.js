@@ -25,6 +25,11 @@ pd.useChat(chat);
 const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "none", cors: pd.storage && pd.storage.provider ? "pending" : "n/a" };
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
+// Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
+const BUILD = "124";
+// Cache-busting by content hash (no number a person would read as a version).
+const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
+const PAGE_HTML = fs.readFileSync(PAGE, "utf8").replace(/\/attach\.js\?h=[^"]*/, "/attach.js?h=" + ATTACH_TAG);
 const FAVICON = fs.readFileSync(path.join(DIR, "favicon.svg"));
 const MAX_BODY = 12 * 1024 * 1024;
 // Security headers for the app page. The page has one inline <script>; it is allowed by its
@@ -56,11 +61,11 @@ const PAGE_HEADERS = {
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY"
 };
-// v113: share-link receiver page (own CSP: bucket origins for previews, never indexed, no referrer so the link id doesn't leak)
+// share-link receiver page (own CSP: bucket origins for previews, never indexed, no referrer so the link id doesn't leak)
 const share = await import("./api/share.js");
 const SHARE_PAGE = fs.readFileSync(path.join(DIR, "share.html"));
-const PD_ZIP_JS = (() => { // the v106 ZIP writer + download sinks, cut from index.html so the share page reuses the same code
-  const html = fs.readFileSync(PAGE, "utf8"); const a = html.indexOf("/* ---- v106: store-only ZIP"), b = html.indexOf("// keys: \"f:<id>\"", a);
+const PD_ZIP_JS = (() => { // the ZIP writer + download sinks, cut from index.html so the share page reuses the same code
+  const html = fs.readFileSync(PAGE, "utf8"); const a = html.indexOf("/* ---- store-only ZIP"), b = html.indexOf("// keys: \"f:<id>\"", a);
   return a > 0 && b > a ? html.slice(a, b) : "";
 })();
 const POOL_ORIGINS = [...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].join(" ");
@@ -99,7 +104,7 @@ async function safeFetch(url, opts) {
 // client IP: the rightmost X-Forwarded-For entry (added by Render's proxy), not the spoofable first one; fall back to the socket address.
 const rateHits = new Map();
 function clientIp(req) {
-  const xff = String(req.headers["x-forwarded-for"] || "").split(",").map(x => x.trim()).filter(Boolean).pop() || ""; // v119: rightmost hop = what Render's proxy saw; client-supplied entries sit to the left
+  const xff = String(req.headers["x-forwarded-for"] || "").split(",").map(x => x.trim()).filter(Boolean).pop() || ""; // rightmost hop = what Render's proxy saw; client-supplied entries sit to the left
   return xff || String(req.headers["x-real-ip"] || "").trim() || String(req.socket.remoteAddress || "unknown");
 }
 function limited(req, bucket, max, windowMs) {
@@ -814,7 +819,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/api/pd/blob" && pd.storage && pd.storage.serve) { await pd.storage.serve(req, res, url); return; } // local dev storage only
-    // v113: share links. /s/<id> is the receiver page; /api/s/<op> its API (no login); /api/pd/share/* the owner's ops.
+    // share links. /s/<id> is the receiver page; /api/s/<op> its API (no login); /api/pd/share/* the owner's ops.
     if (/^\/s\/[a-f0-9]{32}\/?$/.test(url.pathname)) { res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...SHARE_HEADERS }).end(SHARE_PAGE); return; }
     if (url.pathname === "/share.js" || url.pathname === "/pd-zip.js") {
       res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" }).end(url.pathname === "/share.js" ? fs.readFileSync(path.join(DIR, "share.js")) : PD_ZIP_JS); return;
@@ -857,19 +862,19 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     // Only the app page is served; nothing else in this folder (such as .env) is reachable.
-    if (url.pathname === "/pd-text-worker.js") { // v110: reads AI text off the main thread
+    if (url.pathname === "/pd-text-worker.js") { // reads AI text off the main thread
       res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
       fs.createReadStream(path.join(DIR, "pd-text-worker.js")).pipe(res);
       return;
     }
-    if (url.pathname === "/pd-dl-sw.js") { // v106: service worker that streams a folder ZIP to the browser's downloads
+    if (url.pathname === "/pd-dl-sw.js") { // service worker that streams a folder ZIP to the browser's downloads
       res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" });
       fs.createReadStream(path.join(DIR, "pd-dl-sw.js")).pipe(res);
       return;
     }
     if (url.pathname === "/" || url.pathname === "/index.html") {
       res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
-      fs.createReadStream(PAGE).pipe(res);
+      res.end(PAGE_HTML);
       return;
     }
     if (url.pathname === "/api/research" && req.method === "POST") {
@@ -945,14 +950,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/healthz/pendrive") {
       // Non-secret status: is storage configured, which provider, and did the boot-time CORS check pass.
-      // v103: one row per storage backend (name, cors, used, cap, healthy); never keys, endpoints' secrets or bucket names.
+      // one row per storage backend (name, cors, used, cap, healthy); never keys, endpoints' secrets or bucket names.
       const backends = await pd.poolStatus();
       const cap = backends.reduce((a, b) => a + b.cap, 0), used = backends.reduce((a, b) => a + b.used, 0);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify({ ...PD_STATUS, backends, used, cap, free: Math.max(0, cap - used) })); return;
     }
     if (url.pathname === "/attach.js") { res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" }).end(fs.readFileSync(path.join(DIR, "attach.js"))); return; }
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
-    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain" }).end("ok v123"); return; }
+    if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store", "x-build": BUILD }).end("ok"); return; }
     if (url.pathname === "/favicon.svg" || url.pathname === "/favicon.ico") {
       // One SVG mark for both paths; browsers accept SVG from /favicon.ico when the type says so.
       res.writeHead(200, { "content-type": "image/svg+xml", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" }).end(FAVICON); return;

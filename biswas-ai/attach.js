@@ -1,4 +1,4 @@
-/* Biswas AI v109: shared output module, used by every AI section.
+/* Biswas AI: shared output module, used by every AI section.
    - Skills (Auto, Drafting, Analysis, Excel/Accounts, Coding, Summary, Translation) add a prompt addendum.
    - The AI attaches files with a fenced block:  ```attachment name="report.docx" type="docx"  ...  ```
    - Client-side generators (no npm deps): docx, pdf (text layer with embedded Bengali font), xlsx (styles + formulas),
@@ -75,12 +75,12 @@ BA.attInfo = function (info) {
   return { name, type, types, base, chart, template: (a.template || "").toLowerCase(), title: a.title || "" };
 };
 BA.isAtt = info => !!BA.attInfo(info);
-// v114: a code block whose first line is "attachment name=..." is an attachment too.
+// a code block whose first line is "attachment name=..." is an attachment too.
 BA.lift = (info, text) => { if (info && BA.attInfo(info)) return { info, text }; const L = String(text || "").split("\n"); const f = (L[0] || "").trim(); return /^(attachment|attach|file)\b/i.test(f) && BA.attInfo(f) ? { info: f, text: L.slice(1).join("\n") } : null; };
 // Re-attach blocks after a text clean-up step (so cleaners never damage file content).
 BA.join = (text, atts) => { const seen = new Set(); return String(text || "") + atts.filter(a => !seen.has(a.info + a.content) && seen.add(a.info + a.content)).map(a => "\n\n```" + a.info + "\n" + a.content + "\n```").join(""); };
 BA.protect = (fn, s) => { const p = BA.parse(s); return p.atts.length ? BA.join(fn(p.text), p.atts) : fn(s); };
-// v116: models sometimes drop the opening fence: a bare "attachment name=..." line followed by content and a closing ```.
+// models sometimes drop the opening fence: a bare "attachment name=..." line followed by content and a closing ```.
 BA.fix = function (src) {
   const L = String(src || "").replace(/\r/g, "").split("\n"); let inFence = false;
   for (let i = 0; i < L.length; i++) {
@@ -95,7 +95,7 @@ BA.parse = function (src) {
   for (let i = 0; i < L.length; i++) {
     const m = L[i].match(/^\s*(`{3,}|~{3,})(.*)$/);
     let info = m && BA.attInfo(m[2]);
-    if (m && !info && L[i + 1] && /^\s*(attachment|attach|file)\b/i.test(L[i + 1]) && BA.attInfo(L[i + 1].trim())) { i++; m[2] = L[i].trim(); info = BA.attInfo(m[2]); } // v114: ```json + "attachment name=..." on the next line
+    if (m && !info && L[i + 1] && /^\s*(attachment|attach|file)\b/i.test(L[i + 1]) && BA.attInfo(L[i + 1].trim())) { i++; m[2] = L[i].trim(); info = BA.attInfo(m[2]); } // ```json + "attachment name=..." on the next line
     if (!info) { keep.push(L[i]); continue; }
     const fence = m[1]; const buf = []; i++;
     while (i < L.length && !new RegExp("^\\s*" + fence[0] + "{" + fence.length + ",}\\s*$").test(L[i])) buf.push(L[i++]);
@@ -582,7 +582,7 @@ function msgMd(el) {
   try { if (msg && Array.isArray(messages)) { const m = messages[Number(msg.dataset.k)]; if (m && m.content) return m.content; } } catch (e) { /* not available */ }
   return "";
 }
-/* v118: deterministic attachments. The model may forget the attachment block; build the files from the answer itself. */
+/* deterministic attachments. The model may forget the attachment block; build the files from the answer itself. */
 const INTENT = {
   excel: /excel|xlsx|spreadsheet|\bsheet\b|accounts?|budget|ledger|expense|হিসাব|এক্সেল|শিট|খরচ|বাজেট|খতিয়ান/i,
   draft: /letter|application|notice|memo|notesheet|petition|চিঠি|আবেদন|নোটিশ|মেমো|পত্র|নোটশিট|\bword\b|docx|\bpdf\b/i,
@@ -632,20 +632,20 @@ function autoAtt(root) {
   for (const b of boxes) {
     const sig = b.doc.innerText.length + ":" + b.q.length; if (b.doc.dataset.baAuto === sig) continue;
     const want = intents(b.q);
-    if (!want.size && !FILEQ.test(b.q || "") && BA.skill() === "auto") { // v122: plain question -> plain answer, no file cards
+    if (!want.size && !FILEQ.test(b.q || "") && BA.skill() === "auto") { // plain question -> plain answer, no file cards
       b.doc.querySelectorAll(".ba-att").forEach(c => { const a = REG.get(c.dataset.baAtt); const d = document.createElement("div"); d.className = "ba-inline"; d.innerHTML = a ? inlineHtml(a) : ""; c.replaceWith(d); });
       b.host.querySelectorAll(".ba-auto").forEach(x => x.remove());
       b.doc.dataset.baAuto = b.doc.innerText.length + ":" + b.q.length; continue;
     }
     if (!want.size) { b.doc.dataset.baAuto = sig; continue; }
-    const have = new Set([...b.host.querySelectorAll(".ba-att")].filter(x => !x.closest(".ba-auto")).map(x => x.dataset.type)); // v122: our own earlier auto cards do not count
+    const have = new Set([...b.host.querySelectorAll(".ba-att")].filter(x => !x.closest(".ba-auto")).map(x => x.dataset.type)); // our own earlier auto cards do not count
     const clone = b.doc.cloneNode(true); clone.querySelectorAll(".ba-att, .ba-auto, button, .ba-noexport").forEach(x => x.remove());
     const park = document.createElement("div"); park.style.cssText = "position:fixed;left:-30000px;top:0;width:800px"; park.append(clone); document.body.append(park);
     let text, tables; try { text = clone.innerText.trim(); tables = domTables(clone).filter(t => t[0].length >= 2); } finally { park.remove(); }
     if (text.length < 15) continue;
     const base = slug(b.q.replace(/[^\x00-\x7f]/g, " ")) ; const cards = [];
     if (want.has("excel") && !have.has("xlsx") && tables.length) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "hisab" : base) + ".xlsx", type: "xlsx", types: ["xlsx"] }, tables.map((t, i) => (tables.length > 1 ? `## Sheet${i + 1}\n` : "") + tableMd(t, true).md).join("\n\n")));
-    const chartOk = [...b.host.querySelectorAll('.ba-att[data-type="png"], .ba-att[data-type="svg"]')].filter(x => !x.closest(".ba-auto")).some(x => { const a = REG.get(x.dataset.baAtt); return a && tablesOf(a.content).some(t => t.rows.length > 1 && t.rows.slice(1).some(r => r.slice(1).some(c => toNum(c) !== null))); }); // v121: a model chart with no numbers does not count
+    const chartOk = [...b.host.querySelectorAll('.ba-att[data-type="png"], .ba-att[data-type="svg"]')].filter(x => !x.closest(".ba-auto")).some(x => { const a = REG.get(x.dataset.baAtt); return a && tablesOf(a.content).some(t => t.rows.length > 1 && t.rows.slice(1).some(r => r.slice(1).some(c => toNum(c) !== null))); }); // a model chart with no numbers does not count
     if (want.has("chart") && !chartOk) { const t = tables.map(t => ({ t, m: tableMd(t, false) })).find(x => x.m.numCols.length); if (t) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "chart" : base) + ".png", type: "png", types: ["png"], chart: /trend|month|year|মাস|বছর/i.test(b.q) ? "line" : "bar", title: "" }, t.m.md)); }
     if (want.has("code")) { const seen = {}; clone.querySelectorAll("pre").forEach((pre, i) => { const lg = (pre.dataset.lang || "").toLowerCase(); const ext = AEXT[lg] || (/^\s*(def |import |print\()/m.test(pre.textContent) ? "py" : /^\s*(const |let |function |console\.)/m.test(pre.textContent) ? "js" : ""); if (!ext || ext === "json" || have.has(ext) || seen[ext]) return; seen[ext] = 1; cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "code" : base) + (i ? "-" + i : "") + "." + ext, type: ext, types: [ext] }, pre.textContent.replace(/(Copy|কপি)$/, "").trim())); }); }
     if (want.has("json") && !have.has("json")) { let js = ""; for (const pre of clone.querySelectorAll("pre")) { if (BA.jsonOk(pre.textContent.trim())) { js = pre.textContent.trim(); break; } } if (!js) { const m = text.match(/[\[{][\s\S]*[\]}]/); if (m && BA.jsonOk(m[0])) js = m[0]; } if (!js && tables.length) { const t = tables[0]; js = JSON.stringify(t.slice(1).map(r => Object.fromEntries(t[0].map((h, j) => [h, isNum(r[j]) ? toNum(r[j]) : r[j]]))), null, 2); } if (js) cards.push(BA.cardHtml({ name: (base === "biswas-ai" ? "data" : base) + ".json", type: "json", types: ["json"] }, js)); }

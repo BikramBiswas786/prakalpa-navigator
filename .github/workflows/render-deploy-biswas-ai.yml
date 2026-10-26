@@ -1,7 +1,7 @@
 name: Render deploy (biswas-ai)
 
 # Render's own auto-deploy on commit does not fire for this repo, so this workflow
-# calls the service's Deploy Hook and then waits until /healthz shows the new version.
+# calls the service's Deploy Hook and then waits until /healthz's X-Build header shows the new build.
 on:
   push:
     branches: [main]
@@ -27,8 +27,8 @@ jobs:
       - name: Read expected version
         id: ver
         run: |
-          v=$(grep -oE 'end\("ok v[0-9]+"\)' biswas-ai/server.js | grep -oE 'v[0-9]+' | head -1)
-          if [ -z "$v" ]; then echo "::error::Could not read version from biswas-ai/server.js"; exit 1; fi
+          v=$(grep -oE 'const BUILD = "[0-9]+"' biswas-ai/server.js | grep -oE '[0-9]+' | head -1)
+          if [ -z "$v" ]; then echo "::error::Could not read BUILD from biswas-ai/server.js"; exit 1; fi
           echo "Expected version: $v"
           echo "version=$v" >> "$GITHUB_OUTPUT"
 
@@ -48,15 +48,15 @@ jobs:
       - name: Wait for live /healthz to report ${{ steps.ver.outputs.version }}
         if: steps.hook.outputs.skip != 'true'
         env:
-          WANT: ok ${{ steps.ver.outputs.version }}
+          WANT: ${{ steps.ver.outputs.version }}
         run: |
           url=https://biswas-ai-for-office.onrender.com/healthz
           end=$(( $(date +%s) + 480 ))
           while [ "$(date +%s)" -lt "$end" ]; do
-            got=$(curl -s -m 20 "$url" || true)
-            echo "$(date -u +%H:%M:%S) healthz: ${got:-<no response>}"
-            if [ "$got" = "$WANT" ]; then echo "Live and serving $WANT"; exit 0; fi
+            got=$(curl -s -m 20 -D - -o /dev/null "$url" | tr -d '\r' | awk -F': ' 'tolower($1)=="x-build"{print $2}' || true)
+            echo "$(date -u +%H:%M:%S) healthz X-Build: ${got:-<none>}"
+            if [ "$got" = "$WANT" ]; then echo "Live and serving build $WANT"; exit 0; fi
             sleep 15
           done
-          echo "::error::Live site never reported '$WANT' within 8 minutes"
+          echo "::error::Live site never reported X-Build '$WANT' within 8 minutes"
           exit 1

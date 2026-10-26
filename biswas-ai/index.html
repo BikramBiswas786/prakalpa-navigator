@@ -426,7 +426,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 .pd-preview td { border: 1px solid var(--line); padding: 2px 5px; }
 .pd-progress { font-size: .82rem; color: var(--muted); display: grid; gap: 2px; }
 .pd-answer { display: grid; gap: 8px; }
-/* v106: downloads, bigger chat, output panel */
+/* downloads, bigger chat, output panel */
 .pd-dlbtn { border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; font-size: 14px; line-height: 1; padding: 3px 7px; margin-left: 6px; color: var(--accent); }
 .pd-dlbtn:hover, .pd-aisel:hover { background: rgba(80, 60, 200, .08); }
 .pd-menu { position: fixed; z-index: 60; background: var(--card, #fff); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 4px; min-width: 190px; }
@@ -450,7 +450,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 @media (min-width: 1100px) { .pd-grid.pd-3 { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr) minmax(340px, 1.15fr); } }
 @media (min-width: 701px) and (max-width: 1099px) { .pd-grid.pd-3 { grid-template-columns: 1fr 1fr; } .pd-grid.pd-3 .pd-files { grid-column: 1 / -1; } }
 @media (max-width: 700px) { .pd-grid.pd-3 { grid-template-columns: minmax(0, 1fr); } .pd-out { position: static; max-height: none; min-height: 0; } .pd-dlbtn { margin: 4px 0 0 4px; } }
-/* v123: branches (separate workspaces inside one pendrive) */
+/* branches (separate workspaces inside one pendrive) */
 .pd-branches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 .pd-branches .pd-br-l { font-size: 13px; color: var(--muted, #666); margin-right: 2px; }
 .pd-br { border: 1px solid var(--line); background: var(--card, #fff); color: inherit; border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 14px; cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -468,10 +468,10 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 .pd-bcard .pd-bgo { align-self: flex-start; } .pd-bcard .pd-br-more { position: absolute; top: 8px; right: 8px; }
 .pd-bcard.pd-bnew { border-style: dashed; align-items: flex-start; justify-content: center; min-height: 120px; }
 .pd-bbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 2px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; } .pd-bbar b { font-size: 16px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* v122: one flow - files | ask, then one full-width answer panel below, only after a run */
-.pd-grid.pd-v122 { grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr) !important; }
-.pd-grid.pd-v122 .pd-files { grid-column: auto !important; }
-.pd-grid.pd-v122 .pd-out { grid-column: 1 / -1; position: static; max-height: none; min-height: 0; }
+/* one flow - files | ask, then one full-width answer panel below, only after a run */
+.pd-grid.pd-flow { grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr) !important; }
+.pd-grid.pd-flow .pd-files { grid-column: auto !important; }
+.pd-grid.pd-flow .pd-out { grid-column: 1 / -1; position: static; max-height: none; min-height: 0; }
 .pd-out[hidden] { display: none !important; }
 .pd-out-bar { gap: 8px; padding: 10px 14px; background: rgba(80,60,200,.04); border-radius: 12px 12px 0 0; }
 .pd-out-bar h3 { flex: 1 1 auto !important; margin: 0; }
@@ -485,7 +485,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
 .pd-progress:not(:empty)::before { content: ""; width: 18px; height: 18px; border: 3px solid rgba(80,60,200,.25); border-top-color: rgba(80,60,200,.9); border-radius: 50%; animation: pdspin .8s linear infinite; }
 .pd-progress.idle::before { display: none; }
 @keyframes pdspin { to { transform: rotate(360deg); } }
-@media (max-width: 900px) { .pd-grid.pd-v122 { grid-template-columns: minmax(0, 1fr) !important; } .pd-out-doc { padding: 12px 14px; font-size: 15px; } }
+@media (max-width: 900px) { .pd-grid.pd-flow { grid-template-columns: minmax(0, 1fr) !important; } .pd-out-doc { padding: 12px 14px; font-size: 15px; } }
 @media print { body.pd-printing * { visibility: hidden; } body.pd-printing #pd-out-doc, body.pd-printing #pd-out-doc * { visibility: visible; } body.pd-printing #pd-out-doc { position: absolute; left: 0; top: 0; overflow: visible; } }
 .pd-answer .src { font-size: .8rem; color: var(--muted); }
 .pd-act { border: 1px solid var(--accent); border-radius: 10px; padding: 8px; display: grid; gap: 6px; }
@@ -784,7 +784,7 @@ tr.pd-ai-on td { background: rgba(80, 60, 200, .07); }
             <button class="btn small" type="button" id="pd-close" data-t="pd_close"></button>
           </div>
           <section class="pd-home" id="pd-home" hidden aria-labelledby="pd-home-h"></section>
-          <div class="pd-grid pd-3 pd-v122" id="pd-work">
+          <div class="pd-grid pd-3 pd-flow" id="pd-work">
             <div class="pd-files">
               <div class="pd-branches" id="pd-branches" aria-label="Branches"></div>
               <div class="pd-nav"><button type="button" class="pd-navbtn" id="pd-back" aria-label="Back" title="Back (Alt+←)">←</button><button type="button" class="pd-navbtn" id="pd-up" aria-label="Up" title="Up (Backspace)">⬆</button><nav class="pd-crumbs" id="pd-crumbs" aria-label="Folder path"></nav></div>
@@ -1135,7 +1135,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ · v110", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
+    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1209,7 +1209,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job · v110", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
+    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
     ag_ph: "Write one job. The agent will read several pages before it finishes.",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -2102,7 +2102,7 @@ function mdToHtml(src) {
     if (b.t === "hr") return "<hr>";
     const lifted = b.t === "code" && window.BA && BA.lift ? BA.lift(b.info, b.text) : null;
     if (lifted) return BA.cardHtml(lifted.info, lifted.text);
-    if (b.t === "code") return `<pre${b.info ? ` data-lang="${esc(b.info.split(/\s/)[0])}"` : ""}><code>${esc(b.text)}</code></pre>`; // v109: attachment blocks become file cards
+    if (b.t === "code") return `<pre${b.info ? ` data-lang="${esc(b.info.split(/\s/)[0])}"` : ""}><code>${esc(b.text)}</code></pre>`; // attachment blocks become file cards
     if (b.t === "ul") return `<ul>${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ul>`;
     if (b.t === "ol") return `<ol start="${b.start}">${b.items.map(i => `<li>${inlineHtml(i)}</li>`).join("")}</ol>`;
     if (b.t === "table") {
@@ -2226,7 +2226,7 @@ function wRuns(s, extra = {}) {
 }
 const wP = (inner, ppr = "") => `<w:p><w:pPr><w:spacing w:after="120" w:line="300" w:lineRule="auto"/>${ppr}</w:pPr>${inner}</w:p>`;
 async function toDocx(md, headText) {
-  if (window.BA && !headText) return BA.docxFromMd(md); // v109: shared Word writer (styles, real lists, shaded table headers)
+  if (window.BA && !headText) return BA.docxFromMd(md); // shared Word writer (styles, real lists, shaded table headers)
   const head = headText ? headText.split("\n").filter(Boolean).map((line, i) => wP(wRuns(line, { b: true, sz: i === 0 ? 28 : 24 }), '<w:jc w:val="center"/>')).join("") : "";
   const body = head + parseMd(md).map(b => {
     if (b.t === "h") return wP(wRuns(b.text, { b: true, sz: b.level === 1 ? 28 : 26 }), b.level === 1 ? '<w:jc w:val="center"/>' : "");
@@ -2250,7 +2250,7 @@ async function toDocx(md, headText) {
   return zip.blob("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 }
 async function toPdf(md, headHtml) {
-  if (window.BA) return BA.pdfFromHtml((headHtml || "") + mdToHtml(md)); // v109: same look, plus a searchable Bengali text layer
+  if (window.BA) return BA.pdfFromHtml((headHtml || "") + mdToHtml(md)); // same look, plus a searchable Bengali text layer
   await load("html2pdf");
   const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = (headHtml || "") + mdToHtml(md);
   await document.fonts.ready;
@@ -2402,7 +2402,7 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
     if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
     const quick = fast || mode === "ai";
     let sys = system || (quick && !agent ? shortRules() : rules() + (agent ? bikramRules() : ""));
-    if (skills && window.BA) { sys += BA.addendum(); maxOut = Math.max(maxOut || 0, 3600); } // v109: skills + file attachments (all sections)
+    if (skills && window.BA) { sys += BA.addendum(); maxOut = Math.max(maxOut || 0, 3600); } // skills + file attachments (all sections)
     const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick, maxOut });
     return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
   } catch (e) {
@@ -2423,7 +2423,7 @@ const attachImages = files => files.flatMap(f => f.images || []);
 const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
 const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", write: "tab_write" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
-const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // v105: folder to reopen after a reload
+const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
@@ -4337,8 +4337,8 @@ async function runBiswasAgent(job) {
     const checkSys = officeFile(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
       : `You are the editor. ${lang} The note must answer every part of the job. Keep facts that the pages support. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Delete a line that says a fact is missing when another page states it. Do not invent a score. Return only the corrected note.`;
-    const draftParts = window.BA ? BA.parse(draft.text) : { text: draft.text, atts: [] }; // v109: files skip the editor pass, then come back
-    // v120: code, JSON and table blocks are kept verbatim; the editor and cleaners only see a placeholder.
+    const draftParts = window.BA ? BA.parse(draft.text) : { text: draft.text, atts: [] }; // files skip the editor pass, then come back
+    // code, JSON and table blocks are kept verbatim; the editor and cleaners only see a placeholder.
     const kept = [];
     draftParts.text = draftParts.text.replace(/^([ \t]*(```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*\2[ \t]*$)|((?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})|(^[ \t]*[\[{][ \t]*\n[\s\S]*?\n[ \t]*[\]}][ \t]*$)/gm, m => { kept.push(m.replace(/\n$/, "")); return "[[KEEP" + kept.length + "]]\n"; });
     const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draftParts.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys + (kept.length ? " Lines like [[KEEP1]] are code, JSON or table blocks: copy each one unchanged on its own line. Only check prose; if a prose claim is not on the pages, add (unverified) after it instead of deleting numbers." : "") });
@@ -4361,7 +4361,7 @@ async function runBiswasAgent(job) {
       ai.error = "";
     } else {
     const found = deepDump(pages);
-    ai.pages = pages.map(p => ({ title: p.title, url: p.url, via: p.via || "", text: String(p.text || "").slice(0, 900) })); // v111: snap() lived inside try
+    ai.pages = pages.map(p => ({ title: p.title, url: p.url, via: p.via || "", text: String(p.text || "").slice(0, 900) })); // snap() lived inside try
     console.warn("agent error", e && (e.message || e.code));
     ai.content = found ? hideAudit(found) : cleanAgent((e && e.text) || "");
     ai.error = found ? "" : aiFailed(e);
@@ -5276,7 +5276,7 @@ function renderPendrive() {
   $("#pd-q").placeholder = t("pd_q_ph");
   if (on) { $("#pd-name").textContent = pd.name; renderPdList(); if (!pd.loaded) { pd.loaded = true; pdRefresh().catch(e => toast(pdErrText(e))); } }
 }
-/* v123: branches. A branch is the folder "⎇/<name>"; the default branch ("Main") is everything outside "⎇". Existing files never move. */
+/* branches. A branch is the folder "⎇/<name>"; the default branch ("Main") is everything outside "⎇". Existing files never move. */
 const PD_BR = "⎇";
 const pdBranch = () => (pd.cwd || "").startsWith(PD_BR + "/") ? pd.cwd.split("/")[1] : "";
 const pdBrRoot = (b = pdBranch()) => b ? PD_BR + "/" + b : "";
@@ -5344,7 +5344,7 @@ function renderPdList() {
   $("#pd-rows").innerHTML = rows.length ? rows.map(r => `<tr class="${pd.aiSel.has(r.key) ? "pd-ai-on" : ""}" data-pd-key="${esc(r.key)}"><td><input type="checkbox" data-pd-sel="${esc(r.key)}" ${pd.sel.has(r.key) ? "checked" : ""} aria-label="${esc(r.name)}"></td><td><button type="button" class="pd-item" ${r.kind === "dir" ? `data-pd-cd="${esc(r.path)}"` : `data-pd-view="${esc(r.id)}"`}>${r.kind === "dir" ? "📁 " : "📄 "}${esc(r.name)}</button><button type="button" class="pd-aisel ${pd.aiSel.has(r.key) ? "on" : ""}" data-pd-ai="${esc(r.key)}" aria-pressed="${pd.aiSel.has(r.key)}">${esc(t(pd.aiSel.has(r.key) ? "pd_ai_btn_on" : "pd_ai_btn"))}</button><button type="button" class="pd-dlbtn" data-pd-dlrow="${esc(r.key)}" title="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}" aria-label="${esc(t(r.kind === "dir" ? "pd_dl_zip_row" : "pd_dl_row"))}: ${esc(r.name)}">⬇</button>${r.kind === "file" && !r.text && !/\.(zip|rar|7z|exe|bin|iso|mp4|mp3)$/i.test(r.name) ? ` <span class="hint">· ${esc(t(r.note === "scanned" ? "pd_scanned" : "pd_no_text"))}</span>` : ""}</td><td>${pdSize(r.size)}</td><td>${r.mtime ? esc(pdDate(r.mtime)) : ""}</td></tr>`).join("") : `<tr><td colspan="4" class="hint">${esc(t("pd_empty"))}</td></tr>`;
   $("#pd-all").checked = rows.length > 0 && rows.every(r => pd.sel.has(r.key));
 }
-/* ---- v113: share links + upload-request links (owner side) ---- */
+/* ---- share links + upload-request links (owner side) ---- */
 function pdShareForm(kind) {
   const box = $("#pd-sharebox"); pd.shKind = kind; box.hidden = false;
   const exp = `<label>${esc(t("pd_sh_exp"))} <select id="pd-sh-exp">${["1d", "7d", "30d", "never"].map(k => `<option value="${k}"${k === "7d" ? " selected" : ""}>${esc(t("pd_sh_" + k))}</option>`).join("")}</select></label>`;
@@ -5382,7 +5382,7 @@ function pdPicked() {
   return { ids, folders };
 }
 
-/* v105: folder navigation (breadcrumb, Up, browser Back/Forward, #pd=<folder> survives a reload) */
+/* folder navigation (breadcrumb, Up, browser Back/Forward, #pd=<folder> survives a reload) */
 function pdCd(path, push = true) {
   const home = path === PD_HOME; pd.home = home; if (home) path = ""; pd.brForm = false;
   path = path || ""; if (path && !pd.folders.includes(path) && pd.listed) { /* folder gone: go to the nearest existing parent */ while (path && !pd.folders.includes(path)) path = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : ""; }
@@ -5403,7 +5403,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Backspace" && !pd.home) { e.preventDefault(); pdUp(); }
   else if (e.altKey && e.key === "ArrowLeft" && history.state && history.state.pdDepth > 0) { e.preventDefault(); history.back(); }
 });
-/* v105: what the AI reads. pd.aiSel: key -> true ("d:<folder>" or "f:<id>"); saved per pendrive for this tab. */
+/* what the AI reads. pd.aiSel: key -> true ("d:<folder>" or "f:<id>"); saved per pendrive for this tab. */
 pd.aiSel = pd.aiSel || new Set();
 const pdAiKey = () => "pd:ai:" + normalizeName(pd.name || "");
 function normalizeName(s) { return String(s).trim().toLowerCase(); }
@@ -5432,7 +5432,7 @@ function renderPdChips() {
   box.innerHTML = `<b>🤖 ${esc(t("pd_ai_uses"))}</b>${chips}<button type="button" class="btn small" data-pd-ai-clear>${esc(t("pd_ai_clear"))}</button>`;
 }
 function pdBase(p) { return p.slice(p.lastIndexOf("/") + 1); }
-/* ---- v106: store-only ZIP/ZIP64 writer (no libraries) ---- */
+/* ---- store-only ZIP/ZIP64 writer (no libraries) ---- */
 const PD_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function pdCrc(crc, u8) { let c = ~crc >>> 0; for (let i = 0; i < u8.length; i++) c = PD_CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return ~c >>> 0; }
 const PD_U32 = 0xFFFFFFFF, PD_Z64 = 0xFFFFFFFF; // marker / size limit that needs ZIP64
@@ -5568,12 +5568,12 @@ function pdMenuClose() { const m = document.getElementById("pd-menu"); if (m) m.
 document.addEventListener("click", e => { if (!e.target.closest || !e.target.closest("#pd-menu")) pdMenuClose(); }, true);
 document.addEventListener("keydown", e => { if (e.key === "Escape") pdMenuClose(); });
 
-/* ---- v106: output panel ---- */
+/* ---- output panel ---- */
 pd.outs = []; pd.outCur = -1;
 const pdOutKey = () => "pd:out:" + (pd.name || "").toLowerCase();
 function pdOutLoad() { try { pd.outs = JSON.parse(localStorage.getItem(pdOutKey()) || "[]"); } catch (e) { pd.outs = []; } pd.outCur = pd.outs.length ? 0 : -1; pd.outShown = false; renderPdOut(); }
 function pdOutSave() { try { localStorage.setItem(pdOutKey(), JSON.stringify(pd.outs.slice(0, 20))); } catch (e) { /* full */ } }
-/* v108: make any table the AI returns (HTML, tab-separated, pipes without a separator row) a GitHub markdown table */
+/* make any table the AI returns (HTML, tab-separated, pipes without a separator row) a GitHub markdown table */
 function pdNormTables(md) {
   let s = String(md || "").replace(/\r/g, "");
   const row = cs => "| " + cs.map(c => String(c).replace(/\|/g, "/").replace(/\s+/g, " ").trim()).join(" | ") + " |";
@@ -5605,7 +5605,7 @@ function pdNormTables(md) {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function pdOutAdd(md, sources, cites) { pd.outs.unshift({ md: pdNormTables(md).slice(0, 200000), q: ($("#pd-q").value || "").trim().slice(0, 160), at: Date.now(), sources: (sources || []).slice(0, 50), cites: (cites || []).slice(0, 20) }); pd.outs = pd.outs.slice(0, 20); pd.outCur = 0; pd.outShown = true; pdOutSave(); renderPdOut(); }
-// v115: [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
+// [n] in an answer becomes a chip that opens the file at the cited page / sheet rows / section, passage highlighted
 function pdLocLabel(l) { if (!l) return ""; const en = settings.lang === "en"; if (l.page) return (en ? "p. " : "পৃ. ") + l.page; if (l.sheet) return `${l.sheet} ${en ? "rows" : "সারি"} ${l.r1}${l.r2 !== l.r1 ? "–" + l.r2 : ""}`; if (l.h) return l.h.split(" › ").pop(); return ""; }
 function pdChipify(root, cites) {
   const have = new Set(cites.map(c => c.n)); const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); const nodes = [];
@@ -5653,7 +5653,7 @@ async function pdOutAct(a) {
   }
 }
 if (pd.token) pdAiLoad();
-function pdRestore(n) { // v105: reopen the folder from #pd= after a reload, once the app has booted
+function pdRestore(n) { // reopen the folder from #pd= after a reload, once the app has booted
   if (PD_RESTORED || PD_BOOT_HASH == null || !pd.token) return;
   if (typeof booted === "undefined" || !booted) { if (n < 40) setTimeout(() => pdRestore(n + 1), 150); return; }
   try { pd.cwd = PD_BOOT_HASH; if (mode !== "pendrive") go("pendrive"); pdCd(PD_BOOT_HASH, false); } catch (e) { /* ignore */ }
@@ -5663,7 +5663,7 @@ let PD_RESTORED = false;
 pdRestore(0);
 /* uploads: the browser sends parts straight to storage with presigned URLs.
    A queue with limited concurrency handles folders with thousands of files; big files resume after a reload (IndexedDB). */
-const PD_PARALLEL_PARTS = 6, PD_PARALLEL_FILES = 8, PD_SINGLE = 16 * 1024 * 1024; // v110
+const PD_PARALLEL_PARTS = 6, PD_PARALLEL_FILES = 8, PD_SINGLE = 16 * 1024 * 1024;
 const PD_SKIP = /^(\.ds_store|thumbs\.db|ehthumbs\.db|desktop\.ini|\.localized|\.directory|icon\r)$|^\._|^~\$/i;
 const PD_SKIP_DIR = /(^|\/)(__MACOSX|\.Trashes|\.Spotlight-V100|\.fseventsd|\$RECYCLE\.BIN|System Volume Information)(\/|$)/i;
 pd.batch = { files: 0, bytes: 0, doneFiles: 0, doneBytes: 0, failed: 0, t0: 0, last: 0, lastSent: 0, speed: 0 };
@@ -5758,7 +5758,7 @@ function pdPump() {
   renderPdUploadsSoon();
 }
 const pdAvoid = new Set((() => { try { return JSON.parse(sessionStorage.getItem("pd:avoid") || "[]"); } catch (e) { return []; } })());
-/* v110: fast path for many small files.
+/* fast path for many small files.
    - probe: at the first upload of the session, try each storage host (4 s); hosts that don't answer go on the avoid list at once
    - pdPlan: one upload/batch-init call reserves up to 50 small files (each gets a single presigned PUT)
    - pdCommit: finished small files are committed 25 at a time (upload/batch-complete: one index/meta write)
@@ -5829,7 +5829,7 @@ function pdTextPump() {
         catch (e) { try { text = await pdExtract(it.file); } catch (x) { text = ""; } }
       }
       if (text) pdTextOut.push({ id: it.id, text });
-      else if (/\.pdf$/i.test(it.file.name) && it.file.size <= 150 * 1024 * 1024) pdTextOut.push({ id: it.id, text: "", note: "scanned" }); // v115: scanned PDF, no text layer
+      else if (/\.pdf$/i.test(it.file.name) && it.file.size <= 150 * 1024 * 1024) pdTextOut.push({ id: it.id, text: "", note: "scanned" }); // scanned PDF, no text layer
     })().finally(() => {
       pdTextBusy--; pd.textLeft = pdTextQ.length + pdTextBusy;
       clearTimeout(pdTextT); if (pdTextOut.length >= 25 || !pd.textLeft) pdTextFlush(); else pdTextT = setTimeout(pdTextFlush, 1500);
@@ -5842,7 +5842,7 @@ function pdPut(u, url, blob, n) {
   return new Promise((res, rej) => {
     const x = new XMLHttpRequest(); u.xhrs.add(x);
     let sent = 0;
-    // v107: a storage host this network can't reach (blocked port/firewall) often just hangs: no progress for 25 s counts as a network error
+    // a storage host this network can't reach (blocked port/firewall) often just hangs: no progress for 25 s counts as a network error
     let stall = 0; const arm = () => { clearTimeout(stall); stall = setTimeout(() => { x.pdStalled = true; x.abort(); }, 25000); };
     x.upload.onprogress = e => { arm(); u.done += e.loaded - sent; sent = e.loaded; renderPdUploadsSoon(); };
     x.addEventListener("loadend", () => clearTimeout(stall));
@@ -5906,7 +5906,7 @@ async function pdUpload(u) {
   };
   try { await Promise.all(Array.from({ length: Math.min(PD_PARALLEL_PARTS, todo.length) }, worker)); }
   catch (e) {
-    // v107: nothing reached this storage host from this network: drop the reservation and place the file on another backend
+    // nothing reached this storage host from this network: drop the reservation and place the file on another backend
     if (u.state === "cancel" || Object.keys(u.etags).length || !/network/.test(e.message) || (u.moved || 0) >= 3) throw e;
     let host = ""; try { host = new URL(await pdUrl(u, 1, [1]), location.href).host; } catch (x) { /* ignore */ }
     if (!host || host === location.host) throw e; // another upload may already have marked it
@@ -5921,7 +5921,7 @@ async function pdUpload(u) {
   else { done = await pdApi("upload/complete", { fileId: u.fileId, uploadId: u.uploadId, parts }); pd.used = done.used; pd.quota = done.quota || pd.quota; }
   pdForget(u);
   u.path = done.path;
-  pdTextLater(done.id, u.file, u.text); // v110: AI text is read after the upload, off the upload slots
+  pdTextLater(done.id, u.file, u.text); // AI text is read after the upload, off the upload slots
   u.state = "done"; pd.batch.doneFiles++; pd.batch.doneBytes += u.file.size;
   u.file = { size: u.file.size, name: u.file.name }; // let the browser free the File
   pdRefreshSoon();
@@ -5990,7 +5990,7 @@ async function pdExtract(f) {
   if (["xlsx", "xls", "ods"].includes(ext)) {
     await load("xlsx");
     const wb = window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array", cellDates: true });
-    // v115: "[Sheet: name @firstRow]" + tab rows; dates as yyyy-mm-dd and plain numbers so the server can do exact maths
+    // "[Sheet: name @firstRow]" + tab rows; dates as yyyy-mm-dd and plain numbers so the server can do exact maths
     const iso = d => { const x = new Date(d.getTime() + 12 * 3600e3); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
     return wb.SheetNames.map(n => { const ws = wb.Sheets[n]; const r0 = ws["!ref"] ? window.XLSX.utils.decode_range(ws["!ref"]).s.r + 1 : 1;
       const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "", blankrows: true });
@@ -6081,7 +6081,7 @@ async function pdAsk() {
   const q = $("#pd-q").value.trim(); if (!q) return;
   const scope = {};
   if (pd.aiSel.size) { const ids = pdAiFiles(); if (!ids.length) { toast(t("pd_ai_none_in")); return; } scope.ids = ids; } // else: the whole current branch
-  else scope.branch = pdBranch(); // v123
+  else scope.branch = pdBranch();
   const prog = $("#pd-ai-progress"), out = $("#pd-answer");
   prog.classList.remove("idle"); prog.innerHTML = `<span>${esc(t("pd_thinking"))}</span>`; out.innerHTML = ""; $("#pd-ask").disabled = true;
   try {
@@ -6227,6 +6227,6 @@ function resume() {
 applyLang();
 resume();
 </script>
-<script src="/attach.js?v=123" defer></script>
+<script src="/attach.js?h=0" defer></script>
 </body>
 </html>
