@@ -51,9 +51,11 @@ const PROVIDERS = [
   } }
 ];
 export const imageProviders = () => PROVIDERS.filter(x => x.ok()).map(x => x.name);
-const STYLE = " High quality, realistic, clean composition, no text, no letters, no words, no watermark.";
+const STYLE = " Photograph, high quality, realistic. Wide calm composition with plain open sky in the top third and plain ground in the bottom quarter, kept empty for a caption added later. Absolutely no text, no letters, no numbers, no signs, no banners, no flags with writing, no posters, no labels, no logos, no watermark.";
+// words that make image models paint fake lettering (the app writes the real text itself)
+export const cleanScene = p => String(p || "").replace(/\b(posters?|banners?|flyers?|notices?|signs?|signboards?|placards?|billboards?|labels?|captions?|titles?|headings?|logos?|texts?|words?|letters?|announc\w*|written|writing|saying|reads?|showing the words?)\b/gi, " ").replace(/["“”'‘’][^"“”'‘’]{0,80}["“”'‘’]/g, " ").replace(/\b(on|dated|from|till|until|by)?\s*\d[\d\s\-\/.,:]*(st|nd|rd|th)?\s*(jan\w*|feb\w*|mar\w*|apr\w*|may|jun\w*|jul\w*|aug\w*|sep\w*|oct\w*|nov\w*|dec\w*)?\s*\d*/gi, " ").replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1").replace(/\b(a|an) the\b/gi, "the").replace(/(\s+\b(with|saying|a|an|and|of|on)\b)+[\s,.]*$/i, "").trim();
 export async function generate(prompt, opt = {}) {
-  const p = String(prompt || "").replace(/\s+/g, " ").trim().slice(0, 900);
+  const p = cleanScene(prompt).slice(0, 900) || "a calm landscape";
   if (p.length < 3) { const e = new Error("bad_prompt"); e.status = 400; throw e; }
   const w = snap(opt.w || 1024), h = snap(opt.h || 768), errs = [];
   const order = (env("IMAGE_PROVIDER_ORDER") ? env("IMAGE_PROVIDER_ORDER").split(",").map(s => s.trim()) : PROVIDERS.map(x => x.name));

@@ -41,28 +41,30 @@ const b64 = c => c.toDataURL("image/jpeg", 0.85).split(",")[1];
 async function read(blob, name, onProg = () => {}) {
   onProg(L("Preparing pages…", "পাতা তৈরি হচ্ছে…"));
   const cs = await pages(blob, name);
-  const multi = cs.length > 1; let text = "", how = "";
+  const multi = cs.length > 1; const got = new Array(cs.length).fill(null); let how = "", done = 0;
+  // one page per vision call (3 at a time) so every page keeps its own [Page n] tag; a page that fails twice goes to Tesseract below
   if (!visionOff && typeof pdApi === "function") {
+    let next = 0;
+    const one = async i => { for (let k = 0, busy = 0; k < 2; k++) { try { const r = await pdApi("ocr", { images: [{ mime: "image/jpeg", data: b64(cs[i]) }] }); return String(r.text || "").replace(/^\s*\[Page \d+\]\s*/i, "").trim(); } catch (e) { if (e.status === 422 || /no_vision|no_provider/.test(e.message)) { visionOff = true; return null; } if (e.status === 429 && busy++ < 8) { k--; await new Promise(r => setTimeout(r, 8000)); } } } return null; };
+    const worker = async () => { while (next < cs.length && !visionOff) { const i = next++; got[i] = await one(i); done++; onProg(L("Reading text with the vision model…", "ভিশন মডেল দিয়ে লেখা পড়া হচ্ছে…") + (multi ? ` ${L("pages", "পাতা")} ${done} / ${cs.length}` : "")); } };
+    onProg(L("Reading text with the vision model…", "ভিশন মডেল দিয়ে লেখা পড়া হচ্ছে…") + (multi ? ` 0 / ${cs.length}` : ""));
+    await Promise.all([worker(), worker(), worker()]);
+    if (got.some(t => t)) how = "vision";
+  }
+  const left = got.map((t, i) => (t ? -1 : i)).filter(i => i >= 0);
+  if (left.length && (!how || left.length < cs.length)) {
     try {
-      for (let i = 0; i < cs.length; i += 4) {
-        onProg(L("Reading text with the vision model…", "ভিশন মডেল দিয়ে লেখা পড়া হচ্ছে…") + (multi ? ` ${L("pages", "পাতা")} ${i + 1}–${Math.min(i + 4, cs.length)} / ${cs.length}` : ""));
-        const r = await pdApi("ocr", { images: cs.slice(i, i + 4).map(c => ({ mime: "image/jpeg", data: b64(c) })) });
-        text += (text ? "\n\n" : "") + (multi && !/\[Page \d+\]/.test(r.text || "") ? `[Page ${i + 1}]\n` : "") + (r.text || "");
+      onProg(L("Loading the OCR reader (first time ~10 MB)…", "OCR রিডার লোড হচ্ছে (প্রথমবার ~১০ MB)…"));
+      const w = await tessWorker(m => onProg("OCR: " + m));
+      for (const [n, i] of left.entries()) {
+        onProg(L("Reading text (OCR)", "লেখা পড়া হচ্ছে (OCR)") + (multi ? ` ${n + 1}/${left.length}` : "") + "…");
+        const r = await w.recognize(cs[i]);
+        got[i] = String((r && r.data && r.data.text) || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
       }
-      how = "vision";
-    } catch (e) { if (e.status === 422 || /no_vision|no_provider/.test(e.message)) visionOff = true; text = ""; how = ""; }
+      how = how ? how + "+tesseract" : "tesseract";
+    } catch (e) { if (!how) throw e; }
   }
-  if (!how) {
-    onProg(L("Loading the OCR reader (first time ~10 MB)…", "OCR রিডার লোড হচ্ছে (প্রথমবার ~১০ MB)…"));
-    const w = await tessWorker(m => onProg("OCR: " + m));
-    for (let i = 0; i < cs.length; i++) {
-      onProg(L("Reading text (OCR)", "লেখা পড়া হচ্ছে (OCR)") + (multi ? ` ${i + 1}/${cs.length}` : "") + "…");
-      const r = await w.recognize(cs[i]);
-      const t = String((r && r.data && r.data.text) || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-      if (t) text += (text ? "\n\n" : "") + (multi ? `[Page ${i + 1}]\n` : "") + t;
-    }
-    how = "tesseract";
-  }
+  let text = got.map((t, i) => (t ? (multi ? `[Page ${i + 1}]\n` : "") + t : "")).filter(Boolean).join("\n\n");
   text = text.trim();
   if (cs.total > cs.length) text += `\n\n(${cs.total - cs.length} more pages not read by OCR)`;
   return { text, how, pages: cs.length, total: cs.total };
