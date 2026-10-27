@@ -2132,17 +2132,17 @@ function agreeArticle(rows, pages, question) {
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
 async function askPanel(question, pages, fileText) {
-  const file = String(fileText || "").slice(0, 18000);
+  const file = String(fileText || "").slice(0, 28000);
   const src = file ? "" : (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
   const system = file
-    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text is the file. You can read it. Do not say you cannot see an attachment, a PDF, a Word file or a ward file. Do not talk about other websites or grammar tools. Do the job on that text. Quote the line you are correcting. Keep every name, account number and amount. Do not invent a person."
+    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file. Read all of it. Return the FULL corrected document as Markdown, every memo and every table row. Fix grammar and spelling only. Keep every name, account number, IFSC, mobile and amount. Do not drop a row. Do not invent a person. Do not say you cannot see, create or send an attachment. Do not mention Grammarly, UPDF or any other website. Do not apologize. Do not write a preface. Start with the document."
     : yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
   const user = file
     ? String(question || "Correct this file.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file
     : String(question || "").slice(0, 2000);
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], maxOut: file ? 2400 : 1400 }), signal: ctl ? ctl.signal : undefined });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], maxOut: file ? 6000 : 1400 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [];
@@ -2180,7 +2180,14 @@ async function correctChunks(text, job, signal, onStep) {
     try {
       const r = await aiRun([{ role: "user", content: "Job: " + String(job || "Correct this file.").slice(0, 800) + "\n\nPART " + (i + 1) + " OF " + parts.length + ":\n" + parts[i] }], { fast: false, signal, system: sys, maxOut: 4096 });
       let got = String(r.text || "").trim().replace(/^```[a-z]*\n?/i, "").replace(/\n```$/, "").trim();
-      if (got.length < Math.min(400, parts[i].length * 0.45)) got = parts[i];
+      if (r.truncated) {
+        try {
+          const more = await aiRun([{ role: "user", content: "Continue this part from the next line. Do not repeat. Do not summarize.\n\n" + got.slice(-1500) }], { fast: false, signal, system: sys, maxOut: 4096 });
+          const add = String(more.text || "").trim();
+          if (add.length > 80 && !got.includes(add.slice(0, 50))) got += "\n" + add;
+        } catch (e2) { /* keep what this part already has */ }
+      }
+      if (got.length < Math.min(400, parts[i].length * 0.55)) got = parts[i];
       out.push(got);
     } catch (e) {
       if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
@@ -2190,8 +2197,17 @@ async function correctChunks(text, job, signal, onStep) {
   return out.join("\n\n");
 }
 function docxFence(md, name) {
-  const safe = String(name || "corrected-draft").replace(/[^\w.-]+/g, "-").replace(/-docx$/i, "").replace(/\.docx$/i, "") || "corrected-draft";
+  const safe = String(name || "corrected-draft").replace(/[^\w.-]+/g, "-").replace(/\.docx\+pdf.*/i, "").replace(/-docx$/i, "").replace(/\.docx$/i, "") || "corrected-draft";
   return "\n\n```attachment name=\"" + safe + ".docx\" type=\"docx\"\n" + String(md || "").trim() + "\n```\n";
+}
+function panelFile(text, name) {
+  let t = String(text || "").trim();
+  if (!t) return "";
+  const refuse = /can.?t (create|send|view|process|see)|cannot (create|view|see|process)|don.?t see any attached|no attached document|paste the text|upload the document|grammarly|updf/i;
+  t = t.split(/\n{2,}/).filter(p => !refuse.test(p)).join("\n\n").trim();
+  if (t.length < 240) return "";
+  const en = settings.lang === "en";
+  return (en ? "Word file from this AI." : "এই AI-এর Word ফাইল।") + docxFence(t, name);
 }
 function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
@@ -2557,7 +2573,7 @@ const ERR = {
     image_rejected: "ছবিটি নেওয়া গেল না। অন্য ছবি দিন।", images_unavailable: "এখন ছবি পড়তে পারে এমন AI পাওয়া যাচ্ছে না। লেখা-সহ PDF বা Word দিন।",
     empty_completion: "কোনও উত্তর আসেনি। আবার চেষ্টা করুন।", server_unconfigured: "সার্ভারে কোনও AI key দেওয়া নেই। Render-এ Environment-এ key যোগ করুন।",
     timeout: "অনেকক্ষণ কোনও উত্তর আসেনি। 'AI অবস্থা পরীক্ষা' করে দেখুন কোন key কাজ করছে।", all_failed: "কোনও AI উত্তর দিতে পারল না। 'AI অবস্থা পরীক্ষা' করে দেখুন।",
-    cut: "উত্তর মাঝপথে কেটে গেছে। ছোট অংশে চেষ্টা করুন।", upstream_error: "সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।", busy: "আগের কাজটি চলছে, একটু অপেক্ষা করুন।"
+    cut: "উত্তরটা লম্বা হয়ে থেমেছে। Retry চাপুন।", upstream_error: "সংযোগে সমস্যা হয়েছে। আবার চেষ্টা করুন।", busy: "আগের কাজটি চলছে, একটু অপেক্ষা করুন।"
   },
   en: {
     not_granted: "Permission to use the AI was not given. Reopen the page and allow it.", sampling_disabled: "The AI is not available for this account.",
@@ -2567,7 +2583,7 @@ const ERR = {
     image_rejected: "That image could not be used. Try another one.", images_unavailable: "No AI that can read images is available now. Use a PDF or Word file with text.",
     empty_completion: "No answer came back. Please try again.", server_unconfigured: "No AI keys are set on the server. Add keys under Environment in Render.",
     timeout: "No answer for a long time. Use 'Check AI status' to see which keys work.", all_failed: "No AI could answer. Use 'Check AI status'.",
-    cut: "The answer was cut short. Try a smaller part.", upstream_error: "Connection problem. Please try again.", busy: "The previous request is still running; please wait."
+    cut: "The reply stopped early. Press Retry.", upstream_error: "Connection problem. Please try again.", busy: "The previous request is still running; please wait."
   }
 };
 const errText = code => (ERR[settings.lang] || ERR.bn)[code] || (ERR[settings.lang] || ERR.bn).upstream_error;
@@ -2618,7 +2634,7 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
   try {
     const opts = { cache: false, signal: guard.signal, onText };
     if (images.length) opts.images = images.slice(0, (imageLimits && imageLimits.maxCount) || 4);
-    const quick = fast || mode === "ai";
+    const quick = !!fast;
     let sys = system || (quick && !agent ? shortRules() : rules() + (agent ? bikramRules() : ""));
     if (skills && window.BA) { sys += BA.addendum(); maxOut = Math.max(maxOut || 0, 3600); } // skills + file attachments (all sections)
     const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick, maxOut });
@@ -2627,6 +2643,24 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
     if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
     throw e;
   } finally { clearTimeout(timer); }
+}
+async function aiRunFull(turns, opts) {
+  const opt = opts || {};
+  const tell = opt.onText || (() => {});
+  let r = await aiRun(turns, opt);
+  let text = String(r.text || "");
+  let hops = 0;
+  while (r.truncated && hops < 2 && text.length < 70000) {
+    hops++;
+    const more = await aiRun([{ role: "user", content: "Continue from the next line only. Do not repeat earlier lines. Do not apologize. Do not summarize.\n\nEND OF WHAT WAS ALREADY WRITTEN:\n" + text.slice(-1800) }], { ...opt, fast: false, maxOut: Math.max(opt.maxOut || 0, 4096), onText: ({ text: bit }) => tell({ text: text + "\n" + bit }) });
+    const add = String(more.text || "").trim();
+    if (add.length < 40 || text.includes(add.slice(0, 60))) { r = { ...more, truncated: false }; break; }
+    text = text.replace(/\s+$/, "") + "\n" + add;
+    tell({ text });
+    r = more;
+    if (!more.truncated) break;
+  }
+  return { text, truncated: !!(r.truncated && hops >= 2), via: r.via };
 }
 function aiFailed(e) {
   const code = e && e.code;
@@ -3694,7 +3728,7 @@ function bikramMsgHtml(m, k) {
   const hasTable = plainLong && parseMd(shown).some(b => b.t === "table");
   return `<div class="msg ai bk" data-k="${k}">
     ${parts}
-    ${plainLong ? `<div class="actions">${CAN_PRINT ? `<button class="btn small" data-act="print">${esc(t("doc_print"))}</button>` : ""}<button class="btn small" data-act="copy">${esc(t("copy"))}</button>${canSave() ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button></div>` : ""}
+    ${m.done ? (plainLong ? `<div class="actions">${CAN_PRINT ? `<button class="btn small" data-act="print">${esc(t("doc_print"))}</button>` : ""}<button class="btn small" data-act="retry">${esc(t("pd_retry"))}</button><button class="btn small" data-act="copy">${esc(t("copy"))}</button>${canSave() ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button></div>` : `<div class="actions"><button class="btn small" data-act="retry">${esc(t("pd_retry"))}</button></div>`) : ""}
     ${m.learned && m.learned.length ? `<div class="learned">${esc(t("mem_learned"))}${m.learned.map(esc).join(" · ")}</div>` : ""}
     ${m.error ? `<div class="err">${esc(m.error)}</div>` : ""}
     ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
@@ -3766,7 +3800,7 @@ function msgHtml(m, k) {
     ${m.done ? `<div class="via">${esc(t("answered_by"))}${esc(t("brand"))}</div>` : ""}
     ${panelHtml(m)}
     ${m.done && m.content ? `<div class="actions">
-      ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
+      ${m.editing ? `<button class="btn small primary" data-act="edit-save">${esc(t("save"))}</button>` : `<button class="btn small" data-act="retry">${esc(t("pd_retry"))}</button><button class="btn small" data-act="copy">${esc(t("copy"))}</button><button class="btn small" data-act="edit">${esc(t("edit"))}</button>`}
       ${canSave() && !m.editing ? `<button class="btn small" data-act="docx">Word</button><button class="btn small" data-act="pdf">PDF</button>${hasTable ? `<button class="btn small" data-act="xlsx">Excel</button>` : ""}` : ""}
       ${mode === "office" && !m.editing ? `<button class="btn small" data-act="todraft">${esc(t("tab_draft"))} →</button>` : ""}
     </div>` : ""}
@@ -4395,7 +4429,7 @@ function renderAgentView() {
         if (msgs[i].role !== "user") continue;
         jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
       }
-      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done ? `<div class="actions"><button class="btn small" type="button" data-ag-retry>${esc(t("pd_retry"))}</button><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
       const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
     }
   }
@@ -4547,15 +4581,36 @@ async function runBiswasAgent(job, files) {
     try {
       ai.log = [];
       const mark = (line) => { ai.log.push(line); ai.think = line; renderAgentView(); };
-      mark(en ? "Reading the attachment. The same text is sent to the free AIs. The web is not searched." : "সংযুক্তি পড়ছি। একই লেখা ফ্রি AI-কে যাচ্ছে। ওয়েব খোঁজা হচ্ছে না।");
-      try { ai.panel = await askPanel(job, [], rawFile || fileNote); } catch (e) { ai.panel = []; }
+      mark(googleOn
+        ? (en ? "Reading the attachment. Google is on, so the web is searched too." : "সংযুক্তি পড়ছি। গুগল চালু, তাই ওয়েবও খোঁজা হচ্ছে।")
+        : (en ? "Reading the attachment. Google is off, so the web is not searched." : "সংযুক্তি পড়ছি। গুগল বন্ধ, তাই ওয়েব খোঁজা হচ্ছে না।"));
+      if (googleOn) {
+        try {
+          const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(job || "").replace(/\s+/g, " ").trim().slice(0, 180), list: true, google: true }), signal: ctl ? ctl.signal : undefined });
+          const data = rr.ok ? await rr.json() : {};
+          const hits = [].concat(data.google || [], data.more || []).filter(h => h && h.url);
+          const seenU = new Set();
+          for (const h of hits) {
+            if (pages.length >= 8 || seenU.has(h.url)) continue;
+            if (driftedQuery((h.title || "") + " " + (h.url || ""), job)) continue;
+            seenU.add(h.url);
+            const text = String(h.text || "").slice(0, 700);
+            if (text.length < 80) continue;
+            pages.push({ title: h.title || h.url, url: h.url, text, via: h.via || "google" });
+          }
+          ai.pages = pages.map(p => ({ title: p.title, url: p.url, via: p.via, text: p.text }));
+          if (pages.length) mark(en ? "Google returned " + pages.length + " page(s). The file is still corrected on its own." : "গুগল " + pages.length + "টি পাতা দিয়েছে। ফাইল আলাদা করে ঠিক হচ্ছে।");
+        } catch (e) { /* the file is still corrected */ }
+      }
+      try { ai.panel = await askPanel(job, pages, rawFile || fileNote); } catch (e) { ai.panel = []; }
       renderAgentView();
       if (!rawFile) {
         const r = await aiRun([{ role: "user", content: job || "Read the attached file." }], { fast: false, signal: ctl.signal, system: yearLine() + "\nThe user attached a file. Read the pictures if any. Do not say the file is missing if a picture is attached. Do the job.", skills: true, maxOut: 4096, images: attachImages(files) });
         ai.content = r.text || (en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।");
       } else {
         const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
-        const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "");
+        const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+        ai.panel = (ai.panel || []).map((a, i) => ({ ...a, text: panelFile(a && a.text, base + "-" + ((a && a.provider) || i)) })).filter(a => a && a.text);
         const head = en
           ? "The attachment was read and sent to the free AIs. Grammar and spelling were corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
           : "সংযুক্তি পড়া হয়েছে এবং ফ্রি AI-কে পাঠানো হয়েছে। ব্যাকরণ ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
@@ -4851,7 +4906,7 @@ async function ask(text) {
     const think = "\nThis is a normal answer. Do not say you are opening pages. Think from the knowledge below. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
     const system = hasFile ? deepSystem() : mode === "public" ? rules() : mode === "office" ? rules() + bikramRules() : shortRules() + law + think + (knowledge() || "");
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
-    const rewrite = hasFile && raw.length > 3500 && /fix|grammar|correct|draft|rewrite|better|ward|error|rectif|spell|table|letterhead|attachment|page/i.test(String(text || "") + " " + files.map(f => f.name).join(" "));
+    const rewrite = hasFile && raw.length > 1200;
     let r;
     if (rewrite) {
       ai.content = settings.lang === "en" ? "Reading the attachment and correcting it in parts…" : "সংযুক্তি পড়ে অংশ অংশ ঠিক করছি…";
@@ -4860,7 +4915,7 @@ async function ask(text) {
       const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
       r = { text: (settings.lang === "en" ? "Corrected from the attachment. Names, amounts and tables are kept. Download the Word file." : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।") + docxFence(full, base + "-corrected"), via: "file", truncated: false };
     } else {
-      r = await aiRun(hasFile ? turns.slice(-2) : turns, { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: !hasFile, skills: true, maxOut: hasFile ? 8192 : mode === "office" ? 2400 : mode === "public" ? 1400 : 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+      r = await aiRunFull(hasFile ? turns.slice(-2) : turns, { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: !hasFile, skills: !hasFile, maxOut: hasFile ? 8192 : mode === "office" ? 4096 : mode === "public" ? 1800 : 2000, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
     if (agent) {
@@ -4868,7 +4923,7 @@ async function ask(text) {
       // the AI forgot the document markers: treat the whole answer as the document
       if (wantDoc && !DOC_START.test(ai.content)) ai.content = `<<<DOC type="${wantDoc}" title="${wantDoc}">>>\n${ai.content.replace(/^```[a-z]*\n?|```\s*$/g, "").trim()}\n<<<END DOC>>>`;
     }
-    if (r.truncated) ai.error = errText("cut");
+    if (r.truncated && !/```attachment/.test(String(r.text || ""))) ai.error = errText("cut");
   } catch (e) {
     const code = e && e.code;
     ai.content = code === "refused" ? "" : ((e && e.text) || ai.content);
@@ -4903,13 +4958,13 @@ async function browseLatest() {
     const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: topic.slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(topic) }), signal: mine.signal });
     const data = rr.ok ? await rr.json() : { pages: [] };
     const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
-    const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && !foreign(p)).slice(0, 4);
+    const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && !foreign(p)).slice(0, 8);
     ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
     ai.browseAt = 0;
     researchNote = pages.filter(p => p.text && String(p.text).length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
     if (live()) updateAt(box.indexOf(ai));
-    const system = (mode === "public" ? rules() : mode === "office" ? rules() : shortRules() + (knowledge() || "")) + "\n\nThe person pressed Browser research. Use the pages below. Say what they add to the earlier answer. If a page does not contain the new fact, say it is not on that page. Do not invent an amount, a fee, or an order number.\n\nPAGES:\n" + (researchNote || "No readable page came back.");
-    const r = await aiRun([{ role: "user", content: topic }], { signal: mine.signal, system, fast: true, skills: true, maxOut: 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const system = yearLine() + "\nThe person pressed Browser research. Answer the question in normal paragraphs from the pages below. Do not write a notesheet, a memo, a letter, or a signature block unless they asked for a letter. Copy a price, a time, or a date only when that exact figure is written in a page. If a page does not say whether a market is open, or does not give the price or the closing time, say the opened page does not state it. Do not invent a countdown. Do not turn the answer into a West Bengal office note.\n\nPAGES:\n" + (researchNote || "No readable page came back.");
+    const r = await aiRunFull([{ role: "user", content: topic }], { signal: mine.signal, system, fast: false, skills: false, maxOut: 3200, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, topic), r.text) : dropCutoff(r.text, topic); ai.via = r.via;
   } catch (e) {
     if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (!ai.content) ai.content = t("stopped"); }
@@ -4943,11 +4998,27 @@ async function deepChat() {
   setBusy(true);
   const live = () => box === messages && chatCtl === mine;
   try {
-    const r = await aiRun([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem(), fast: false, skills: true, maxOut: 4096, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
+    if (raw.length > 1800) {
+      ai.content = settings.lang === "en" ? "Reading the whole file and writing the Word document…" : "পুরো ফাইল পড়ে Word বানাচ্ছি…";
+      if (live()) updateAt(box.indexOf(ai));
+      const full = await correctChunks(raw, typed || "Correct the file and keep every page.", mine.signal, (i, n) => {
+        ai.content = (settings.lang === "en" ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n;
+        if (live()) updateAt(box.indexOf(ai));
+      });
+      const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+      const head = settings.lang === "en"
+        ? "The whole file was read in " + splitOfficeDoc(raw).length + " part(s). Grammar was checked. Names, amounts and tables were kept. Download the Word file."
+        : "পুরো ফাইল অংশে অংশে পড়া হয়েছে। ব্যাকরণ দেখা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।";
+      ai.content = head + docxFence(full, base + "-corrected");
+      ai.via = "file";
+    } else {
+    const r = await aiRunFull([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem(), fast: false, skills: false, maxOut: 4096, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = r.text; ai.via = r.via;
     const tb = parseMd(r.text).find(b => b.t === "table");
     if (tb && mode === "office") { grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); }
-    if (r.truncated) ai.error = errText("cut");
+    if (r.truncated && !/```attachment/.test(String(r.text || ""))) ai.error = errText("cut");
+    }
   } catch (e) {
     if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (!ai.content) ai.content = t("stopped"); }
     else ai.error = aiFailed(e);
@@ -5230,6 +5301,18 @@ document.addEventListener("click", e => {
     if (msg) { msg.browseAt = Number(x.dataset.browse) || 0; updateAt(k); }
     return;
   }
+  if ((x = el("[data-ag-retry]"))) {
+    const art = x.closest("article.job");
+    const ji = [...document.querySelectorAll("#ag-thread article.job")].indexOf(art);
+    const cur = agentThreads.find(t => t.id === agentId);
+    const users = (cur && cur.messages || []).filter(m => m.role === "user");
+    const u = users[ji];
+    if (!u) return;
+    const job = u.shown || String(u.content || "").split("\n\nATTACHED")[0];
+    const cut = String(u.content || "").split("ATTACHED FILES");
+    const files = cut[1] ? [{ name: (u.files && u.files[0]) || "attachment.txt", text: cut[1].slice(0, 70000) }] : [];
+    return runBiswasAgent(String(job).slice(0, 4000), files);
+  }
   if ((x = el("[data-ag-reply]"))) { const job = $("#ag-job"); if (job) job.focus(); return; }
   if (el("#ag-google")) {
     googleOn = !googleOn;
@@ -5432,6 +5515,12 @@ function startSectionChat() {
   if ((x = el("[data-act]"))) {
     const k = +x.closest(".msg").dataset.k; const m = messages[k]; const act = x.dataset.act;
     if (act === "copy") navigator.clipboard.writeText(m.content).then(() => toast(t("copied")), () => toast(t("copy_fail")));
+    else if (act === "retry") {
+      const prev = [...messages.slice(0, k)].reverse().find(mm => mm.role === "user");
+      if (!prev) return;
+      const again = prev.content && String(prev.content).includes("The attachment below") ? prev.content : (prev.shown || prev.content || "");
+      return ask(String(again).slice(0, 90000));
+    }
     else if (act === "print") printDoc(m.content);
     else if (act === "edit") { m.editing = true; updateAt(k); const ta = $(`#edit-${k}`); if (ta) ta.focus(); }
     else if (act === "edit-save") { m.content = $(`#edit-${k}`).value; m.editing = false; updateAt(k); persist(); toast(t("saved_edit")); }
@@ -6901,10 +6990,10 @@ resume();
   });
 })();
 </script>
-<script src="/attach.js?h=159" defer></script>
+<script src="/attach.js?h=165" defer></script>
 <script src="/editors.js?h=159" defer></script>
 <script src="/ed-offline.js?h=159" defer></script>
-<script src="/ed-word.js?h=162" defer></script>
+<script src="/ed-word.js?h=165" defer></script>
 <script src="/ed-excel.js?h=159" defer></script>
 <script src="/ed-image.js?h=159" defer></script>
 <script src="/ed-note.js?h=159" defer></script>

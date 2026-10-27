@@ -323,12 +323,12 @@ export async function POST(request) {
     const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 8);
     const out = Math.min(8192, Math.max(256, Number(body.maxOut) || 1400));
     const fileJob = out > 1800;
-    const capChars = fileJob ? 14000 : 6000;
+    const capChars = fileJob ? 28000 : 6000;
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();
       let text = "";
-      const stop = Date.now() + (fileJob ? 40000 : 18000);
+      const stop = Date.now() + (fileJob ? 55000 : 18000);
       while (text.length < capChars && Date.now() < stop) {
         const { value, done } = await reader.read();
         if (done) break;
