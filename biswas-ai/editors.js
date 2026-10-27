@@ -144,6 +144,7 @@ function frame(kind) {
       h("button", { type: "button", class: "btn small", "data-ed": "device", onclick: () => deviceOpen(kind) }, "📥 " + T("device")),
       h("button", { type: "button", class: "btn small", "data-ed": "new", onclick: () => doNew(kind) }, "＋ " + T("newb")),
       h("button", { type: "button", class: "btn small primary", "data-ed": "save", onclick: () => doSave(kind) }, "💾 " + T("save")),
+      h("button", { type: "button", class: "btn small", "data-ed": "print", onclick: () => headAct("print") }, "🖨 " + T("print")),
       h("button", { type: "button", class: "btn small", "data-ed": "saveas", onclick: () => doSave(kind, true) }, T("saveas")),
       h("button", { type: "button", class: "btn small", "data-ed": "dl", onclick: () => doDownload(kind) }, "⬇ " + T("dl")),
       h("button", { type: "button", class: "btn small", "data-ed": "as-docx", onclick: () => dlAs(kind, "docx") }, T("dlword")),

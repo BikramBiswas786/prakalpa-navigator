@@ -2131,18 +2131,67 @@ function agreeArticle(rows, pages, question) {
     + kept.slice(0, 8).map(k => k.text + " (" + [...new Set(k.who)].map(id => PANEL_NAME[id] || id).join(", ") + ")"
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
-async function askPanel(question, pages) {
-  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
+async function askPanel(question, pages, fileText) {
+  const file = String(fileText || "").slice(0, 18000);
+  const src = file ? "" : (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
-  const system = yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
+  const system = file
+    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text is the file. You can read it. Do not say you cannot see an attachment, a PDF, a Word file or a ward file. Do not talk about other websites or grammar tools. Do the job on that text. Quote the line you are correcting. Keep every name, account number and amount. Do not invent a person."
+    : yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
+  const user = file
+    ? String(question || "Correct this file.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file
+    : String(question || "").slice(0, 2000);
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: String(question || "").slice(0, 2000) }], maxOut: 1400 }), signal: ctl ? ctl.signal : undefined });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], maxOut: file ? 2400 : 1400 }), signal: ctl ? ctl.signal : undefined });
     if (!r.ok) return [];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [];
   } catch (e) {
     return [];
   }
+}
+function splitOfficeDoc(text) {
+  const t = String(text || "").replace(/\r/g, "").trim();
+  if (!t) return [];
+  if (t.length < 7000) return [t];
+  let parts = t.split(/\n(?=(?:ASHOK\b|Government of West Bengal\b))/i).map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) parts = t.split(/\n(?=Memo No\b|স্মারক)/i).map(s => s.trim()).filter(Boolean);
+  if (parts.length < 2) parts = [t];
+  const packed = [];
+  let buf = "";
+  for (const p of parts) {
+    if (buf && (buf.length + p.length) > 7000) { packed.push(buf.trim()); buf = p; }
+    else buf = buf ? buf + "\n\n" + p : p;
+  }
+  if (buf.trim()) packed.push(buf.trim());
+  const hard = [];
+  for (const p of packed) {
+    if (p.length <= 7500) hard.push(p);
+    else for (let i = 0; i < p.length; i += 7000) hard.push(p.slice(i, i + 7000));
+  }
+  return hard.length ? hard : [t];
+}
+async function correctChunks(text, job, signal, onStep) {
+  const parts = splitOfficeDoc(text);
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (onStep) onStep(i + 1, parts.length);
+    const sys = "You edit one part of an office file. Return ONLY the corrected text of this part. Fix grammar and spelling. Keep every name, bank, IFSC, account number, mobile, amount, date, memo number and table row. Do not add a person. Do not drop a row. Do not write a preface or a promise to finish later. If a table is present, write it as a GitHub markdown table: a header row, a | --- | row, then one row per person.";
+    try {
+      const r = await aiRun([{ role: "user", content: "Job: " + String(job || "Correct this file.").slice(0, 800) + "\n\nPART " + (i + 1) + " OF " + parts.length + ":\n" + parts[i] }], { fast: false, signal, system: sys, maxOut: 4096 });
+      let got = String(r.text || "").trim().replace(/^```[a-z]*\n?/i, "").replace(/\n```$/, "").trim();
+      if (got.length < Math.min(400, parts[i].length * 0.45)) got = parts[i];
+      out.push(got);
+    } catch (e) {
+      if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
+      out.push(parts[i]);
+    }
+  }
+  return out.join("\n\n");
+}
+function docxFence(md, name) {
+  const safe = String(name || "corrected-draft").replace(/[^\w.-]+/g, "-").replace(/-docx$/i, "").replace(/\.docx$/i, "") || "corrected-draft";
+  return "\n\n```attachment name=\"" + safe + ".docx\" type=\"docx\"\n" + String(md || "").trim() + "\n```\n";
 }
 function rules() {
   const off = `Office of the ${settings.officer}, ${settings.subdiv} Sub-Division${settings.district ? ", " + settings.district : ""}, Government of West Bengal. Memo prefix: ${settings.memo}.`;
@@ -4467,7 +4516,7 @@ async function runBiswasAgent(job, files) {
   ai.panel = [];
   let pages = [];
   let writerOff = false;
-  if (known) {
+  if (known && !(files && files.length)) {
     ai.content = known;
     ai.done = true;
     ai.think = settings.lang === "en" ? "Answered from the October 2026 note. Asking the free AIs too." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর। ফ্রি AI-কেও জিজ্ঞাসা করছি।";
@@ -4482,6 +4531,46 @@ async function runBiswasAgent(job, files) {
       setAgentBusy(false);
       renderAgentView();
     }
+    return;
+  }
+  if (files && files.length) {
+    const en = settings.lang === "en";
+    const rawFile = (files || []).map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
+    const finish = () => {
+      if (gen !== runBiswasAgent.gen) return;
+      agentBusy = false;
+      agentHalt = false;
+      ctl = null;
+      setAgentBusy(false);
+      renderAgentView();
+    };
+    try {
+      ai.log = [];
+      const mark = (line) => { ai.log.push(line); ai.think = line; renderAgentView(); };
+      mark(en ? "Reading the attachment. The same text is sent to the free AIs. The web is not searched." : "সংযুক্তি পড়ছি। একই লেখা ফ্রি AI-কে যাচ্ছে। ওয়েব খোঁজা হচ্ছে না।");
+      try { ai.panel = await askPanel(job, [], rawFile || fileNote); } catch (e) { ai.panel = []; }
+      renderAgentView();
+      if (!rawFile) {
+        const r = await aiRun([{ role: "user", content: job || "Read the attached file." }], { fast: false, signal: ctl.signal, system: yearLine() + "\nThe user attached a file. Read the pictures if any. Do not say the file is missing if a picture is attached. Do the job.", skills: true, maxOut: 4096, images: attachImages(files) });
+        ai.content = r.text || (en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।");
+      } else {
+        const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
+        const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "");
+        const head = en
+          ? "The attachment was read and sent to the free AIs. Grammar and spelling were corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
+          : "সংযুক্তি পড়া হয়েছে এবং ফ্রি AI-কে পাঠানো হয়েছে। ব্যাকরণ ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
+        ai.content = head + docxFence(full, base + "-corrected");
+      }
+      ai.done = true;
+      cur.at = Date.now();
+      saveAgent();
+    } catch (e) {
+      const aborted = agentHalt || (e && (e.name === "AbortError" || e.code === "cancelled"));
+      ai.content = aborted ? t("stopped") : (en ? "The file could not be corrected just now. Try again." : "এখন ফাইলটা ঠিক করা গেল না। আবার চেষ্টা করুন।");
+      ai.error = aborted ? "" : aiFailed(e);
+      ai.done = true;
+      saveAgent();
+    } finally { finish(); }
     return;
   }
   try {
@@ -4761,7 +4850,18 @@ async function ask(text) {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
     const think = "\nThis is a normal answer. Do not say you are opening pages. Think from the knowledge below. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
     const system = hasFile ? deepSystem() : mode === "public" ? rules() : mode === "office" ? rules() + bikramRules() : shortRules() + law + think + (knowledge() || "");
-    const r = await aiRun(hasFile ? turns.slice(-2) : turns, { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: !hasFile, skills: true, maxOut: hasFile ? 4096 : mode === "office" ? 2400 : mode === "public" ? 1400 : 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
+    const rewrite = hasFile && raw.length > 3500 && /fix|grammar|correct|draft|rewrite|better|ward|error|rectif|spell|table|letterhead|attachment|page/i.test(String(text || "") + " " + files.map(f => f.name).join(" "));
+    let r;
+    if (rewrite) {
+      ai.content = settings.lang === "en" ? "Reading the attachment and correcting it in parts…" : "সংযুক্তি পড়ে অংশ অংশ ঠিক করছি…";
+      if (live()) updateAt(box.indexOf(ai));
+      const full = await correctChunks(raw, text, chatCtl.signal);
+      const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
+      r = { text: (settings.lang === "en" ? "Corrected from the attachment. Names, amounts and tables are kept. Download the Word file." : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।") + docxFence(full, base + "-corrected"), via: "file", truncated: false };
+    } else {
+      r = await aiRun(hasFile ? turns.slice(-2) : turns, { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: !hasFile, skills: true, maxOut: hasFile ? 8192 : mode === "office" ? 2400 : mode === "public" ? 1400 : 1100, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
     if (agent) {
       const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
@@ -5431,22 +5531,34 @@ $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFi
 function sendAgent() {
   const box = $("#ag-job");
   const job = ((box && box.value) || "").trim();
-  if (!job && !agFiles.length) return;
+  if (!job && !agFiles.length && !agReading) return;
   if (!engine) return toast(t("no_ai"));
-  const files = agFiles.splice(0);
-  renderAgPending();
-  box.value = "";
-  box.style.height = "auto";
-  runBiswasAgent(job || "Read the attached files and answer from them.", files);
+  const go = async () => {
+    try { await agRead; } catch (e) { /* a failed read is skipped */ }
+    if (!job && !agFiles.length) return;
+    const files = agFiles.splice(0);
+    renderAgPending();
+    box.value = "";
+    box.style.height = "auto";
+    runBiswasAgent(job || "Read the attached files and answer from them.", files);
+  };
+  go();
 }
 let agFiles = [];
+let agRead = Promise.resolve();
+let agReading = false;
 function renderAgPending() {
   const box = $("#ag-pending"); if (!box) return;
   box.innerHTML = agFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-ag-unpend="${k}" aria-label="remove">✕</button></span>`).join("");
 }
 const agAttach = $("#ag-attach"); if (agAttach) agAttach.addEventListener("click", () => { const i = $("#ag-file"); if (i) i.click(); });
 const agFile = $("#ag-file");
-if (agFile) agFile.addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, agFiles, renderAgPending); });
+if (agFile) agFile.addEventListener("change", e => {
+  const l = Array.from(e.target.files || []);
+  e.target.value = "";
+  agReading = true;
+  agRead = readInto(l, agFiles, renderAgPending).finally(() => { agReading = false; });
+});
 const agBox = $("#ag-job");
 if (agBox) {
   const grow = () => { agBox.style.height = "auto"; agBox.style.height = Math.min(agBox.scrollHeight, 160) + "px"; };
