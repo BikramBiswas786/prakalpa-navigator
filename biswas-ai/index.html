@@ -338,9 +338,11 @@ textarea.paper { white-space: pre-wrap; }
 #t-grid td.rh { min-width: 0; width: 1%; color: var(--muted); font-size: .75rem; text-align: center; background: var(--paper); font-weight: 400; user-select: none; }
 /* file tools */
 .toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.tool { position: relative; }
 .tool h3 { color: var(--accent); font-size: 1.08rem; }
 .tool p { margin: 0; color: var(--muted); font-size: .86rem; }
 .tool .picked { font-size: .8rem; color: var(--muted); overflow-wrap: anywhere; }
+.tool input[type=file] { position: absolute; left: 8px; top: 8px; width: 8px; height: 8px; opacity: 0; }
 .tool textarea { width: 100%; min-height: 160px; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 8px; font: 13px/1.5 var(--f-body); }
 /* catalogue */
 .c-top { display: grid; gap: 10px; }
@@ -1278,9 +1280,9 @@ const STR = {
     t_title: "টেবিল / Excel", t_addrow: "+ সারি", t_addcol: "+ কলাম", t_delrow: "− সারি", t_delcol: "− কলাম", t_import: "Excel / CSV খুলুন", t_copy: "কপি (Excel-এ পেস্ট)", t_src_ph: "এখানে তথ্য পেস্ট বা লিখুন, যেমন: এ মাসে জাতি শংসাপত্র: সদর ব্লক ১২০টি আবেদন, ৯০টি দেওয়া, ১০টি বাতিল…", t_make: "AI দিয়ে টেবিল বানান", t_ai_h: "লেখা থেকে টেবিল", t_note: "ঘরে ক্লিক করে লিখুন। প্রথম সারি শিরোনাম। নিচের বারে Excel-এর মতো সূত্র ও অফিসের কমান্ড চলবে।", t_bad: "টেবিল পাওয়া গেল না। তথ্য আরও পরিষ্কার করে দিন।", t_loaded: "টেবিল তৈরি হয়েছে",
     xl_go: "করুন", xl_sum: "যোগ", xl_avg: "গড়", xl_count: "গণনা", xl_min: "সবচেয়ে কম", xl_max: "সবচেয়ে বেশি", xl_az: "অ→হ সাজান", xl_za: "হ→অ সাজান", xl_serial: "ক্রমিক নম্বর", xl_pct: "শতকরা", xl_run: "ক্রমিক যোগ", xl_d7: "+৭ দিন", xl_d15: "+১৫ দিন", xl_d30: "+৩০ দিন", xl_today: "আজকের তারিখ", xl_words: "কথায় টাকা", xl_round: "দশমিকে গোল", xl_rows: "+১০ সারি", xl_pending: "বকেয়া তালিকা", xl_hearing: "শুনানির তালিকা", xl_disposal: "নিষ্পত্তির হিসাব", xl_nofilter: "খোঁজ মুছুন", xl_fx_ph: "=SUM(E2:E25) অথবা এই ঘরে লিখুন", xl_filter_ph: "সারি খুঁজুন…", xl_bad: "সূত্র বোঝা যায়নি। যেমন: =SUM(E2:E25)", xl_neednum: "এই ঘরে সংখ্যা নেই।", xl_needdate: "তারিখ দিন, যেমন 15.11.2026", xl_done: "হয়ে গেছে",
     desk_h: "অফিস ডেস্ক", desk_note: "এগুলো এই ফোনেই হয়, AI লাগে না। পশ্চিমবঙ্গের হিসাব: ১ বিঘা = ২০ কাঠা, ১ কাঠা = ৭২০ বর্গফুট, ১ একর = ১০০ ডেসিমাল।", desk_words: "টাকা কথায়", desk_days: "কত দিন বাকি / পেরিয়েছে", desk_hear: "শুনানির তারিখ", desk_land: "জমির পরিমাপ", desk_memo: "মেমো লাইন", desk_go: "হিসাব করুন", desk_copy: "কপি করুন", desk_amt_ph: "যেমন 25000", desk_over: "দিন পেরিয়ে গেছে", desk_left: "দিন বাকি", desk_same: "আজই", desk_span: "চাকরির মেয়াদ", desk_bill: "শতকরা হিসাব",
-    f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না।", sdo_h: "মহকুমা শাসকের কাগজ", sdo_note: "একটা বাছুন। লেখার টেবিলে খুলবে। নোটশিট নয় — আদেশ, রেজোলিউশন, সংশোধনী, অনুমোদন।", f_choose: "ফাইল বাছুন", f_run: "রূপান্তর করুন",
-    f_w2p: "Word → PDF", f_w2p_d: "একটি .docx ফাইল PDF করুন।", f_x2p: "Excel → PDF", f_x2p_d: "একটি Excel / CSV ফাইলের টেবিল PDF করুন।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
-    f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
+    f_title: "ফাইল টুল", f_note: "ফাইল আপনার ফোন / কম্পিউটারেই রূপান্তর হয়, কোথাও পাঠানো হয় না। এক ফাইল, অনেক ফাইল, বা একটা ফোল্ডার (প্রায় ৩৫টা পর্যন্ত) একসঙ্গে চলে।", sdo_h: "মহকুমা শাসকের কাগজ", sdo_note: "একটা বাছুন। লেখার টেবিলে খুলবে। নোটশিট নয় — আদেশ, রেজোলিউশন, সংশোধনী, অনুমোদন।", f_choose: "ফাইল বাছুন", f_folder: "ফোল্ডার", f_run: "রূপান্তর করুন",
+    f_w2p: "Word → PDF", f_w2p_d: "এক বা অনেক .docx (বা এক ফোল্ডার) PDF করুন। অনেক হলে একটি zip আসে।", f_p2w: "PDF → Word", f_p2w_d: "PDF থেকে Word। ফোল্ডার দিলে প্রতিটির Word এক zip-এ।", f_x2p: "Excel → PDF", f_x2p_d: "Excel / CSV-এর টেবিল PDF করুন। অনেক ফাইল বা ফোল্ডার চলবে।", f_p2x: "PDF → Excel", f_p2x_d: "PDF বা Word-এর লেখা Excel-এর সারিতে।", f_i2p: "ছবি → PDF", f_i2p_d: "এক বা একাধিক ছবি (JPG / PNG) এক PDF-এ।", f_mrg: "PDF জোড়া লাগান", f_mrg_d: "একাধিক PDF একটিতে (বাছাইয়ের ক্রমে)।", f_p2t: "PDF / Word থেকে লেখা", f_p2t_d: "লেখা বের করে কপি করুন বা খসড়ায় পাঠান।",
+    f_pick: "আগে ফাইল বাছুন।", f_done: "তৈরি হয়েছে", f_none: "কোনো ফাইল রূপান্তর হয়নি।", f_skip: "৪০ MB-এর বড় ফাইল বাদ:", f_to_draft: "খসড়ায় পাঠান", f_sent: "খসড়ার 'মূল তথ্য'-তে পাঠানো হয়েছে",
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
     dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
     ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
@@ -1352,9 +1354,9 @@ const STR = {
     t_title: "Table / Excel", t_addrow: "+ Row", t_addcol: "+ Column", t_delrow: "− Row", t_delcol: "− Column", t_import: "Open Excel / CSV", t_copy: "Copy (paste into Excel)", t_src_ph: "Paste or type information here, e.g. Caste certificates this month: Sadar block 120 applications, 90 issued, 10 rejected…", t_make: "Make table with AI", t_ai_h: "Table from text", t_note: "Click a cell to type. The first row is the header. The bar under the sheet runs Excel-style formulas and office commands.", t_bad: "No table came back. Give the information more clearly.", t_loaded: "Table ready",
     xl_go: "Run", xl_sum: "Sum", xl_avg: "Average", xl_count: "Count", xl_min: "Min", xl_max: "Max", xl_az: "Sort A–Z", xl_za: "Sort Z–A", xl_serial: "Serial no.", xl_pct: "Percent", xl_run: "Running total", xl_d7: "+7 days", xl_d15: "+15 days", xl_d30: "+30 days", xl_today: "Today", xl_words: "Amount in words", xl_round: "Round", xl_rows: "+10 rows", xl_pending: "Pending register", xl_hearing: "Hearing list", xl_disposal: "Disposal sheet", xl_nofilter: "Clear filter", xl_fx_ph: "=SUM(E2:E25) or type into this cell", xl_filter_ph: "Find rows…", xl_bad: "Formula not understood. Example: =SUM(E2:E25)", xl_neednum: "This cell is not a number.", xl_needdate: "Enter a date, e.g. 15.11.2026", xl_done: "Done",
     desk_h: "Office desk", desk_note: "These run on this phone. No AI is used. West Bengal measures: 1 bigha = 20 katha, 1 katha = 720 sq ft, 1 acre = 100 decimal.", desk_words: "Amount in words", desk_days: "Days pending or left", desk_hear: "Hearing date", desk_land: "Land measure", desk_memo: "Memo line", desk_go: "Calculate", desk_copy: "Copy", desk_amt_ph: "e.g. 25000", desk_over: "days overdue", desk_left: "days left", desk_same: "Today", desk_span: "Length of service", desk_bill: "Percent of an amount",
-    f_title: "File tools", f_note: "Files are converted on your own phone / computer and are not sent anywhere.", sdo_h: "Papers of the Sub-Divisional Officer", sdo_note: "Pick one. It opens on the drafting desk. These are orders, resolutions, corrigenda and approvals, not a notesheet.", f_choose: "Choose file", f_run: "Convert",
-    f_w2p: "Word → PDF", f_w2p_d: "Turn a .docx file into PDF.", f_x2p: "Excel → PDF", f_x2p_d: "Turn the tables of an Excel / CSV file into PDF.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
-    f_pick: "Choose a file first.", f_done: "Done", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
+    f_title: "File tools", f_note: "Files are converted on your own phone or computer and are not sent anywhere. One file, many files, or a whole folder (about 35 at a time) all work.", sdo_h: "Papers of the Sub-Divisional Officer", sdo_note: "Pick one. It opens on the drafting desk. These are orders, resolutions, corrigenda and approvals, not a notesheet.", f_choose: "Choose files", f_folder: "Folder", f_run: "Convert",
+    f_w2p: "Word → PDF", f_w2p_d: "One Word file, many files, or a folder. Each becomes a PDF. A batch comes back as one zip.", f_p2w: "PDF → Word", f_p2w_d: "Turn PDFs into Word. A folder of PDFs comes back as a zip of Word files.", f_x2p: "Excel → PDF", f_x2p_d: "Turn Excel / CSV tables into PDF. Many files or a folder.", f_p2x: "PDF → Excel", f_p2x_d: "Turn the text of a PDF or Word file into Excel rows.", f_i2p: "Photos → PDF", f_i2p_d: "One or more photos (JPG / PNG) into one PDF.", f_mrg: "Merge PDFs", f_mrg_d: "Several PDFs into one (in the order chosen).", f_p2t: "Text from PDF / Word", f_p2t_d: "Take out the text to copy it or send it to the draft.",
+    f_pick: "Choose a file first.", f_done: "Done", f_none: "Nothing could be converted.", f_skip: "Skipped, over 40 MB:", f_to_draft: "Send to draft", f_sent: "Sent to the draft's 'main facts'",
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
     dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
     ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
@@ -2472,13 +2474,17 @@ async function save(kind, md, btn, hint, head) {
 async function htmlToPdf(html, landscape) {
   await load("html2pdf");
   const sheet = document.createElement("div"); sheet.className = "pdf-doc"; sheet.innerHTML = html;
-  if (landscape) sheet.style.width = "267mm";
-  await document.fonts.ready;
-  return window.html2pdf().set({
-    margin: [12, 12, 12, 12], image: { type: "jpeg", quality: 0.95 },
-    html2canvas: { scale: 2, backgroundColor: "#ffffff" }, jsPDF: { unit: "mm", format: "a4", orientation: landscape ? "landscape" : "portrait" },
-    pagebreak: { mode: ["css", "legacy"] }
-  }).from(sheet).outputPdf("blob").then(b => window.BA ? BA.cleanPdf(b) : b);
+  sheet.style.cssText = "position:fixed;left:0;top:0;z-index:-1;background:#fff;color:#000;" + (landscape ? "width:267mm" : "width:180mm");
+  document.body.append(sheet);
+  const scale = html.length > 80000 ? 1 : 1.35;
+  try {
+    await document.fonts.ready;
+    return await window.html2pdf().set({
+      margin: [12, 12, 12, 12], image: { type: "jpeg", quality: 0.92 },
+      html2canvas: { scale, backgroundColor: "#ffffff", useCORS: true }, jsPDF: { unit: "mm", format: "a4", orientation: landscape ? "landscape" : "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+    }).from(sheet).outputPdf("blob").then(b => window.BA ? BA.cleanPdf(b) : b);
+  } finally { sheet.remove(); }
 }
 async function offer(name, data) {
   try { await saveFile(name, data); toast(t("file_ready")); }
@@ -3275,13 +3281,26 @@ function applyFx() {
 
 /* ---------------- OFFICE: file tools ---------------- */
 const TOOLS = [
-  { id: "w2p", accept: ".docx", multi: false },
-  { id: "x2p", accept: ".xlsx,.xls,.csv", multi: false },
+  { id: "w2p", accept: ".docx,.doc,.rtf,.txt,.html,.htm", multi: true },
+  { id: "p2w", accept: ".pdf", multi: true },
+  { id: "x2p", accept: ".xlsx,.xls,.csv", multi: true },
+  { id: "p2x", accept: ".pdf,.docx,.txt", multi: true },
   { id: "i2p", accept: "image/*", multi: true },
   { id: "mrg", accept: ".pdf", multi: true },
-  { id: "p2t", accept: ".pdf,.docx", multi: false }
+  { id: "p2t", accept: ".pdf,.docx,.txt,.html,.htm", multi: true }
 ];
 const toolFiles = {};
+const TOOL_CAP = 80, TOOL_BYTES = 40 * 1024 * 1024;
+function toolOk(id, f) {
+  const n = String(f.name || "").toLowerCase();
+  if (id === "i2p") return /^image\//.test(f.type || "") || /\.(png|jpe?g|webp|gif|bmp)$/.test(n);
+  if (id === "w2p") return /\.(docx|doc|rtf|txt|html?)$/.test(n);
+  if (id === "p2w" || id === "mrg") return /\.pdf$/.test(n);
+  if (id === "x2p") return /\.(xlsx|xls|csv)$/.test(n);
+  if (id === "p2x") return /\.(pdf|docx|txt)$/.test(n);
+  if (id === "p2t") return /\.(pdf|docx|txt|html?)$/.test(n);
+  return true;
+}
 const SDO_KINDS = ["resolution", "admin", "order", "corrigendum", "speaking", "reminder", "minutes", "allotment", "hearing", "showcause", "enquiry", "dfa"];
 function renderSdo() {
   const box = $("#sdo-grid"); if (!box) return;
@@ -3292,40 +3311,96 @@ function renderTools() {
   $("#f-grid").dataset.lang = settings.lang;
   $("#f-grid").innerHTML = TOOLS.map(x => `<article class="panel tool" data-tool="${x.id}">
     <h3>${esc(t("f_" + x.id))}</h3><p>${esc(t("f_" + x.id + "_d"))}</p>
-    <input type="file" hidden id="tf-${x.id}" accept="${x.accept}" ${x.multi ? "multiple" : ""}>
-    <div class="tools"><button class="btn small" type="button" data-pick="${x.id}">${esc(t("f_choose"))}</button><button class="btn small primary" type="button" data-run="${x.id}">${esc(t("f_run"))}</button></div>
+    <input type="file" id="tf-${x.id}" accept="${x.accept}" multiple>
+    <input type="file" id="td-${x.id}" accept="${x.accept}" webkitdirectory directory multiple>
+    <div class="tools"><button class="btn small" type="button" data-fchoose="${x.id}">${esc(t("f_choose"))}</button><button class="btn small" type="button" data-ffolder="${x.id}">${esc(t("f_folder"))}</button><button class="btn small primary" type="button" data-run="${x.id}">${esc(t("f_run"))}</button></div>
     <div class="picked" id="tp-${x.id}"></div>
     ${x.id === "p2t" ? `<textarea id="tp-out" hidden aria-label="Text"></textarea><div class="tools" id="tp-acts" hidden><button class="btn small" type="button" id="tp-copy">${esc(t("copy"))}</button><button class="btn small" type="button" id="tp-draft">${esc(t("f_to_draft"))}</button><button class="btn small" type="button" id="tp-docx">Word</button></div>` : ""}
   </article>`).join("");
 }
-const baseName = n => { const a = n.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 40); return a.length >= 2 ? a : `file-${stamp()}`; };
+const baseName = n => { const leaf = String(n || "").split(/[/\\]/).pop(); const a = leaf.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9._-]/g, "").slice(0, 40); return a.length >= 2 ? a : `file-${stamp()}`; };
+async function toolPdfText(f, pages = 200) {
+  await load("pdfworker"); await load("pdfjs");
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
+  let text = "";
+  const n = Math.min(pdf.numPages, pages);
+  for (let i = 1; i <= n; i++) {
+    const c = await (await pdf.getPage(i)).getTextContent();
+    text += c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n\n";
+  }
+  return text.trim();
+}
+async function toolDocText(f) {
+  const n = f.name.toLowerCase();
+  if (/\.docx$/.test(n)) {
+    await load("mammoth");
+    const r = await window.mammoth.extractRawText({ arrayBuffer: await f.arrayBuffer() });
+    return String(r.value || "").trim();
+  }
+  if (/\.pdf$/.test(n)) return toolPdfText(f);
+  return (await f.text()).trim();
+}
+async function toolDocHtml(f) {
+  const n = f.name.toLowerCase();
+  if (/\.docx$/.test(n)) {
+    await load("mammoth");
+    const r = await window.mammoth.convertToHtml({ arrayBuffer: await f.arrayBuffer() });
+    if ((r.value || "").replace(/<[^>]+>/g, "").trim().length > 20) return r.value;
+  }
+  const text = await toolDocText(f);
+  return text.split(/\n{2,}/).map(p => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("") || "<p></p>";
+}
+async function toolSheetHtml(f) {
+  await load("xlsx");
+  const n = f.name.toLowerCase();
+  const wb = /\.csv$/.test(n) ? window.XLSX.read(await f.text(), { type: "string" }) : window.XLSX.read(new Uint8Array(await f.arrayBuffer()), { type: "array" });
+  return wb.SheetNames.map(name => `<h3>${esc(name)}</h3>` + window.XLSX.utils.sheet_to_html(wb.Sheets[name], { header: "", footer: "" }).replace(/^[\s\S]*?<table/i, "<table").replace(/<\/table>[\s\S]*$/i, "</table>")).join("");
+}
+async function toolTextXlsx(text, title) {
+  await load("xlsx");
+  const rows = [[title]].concat(String(text || "").split(/\n/).map(l => [l]));
+  const ws = window.XLSX.utils.aoa_to_sheet(rows.length > 1 ? rows : [[title], [""]]);
+  const wb = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(wb, ws, "Text");
+  return new Blob([window.XLSX.write(wb, { bookType: "xlsx", type: "array" })], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+async function offerPack(base, items) {
+  if (!items.length) throw new Error(t("f_none"));
+  if (items.length === 1) return offer(items[0].name, items[0].blob);
+  await load("jszip");
+  const z = new JSZip(); const seen = new Set();
+  for (const it of items) {
+    let name = String(it.name || "file").split(/[/\\]/).pop();
+    let i = 2;
+    while (seen.has(name.toLowerCase())) name = String(it.name).replace(/(\.[^.]+)$/, "-" + (i++) + "$1");
+    seen.add(name.toLowerCase());
+    z.file(name, it.blob);
+  }
+  await offer(base + ".zip", await z.generateAsync({ type: "blob", compression: "DEFLATE" }));
+}
 async function runTool(id, btn) {
   const files = toolFiles[id] || [];
   if (!files.length) return toast(t("f_pick"));
-  const label = btn.textContent; btn.disabled = true; btn.textContent = t("making");
+  const label = btn.textContent; btn.disabled = true;
+  const skipped = [];
   try {
-    if (id === "w2p") {
-      await load("mammoth");
-      const r = await window.mammoth.convertToHtml({ arrayBuffer: await files[0].arrayBuffer() });
-      await offer(baseName(files[0].name) + ".pdf", await htmlToPdf(r.value));
-    } else if (id === "x2p") {
-      await load("xlsx");
-      const wb = window.XLSX.read(new Uint8Array(await files[0].arrayBuffer()), { type: "array" });
-      const html = wb.SheetNames.map(n => `<h3>${esc(n)}</h3>` + window.XLSX.utils.sheet_to_html(wb.Sheets[n], { header: "", footer: "" }).replace(/^[\s\S]*?<table/i, "<table").replace(/<\/table>[\s\S]*$/i, "</table>")).join("");
-      await offer(baseName(files[0].name) + ".pdf", await htmlToPdf(html, true));
-    } else if (id === "i2p" || id === "mrg") {
+    const ok = [];
+    const list = files.filter(f => { if (f.size > TOOL_BYTES) { skipped.push(f.name.split(/[/\\]/).pop()); return false; } return true; });
+    if (id === "i2p" || id === "mrg") {
       await load("pdflib");
       const { PDFDocument } = window.PDFLib;
       const out = await PDFDocument.create();
-      for (const f of files) {
+      for (let i = 0; i < list.length; i++) {
+        btn.textContent = (i + 1) + "/" + list.length;
+        const f = list[i];
         if (id === "mrg") {
           const src = await PDFDocument.load(await f.arrayBuffer(), { ignoreEncryption: true });
           (await out.copyPages(src, src.getPageIndices())).forEach(p => out.addPage(p));
         } else {
           let bytes = await f.arrayBuffer(), img;
-          if (f.type === "image/png") img = await out.embedPng(bytes);
-          else if (f.type === "image/jpeg") img = await out.embedJpg(bytes);
-          else { // other formats: redraw as JPEG
+          if (f.type === "image/png" || /\.png$/i.test(f.name)) img = await out.embedPng(bytes);
+          else if (f.type === "image/jpeg" || /\.jpe?g$/i.test(f.name)) img = await out.embedJpg(bytes);
+          else {
             const bmp = await createImageBitmap(f); const cv = document.createElement("canvas"); cv.width = bmp.width; cv.height = bmp.height; cv.getContext("2d").drawImage(bmp, 0, 0);
             img = await out.embedJpg(await (await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9))).arrayBuffer());
           }
@@ -3335,19 +3410,31 @@ async function runTool(id, btn) {
         }
       }
       const bytes = await out.save();
-      await offer((id === "mrg" ? "merged" : baseName(files[0].name)) + ".pdf", new Blob([bytes], { type: "application/pdf" }));
+      await offer((id === "mrg" ? "merged" : baseName(list[0].name)) + ".pdf", new Blob([bytes], { type: "application/pdf" }));
     } else if (id === "p2t") {
       let text = "";
-      if (/\.docx$/i.test(files[0].name)) { await load("mammoth"); text = (await window.mammoth.extractRawText({ arrayBuffer: await files[0].arrayBuffer() })).value; }
-      else {
-        await load("pdfworker"); await load("pdfjs");
-        const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await files[0].arrayBuffer()) }).promise;
-        for (let n = 1; n <= pdf.numPages; n++) { const c = await (await pdf.getPage(n)).getTextContent(); text += `--- ${n} ---\n` + c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n"; }
-        if (!text.replace(/--- \d+ ---|\s/g, "")) { if (!window.BA_OCR) throw new Error(t("lib_fail")); const btn0 = btn; text = (await BA_OCR.read(files[0], files[0].name, m => { btn0.textContent = "⏳ " + String(m).slice(0, 50); })).text; }
+      for (let i = 0; i < list.length; i++) {
+        btn.textContent = (i + 1) + "/" + list.length;
+        const bit = await toolDocText(list[i]);
+        text += (list.length > 1 ? "\n\n# " + list[i].name.split(/[/\\]/).pop() + "\n" : "") + bit;
       }
       const out = $("#tp-out"); out.value = text.trim(); out.hidden = false; $("#tp-acts").hidden = false;
       toast(t("f_done"));
+    } else {
+      for (let i = 0; i < list.length; i++) {
+        btn.textContent = (i + 1) + "/" + list.length;
+        const f = list[i]; const stem = baseName(f.name);
+        try {
+          if (id === "w2p") ok.push({ name: stem + ".pdf", blob: await htmlToPdf(await toolDocHtml(f)) });
+          else if (id === "p2w") ok.push({ name: stem + ".docx", blob: await toDocx(await toolPdfText(f)) });
+          else if (id === "x2p") ok.push({ name: stem + ".pdf", blob: await htmlToPdf(await toolSheetHtml(f), true) });
+          else if (id === "p2x") ok.push({ name: stem + ".xlsx", blob: await toolTextXlsx(await toolDocText(f), f.name.split(/[/\\]/).pop()) });
+        } catch (err) { skipped.push(f.name.split(/[/\\]/).pop()); }
+      }
+      if (!ok.length) throw new Error(skipped.length ? t("f_skip") + " " + skipped.slice(0, 6).join(", ") : t("f_none"));
+      await offerPack({ w2p: "word-to-pdf", p2w: "pdf-to-word", x2p: "excel-to-pdf", p2x: "to-excel" }[id] || id, ok);
     }
+    if (skipped.length) toast(t("f_skip") + " " + skipped.slice(0, 6).join(", "));
   } catch (e) { toast((e && e.message) || t("dl_fail")); }
   finally { btn.disabled = false; btn.textContent = label; }
 }
@@ -4953,9 +5040,14 @@ function runDesk(kind) {
 
 // file tools
 document.addEventListener("change", e => {
-  const m = (e.target.id || "").match(/^tf-(\w+)$/); if (!m) return;
-  toolFiles[m[1]] = Array.from(e.target.files || []);
-  $("#tp-" + m[1]).textContent = toolFiles[m[1]].map(f => f.name).join(", ");
+  const m = (e.target.id || "").match(/^t[fd]-(\w+)$/); if (!m) return;
+  let files = Array.from(e.target.files || []).filter(f => f && f.size && toolOk(m[1], f));
+  if (files.length > TOOL_CAP) files = files.slice(0, TOOL_CAP);
+  toolFiles[m[1]] = files;
+  const box = $("#tp-" + m[1]);
+  const mb = (files.reduce((a, f) => a + (f.size || 0), 0) / 1048576).toFixed(1);
+  box.textContent = files.length ? files.length + " · " + mb + " MB · " + files.slice(0, 6).map(f => f.name.split(/[/\\]/).pop()).join(", ") + (files.length > 6 ? "…" : "") : "";
+  e.target.value = "";
 });
 
 $("#c-search").addEventListener("input", renderCatalog);
@@ -5185,8 +5277,9 @@ function startSectionChat() {
   if (el("#t-copy")) return navigator.clipboard.writeText(grid.map(r => r.join("\t")).join("\n")).then(() => toast(t("copied")), () => toast(t("copy_fail")));
   if ((x = el("#t-xlsx"))) { const b = x; b.disabled = true; return load("xlsx").then(() => offer(`table-${stamp()}.xlsx`, gridToXlsx())).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
   if ((x = el("#t-pdf"))) { const b = x; b.disabled = true; return htmlToPdf(gridHtml(), grid[0].length > 5).then(d => offer(`table-${stamp()}.pdf`, d)).catch(err => toast(err.message || t("dl_fail"))).finally(() => { b.disabled = false; }); }
-  // file tools
-  if ((x = el("[data-pick]"))) return $("#tf-" + x.dataset.pick).click();
+  // file tools — not data-pick (that name is the pendrive gate)
+  if ((x = el("[data-fchoose]"))) { const n = $("#tf-" + x.dataset.fchoose); if (n) n.click(); return; }
+  if ((x = el("[data-ffolder]"))) { const n = $("#td-" + x.dataset.ffolder); if (n) n.click(); return; }
   if ((x = el("[data-run]"))) return runTool(x.dataset.run, x);
   if (el("#tp-copy")) return navigator.clipboard.writeText($("#tp-out").value).then(() => toast(t("copied")), () => toast(t("copy_fail")));
   if (el("#tp-draft")) { draft.facts = $("#tp-out").value.slice(0, 20000); saveDraft(); go("office", "draft"); return toast(t("f_sent")); }

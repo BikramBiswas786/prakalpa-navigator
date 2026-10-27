@@ -552,6 +552,18 @@ ED.kinds.word = (() => {
   function footnote() { const r = saved || selRange(); if (!r) { page.focus(); } const txt = (prompt(T("w_fnq"), "") || "").trim(); if (!txt) return; restore(); const rr = selRange(); if (!rr) return; rr.collapse(false);
     const f = h("sup", { class: "wd-fn", "data-fn": txt, contenteditable: "false" }, "*"); rr.insertNode(f); dirty(); comments(); }
   function watermark() { const v = prompt(T("w_wmq"), pg.wm || "DRAFT"); if (v == null) return; pg.wm = v.trim(); layout(); ED.dirty("word"); }
+  function oleWords(u8) {
+    let out = "", cur = "";
+    const cap = 500000;
+    for (let i = 0; i + 1 < u8.length && out.length < cap; i += 2) {
+      const c = u8[i] | (u8[i + 1] << 8);
+      const ok = c === 9 || c === 10 || c === 13 || (c >= 32 && c < 0xD800) || (c >= 0xE000 && c <= 0xFFFD);
+      if (ok) cur += String.fromCharCode(c);
+      else { if (cur.replace(/\s/g, "").length > 12) out += cur.trim() + "\n"; cur = ""; }
+    }
+    if (cur.replace(/\s/g, "").length > 12) out += cur.trim();
+    return out.replace(/[^\S\n]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  }
   return {
     _ai: { pg, applyGeo, pages: () => { layout(); return bgs.children.length; } },
     exts: () => ["docx"],
@@ -631,9 +643,15 @@ ED.kinds.word = (() => {
           await load("pdfworker"); await load("pdfjs");
           const doc = await window.pdfjsLib.getDocument({ data: u8 }).promise;
           let t = "";
-          for (let p = 1; p <= Math.min(doc.numPages, 40); p++) { const c = await (await doc.getPage(p)).getTextContent(); t += c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n\n"; }
+          const pages = Math.min(doc.numPages, 150);
+          for (let p = 1; p <= pages; p++) { const c = await (await doc.getPage(p)).getTextContent(); t += c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n\n"; }
           if (!t.replace(/\s/g, "")) fail();
           put(t); return;
+        }
+        if (extn === "doc" || (u8[0] === 0xD0 && u8[1] === 0xCF && u8[2] === 0x11 && u8[3] === 0xE0)) {
+          const text = oleWords(u8);
+          if (text.replace(/\s/g, "").length < 40) fail();
+          put(text); return;
         }
         if (zip) {
           await load("jszip");
@@ -645,6 +663,12 @@ ED.kinds.word = (() => {
             d.querySelectorAll("script,style,iframe,object").forEach(n => n.remove());
             d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
             d.querySelectorAll("table").forEach(t => t.classList.add("wd-tbl"));
+            const visible = (d.body.textContent || "").replace(/\s/g, "");
+            if (visible.length < 24) {
+              const xml = z.file("word/document.xml") ? await z.file("word/document.xml").async("string") : "";
+              const bits = [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m => m[1].replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)));
+              if (bits.join("").trim()) d.body.innerHTML = bits.map(t => "<p>" + XE(t) + "</p>").join("");
+            }
             Object.assign(pg, DEF); delete page.dataset.minPages; page.innerHTML = d.body.innerHTML || "<p><br></p>";
             try { await enrich(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } catch (err) { /* details are optional */ }
             applyGeo(); if ([...fontSel.options].some(o => o.value === pg.font)) fontSel.value = pg.font; comments();

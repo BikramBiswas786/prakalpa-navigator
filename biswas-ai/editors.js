@@ -11,6 +11,7 @@ const TX = {
     cancel: "Cancel", newfolder: "New folder", nofiles: "No files in this folder.", openfail: "This file could not be opened as a document. Nothing was written into the page.", dlword: "Word", dlpdf: "PDF", dlx: "Excel", print: "Print", keepold: "Keep the old version (moved to the folder “Old versions”)",
     replace: "Replace “{0}” with your edited version?", saved: "Saved: {0}", saving: "Saving…", opening: "Opening…", lost: "You have unsaved changes. Discard them?",
     badtype: "This editor can’t open that file type.", docold: "Old .doc files can’t be read in the browser. Open the file in Word and save it as .docx first.", docold_short: "old .doc: save it as .docx in Word first",
+    device: "This device", hosted: "On the screen · {0} characters. Edit it here, or tell the AI what to change.", toobig: "Over 80 MB. Split the file, or put it on the pendrive and open it from there.",
     big: "This file is large; only the first {0} rows are shown.", fail: "Could not save: {0}", find: "Find", repl: "Replace with", next: "Next", rone: "Replace", rall: "Replace all",
     mcase: "Match case", found: "{0} replaced", nomatch: "Not found", rows: "Row", cols: "Column", insR: "+ Row", delR: "− Row", insC: "+ Column", delC: "− Column",
     freeze: "Freeze first row", addsheet: "+ Sheet", delsheet: "Delete sheet", rensheet: "Rename sheet (double-click a tab)", tbl: "Table", img: "Picture", pb: "Page break",
@@ -23,6 +24,7 @@ const TX = {
     cancel: "বাতিল", newfolder: "নতুন ফোল্ডার", nofiles: "এই ফোল্ডারে কোনো ফাইল নেই।", openfail: "এই ফাইল নথি হিসেবে খোলা গেল না। পাতায় কিছু লেখা হয়নি।", dlword: "Word", dlpdf: "PDF", dlx: "Excel", print: "প্রিন্ট", keepold: "পুরনো সংস্করণ রেখে দিন (“Old versions” ফোল্ডারে)",
     replace: "“{0}” আপনার সম্পাদিত সংস্করণ দিয়ে বদলাবেন?", saved: "সেভ হয়েছে: {0}", saving: "সেভ হচ্ছে…", opening: "খোলা হচ্ছে…", lost: "সেভ না করা পরিবর্তন আছে। বাদ দেবেন?",
     badtype: "এই এডিটর এই ধরনের ফাইল খুলতে পারে না।", docold: "পুরনো .doc ফাইল ব্রাউজারে পড়া যায় না। Word-এ খুলে .docx হিসেবে সেভ করুন।", docold_short: "পুরনো .doc: Word-এ .docx হিসেবে সেভ করুন",
+    device: "এই ফোন থেকে", hosted: "স্ক্রিনে আছে · {0} অক্ষর। এখানে কাটুন-বদলান, বা AI-কে বলুন কী বদলাবে।", toobig: "৮০ MB-এর বড়। ভাগ করুন, অথবা পেনড্রাইভে রেখে সেখান থেকে খুলুন।",
     big: "ফাইলটি বড়; প্রথম {0}টি সারি দেখানো হচ্ছে।", fail: "সেভ হয়নি: {0}", find: "খুঁজুন", repl: "বদলে দিন", next: "পরের", rone: "বদলান", rall: "সব বদলান",
     mcase: "বড়/ছোট হাতের অক্ষর মেলান", found: "{0}টি বদলানো হয়েছে", nomatch: "পাওয়া যায়নি", rows: "সারি", cols: "কলাম", insR: "+ সারি", delR: "− সারি", insC: "+ কলাম", delC: "− কলাম",
     freeze: "প্রথম সারি আটকে রাখুন", addsheet: "+ শিট", delsheet: "শিট মুছুন", rensheet: "শিটের নাম বদলাতে ট্যাবে ডাবল-ক্লিক করুন", tbl: "টেবিল", img: "ছবি", pb: "পৃষ্ঠা বিরতি",
@@ -139,6 +141,7 @@ function frame(kind) {
     h("div", { class: "ed-title" }, h("b", { class: "ed-fname" }), h("span", { class: "ed-where" }), h("span", { class: "ed-dirty", hidden: true, title: T("unsaved") }, "● " + T("unsaved"))),
     h("div", { class: "ed-actions" },
       h("button", { type: "button", class: "btn small", "data-ed": "open", onclick: () => doOpen(kind) }, "📂 " + T("open")),
+      h("button", { type: "button", class: "btn small", "data-ed": "device", onclick: () => deviceOpen(kind) }, "📥 " + T("device")),
       h("button", { type: "button", class: "btn small", "data-ed": "new", onclick: () => doNew(kind) }, "＋ " + T("newb")),
       h("button", { type: "button", class: "btn small primary", "data-ed": "save", onclick: () => doSave(kind) }, "💾 " + T("save")),
       h("button", { type: "button", class: "btn small", "data-ed": "saveas", onclick: () => doSave(kind, true) }, T("saveas")),
@@ -174,11 +177,33 @@ async function doOpen(kind, file) {
   if (!file) { const r = await pick(kind, "open"); if (!r) return; file = r.file; }
   if (tabs) { const same = ED.kinds[kind].findTab && ED.kinds[kind].findTab(file.path); if (same) return; ED.kinds[kind].newTab(); }
   const e = ext(file.path);
-  if (kind === "word" && e === "doc") { say(kind, T("docold")); return; }
   if (kind !== "word" && !TYPES[kind].includes(e)) { say(kind, T("badtype")); return; }
   say(kind, T("opening"));
-  try { const buf = await fetchFile(file); await ED.kinds[kind].load(buf, e, file.path); st.file = { id: file.id, path: file.path }; st.name = base(file.path); st.dirty = false; label(kind); say(kind, ""); }
+  try { const buf = await fetchFile(file); await ED.kinds[kind].load(buf, e, file.path); st.file = { id: file.id, path: file.path }; st.name = base(file.path); st.dirty = false; label(kind); say(kind, hostedLine(kind)); }
   catch (er) { const m = String((er && er.message) || er); say(kind, m === "openfail" || /zip|central directory|jszip|mammoth/i.test(m) ? T("openfail") : (m.length > 160 ? T("openfail") : m)); }
+}
+function hostedLine(kind) {
+  if (kind !== "word") return "";
+  const n = ((document.getElementById("wd-page") || {}).innerText || "").replace(/\s/g, "").length;
+  return n ? T("hosted", n) : "";
+}
+function deviceOpen(kind) {
+  const st = ED.st[kind];
+  if (st.dirty && !ED.kinds[kind].newTab && !confirm(T("lost"))) return;
+  const inp = h("input", { type: "file", accept: TYPES[kind].map(x => "." + x).join(","), style: "position:fixed;left:0;top:0;width:36px;height:36px;opacity:0.02" });
+  document.body.append(inp);
+  inp.addEventListener("change", async () => {
+    const f = inp.files && inp.files[0]; inp.remove(); if (!f) return;
+    const e = ext(f.name);
+    if (kind !== "word" && !TYPES[kind].includes(e)) { say(kind, T("badtype")); return; }
+    if (f.size > 80 * 1024 * 1024) { say(kind, T("toobig")); return; }
+    say(kind, T("opening"));
+    try {
+      await ED.kinds[kind].load(await f.arrayBuffer(), e, f.name);
+      st.file = null; st.name = f.name; st.dirty = true; label(kind); say(kind, hostedLine(kind));
+    } catch (er) { say(kind, T("openfail")); }
+  });
+  inp.click();
 }
 function doNew(kind) {
   const st = ED.st[kind]; if (ED.kinds[kind].newTab) { ED.kinds[kind].newTab(true); say(kind, ""); return; }

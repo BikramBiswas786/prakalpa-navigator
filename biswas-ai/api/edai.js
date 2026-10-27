@@ -17,7 +17,7 @@ Operations (JSON objects):
 {"op":"insert_html","after":"b3|start|end","html":"<p>…</p>"}   (new blocks, lines <hr class=\\"wd-hr\\">, tables)
 {"op":"table_cols","id":"t2","widths":[30,70],"table_width":100}
 {"op":"html","html":"<h1>…</h1><p>…</p><table>…</table>"}   (rewrites the whole document: for an empty document, a completely new document, OR as a last resort when no other operation can do what was asked — keep ALL the existing text; inline styles allowed: <p style=\\"text-align:center;border-bottom:3pt solid #000\\">, <b>, <table border=1>)
-Blocks marked SELECTED are what the user highlighted. "Rectify", "correct", "improve", "make it better", "replace it with better", "rewrite": rewrite the SELECTED blocks (or, if none is selected, every text block) into clearer, correct, formal text IN PLACE with one "text" op per block — keep every name, number, date and fact exactly; never reply with the text instead of changing it.
+The open file is ALREADY on the screen. You can see its full text under FULL TEXT. When the user asks to edit, cut, rewrite, correct or fill it, change that live document with operations. Do not answer with the new text instead of changing the page. For a long rewrite, one "html" operation may replace the whole page, and it must keep every paragraph you were not asked to delete. Read the whole text before you decide; a fact near the end counts.
 Letterhead = the top block(s) as a bold, large, centred, uppercase black heading with a black "rule" under it (often a thick one plus a thin one).`,
   excel: `Sheets are listed as "SHEET <name>" then one line per used cell: "A1 = raw value or =FORMULA  {style}" (style: b=bold, bg=fill, nf=number format, al=align).
 Operations:
@@ -111,17 +111,25 @@ export function fixImageOps(ops) {
 export async function edAI(body, askAI, mockOn) {
   const kind = ["word", "excel", "image", "note"].includes(body.kind) ? body.kind : null; if (!kind) return { error: "bad_kind" };
   const q = String(body.q || "").slice(0, 4000).trim(); if (!q) return { error: "no_question" };
-  const doc = String(body.doc || "").slice(0, 60000);
-  const atts = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8).map(a => ({ name: String(a.name || "").slice(0, 200), text: String(a.text || "").slice(0, 30000), how: String(a.how || ""), format: !!a.format, image: !!a.image, current: !!a.current, earlier: !!a.earlier }));
+  const rawAtt = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8);
+  let room = 64000;
+  const atts = rawAtt.map(a => {
+    const text = String(a.text || "").slice(0, Math.max(0, Math.min(60000, room)));
+    room -= text.length;
+    return { name: String(a.name || "").slice(0, 200), text, how: String(a.how || ""), format: !!a.format, image: !!a.image, current: !!a.current, earlier: !!a.earlier };
+  });
+  const doc = String(body.doc || "").slice(0, 90000);
   if (mockOn) return mock(kind, q, doc, atts);
   const thread = (Array.isArray(body.thread) ? body.thread : []).slice(-12).map(t => `USER: ${String(t.q || "").slice(0, 1500)}\nAI: ${String(t.a || "").slice(0, 2000)}`).join("\n");
-  const user = `${thread ? "EARLIER IN THIS DOCUMENT'S THREAD:\n" + thread + "\n\n" : ""}FILE: ${String(body.name || "").slice(0, 200)}\nDOCUMENT STRUCTURE:\n${doc || "(empty document)"}\n\n${atts.map((a, i) => `${a.current ? "" : a.earlier ? "FROM EARLIER IN THIS CHAT: " : "ATTACHMENT #" + i + " "}${a.name}${a.format ? " (ALREADY LOADED AS THE DOCUMENT'S FORMAT — fill it)" : ""}${a.how === "tesseract" ? " (text read by OCR, may have small errors)" : ""}:\n${a.text || "(image)"}`).join("\n\n")}\n\nINSTRUCTION: ${q}`;
+  let user = `${thread ? "EARLIER IN THIS DOCUMENT'S THREAD:\n" + thread + "\n\n" : ""}FILE: ${String(body.name || "").slice(0, 200)}\nDOCUMENT STRUCTURE:\n${doc || "(empty document)"}\n\n${atts.map((a, i) => `${a.current ? "" : a.earlier ? "FROM EARLIER IN THIS CHAT: " : "ATTACHMENT #" + i + " "}${a.name}${a.format ? " (ALREADY LOADED AS THE DOCUMENT'S FORMAT — fill it)" : ""}${a.how === "tesseract" ? " (text read by OCR, may have small errors)" : ""}:\n${a.text || "(image)"}`).join("\n\n")}\n\nINSTRUCTION: ${q}`;
+  if (user.length > 155000) user = user.slice(0, 155000 - q.length - 24) + "\n\nINSTRUCTION: " + q;
   // Fast models only for short, simple requests; anything with several steps goes to the stronger (thinking) chain. A failed or declining model is retried on the other.
   const action = wantsChange(q), extract = EXTRACT_RE.test(q);
-  const simple = q.length < 70 && !/\b(and|then|also|with|all)\b|এবং|তারপর|সঙ্গে/i.test(q) && !extract;
-  let opts = body.fast && simple ? { fast: true } : {};
+  const simple = !body.deep && q.length < 70 && !/\b(and|then|also|with|all)\b|এবং|তারপর|সঙ্গে/i.test(q) && !extract;
+  let opts = body.deep ? { deep: true } : (body.fast && simple ? { fast: true } : {});
   const sys = SYS(kind) + "\n" + LANGRULE(body.lang === "bn" ? "bn" : "en");
-  const ask = async (extraMsg) => { try { return await askAI(sys, user + (extraMsg || ""), 6000, opts); } catch (e) { opts = opts.fast ? {} : { fast: true }; return askAI(sys, user + (extraMsg || ""), 6000, opts); } };
+  const outN = body.deep || kind === "word" ? 11000 : 6000;
+  const ask = async (extraMsg) => { try { return await askAI(sys, user + (extraMsg || ""), outN, opts); } catch (e) { opts = opts.fast ? { deep: !!body.deep } : { fast: true }; return askAI(sys, user + (extraMsg || ""), outN, opts); } };
   let out = await ask(); let r = parseOps(out);
   if (!r) { if (opts.fast) opts = {}; out = await ask("\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON object {\"plan\":...,\"reply\":...,\"ops\":[...]}."); r = parseOps(out); }
   if (r && action && !extract && !r.ops.length) { opts = opts.fast ? {} : opts; const o2 = await ask(`\n\nThe user asked for a CHANGE and your previous answer had no operations ("${String(r.reply || "").slice(0, 200)}"). That is not acceptable. Do it now: return the operations that make the change (combine several; use the full ${kind === "note" ? "set_text" : kind === "word" ? "html" : "background/text"} rewrite if nothing else fits). Do not ask the user anything that is in the data above.`); const r2 = parseOps(o2); if (r2 && r2.ops.length) r = r2; }

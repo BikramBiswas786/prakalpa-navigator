@@ -313,7 +313,7 @@ async function askAI(system, user, maxOut = 1600, opts = {}) {
     else if (env.PENDRIVE_MOCK_DELAY) await new Promise(r => setTimeout(r, 2 * Number(env.PENDRIVE_MOCK_DELAY)));
     return out;
   }
-  const req = new Request("http://pendrive.local/api/chat", { method: "POST", headers: { "content-type": "application/json", host: "pendrive.local" }, body: JSON.stringify({ system, messages: [{ role: "user", content: user }], maxOut, ...(opts.fast ? { fast: true, race: true } : {}), ...(opts.freeOnly ? { freeOnly: true } : {}) }) });
+  const req = new Request("http://pendrive.local/api/chat", { method: "POST", headers: { "content-type": "application/json", host: "pendrive.local" }, body: JSON.stringify({ system, messages: [{ role: "user", content: user }], maxOut, ...(opts.fast ? { fast: true, race: true } : {}), ...(opts.deep ? { deep: true } : {}), ...(opts.freeOnly ? { freeOnly: true } : {}) }) });
   const r = await chatMod.POST(req);
   if (!r.ok) { let e = ""; try { e = (await r.json()).error; } catch (x) { /* ignore */ } fail(502, e || "ai_failed"); }
   if (opts.meta) opts.meta.provider = r.headers.get("x-ai-provider") || "";

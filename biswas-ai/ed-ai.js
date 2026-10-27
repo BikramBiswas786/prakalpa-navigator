@@ -46,14 +46,18 @@ function wordBlocks() {
   const walk = el => {
     for (const n of [...el.children]) {
       if (n.classList && (n.classList.contains("wd-pb-gap") || n.classList.contains("wd-hdr") || n.classList.contains("wd-ftr"))) continue;
-      if (n.tagName === "TABLE") { const id = "t" + (++nt); map.set(id, n); const rows = [...n.rows]; lines.push(`${id} TABLE ${rows.length}×${rows[0] ? rows[0].cells.length : 0}`); rows.slice(0, 60).forEach((r, i) => lines.push(`  r${i}: ` + [...r.cells].map(c => c.innerText.replace(/\s+/g, " ").trim().slice(0, 80)).join(" | "))); continue; }
+      if (n.tagName === "TABLE") { const id = "t" + (++nt); map.set(id, n); const rows = [...n.rows]; lines.push(`${id} TABLE ${rows.length}×${rows[0] ? rows[0].cells.length : 0}`); rows.slice(0, 160).forEach((r, i) => lines.push(`  r${i}: ` + [...r.cells].map(c => c.innerText.replace(/\s+/g, " ").trim().slice(0, 220)).join(" | "))); continue; }
       if (/^(UL|OL|DIV|SECTION|BLOCKQUOTE)$/.test(n.tagName) && n.children.length && !n.classList.contains("wd-pb")) { walk(n); continue; }
       const id = "b" + (++nb); map.set(id, n); const cs = getComputedStyle(n);
       const st = [n.tagName.toLowerCase(), cs.textAlign !== "start" && cs.textAlign !== "left" ? cs.textAlign : "", parseInt(cs.fontWeight) >= 700 ? "bold" : "", Math.round(parseFloat(cs.fontSize)) + "px"].filter(Boolean).join(" ");
-      lines.push(`${id} [${st}${wdSel && wdSel.intersectsNode(n) ? " SELECTED" : ""}] ${n.innerText.replace(/\s+/g, " ").trim().slice(0, 600)}`);
+      lines.push(`${id} [${st}${wdSel && wdSel.intersectsNode(n) ? " SELECTED" : ""}] ${n.innerText.replace(/\s+/g, " ").trim().slice(0, 2200)}`);
     }
   };
-  walk(page); return { text: lines.join("\n"), map, tables: nt };
+  walk(page);
+  let text = lines.join("\n");
+  const full = (page.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+  if (full.length > 80) text += "\n\nFULL TEXT OF THE OPEN FILE (this is exactly what is on the screen — edit, cut and rewrite THIS text, do not ignore it):\n" + full.slice(0, 80000);
+  return { text: text.slice(0, 100000), map, tables: nt };
 }
 function excelStruct() {
   const a = ED.kinds.excel._api(); const out = []; let n = 0;
@@ -233,10 +237,10 @@ async function readAtt(file, k) {
     await load("jszip");
     const z = await JSZip.loadAsync(raw);
     const bits = [];
-    for (const n of Object.keys(z.files).filter(n => !z.files[n].dir).slice(0, 24)) {
+    for (const n of Object.keys(z.files).filter(n => !z.files[n].dir).slice(0, 40)) {
       if (/\.(png|jpe?g|gif|webp|woff2?|ttf|bin)$/i.test(n)) continue;
       let s = ""; try { s = await z.file(n).async("string"); } catch (err) { continue; }
-      if (s && (s.slice(0, 200).match(/[\u0000-\u0008]/g) || []).length < 2) bits.push(n + "\n" + s.slice(0, 8000));
+      if (s && (s.slice(0, 200).match(/[\u0000-\u0008]/g) || []).length < 2) bits.push(n + "\n" + s.slice(0, 20000));
     }
     return bits.join("\n\n");
   };
@@ -248,14 +252,14 @@ async function readAtt(file, k) {
     }
     if (!at.text && zip) { try { at.text = await zipText(raw); } catch (err) { /* not a readable archive */ } }
     else if (!at.text && ["xlsx", "xls", "csv"].includes(e)) { await load("xlsx"); const wb = e === "csv" ? XLSX.read(new TextDecoder().decode(raw), { type: "string" }) : XLSX.read(raw, { type: "array", cellFormula: true });
-      at.text = wb.SheetNames.slice(0, 6).map(n => "SHEET " + n + "\n" + XLSX.utils.sheet_to_csv(wb.Sheets[n]).slice(0, 8000)).join("\n\n"); }
+      at.text = wb.SheetNames.slice(0, 8).map(n => "SHEET " + n + "\n" + XLSX.utils.sheet_to_csv(wb.Sheets[n]).slice(0, 20000)).join("\n\n"); }
     else if (!at.text && e === "pdf") { await load("pdfworker"); await load("pdfjs"); const pdf = await pdfjsLib.getDocument({ data: raw }).promise; let t = "";
-      for (let p = 1; p <= Math.min(pdf.numPages, 30); p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
+      for (let p = 1; p <= Math.min(pdf.numPages, 80); p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
       if (t.replace(/\s/g, "").length > 40) at.text = t; else if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
     else if (!at.text && (/^(png|jpe?g|webp|gif|bmp)$/.test(e) || (file.type || "").startsWith("image/"))) { at.isImg = true; if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name || "image.png"); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
-    else if (!at.text) at.text = new TextDecoder("utf-8", { fatal: false }).decode(raw.subarray(0, 60000));
+    else if (!at.text) at.text = new TextDecoder("utf-8", { fatal: false }).decode(raw.subarray(0, 200000));
   } catch (err) { at.text = at.text || ""; }
-  at.text = String(at.text || "").slice(0, 30000); void k; return at;
+  at.text = String(at.text || "").slice(0, 80000); void k; return at;
 }
 async function addFiles(k, files) {
   const s = S[k];
@@ -311,7 +315,8 @@ async function send(k) {
     for (const a of atts) if (a.text && !s.mem.some(m => m.text === a.text)) s.mem.push({ name: "Earlier attachment " + a.name, text: a.text });
     if (s.mem.length > 6) s.mem = s.mem.slice(-6);
     const earlier = s.mem.filter(m => !(k === "image" && m.text === s.picText) && !atts.some(a => a.text === m.text)).map(m => ({ name: m.name, text: m.text, how: "", earlier: true }));
-    const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc: struct(k), fast: s.el.fast.checked, lang: lang(),
+    const deep = k === "word" || (struct(k) || "").length > 8000 || atts.some(a => (a.text || "").length > 12000);
+    const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc: struct(k), fast: !deep && s.el.fast.checked, deep, lang: lang(),
       thread: s.thread.slice(-12).map(t => ({ q: t.q, a: t.a })), attachments: [...extra, ...atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })), ...earlier].slice(0, 8) });
     const ops = r.ops || []; let res = { ok: 0, bad: 0 };
     if (ops.length) res = k === "word" ? applyWord(ops) : k === "excel" ? applyExcel(ops) : k === "note" ? applyNote(ops) : await applyImage(ops, atts);
@@ -437,7 +442,7 @@ function mount(k) {
   s.el.q = h("textarea", { class: "ea-q", id: "ea-q-" + k, rows: "3", placeholder: T("a_ph"), autocomplete: "off", "aria-label": T("a_ph") });
   s.el.q.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(k); } });
   s.el.q.addEventListener("paste", e => { const fs = [...(e.clipboardData && e.clipboardData.files || [])]; if (fs.length) { e.preventDefault(); e.stopPropagation(); addFiles(k, fs); } });
-  s.el.fast = h("input", { type: "checkbox", id: "ea-fast-" + k, checked: true });
+  s.el.fast = h("input", { type: "checkbox", id: "ea-fast-" + k, checked: k !== "word" });
   s.el.go = h("button", { type: "button", class: "btn primary", id: "ea-go-" + k, onclick: () => send(k) }, T("a_send"));
   s.el.chips = h("div", { class: "ea-chips", id: "ea-chips-" + k, hidden: true });
   s.el.thread = h("div", { class: "ea-thread", id: "ea-thread-" + k, hidden: true, "aria-live": "polite" });

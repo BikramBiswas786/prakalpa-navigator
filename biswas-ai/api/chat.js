@@ -72,8 +72,9 @@ const mCooled = k => (modelCool.get(k) || 0) > Date.now();
 const IDLE_MS = Number(env("IDLE_MS")) || 60000;
 
 const outTokens = body => {
+  const cap = body && body.deep ? 12288 : MAX_OUT;
   const n = Number(body && body.maxOut);
-  return Number.isFinite(n) ? Math.max(256, Math.min(MAX_OUT, Math.floor(n))) : MAX_OUT;
+  return Number.isFinite(n) ? Math.max(256, Math.min(cap, Math.floor(n))) : cap;
 };
 const json = (body, status = 200) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 const configured = () => ORDER.filter(id => keyOf(PROVIDERS[id]) && (!PROVIDERS[id].also || env(PROVIDERS[id].also)));
@@ -171,7 +172,7 @@ function openaiRequest(p, model, key, body, signal) {
     payload.max_completion_tokens = outTokens(body);
     payload.reasoning_effort = "none";
   }
-  if (/gpt-oss/.test(model) && p !== PROVIDERS.openrouter) payload.reasoning_effort = "low";
+  if (/gpt-oss/.test(model) && p !== PROVIDERS.openrouter) payload.reasoning_effort = body.deep ? "medium" : "low";
   const headers = { "content-type": "application/json" };
   if (p.auth) headers[p.auth] = key; else headers.authorization = `Bearer ${key}`;
   if (p === PROVIDERS.openrouter) { headers["x-title"] = "Biswas AI for Office"; }
@@ -390,10 +391,14 @@ export async function POST(request) {
   // then (only if every model missed it) the first few are retried with the long wait.
   const pairs = fastPairs(ids, wantsVision, !!body.freeOnly);
   const order = [...pairs.filter(([id, m]) => !mCooled(id + "/" + m)), ...pairs.filter(([id, m]) => mCooled(id + "/" + m))];
+  if (body.deep) {
+    const rank = (model) => { const m = String(model).toLowerCase(); return /70b|72b|120b|405|ultra|scout|medium|kimi|105b/.test(m) ? 0 : /flash|llama-3\.3|gpt-oss|nemotron/.test(m) ? 1 : 2; };
+    order.sort((a, b) => rank(a[1]) - rank(b[1]));
+  }
   const slow = [];
   for (const [i, [id, model]] of order.entries()) {
     if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
-    const first = body.fast ? Math.min(FIRST_TEXT_MS, 8000) : NORMAL_FIRST_MS;
+    const first = body.deep ? 22000 : body.fast ? Math.min(FIRST_TEXT_MS, 8000) : NORMAL_FIRST_MS;
     const t0 = Date.now(); const r = await attempt(PROVIDERS[id], model, body, request.signal, first);
     speedNote(id, model, r.ok ? Date.now() - t0 : null);
     if (r.ok) {
@@ -404,7 +409,7 @@ export async function POST(request) {
     modelCool.set(id + "/" + model, Date.now() + 3 * 60 * 1000);
     if (quotaError(r.status, r.error)) { sawLimit = true; cool(id, 60 * 1000); } else if (/in time|stalled|no text/i.test(String(r.error))) slow.push([id, model]);
     tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
-    if (i >= 11 && slow.length) break; // don't walk the whole list at 4 s each
+    if (i >= (body.deep ? 16 : 11) && slow.length) break; // don't walk the whole list at 4 s each
   }
   for (const [id, model] of slow.slice(0, 2)) { // everyone missed the short wait: give the quickest stallers the long wait
     if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
