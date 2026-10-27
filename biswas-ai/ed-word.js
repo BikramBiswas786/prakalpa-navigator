@@ -16,7 +16,9 @@ ED.addTX({
     w_margins: "Margins", w_normal: "Normal (2.54 cm)", w_narrow: "Narrow (1.27 cm)", w_moderate: "Moderate", w_wide: "Wide", w_custom: "Custom", w_top: "Top (mm)", w_bottom: "Bottom (mm)",
     w_left: "Left (mm)", w_right: "Right (mm)", w_header: "Header text", w_footer: "Footer text", w_pnum: "Page numbers", w_pnone: "None", w_pbot: "Bottom", w_ptop: "Top",
     w_palign: "Number position", w_ok: "OK", w_kind: "Shape", w_outline: "Outline", w_fill: "Fill", w_nofill: "No fill", w_lw: "Line width", w_text: "Text", w_preset: "Style",
-    w_edit_obj: "Double-click a shape or WordArt to change it.", w_fit: "Page width", w_textin: "Text inside (callouts)", w_find_n: "{0} found", w_blank: "Blank page" },
+    w_edit_obj: "Double-click a shape or WordArt to change it.", w_fit: "Page width", w_textin: "Text inside (callouts)", w_find_n: "{0} found", w_blank: "Blank page",
+    w_cut: "Cut", w_copy: "Copy", w_paste: "Paste", w_cutok: "Cut. Use Paste to put it back.", w_copyok: "Copied. Use Paste where you want it.", w_pasteok: "Pasted.", w_pasteempty: "Nothing copied yet. Select text, then Copy.",
+    w_coladd: "Add column", w_coldel: "Delete column", w_rowadd: "Add row", w_rowdel: "Delete row", w_tup: "Move table up", w_tdown: "Move table down", w_wider: "Stretch table", w_narrow: "Narrow table", w_notbl: "Click inside the table first." },
   bn: { w_tsize: "টেবিলের মাপ বদলাতে টানুন", w_del: "মুছুন", w_cmt: "মন্তব্য", w_cmtq: "বাছাই করা লেখায় মন্তব্য:", w_cmts: "মন্তব্য", w_track: "পরিবর্তন ট্র্যাক", w_acc: "সব পরিবর্তন মেনে নিন", w_rej: "সব পরিবর্তন বাতিল", w_cols: "কলাম", w_col1: "এক কলাম", w_col2: "দুই কলাম", w_col3: "তিন কলাম", w_toc: "সূচিপত্র", w_tocT: "সূচিপত্র", w_selfirst: "আগে কিছু লেখা বাছুন।", w_trackon: "ট্র্যাক চালু: নতুন লেখা সবুজ, মোছা লেখা কাটা দাগে।", w_trackoff: "ট্র্যাক বন্ধ।", w_nohead: "আগে Heading 1–3 অনুচ্ছেদ দিন, তারপর সূচিপত্র।", w_wm: "জলছাপ", w_wmq: "জলছাপের লেখা (মুছতে ফাঁকা রাখুন):", w_fn: "পাদটীকা", w_fnq: "পাদটীকার লেখা:", w_fns: "পাদটীকা",
     w_font: "ফন্ট", w_size: "আকার", w_style: "শৈলী", w_grow: "লেখা বড়", w_shrink: "লেখা ছোট", w_strike: "কাটা দাগ", w_sup: "উপরে ছোট লেখা", w_sub: "নিচে ছোট লেখা",
     w_hl: "হাইলাইট", w_color: "লেখার রং", w_clear: "ফরম্যাট মুছুন", w_case: "অক্ষরের ধরন", w_upper: "বড় হাতের", w_lower: "ছোট হাতের", w_title: "প্রথম অক্ষর বড়",
@@ -27,7 +29,9 @@ ED.addTX({
     w_margins: "মার্জিন", w_normal: "সাধারণ (২.৫৪ সেমি)", w_narrow: "সরু (১.২৭ সেমি)", w_moderate: "মাঝারি", w_wide: "চওড়া", w_custom: "নিজের মাপ", w_top: "উপরে (মিমি)", w_bottom: "নিচে (মিমি)",
     w_left: "বাঁয়ে (মিমি)", w_right: "ডাইনে (মিমি)", w_header: "হেডারের লেখা", w_footer: "ফুটারের লেখা", w_pnum: "পৃষ্ঠা নম্বর", w_pnone: "নেই", w_pbot: "নিচে", w_ptop: "উপরে",
     w_palign: "নম্বরের অবস্থান", w_ok: "ঠিক আছে", w_kind: "আকৃতি", w_outline: "রেখার রং", w_fill: "ভরাট", w_nofill: "ভরাট নয়", w_lw: "রেখার পুরুত্ব", w_text: "লেখা", w_preset: "শৈলী",
-    w_edit_obj: "আকৃতি বা ওয়ার্ডআর্ট বদলাতে তাতে ডাবল-ক্লিক করুন।", w_fit: "পাতার প্রস্থ", w_textin: "ভেতরের লেখা (কলআউট)", w_find_n: "{0}টি পাওয়া গেছে", w_blank: "ফাঁকা পাতা" }
+    w_edit_obj: "আকৃতি বা ওয়ার্ডআর্ট বদলাতে তাতে ডাবল-ক্লিক করুন।", w_fit: "পাতার প্রস্থ", w_textin: "ভেতরের লেখা (কলআউট)", w_find_n: "{0}টি পাওয়া গেছে", w_blank: "ফাঁকা পাতা",
+    w_cut: "কাট", w_copy: "কপি", w_paste: "পেস্ট", w_cutok: "কাটা হয়েছে। পেস্ট চাপলে বসবে।", w_copyok: "কপি হয়েছে। যেখানে চান পেস্ট করুন।", w_pasteok: "পেস্ট হয়েছে।", w_pasteempty: "আগে লেখা কপি করুন।",
+    w_coladd: "কলাম যোগ", w_coldel: "কলাম মুছুন", w_rowadd: "সারি যোগ", w_rowdel: "সারি মুছুন", w_tup: "টেবিল উপরে", w_tdown: "টেবিল নিচে", w_wider: "টেবিল চওড়া", w_narrow: "টেবিল সরু", w_notbl: "আগে টেবিলের ভেতরে ক্লিক করুন।" }
 });
 
 const FONTS = [["Calibri", "Calibri, Carlito, sans-serif"], ["Cambria", "Cambria, Caladea, serif"], ["Times New Roman", "'Times New Roman', Tinos, serif"], ["Arial", "Arial, Arimo, sans-serif"],
@@ -63,8 +67,9 @@ const css = `
 .wd-cmts { margin: 6px 0; padding: 8px 10px; border: 1px solid var(--line, #ccc); border-radius: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow: auto; }
 .wd-cmts[hidden] { display: none; } .wd-cmtrow { display: flex; gap: 6px; align-items: baseline; } .wd-cmtq { font-style: italic; opacity: .8; }
 #wd-track[aria-pressed="true"] { background: #1a7f37; color: #fff; }
-.wd-desk .wd-page { position: relative; width: auto; max-width: none; min-height: 0; margin: 0; background: transparent; box-shadow: none; box-sizing: border-box; line-height: 1.15; }
+.wd-desk .wd-page { position: relative; width: auto; max-width: none; min-height: 0; margin: 0; background: transparent; box-shadow: none; box-sizing: border-box; line-height: 1.15; user-select: text; -webkit-user-select: text; }
 .wd-page p { margin: 0 0 8pt; } .wd-page li { margin: 0; }
+.wd-page table { max-width: 100%; }
 .wd-page div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; margin: 4pt 0; padding: 0 4px 0 0; cursor: move; }
 .wd-page hr.wd-hr { border: 0; border-top: 1.5px solid #000; margin: 4pt 0 8pt; padding: 3px 0; background-clip: content-box; cursor: move; }
 .wd-selbox { position: absolute; border: 1px dashed #1f6feb; z-index: 6; cursor: move; box-sizing: border-box; }
@@ -73,7 +78,7 @@ const css = `
 .wd-hd-e { right: -5px; top: calc(50% - 5px); cursor: ew-resize; } .wd-hd-se { right: -5px; bottom: -5px; cursor: nwse-resize; } .wd-hd-s { left: calc(50% - 5px); bottom: -5px; cursor: ns-resize; }
 .wd-hd-sw { left: -5px; bottom: -5px; cursor: nesw-resize; } .wd-hd-w { left: -5px; top: calc(50% - 5px); cursor: ew-resize; }
 .wd-objbar { position: absolute; left: 0; top: -38px; display: flex; gap: 4px; align-items: center; background: #fff; color: #111; border: 1px solid #bbb; border-radius: 6px; padding: 3px 6px; font-size: 12px; white-space: nowrap; cursor: default; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
-.wd-thnd { position: absolute; width: 9px; height: 9px; background: #1f6feb; z-index: 6; cursor: nwse-resize; }
+.wd-thnd { position: absolute; width: 18px; height: 18px; background: #1f6feb; z-index: 6; cursor: nwse-resize; border-radius: 3px; }
 .wd-page img { cursor: move; }
 .wd-page hr.ed-pb { margin: 6px 0; }
 .wd-page .wd-tbox { display: block; border: 1.5px solid #333; padding: 6px 10px; margin: 0 0 8pt; width: 60%; min-height: 2em; }
@@ -196,9 +201,64 @@ ED.kinds.word = (() => {
   function insertHTML(html) { focusPage(); document.execCommand("styleWithCSS", false, false); document.execCommand("insertHTML", false, html); dirty(); }
   function insertBlock(el) { const n = (curEl() || page.lastElementChild); let top = n; while (top && top.parentElement !== page) top = top.parentElement;
     const after = h("p", {}, h("br")); if (top) top.after(el, after); else page.append(el, after);
-    const r = document.createRange(); const tgt = el.querySelector("p") || after; r.selectNodeContents(tgt); if (tgt === after) r.collapse(true); const s = document.getSelection(); page.focus(); s.removeAllRanges(); s.addRange(r); dirty(); }
+    const r = document.createRange(); const tgt = el.querySelector("p,td") || after; r.selectNodeContents(tgt); if (tgt === after) r.collapse(true); const s = document.getSelection(); page.focus(); s.removeAllRanges(); s.addRange(r); dirty(); }
   function insTable() { const r = Math.max(1, Math.min(50, parseInt(prompt(T("trows"), "3")) || 0)), c = Math.max(1, Math.min(12, parseInt(prompt(T("tcols"), "3")) || 0)); if (!r || !c) return;
-    insertHTML(`<table class="wd-tbl"><tbody>${Array.from({ length: r }, () => `<tr>${"<td><br></td>".repeat(c)}</tr>`).join("")}</tbody></table><p><br></p>`); }
+    const tbl = h("table", { class: "wd-tbl", style: "width:100%" }, h("tbody", {}, ...Array.from({ length: r }, () => h("tr", {}, ...Array.from({ length: c }, () => h("td", {}, h("br")))))));
+    insertBlock(tbl); }
+  let clip = { html: "", text: "" };
+  function lineNode() { const n = curEl(); if (!n) return null; const cell = n.closest("td,th"); if (cell) return cell; let top = n; while (top && top.parentElement && top.parentElement !== page && !top.parentElement.matches("td,th")) top = top.parentElement; return top && page.contains(top) ? top : null; }
+  function takeSel(cut) {
+    const s = document.getSelection();
+    if (s && s.rangeCount && page.contains(s.anchorNode) && !s.isCollapsed) {
+      const r = s.getRangeAt(0), d = document.createElement("div"); d.append(r.cloneContents());
+      const html = d.innerHTML, text = r.toString(); if (cut) { r.deleteContents(); dirty(); } return { html, text };
+    }
+    const b = lineNode(); if (!b) return null;
+    const html = b.outerHTML, text = b.innerText || "";
+    if (cut && b !== page) { b.remove(); dirty(); }
+    return { html, text };
+  }
+  async function copySel(cut) {
+    save(); const got = takeSel(cut); if (!got || !(got.text || got.html)) { ED.say("word", T("w_selfirst")); return; }
+    clip = got; try { await navigator.clipboard.writeText(got.text || ""); } catch (e) { /* the Paste button still has it */ }
+    ED.say("word", cut ? T("w_cutok") : T("w_copyok"));
+  }
+  async function pasteSel() {
+    restore(); focusPage(); let html = clip.html, text = clip.text;
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const it of items) {
+          if (it.types.includes("text/html")) { html = await (await it.getType("text/html")).text(); break; }
+          if (it.types.includes("text/plain") && !html) text = await (await it.getType("text/plain")).text();
+        }
+      } else if (navigator.clipboard && navigator.clipboard.readText) { const t = await navigator.clipboard.readText(); if (t) text = t; }
+    } catch (e) { /* keep the in-app copy */ }
+    if (html && /<(p|table|h1|div|img|br|span)\b/i.test(html)) { const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object").forEach(n => n.remove()); insertHTML(d.body.innerHTML); }
+    else if (text) insertHTML(String(text).split(/\n/).map(l => `<p>${XE(l) || "<br>"}</p>`).join(""));
+    else { ED.say("word", T("w_pasteempty")); return; }
+    ED.say("word", T("w_pasteok"));
+  }
+  function curCell() { const n = curEl(); return n ? n.closest("td,th") : null; }
+  function curTable() { const c = curCell(); if (c) return c.closest("table"); const n = curEl(); return n ? n.closest("table") : page.querySelector("table"); }
+  function addCol(delta) { const cell = curCell(), t = curTable(); if (!t || !t.rows.length) { ED.say("word", T("w_notbl")); return; }
+    const idx = cell ? cell.cellIndex : t.rows[0].cells.length - 1;
+    if (delta < 0) { if (t.rows[0].cells.length < 2) return; for (const r of [...t.rows]) if (r.cells[idx]) r.deleteCell(idx); }
+    else { for (const r of [...t.rows]) { const c = r.insertCell(Math.min(r.cells.length, idx + 1)); c.append(h("br")); } }
+    dirty(); }
+  function addRow(delta) { const cell = curCell(), t = curTable(); if (!t || !t.rows.length) { ED.say("word", T("w_notbl")); return; }
+    const ri = cell ? cell.parentElement.rowIndex : t.rows.length - 1;
+    if (delta < 0) { if (t.rows.length < 2) return; t.deleteRow(ri); }
+    else { const n = t.rows[ri].cells.length, nr = t.insertRow(Math.min(t.rows.length, ri + 1)); for (let i = 0; i < n; i++) nr.insertCell().append(h("br")); }
+    dirty(); }
+  function moveTable(dir) { const t = curTable(); if (!t) { ED.say("word", T("w_notbl")); return; }
+    let host = t; while (host.parentElement && host.parentElement !== page) host = host.parentElement;
+    if (!host || host.parentElement !== page) return;
+    const sib = dir < 0 ? host.previousElementSibling : host.nextElementSibling; if (!sib) return;
+    if (dir < 0) sib.before(host); else sib.after(host); dirty(); }
+  function stretchTable(k) { const t = curTable(); if (!t) { ED.say("word", T("w_notbl")); return; }
+    const now = parseFloat(t.style.width); const base = /%$/.test(t.style.width) ? now : 100;
+    t.style.width = Math.max(30, Math.min(100, Math.round(base * k))) + "%"; t.style.maxWidth = "100%"; dirty(); }
   function indent(d) { const bl = selBlocks(); if (!bl.length) return; if (bl[0].tagName === "LI") return cmd(d > 0 ? "indent" : "outdent");
     for (const b of bl) { const v = Math.max(0, (parseFloat(b.style.marginLeft) || 0) + d * 48); b.style.marginLeft = v ? v + "px" : ""; } dirty(); }
   function lineSpace(v) { for (const b of selBlocks()) b.style.lineHeight = v; dirty(); }
@@ -287,7 +347,7 @@ ED.kinds.word = (() => {
     else { const tr = ed.td.parentElement, h0 = tr.getBoundingClientRect().height / zoom; drag(e, (dx, dy) => { tr.style.height = Math.max(14, Math.round(h0 + dy)) + "px"; }); } }
   function tableHandle(t) { if (!tHandle) { tHandle = h("div", { class: "wd-thnd", id: "wd-thnd", title: T("w_tsize"), onmousedown: e => { const tb = tHandle._t; colgroup(tb); const cols = [...tb.querySelector(":scope > colgroup").children], w0 = cols.map(c => parseFloat(c.style.width)), tw = w0.reduce((a, b) => a + b, 0);
         drag(e, dx => { const k = Math.max(60, tw + dx) / tw; cols.forEach((c, i) => { c.style.width = Math.round(w0[i] * k) + "px"; }); tb.style.width = Math.round(tw * k) + "px"; tableHandle(tb); }); } }); stack.append(tHandle); }
-    tHandle._t = t; const r = relRect(t); tHandle.style.cssText = `left:${r.x + r.w - 4}px;top:${r.y + r.h - 4}px`; }
+    tHandle._t = t; const r = relRect(t); tHandle.style.cssText = `left:${r.x + r.w - 10}px;top:${r.y + r.h - 10}px`; }
   function installManual() {
     page.addEventListener("mousemove", e => { if (e.buttons) return; const ed = tableEdge(e); page.style.cursor = ed ? (ed.kind === "col" ? "col-resize" : "row-resize") : ""; const t = e.target.closest && e.target.closest("table"); if (t && page.contains(t)) tableHandle(t); });
     page.addEventListener("mousedown", e => { const ed = tableEdge(e); if (ed) { startTable(e, ed); return; }
@@ -585,6 +645,7 @@ ED.kinds.word = (() => {
       const dateStr = () => new Date().toLocaleDateString(window.settings && settings.lang === "bn" ? "bn-IN" : "en-IN", { day: "numeric", month: "long", year: "numeric" });
       const tb = h("div", { class: "ed-tool wd-tool", role: "toolbar", "aria-label": "Formatting" },
         B("wd-undo", "↶", T("undo") + " (Ctrl+Z)", () => cmd("undo")), B("wd-redo", "↷", T("redo") + " (Ctrl+Y)", () => cmd("redo")), sep(),
+        B("wd-cut", "✂ " + T("w_cut"), T("w_cut"), () => copySel(true)), B("wd-copy", "⧉ " + T("w_copy"), T("w_copy"), () => copySel(false)), B("wd-paste", "📋 " + T("w_paste"), T("w_paste"), () => pasteSel()), sep(),
         blockSel, fontSel, sizeSel, B("wd-grow", "A⁺", T("w_grow"), () => grow(1)), B("wd-shrink", "A⁻", T("w_shrink"), () => grow(-1)), sep(),
         B("wd-b", h("b", {}, "B"), "Bold (Ctrl+B)", () => cmd("bold")), B("wd-i", h("i", {}, "I"), "Italic (Ctrl+I)", () => cmd("italic")), B("wd-u", h("u", {}, "U"), "Underline (Ctrl+U)", () => cmd("underline")),
         B("wd-s", h("s", {}, "ab"), T("w_strike"), () => cmd("strikeThrough")), B("wd-sup", h("span", {}, "x", h("sup", {}, "2")), T("w_sup"), () => cmd("superscript")), B("wd-sub", h("span", {}, "x", h("sub", {}, "2")), T("w_sub"), () => cmd("subscript")),
@@ -593,7 +654,12 @@ ED.kinds.word = (() => {
         B("wd-al", "⯇≡", "Align left", () => cmd("justifyLeft")), B("wd-ac", "≡", "Centre", () => cmd("justifyCenter")), B("wd-ar", "≡⯈", "Align right", () => cmd("justifyRight")), B("wd-aj", "☰", "Justify", () => cmd("justifyFull")),
         B("wd-ul", "• ≡", "Bullets", () => cmd("insertUnorderedList")), B("wd-ol", "1. ≡", "Numbering", () => cmd("insertOrderedList")), B("wd-out", "⇤", T("w_out"), () => indent(-1)), B("wd-in", "⇥", T("w_in"), () => indent(1)), ls,
         B("wd-bdr", "▭", T("w_border"), border), B("wd-hr", "―", T("w_hr"), () => insertHTML('<hr class="wd-hr"><p><br></p>')), B("wd-vl", "│", T("w_vl"), () => insertHTML('<div class="wd-vline" contenteditable="false"></div><p><br></p>')), sep(),
-        B("wd-tbl", "▦ " + T("tbl"), T("tbl"), insTable), B("wd-img", "🖼 " + T("img"), T("img"), () => { save(); imgIn.click(); }), B("wd-shape", "◆ " + T("w_shape"), T("w_shape"), () => { save(); objDialog("shape"); }),
+        B("wd-tbl", "▦ " + T("tbl"), T("tbl"), insTable),
+        B("wd-col+", "+▦", T("w_coladd"), () => addCol(1)), B("wd-col-", "−▦", T("w_coldel"), () => addCol(-1)),
+        B("wd-row+", "+≡", T("w_rowadd"), () => addRow(1)), B("wd-row-", "−≡", T("w_rowdel"), () => addRow(-1)),
+        B("wd-tup", "↑▦", T("w_tup"), () => moveTable(-1)), B("wd-tdown", "↓▦", T("w_tdown"), () => moveTable(1)),
+        B("wd-tw", "↔▦", T("w_wider"), () => stretchTable(1.15)), B("wd-tn", "↔", T("w_narrow"), () => stretchTable(0.85)),
+        B("wd-img", "🖼 " + T("img"), T("img"), () => { save(); imgIn.click(); }), B("wd-shape", "◆ " + T("w_shape"), T("w_shape"), () => { save(); objDialog("shape"); }),
         B("wd-tbox", "▤ " + T("w_tbox"), T("w_tbox"), () => insertBlock(h("div", { class: "wd-tbox" }, h("p", {}, T("w_text"))))), B("wd-wa", "𝒜 " + T("w_wa"), T("w_wa"), () => { save(); objDialog("wa"); }),
         B("wd-link", "🔗", T("w_link"), () => { save(); const u = (prompt(T("w_url"), "https://") || "").trim(); restore(); if (/^(https?:\/\/|mailto:)\S+$/i.test(u)) { if (document.getSelection().isCollapsed) insertHTML(`<a href="${XE(u)}">${XE(u)}</a>`); else cmd("createLink", u); } }),
         B("wd-sym", "Ω", T("w_sym"), e => symbols(e.currentTarget)), B("wd-date", "📅", T("w_date"), () => { focusPage(); document.execCommand("insertText", false, dateStr()); dirty(); }), sep(),
@@ -617,7 +683,9 @@ ED.kinds.word = (() => {
       page.addEventListener("mouseup", () => { if (painter) setTimeout(applyPainter, 0); });
       page.addEventListener("dblclick", e => { const o = e.target.closest && e.target.closest("img.wd-obj"); if (!o) return; try { objDialog(o.dataset.obj, JSON.parse(o.dataset.o), o); } catch (x) {} });
       document.addEventListener("selectionchange", () => { if (ED.tab === "word" && page.contains(document.getSelection().anchorNode)) { sync(); stats(); } });
-      page.addEventListener("paste", e => { const html = e.clipboardData.getData("text/html"); if (!html) return; e.preventDefault(); const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object,title").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (a.name === "href" && /^\s*javascript:/i.test(a.value)) || (a.name === "class" && /^Mso/.test(a.value))) n.removeAttribute(a.name); }); insertHTML(d.body.innerHTML); });
+      page.addEventListener("copy", () => { const got = takeSel(false); if (got) clip = got; });
+      page.addEventListener("cut", () => { const got = takeSel(false); if (got) clip = got; });
+      page.addEventListener("paste", e => { const html = e.clipboardData.getData("text/html"); const plain = e.clipboardData.getData("text/plain"); if (html) { e.preventDefault(); const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object,title").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (a.name === "href" && /^\s*javascript:/i.test(a.value)) || (a.name === "class" && /^Mso/.test(a.value))) n.removeAttribute(a.name); }); insertHTML(d.body.innerHTML); } else if (plain && /\n/.test(plain)) { e.preventDefault(); insertHTML(plain.split(/\n/).map(l => `<p>${XE(l) || "<br>"}</p>`).join("")); } });
       new ResizeObserver(() => sched()).observe(page); window.addEventListener("resize", () => { if (zoomSel.value === "fit") setZoom("fit"); });
       if (document.fonts) document.fonts.addEventListener("loadingdone", sched);
       gramPane = h("div", { class: "wd-gram", id: "wd-gram", hidden: true, role: "region", "aria-label": T("w_gram") });

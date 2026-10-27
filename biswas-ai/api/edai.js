@@ -23,7 +23,11 @@ Operations (JSON objects):
 {"op":"logo","att":0,"w":100,"align":"left","after":"start"}
 {"op":"image","att":0,"w":240,"align":"center|left|right","after":"end"}
 {"op":"shape","kind":"rect|round|ellipse|arrow|star|callout","w":160,"h":90,"text":"","fill":"#dbe7ff","stroke":"#1f3864","after":"end"}
+{"op":"col_add","id":"t1","after":0}   {"op":"col_del","id":"t1","after":1}
+{"op":"move","id":"t1","dir":"up|down"}
+{"op":"table_width","id":"t1","width":80}
 A line, word art, a logo, a shape, or a picture the user asked to add is done with these operations, not with a sentence saying it cannot be done. "att" is the number of a picture ATTACHMENT.
+RESTRUCTURE, WRITE BETTER, ANALYSE, or ADD OCR TEXT: never use "html". That deletes the draft, its pictures, lines and tables. Rewrite a block with "text" on its id. Add new wording with "insert_after". Add a table column with "col_add". Move a table with "move". Resize it with "table_width" (percent). Put the analysis in "reply". Leave every block you were not asked to change.
 The open file is ALREADY on the screen. You can see its full text under FULL TEXT. When the user asks to edit, cut, rewrite, correct or fill it, change that live document with operations. Do not answer with the new text instead of changing the page. For a long rewrite, one "html" operation may replace the whole page, and it must keep every paragraph you were not asked to delete. Read the whole text before you decide; a fact near the end counts. If the text has "END OF THE OPEN FILE", that ending is part of the file.
 Letterhead = the top block(s) as a bold, large, centred, uppercase black heading with a black "rule" under it (often a thick one plus a thin one).`,
   excel: `Sheets are listed as "SHEET <name>" then one line per used cell: "A1 = raw value or =FORMULA  {style}" (style: b=bold, bg=fill, nf=number format, al=align).
@@ -70,7 +74,8 @@ const WORD_SKILL = `STRONG REVISE (not the fast path). The user speaks in ordina
 - "logo", "emblem", "seal", "put my logo": {"op":"logo","att":0,"w":100,"align":"left","after":"start"} using the picture attachment. If no picture is attached, use {"op":"shape","kind":"ellipse","w":96,"h":96,"text":"LOGO","after":"start","fill":"#f4efe6","stroke":"#1f3864"} and say a picture file is needed for a real emblem.
 - "add this image", "insert the picture", "put the photo": {"op":"image","att":0,"w":240,"align":"center","after":"end"}. att is the ATTACHMENT number of that picture. "start" is the top, "end" is the bottom, or after a block id they name.
 - A box, circle, arrow or star: {"op":"shape","kind":"rect|ellipse|arrow|star|callout","w":160,"h":90,"text":"","fill":"#dbe7ff","stroke":"#1f3864","after":"end"}.
-Lines "i1 IMAGE" are pictures already on the page. ATTACHMENT lines marked IMAGE, and any PICTURES FOR YOU TO SEE, are pictures you can look at. Read them. Do not say the file has no picture when those are present. A long PDF or document includes the END as well as the start. A fact in the END counts. Do not say you only saw the beginning.`;
+Lines "i1 IMAGE" are pictures already on the page. ATTACHMENT lines marked IMAGE, and any PICTURES FOR YOU TO SEE, are pictures you can look at. Read them. Do not say the file has no picture when those are present. A long PDF or document includes the END as well as the start. A fact in the END counts. Do not say you only saw the beginning.
+If the user says restructure, write it better, analyse, resize, or add text from a picture: edit the existing blocks. Do not replace the page. A table stays where it is unless they ask to move it ({"op":"move","id":"t1","dir":"up"}). A new column is {"op":"col_add","id":"t1","after":0}. A wider table is {"op":"table_width","id":"t1","width":100}. OCR text is inserted after the last block, never written over the draft.`;
 
 export function parseOps(t) {
   const s = String(t || "").trim(); const m = s.match(/```(?:json)?\s*([\s\S]*?)```/); const raw = m ? m[1] : s.slice(s.indexOf("{"), s.lastIndexOf("}") + 1);
@@ -149,8 +154,14 @@ export async function edAI(body, askAI, mockOn) {
   const ask = async (extraMsg) => { try { return await askAI(sys, user + (extraMsg || ""), outN, opts); } catch (e) { opts = opts.fast ? { deep: !!body.deep } : { fast: true }; return askAI(sys, user + (extraMsg || ""), outN, opts); } };
   let out = await ask(); let r = parseOps(out);
   if (!r) { if (opts.fast) opts = {}; out = await ask("\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON object {\"plan\":...,\"reply\":...,\"ops\":[...]}."); r = parseOps(out); }
-  if (r && action && !extract && !r.ops.length) { opts = opts.fast ? {} : opts; const o2 = await ask(`\n\nThe user asked for a CHANGE and your previous answer had no operations ("${String(r.reply || "").slice(0, 200)}"). That is not acceptable. Do it now: return the operations that make the change (combine several; use the full ${kind === "note" ? "set_text" : kind === "word" ? "html" : "background/text"} rewrite if nothing else fits). Do not ask the user anything that is in the data above.`); const r2 = parseOps(o2); if (r2 && r2.ops.length) r = r2; }
+  const keepPage = kind === "word" && /restructur|write better|better way|improv|redraft|polish|rearrange|tidy|analys|examine|resize|add the text|keep the|সাজা|পুনর্গঠ|ভালো করে|বিশ্লেষ/i.test(q);
+  if (r && action && !extract && !r.ops.length) { opts = opts.fast ? {} : opts; const how = keepPage ? "text, insert_after, col_add or move. Do NOT use html — that deletes the draft." : `the full ${kind === "note" ? "set_text" : kind === "word" ? "html" : "background/text"} rewrite if nothing else fits`; const o2 = await ask(`\n\nThe user asked for a CHANGE and your previous answer had no operations ("${String(r.reply || "").slice(0, 200)}"). That is not acceptable. Do it now: return the operations that make the change (combine several; use ${how}). Do not ask the user anything that is in the data above.`); const r2 = parseOps(o2); if (r2 && r2.ops.length) r = r2; }
   if (r && kind === "image") r.ops = fixImageOps(r.ops);
+  if (r && keepPage && !opts.fast && r.ops.some(o => o.op === "html")) {
+    const o3 = await ask("\n\nSTOP. Do not use {\"op\":\"html\"}. That deletes the draft. Keep every block, picture, line and table. Change wording with {\"op\":\"text\",\"id\":\"b1\",\"text\":\"...\"}. Add with insert_after. Move a table with {\"op\":\"move\",\"id\":\"t1\",\"dir\":\"up\"}. Add a column with col_add. Put the analysis in reply. Return only the JSON.");
+    const r3 = parseOps(o3);
+    if (r3) r = { reply: r3.reply || r.reply, ops: (r3.ops || []).filter(o => o.op !== "html") };
+  }
   if (r) { r.reply = cleanReply(r.reply, r.ops.length);
     const cur = atts.find(a => a.current); if (extract && cur && cur.text && !/\(no readable text/.test(cur.text) && !r.ops.length && r.reply.length < cur.text.length * 0.5) r.reply = (r.reply ? r.reply + "\n\n" : "") + cur.text; }
   return r || { reply: String(out || "").replace(/```[\s\S]*?```/g, "").slice(0, 2000), ops: [], malformed: true };

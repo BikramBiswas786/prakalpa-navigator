@@ -160,7 +160,16 @@ async function applyWord(ops, atts) {
     else if (o.op === "row_add" && el && el.rows.length) { const src = el.rows[Math.min(el.rows.length - 1, Math.max(0, o.after ?? el.rows.length - 1))]; const n = src.cloneNode(true);
       [...n.cells].forEach((c, i) => { const p = c.querySelector("p,h1,h2,h3,li") || c; setText(p, String((o.cells || [])[i] ?? "")); }); src.after(n); ok++; }
     else if (o.op === "row_del" && el && el.rows[o.r]) { el.rows[o.r].remove(); ok++; }
-    else if (o.op === "html") { page.innerHTML = clean(o.html) || "<p><br></p>"; ok++; }
+    else if (o.op === "html") {
+      const next = clean(o.html) || "";
+      const oldN = page.innerText.replace(/\s/g, "").length;
+      const box = document.createElement("div"); box.innerHTML = next;
+      const newN = (box.innerText || "").replace(/\s/g, "").length;
+      const had = page.querySelector("img,table,hr.wd-hr");
+      if (oldN > 160 && newN < oldN * 0.45) { bad++; continue; }
+      if (had && oldN > 40 && !box.querySelector("img,table,hr") && newN < oldN * 0.8) { bad++; continue; }
+      page.innerHTML = next || "<p><br></p>"; ok++;
+    }
     else if (o.op === "style") { const els = o.id === "all" ? [...page.querySelectorAll("p,h1,h2,h3,h4,li")] : el ? [el] : []; if (!els.length) { bad++; continue; } for (const x of els) safeCss(x, o.css); ok++; }
     else if (o.op === "rule") { if (!el) { bad++; continue; } const side = o.side === "top" ? "Top" : "Bottom", w = Math.max(.5, Math.min(12, +o.weight || 2)); el.style["border" + side] = `${w}pt ${o.style === "double" ? "double" : "solid"} ${CLR(o.color)}`; el.style["padding" + side] = "3pt"; ok++; }
     else if (o.op === "page") { const W = ED.kinds.word._ai, g = W.pg, mm = v => Math.max(5, Math.min(60, +v));
@@ -172,6 +181,19 @@ async function applyWord(ops, atts) {
       const at = o.after === "start" ? null : o.after === "end" || !map.get(o.after) ? "end" : map.get(o.after);
       if (at === null) page.prepend(...nodes); else if (at === "end") page.append(...nodes); else at.after(...nodes); ok++; }
     else if (o.op === "table_cols" && el && el.rows && Array.isArray(o.widths)) { const tot = o.widths.reduce((a, b) => a + (+b || 0), 0) || 1; let cg = el.querySelector("colgroup"); if (cg) cg.remove(); cg = document.createElement("colgroup"); o.widths.forEach(w => { const c = document.createElement("col"); c.style.width = (100 * (+w || 0) / tot).toFixed(1) + "%"; cg.append(c); }); el.prepend(cg); el.style.width = (o.table_width ? Math.max(20, Math.min(100, +o.table_width)) : 100) + "%"; ok++; }
+    else if ((o.op === "col_add" || o.op === "col_del") && el && el.rows && el.rows.length) {
+      const idx = Math.max(0, Math.min(el.rows[0].cells.length - 1, +o.after || 0));
+      if (o.op === "col_del") { if (el.rows[0].cells.length < 2) { bad++; continue; } for (const r of [...el.rows]) if (r.cells[idx]) r.deleteCell(idx); }
+      else { for (const r of [...el.rows]) { const c = r.insertCell(Math.min(r.cells.length, idx + 1)); c.innerHTML = "<br>"; } }
+      ok++;
+    }
+    else if (o.op === "move" && el) {
+      let host = el; while (host.parentElement && host.parentElement !== page) host = host.parentElement;
+      const sib = o.dir === "up" ? host.previousElementSibling : host.nextElementSibling;
+      if (!sib || host.parentElement !== page) { bad++; continue; }
+      if (o.dir === "up") sib.before(host); else sib.after(host); ok++;
+    }
+    else if (o.op === "table_width" && el && el.tagName === "TABLE") { el.style.width = Math.max(20, Math.min(100, +o.width || 100)) + "%"; el.style.maxWidth = "100%"; ok++; }
     else if (o.op === "line" || o.op === "vline") {
       const node = o.op === "vline" ? document.createElement("div") : document.createElement("hr");
       if (o.op === "vline") { node.className = "wd-vline"; node.style.height = Math.max(24, Math.min(800, +o.height || 160)) + "px"; node.style.borderLeft = `${Math.max(.5, Math.min(8, +o.weight || 2))}pt solid ${CLR(o.color)}`; node.style.display = "inline-block"; node.style.margin = "4px 8px"; }
