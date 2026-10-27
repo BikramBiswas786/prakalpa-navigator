@@ -41,7 +41,7 @@ const noteTa = () => document.getElementById("np-ta");
 let wdSel = null; // last non-empty selection inside the Word page (kept when focus moves to the AI box)
 document.addEventListener("selectionchange", () => { const sl = getSelection(); if (!sl || !sl.rangeCount) return; const pg = document.querySelector("#ed-word .wd-page, #ed-word [contenteditable=true]");
   const r = sl.getRangeAt(0); if (pg && pg.contains(r.commonAncestorContainer)) wdSel = r.collapsed ? null : r.cloneRange(); });
-function wordBlocks() {
+function wordBlocks(wide) {
   const page = wordPage(), map = new Map(); let nb = 0, nt = 0; const lines = [];
   const walk = el => {
     for (const n of [...el.children]) {
@@ -54,10 +54,20 @@ function wordBlocks() {
     }
   };
   walk(page);
+  let ni = 0;
+  for (const im of page.querySelectorAll("img")) {
+    if (im.closest(".wd-pb-gap, .wd-hdr, .wd-ftr")) continue;
+    const kind = im.dataset.obj === "wa" ? "WORDART" : im.dataset.obj === "shape" ? "SHAPE" : String(im.alt || "").toLowerCase() === "logo" ? "LOGO" : "PICTURE";
+    lines.push(`i${++ni} IMAGE ${kind} ${im.width || im.naturalWidth || 0}×${im.height || im.naturalHeight || 0}${im.alt ? " alt=" + im.alt.replace(/\s+/g, " ").trim().slice(0, 80) : ""}`);
+  }
   let text = lines.join("\n");
   const full = (page.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
-  if (full.length > 80) text += "\n\nFULL TEXT OF THE OPEN FILE (this is exactly what is on the screen — edit, cut and rewrite THIS text, do not ignore it):\n" + full.slice(0, 80000);
-  return { text: text.slice(0, 100000), map, tables: nt };
+  const cap = wide ? 120000 : 70000;
+  if (full.length > 80) {
+    if (full.length > cap) text += "\n\nEND OF THE OPEN FILE (last part — a fact here counts):\n" + full.slice(-Math.min(24000, Math.floor(cap * 0.3)));
+    text += "\n\nFULL TEXT OF THE OPEN FILE (this is exactly what is on the screen — edit, cut and rewrite THIS text, do not ignore it" + (full.length > cap ? "; the start follows, the end is above" : "") + "):\n" + full.slice(0, cap);
+  }
+  return { text: text.slice(0, wide ? 170000 : 100000), map, tables: nt };
 }
 function excelStruct() {
   const a = ED.kinds.excel._api(); const out = []; let n = 0;
@@ -81,7 +91,7 @@ function excelDiff(before) { // cells the AI changed: "Sheet!A1: old → new" (s
 }
 function noteStruct() { return (noteTa().value || "").split("\n").slice(0, 3000).map((l, i) => `${i + 1}| ${l}`).join("\n"); }
 function imageStruct() { const a = ED.kinds.image._api(); return `Picture ${a.W}×${a.H} px, ${a.layers().length} layer(s).`; }
-const struct = k => k === "word" ? wordBlocks().text : k === "excel" ? excelStruct() : k === "note" ? noteStruct() : imageStruct();
+const struct = k => k === "word" ? wordBlocks(false).text : k === "excel" ? excelStruct() : k === "note" ? noteStruct() : imageStruct();
 function isEmpty(k) {
   if (k === "word") { const p = wordPage(); return !p.innerText.trim() && !p.querySelector("table,img"); }
   if (k === "excel") return ED.kinds.excel._api().book.sheets.every(s => !s.cells.size);
@@ -129,8 +139,14 @@ function fitOne(page) { const W = ED.kinds.word._ai, g = W.pg;
     for (const x of page.querySelectorAll("p,h1,h2,h3,h4,li,td,th")) { const cs = getComputedStyle(x); x.style.marginTop = Math.max(0, parseFloat(cs.marginTop) * .7) + "px"; x.style.marginBottom = Math.max(0, parseFloat(cs.marginBottom) * .7) + "px"; if (i >= 2) x.style.fontSize = Math.max(7, parseFloat(cs.fontSize) * .93) + "px"; if (i >= 2 && !x.style.lineHeight) x.style.lineHeight = "1.1"; }
     for (const pb of page.querySelectorAll("hr.ed-pb")) pb.remove();
     W.applyGeo(); } }
-function applyWord(ops) {
-  const { map } = wordBlocks(); let ok = 0, bad = 0; const page = wordPage();
+function placeAt(page, map, after, node) {
+  const at = after === "start" ? null : after === "end" || !map.get(after) ? "end" : map.get(after);
+  if (at === null) page.prepend(node); else if (at === "end") page.append(node); else at.after(node);
+}
+function blobUrl(blob) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result || "")); r.onerror = () => rej(r.error); r.readAsDataURL(blob); }); }
+async function applyWord(ops, atts) {
+  const { map } = wordBlocks(false); let ok = 0, bad = 0; const page = wordPage();
+  const pics = (atts || []).filter(x => x && x.blob && x.isImg);
   for (const o of ops) { try {
     const el = map.get(o.id);
     if (o.op === "text" && el) { setText(el, String(o.text ?? "")); ok++; }
@@ -156,6 +172,31 @@ function applyWord(ops) {
       const at = o.after === "start" ? null : o.after === "end" || !map.get(o.after) ? "end" : map.get(o.after);
       if (at === null) page.prepend(...nodes); else if (at === "end") page.append(...nodes); else at.after(...nodes); ok++; }
     else if (o.op === "table_cols" && el && el.rows && Array.isArray(o.widths)) { const tot = o.widths.reduce((a, b) => a + (+b || 0), 0) || 1; let cg = el.querySelector("colgroup"); if (cg) cg.remove(); cg = document.createElement("colgroup"); o.widths.forEach(w => { const c = document.createElement("col"); c.style.width = (100 * (+w || 0) / tot).toFixed(1) + "%"; cg.append(c); }); el.prepend(cg); el.style.width = (o.table_width ? Math.max(20, Math.min(100, +o.table_width)) : 100) + "%"; ok++; }
+    else if (o.op === "line" || o.op === "vline") {
+      const node = o.op === "vline" ? document.createElement("div") : document.createElement("hr");
+      if (o.op === "vline") { node.className = "wd-vline"; node.style.height = Math.max(24, Math.min(800, +o.height || 160)) + "px"; node.style.borderLeft = `${Math.max(.5, Math.min(8, +o.weight || 2))}pt solid ${CLR(o.color)}`; node.style.display = "inline-block"; node.style.margin = "4px 8px"; }
+      else { node.className = "wd-hr"; const w = Math.max(.5, Math.min(12, +o.weight || 1.5)); node.style.border = "0"; node.style.borderTop = `${w}pt ${o.style === "double" ? "double" : o.style === "dashed" ? "dashed" : "solid"} ${CLR(o.color)}`; node.style.width = /^\d{1,3}%$/.test(String(o.width || "")) ? o.width : "100%"; node.style.margin = "8px 0"; }
+      placeAt(page, map, o.after || "end", node); ok++;
+    }
+    else if (o.op === "wordart" || o.op === "shape") {
+      if (!ED.drawWordArt || !ED.drawShape) { bad++; continue; }
+      const preset = /^(gradient|outline|shadow|gold|3d|arcup|arcdown|wave)$/.test(o.preset) ? o.preset : "gradient";
+      const drawn = o.op === "wordart"
+        ? ED.drawWordArt({ text: String(o.text || "WordArt").slice(0, 200), font: String(o.font || "Arial").slice(0, 40), size: Math.max(18, Math.min(96, +o.size || 48)), preset, c1: CLR(o.c1 || "#1f6feb"), c2: CLR(o.c2 || "#9b2fe0") })
+        : ED.drawShape({ kind: /^(rect|round|ellipse|triangle|diamond|line|arrow|dblarrow|star|callout)$/.test(o.kind) ? o.kind : "rect", w: +o.w || 160, h: +o.h || 90, stroke: CLR(o.stroke || "#1f3864"), fill: o.fill === "none" ? "none" : CLR(o.fill || "#dbe7ff"), lw: +o.lw || 2, text: String(o.text || "").slice(0, 80) });
+      const spec = o.op === "wordart" ? { text: String(o.text || "WordArt").slice(0, 200), font: String(o.font || "Arial").slice(0, 40), size: Math.max(18, Math.min(96, +o.size || 48)), preset, c1: CLR(o.c1 || "#1f6feb"), c2: CLR(o.c2 || "#9b2fe0") } : { kind: o.kind || "rect", w: +o.w || 160, h: +o.h || 90, stroke: CLR(o.stroke || "#1f3864"), fill: o.fill || "#dbe7ff", lw: +o.lw || 2, text: String(o.text || "").slice(0, 80) };
+      const img = document.createElement("img"); img.className = "wd-obj"; img.src = drawn.url; img.width = drawn.w; img.height = drawn.h; img.alt = o.op === "wordart" ? String(o.text || "WordArt").slice(0, 80) : "shape"; img.dataset.obj = o.op === "wordart" ? "wa" : "shape"; img.dataset.o = JSON.stringify(spec);
+      const p = document.createElement("p"); p.style.textAlign = o.align === "right" ? "right" : "center"; p.append(img);
+      placeAt(page, map, o.after || (o.op === "wordart" ? "start" : "end"), p); ok++;
+    }
+    else if (o.op === "image" || o.op === "logo") {
+      const at = pics[Math.max(0, +o.att || 0)] || pics[0]; if (!at) { bad++; continue; }
+      const url = await blobUrl(at.blob); if (!url.startsWith("data:image/")) { bad++; continue; }
+      const img = document.createElement("img"); img.src = url; img.alt = o.op === "logo" ? "logo" : (at.name || "image"); img.style.maxWidth = "100%"; img.style.height = "auto";
+      const w = Math.max(32, Math.min(o.op === "logo" ? 180 : 520, +o.w || (o.op === "logo" ? 96 : 240))); img.width = w; if (o.h) img.height = Math.max(24, Math.min(700, +o.h));
+      const p = document.createElement("p"); p.style.textAlign = o.align === "right" || o.align === "center" ? o.align : (o.op === "logo" ? "left" : "center"); p.append(img);
+      placeAt(page, map, o.after || (o.op === "logo" ? "start" : "end"), p); ok++;
+    }
     else bad++;
   } catch (e) { bad++; } }
   wordRelayout(); return { ok, bad };
@@ -231,6 +272,11 @@ function verify(k, before) {
 }
 
 /* ---------- attachments ---------- */
+function clipStore(t, cap) {
+  t = String(t || ""); if (t.length <= cap) return t;
+  const tail = Math.min(22000, Math.floor(cap * 0.25));
+  return t.slice(0, cap - tail - 40) + "\n\n[...middle omitted...]\n\nEND:\n" + t.slice(-tail);
+}
 async function readAtt(file, k) {
   const e = ext(file.name), at = { name: file.name, blob: file, e, text: "", how: "" };
   const zipText = async raw => {
@@ -254,12 +300,14 @@ async function readAtt(file, k) {
     else if (!at.text && ["xlsx", "xls", "csv"].includes(e)) { await load("xlsx"); const wb = e === "csv" ? XLSX.read(new TextDecoder().decode(raw), { type: "string" }) : XLSX.read(raw, { type: "array", cellFormula: true });
       at.text = wb.SheetNames.slice(0, 8).map(n => "SHEET " + n + "\n" + XLSX.utils.sheet_to_csv(wb.Sheets[n]).slice(0, 20000)).join("\n\n"); }
     else if (!at.text && e === "pdf") { await load("pdfworker"); await load("pdfjs"); const pdf = await pdfjsLib.getDocument({ data: raw }).promise; let t = "";
-      for (let p = 1; p <= Math.min(pdf.numPages, 80); p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
-      if (t.replace(/\s/g, "").length > 40) at.text = t; else if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
+      const n = Math.min(pdf.numPages, 200);
+      for (let p = 1; p <= n; p++) { const c = await (await pdf.getPage(p)).getTextContent(); t += c.items.map(x => x.str + (x.hasEOL ? "\n" : " ")).join("") + "\n"; }
+      if (pdf.numPages > n) t += `\n\n[${pdf.numPages - n} more pages not copied]\n`;
+      if (t.replace(/\s/g, "").length > 40) at.text = t; else if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name, () => {}, 80); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
     else if (!at.text && (/^(png|jpe?g|webp|gif|bmp)$/.test(e) || (file.type || "").startsWith("image/"))) { at.isImg = true; if (window.BA_OCR) { try { const r = await BA_OCR.read(file, file.name || "image.png"); at.text = r.text; at.how = r.how; } catch (err) { /* OCR is optional */ } } }
     else if (!at.text) at.text = new TextDecoder("utf-8", { fatal: false }).decode(raw.subarray(0, 200000));
   } catch (err) { at.text = at.text || ""; }
-  at.text = String(at.text || "").slice(0, 80000); void k; return at;
+  at.text = clipStore(at.text, 110000); void k; return at;
 }
 async function addFiles(k, files) {
   const s = S[k];
@@ -286,6 +334,46 @@ function pickFromPendrive(k) {
 }
 
 /* ---------- the AI turn ---------- */
+async function srcBlob(src) {
+  if (!src) return null;
+  if (src.startsWith("data:")) {
+    const m = src.match(/^data:([^;,]+);base64,([\s\S]+)$/); if (!m) return null;
+    const bin = atob(m[2]); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Blob([u], { type: m[1] || "image/png" });
+  }
+  const r = await fetch(src); if (!r.ok) return null; return r.blob();
+}
+async function thumbBlob(blob) {
+  const bm = await createImageBitmap(blob);
+  const k = Math.min(1, 1024 / Math.max(bm.width, bm.height, 1));
+  const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(bm.width * k)); c.height = Math.max(1, Math.round(bm.height * k));
+  const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(bm, 0, 0, c.width, c.height);
+  const data = c.toDataURL("image/jpeg", 0.72).split(",")[1];
+  return data && data.length < 900000 ? { mime: "image/jpeg", data } : null;
+}
+async function seenPictures(k, atts) {
+  const shots = []; const notes = [];
+  if (k === "word") {
+    for (const im of [...wordPage().querySelectorAll("img")].filter(im => im.src && !im.closest(".wd-hdr,.wd-ftr,.wd-pb-gap")).slice(0, 4)) {
+      if (shots.length >= 2 && notes.length >= 3) break;
+      try {
+        const blob = await srcBlob(im.src); if (!blob) continue;
+        if (notes.length < 3 && window.BA_OCR && !im.dataset.obj) {
+          const r = await BA_OCR.read(blob, "page-picture.png");
+          const tx = String(r && r.text || "").trim();
+          if (tx) notes.push(`TEXT INSIDE A PICTURE ON THE PAGE${im.alt ? " (" + im.alt.replace(/\s+/g, " ").slice(0, 60) + ")" : ""}:\n${tx.slice(0, 3500)}`);
+        }
+        if (shots.length < 2) { const th = await thumbBlob(blob); if (th) shots.push(th); }
+      } catch (e) { /* one picture failing does not stop the rest */ }
+    }
+  }
+  for (const a of atts || []) {
+    if (shots.length >= 2) break;
+    if (!a || !a.isImg || !a.blob) continue;
+    try { const th = await thumbBlob(a.blob); if (th) shots.push(th); } catch (e) { /* ignore */ }
+  }
+  seenPictures.notes = notes; return shots;
+}
 const FORMAT_RE = /format|template|layout|like this|same (style|way|as)|exactly|mirror|copy the (style|design)|in this (style|form)|fill (this|the|it)|ফরম্যাট|ছক|মতো|মত করে|একই|এইভাবে|পূরণ/i;
 const fmtMatch = (k, a) => k === "word" ? a.e === "docx" : k === "excel" ? ["xlsx", "xls", "csv"].includes(a.e) : k === "note" ? ["txt", "md"].includes(a.e) : false;
 async function send(k) {
@@ -315,11 +403,19 @@ async function send(k) {
     for (const a of atts) if (a.text && !s.mem.some(m => m.text === a.text)) s.mem.push({ name: "Earlier attachment " + a.name, text: a.text });
     if (s.mem.length > 6) s.mem = s.mem.slice(-6);
     const earlier = s.mem.filter(m => !(k === "image" && m.text === s.picText) && !atts.some(a => a.text === m.text)).map(m => ({ name: m.name, text: m.text, how: "", earlier: true }));
-    const deep = k === "word" || (struct(k) || "").length > 8000 || atts.some(a => (a.text || "").length > 12000);
-    const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc: struct(k), fast: !deep && s.el.fast.checked, deep, lang: lang(),
-      thread: s.thread.slice(-12).map(t => ({ q: t.q, a: t.a })), attachments: [...extra, ...atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })), ...earlier].slice(0, 8) });
+    const fastOn = !!s.el.fast.checked;
+    const wide = !fastOn;
+    let shots = [];
+    if (wide) { say(k, T("a_reading", k === "word" ? "pictures" : "the file")); shots = await seenPictures(k, atts); say(k, T("a_working")); }
+    const doc0 = k === "word" ? wordBlocks(wide).text : struct(k);
+    const seen = (seenPictures.notes || []).join("\n\n");
+    const doc = seen ? doc0 + "\n\n" + seen : doc0;
+    const deep = wide && (k === "word" || doc.length > 8000 || atts.some(a => (a.text || "").length > 12000));
+    const r = await pdApi("ed-ai", { kind: k, q, name: ED.st[k].name, doc, fast: fastOn && !deep, deep, lang: lang(),
+      thread: s.thread.slice(-12).map(t => ({ q: t.q, a: t.a })), attachments: [...extra, ...atts.map(a => ({ name: a.name, text: a.text, how: a.how, format: a === fmtAtt, image: !!a.isImg })), ...earlier].slice(0, 8),
+      images: wide ? shots.slice(0, 2) : [] });
     const ops = r.ops || []; let res = { ok: 0, bad: 0 };
-    if (ops.length) res = k === "word" ? applyWord(ops) : k === "excel" ? applyExcel(ops) : k === "note" ? applyNote(ops) : await applyImage(ops, atts);
+    if (ops.length) res = k === "word" ? await applyWord(ops, atts) : k === "excel" ? applyExcel(ops) : k === "note" ? applyNote(ops) : await applyImage(ops, atts);
     if (memo0) { const n = memoFix(k, q, memo0); if (n) res.ok += n; }
     if (ops.length || fmtAtt) { ED.dirty(k); s.undo = before; }
     if (k === "excel" && ops.length) notes.push(...excelDiff(before));

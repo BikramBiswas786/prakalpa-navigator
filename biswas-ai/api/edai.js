@@ -17,7 +17,14 @@ Operations (JSON objects):
 {"op":"insert_html","after":"b3|start|end","html":"<p>…</p>"}   (new blocks, lines <hr class=\\"wd-hr\\">, tables)
 {"op":"table_cols","id":"t2","widths":[30,70],"table_width":100}
 {"op":"html","html":"<h1>…</h1><p>…</p><table>…</table>"}   (rewrites the whole document: for an empty document, a completely new document, OR as a last resort when no other operation can do what was asked — keep ALL the existing text; inline styles allowed: <p style=\\"text-align:center;border-bottom:3pt solid #000\\">, <b>, <table border=1>)
-The open file is ALREADY on the screen. You can see its full text under FULL TEXT. When the user asks to edit, cut, rewrite, correct or fill it, change that live document with operations. Do not answer with the new text instead of changing the page. For a long rewrite, one "html" operation may replace the whole page, and it must keep every paragraph you were not asked to delete. Read the whole text before you decide; a fact near the end counts.
+{"op":"line","after":"b3|start|end","weight":2,"color":"#000000","style":"solid|double|dashed","width":"100%"}
+{"op":"vline","after":"end","height":180,"weight":2,"color":"#000000"}
+{"op":"wordart","after":"start","text":"the exact words","preset":"gradient|gold|shadow|outline|3d|arcup|arcdown|wave","size":48,"c1":"#1f3864","c2":"#9b2fe0","align":"center"}
+{"op":"logo","att":0,"w":100,"align":"left","after":"start"}
+{"op":"image","att":0,"w":240,"align":"center|left|right","after":"end"}
+{"op":"shape","kind":"rect|round|ellipse|arrow|star|callout","w":160,"h":90,"text":"","fill":"#dbe7ff","stroke":"#1f3864","after":"end"}
+A line, word art, a logo, a shape, or a picture the user asked to add is done with these operations, not with a sentence saying it cannot be done. "att" is the number of a picture ATTACHMENT.
+The open file is ALREADY on the screen. You can see its full text under FULL TEXT. When the user asks to edit, cut, rewrite, correct or fill it, change that live document with operations. Do not answer with the new text instead of changing the page. For a long rewrite, one "html" operation may replace the whole page, and it must keep every paragraph you were not asked to delete. Read the whole text before you decide; a fact near the end counts. If the text has "END OF THE OPEN FILE", that ending is part of the file.
 Letterhead = the top block(s) as a bold, large, centred, uppercase black heading with a black "rule" under it (often a thick one plus a thin one).`,
   excel: `Sheets are listed as "SHEET <name>" then one line per used cell: "A1 = raw value or =FORMULA  {style}" (style: b=bold, bg=fill, nf=number format, al=align).
 Operations:
@@ -57,6 +64,13 @@ ${OPS[kind]}
 Rules: change only what the instruction asks; keep every other number, name and format. Keep Bengali text in Bengali.
 When an ATTACHMENT is given as a format/template ("make it like this", "same format", "fill this format"), the document has ALREADY been loaded with the attachment's exact layout (letterhead, memo no./date lines, headings, tables, fonts, alignment, borders): only change the TEXT/VALUES with operations so the result is the new document about the user's subject. Never use "html" or "set_text" in that case. The old Memo No. and Date are NOT kept: write the new memo number from the request (else leave "______") and today's date.
 When an attachment is only reference text (e.g. a screenshot read by OCR), use its text as the content.`;
+const WORD_SKILL = `STRONG REVISE (not the fast path). The user speaks in ordinary words. Turn them into operations. Never say word art, a logo, a line or a picture cannot be added, and never only describe the change in "reply".
+- "line", "underline", "rule", "horizontal line": {"op":"line","after":"end","weight":2,"color":"#000000","style":"solid"}. Under one heading only: {"op":"rule","id":"that block","side":"bottom","weight":2.25,"color":"#000000","style":"solid"}. Two lines under a letterhead: one thick rule and one thin line. A vertical line: {"op":"vline","after":"end","height":180,"weight":2,"color":"#000000"}.
+- "word art", "decorative title", "stylish heading": {"op":"wordart","after":"start","text":"the user's exact words","preset":"gradient","size":48,"c1":"#1f3864","c2":"#9b2fe0","align":"center"}. preset may be gradient, gold, shadow, outline, 3d, arcup, arcdown or wave when they ask for that look.
+- "logo", "emblem", "seal", "put my logo": {"op":"logo","att":0,"w":100,"align":"left","after":"start"} using the picture attachment. If no picture is attached, use {"op":"shape","kind":"ellipse","w":96,"h":96,"text":"LOGO","after":"start","fill":"#f4efe6","stroke":"#1f3864"} and say a picture file is needed for a real emblem.
+- "add this image", "insert the picture", "put the photo": {"op":"image","att":0,"w":240,"align":"center","after":"end"}. att is the ATTACHMENT number of that picture. "start" is the top, "end" is the bottom, or after a block id they name.
+- A box, circle, arrow or star: {"op":"shape","kind":"rect|ellipse|arrow|star|callout","w":160,"h":90,"text":"","fill":"#dbe7ff","stroke":"#1f3864","after":"end"}.
+Lines "i1 IMAGE" are pictures already on the page. ATTACHMENT lines marked IMAGE, and any PICTURES FOR YOU TO SEE, are pictures you can look at. Read them. Do not say the file has no picture when those are present. A long PDF or document includes the END as well as the start. A fact in the END counts. Do not say you only saw the beginning.`;
 
 export function parseOps(t) {
   const s = String(t || "").trim(); const m = s.match(/```(?:json)?\s*([\s\S]*?)```/); const raw = m ? m[1] : s.slice(s.indexOf("{"), s.lastIndexOf("}") + 1);
@@ -99,7 +113,7 @@ const lum = c => { const m = String(c || "").match(/^#?([0-9a-f]{6}|[0-9a-f]{3})
 // safety net: text on the blank picture with no background in a light colour would be invisible
 const EXTRACT_RE = /\b(extract|read|copy|get|transcribe|ocr)\b.*\b(text|words|writing)\b|লেখা.*(বের|পড়|কপি)/i;
 export function wantsChange(q) { const t = String(q || "").trim(); if (/^(what|why|how many|which|who|when|is|are|does|do|can you explain|explain|কী|কেন|কত)\b/i.test(t) && /\?$/.test(t)) return false;
-  return /\b(make|add|change|set|put|write|rewrite|correct|fix|improve|better|remove|delete|insert|format|style|resize|move|replace|translate|convert|create|draw|fill|compact|fit|shrink|bold|center|centre|align|colour|color|border|line|margin|heading|headline|black|white|background|sort|total|sum)\b|কর|বানাও|লেখ|বদলা|যোগ|মুছ|ঠিক/i.test(t); }
+  return /\b(make|add|change|set|put|write|rewrite|correct|fix|improve|better|remove|delete|insert|format|style|resize|move|replace|translate|convert|create|draw|fill|compact|fit|shrink|bold|center|centre|align|colour|color|border|line|margin|heading|headline|black|white|background|sort|total|sum|logo|wordart|word art|picture|image|photo|shape|emblem|seal)\b|কর|বানাও|লেখ|বদলা|যোগ|মুছ|ঠিক|লোগো|ছবি|লাইন|আর্ট/i.test(t); }
 export function cleanReply(rep, nOps) { let t = String(rep || "").trim();
   t = t.replace(/[^.!?\n]*\b(no changes? (were|was|are|is) (needed|required|necessary)|cannot be applied using the available (editing )?operations|can't extract text from the image here|please provide the (image|exact text))[^.!?\n]*[.!?]?/gi, "").trim();
   return t; }
@@ -112,22 +126,25 @@ export async function edAI(body, askAI, mockOn) {
   const kind = ["word", "excel", "image", "note"].includes(body.kind) ? body.kind : null; if (!kind) return { error: "bad_kind" };
   const q = String(body.q || "").slice(0, 4000).trim(); if (!q) return { error: "no_question" };
   const rawAtt = (Array.isArray(body.attachments) ? body.attachments : []).slice(0, 8);
-  let room = 64000;
+  let room = body.deep ? 130000 : 64000;
   const atts = rawAtt.map(a => {
-    const text = String(a.text || "").slice(0, Math.max(0, Math.min(60000, room)));
+    const text = String(a.text || "").slice(0, Math.max(0, Math.min(body.deep ? 110000 : 60000, room)));
     room -= text.length;
     return { name: String(a.name || "").slice(0, 200), text, how: String(a.how || ""), format: !!a.format, image: !!a.image, current: !!a.current, earlier: !!a.earlier };
   });
-  const doc = String(body.doc || "").slice(0, 90000);
+  const doc = String(body.doc || "").slice(0, body.deep && kind === "word" ? 170000 : 90000);
   if (mockOn) return mock(kind, q, doc, atts);
+  const images = (!body.fast && Array.isArray(body.images) ? body.images : []).filter(im => im && /^image\/(jpeg|png|webp)$/.test(im.mime) && typeof im.data === "string" && im.data.length > 40 && im.data.length < 900000).slice(0, 2);
   const thread = (Array.isArray(body.thread) ? body.thread : []).slice(-12).map(t => `USER: ${String(t.q || "").slice(0, 1500)}\nAI: ${String(t.a || "").slice(0, 2000)}`).join("\n");
-  let user = `${thread ? "EARLIER IN THIS DOCUMENT'S THREAD:\n" + thread + "\n\n" : ""}FILE: ${String(body.name || "").slice(0, 200)}\nDOCUMENT STRUCTURE:\n${doc || "(empty document)"}\n\n${atts.map((a, i) => `${a.current ? "" : a.earlier ? "FROM EARLIER IN THIS CHAT: " : "ATTACHMENT #" + i + " "}${a.name}${a.format ? " (ALREADY LOADED AS THE DOCUMENT'S FORMAT — fill it)" : ""}${a.how === "tesseract" ? " (text read by OCR, may have small errors)" : ""}:\n${a.text || "(image)"}`).join("\n\n")}\n\nINSTRUCTION: ${q}`;
-  if (user.length > 155000) user = user.slice(0, 155000 - q.length - 24) + "\n\nINSTRUCTION: " + q;
+  let user = `${images.length ? "PICTURES FOR YOU TO SEE (" + images.length + "). Look at them. They are the logo, scan, photo or page the user means. Do not say you cannot see a picture.\n\n" : ""}${thread ? "EARLIER IN THIS DOCUMENT'S THREAD:\n" + thread + "\n\n" : ""}FILE: ${String(body.name || "").slice(0, 200)}\nDOCUMENT STRUCTURE:\n${doc || "(empty document)"}\n\n${atts.map((a, i) => `${a.current ? "" : a.earlier ? "FROM EARLIER IN THIS CHAT: " : "ATTACHMENT #" + i + " "}${a.name}${a.format ? " (ALREADY LOADED AS THE DOCUMENT'S FORMAT — fill it)" : ""}${a.image ? " (IMAGE)" : ""}${a.how === "tesseract" ? " (text read by OCR, may have small errors)" : ""}:\n${a.text || (a.image ? "(picture — look at the attached image)" : "(empty)")}`).join("\n\n")}\n\nINSTRUCTION: ${q}`;
+  const lim = body.deep ? 200000 : 155000;
+  if (user.length > lim) user = user.slice(0, lim - q.length - 24) + "\n\nINSTRUCTION: " + q;
   // Fast models only for short, simple requests; anything with several steps goes to the stronger (thinking) chain. A failed or declining model is retried on the other.
   const action = wantsChange(q), extract = EXTRACT_RE.test(q);
   const simple = !body.deep && q.length < 70 && !/\b(and|then|also|with|all)\b|এবং|তারপর|সঙ্গে/i.test(q) && !extract;
   let opts = body.deep ? { deep: true } : (body.fast && simple ? { fast: true } : {});
-  const sys = SYS(kind) + "\n" + LANGRULE(body.lang === "bn" ? "bn" : "en");
+  if (images.length && !opts.fast) opts.images = images;
+  const sys = SYS(kind) + (kind === "word" && !opts.fast ? "\n" + WORD_SKILL : "") + "\n" + LANGRULE(body.lang === "bn" ? "bn" : "en");
   const outN = body.deep || kind === "word" ? 11000 : 6000;
   const ask = async (extraMsg) => { try { return await askAI(sys, user + (extraMsg || ""), outN, opts); } catch (e) { opts = opts.fast ? { deep: !!body.deep } : { fast: true }; return askAI(sys, user + (extraMsg || ""), outN, opts); } };
   let out = await ask(); let r = parseOps(out);

@@ -643,8 +643,12 @@ ED.kinds.word = (() => {
           await load("pdfworker"); await load("pdfjs");
           const doc = await window.pdfjsLib.getDocument({ data: u8 }).promise;
           let t = "";
-          const pages = Math.min(doc.numPages, 150);
+          const pages = Math.min(doc.numPages, 220);
           for (let p = 1; p <= pages; p++) { const c = await (await doc.getPage(p)).getTextContent(); t += c.items.map(it => it.str + (it.hasEOL ? "\n" : " ")).join("") + "\n\n"; }
+          if (doc.numPages > pages) t += `\n\n[${doc.numPages - pages} more pages not opened]\n`;
+          if (t.replace(/\s/g, "").length < 80 && window.BA_OCR) {
+            try { const r = await window.BA_OCR.read(new Blob([u8], { type: "application/pdf" }), path || "open.pdf", () => {}, 80); if (r && r.text && r.text.replace(/\s/g, "").length > 40) t = r.text + (doc.numPages > 80 ? `\n\n[${doc.numPages - 80} more pages were not read as pictures]\n` : ""); } catch (err) { /* text layer stands */ }
+          }
           if (!t.replace(/\s/g, "")) fail();
           put(t); return;
         }
@@ -668,6 +672,15 @@ ED.kinds.word = (() => {
               const xml = z.file("word/document.xml") ? await z.file("word/document.xml").async("string") : "";
               const bits = [...xml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m => m[1].replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">").replace(/"/g,'"').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(+n)));
               if (bits.join("").trim()) d.body.innerHTML = bits.map(t => "<p>" + XE(t) + "</p>").join("");
+            }
+            if (!d.body.querySelector("img")) {
+              const media = Object.keys(z.files).filter(n => /^word\/media\/.+\.(png|jpe?g|gif|webp)$/i.test(n)).slice(0, 8);
+              for (const n of media) {
+                const b64 = await z.file(n).async("base64"); if (!b64 || b64.length > 1800000) continue;
+                const extm = n.split(".").pop().toLowerCase();
+                const mime = extm === "png" ? "image/png" : extm === "gif" ? "image/gif" : extm === "webp" ? "image/webp" : "image/jpeg";
+                const p = d.createElement("p"); const im = d.createElement("img"); im.src = `data:${mime};base64,${b64}`; im.alt = "picture"; im.style.maxWidth = "100%"; p.append(im); d.body.append(p);
+              }
             }
             Object.assign(pg, DEF); delete page.dataset.minPages; page.innerHTML = d.body.innerHTML || "<p><br></p>";
             try { await enrich(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength)); } catch (err) { /* details are optional */ }

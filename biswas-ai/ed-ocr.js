@@ -38,9 +38,9 @@ async function pages(blob, name, max = 2000, maxPages = 60) {
 }
 const b64 = c => c.toDataURL("image/jpeg", 0.85).split(",")[1];
 // returns { text, how: "vision" | "tesseract", pages, total }
-async function read(blob, name, onProg = () => {}) {
+async function read(blob, name, onProg = () => {}, maxPages) {
   onProg(L("Preparing pages…", "পাতা তৈরি হচ্ছে…"));
-  const cs = await pages(blob, name);
+  const cs = await pages(blob, name, 2000, maxPages || 60);
   const multi = cs.length > 1; const got = new Array(cs.length).fill(null); let how = "", done = 0;
   // one page per vision call (3 at a time) so every page keeps its own [Page n] tag; a page that fails twice goes to Tesseract below
   if (!visionOff && typeof pdApi === "function") {
