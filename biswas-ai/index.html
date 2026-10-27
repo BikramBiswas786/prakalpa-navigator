@@ -851,7 +851,12 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
     <section class="view chat" id="v-agent" hidden>
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
+        <div class="pending" id="ag-pending"></div>
         <form class="box" id="ag-form">
+          <input type="file" id="ag-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,image/*">
+          <button class="iconbtn" type="button" id="ag-attach" aria-label="Attach">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+          </button>
           <textarea id="ag-job" rows="1" enterkeyhint="send" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           <button class="btn small" type="button" id="ag-pause" data-t="pause" hidden></button>
@@ -4341,7 +4346,7 @@ function renderAgentView() {
         if (msgs[i].role !== "user") continue;
         jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
       }
-      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done && ans.content ? `<div class="actions"><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
       const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
     }
   }
@@ -4430,7 +4435,7 @@ function openAgent(id) {
 function officeFile(s) {
   return /\b(dcrb|pension|gratuity|notesheet|heir)\b|নোটশিট|পেনশন|গ্র্যাচুইটি|উত্তরাধিকার/i.test(String(s || ""));
 }
-async function runBiswasAgent(job) {
+async function runBiswasAgent(job, files) {
   if (!engine) return toast(t("no_ai"));
   if (ctl) { agentHalt = true; try { ctl.abort(); } catch (e) { /* the new job replaces it */ } }
   const gen = (runBiswasAgent.gen = (runBiswasAgent.gen || 0) + 1);
@@ -4439,10 +4444,21 @@ async function runBiswasAgent(job) {
   ctl = new AbortController();
   setAgentBusy(true);
   const lang = settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.";
+  let fileNote = "";
+  const fileNames = (files || []).map(f => f.name);
+  if (files && files.length) {
+    const bits = [];
+    for (const f of files) {
+      if (f.text) bits.push("--- " + f.name + " ---\n" + f.text);
+      else if (f.images && f.images.length) bits.push("--- " + f.name + " ---\n(Picture attached. Read it, including Bengali and Hindi writing.)");
+      else bits.push("--- " + f.name + " ---\n(attached)");
+    }
+    fileNote = bits.join("\n\n").slice(0, 70000);
+  }
   let cur = agentThreads.find(t => t.id === agentId);
   if (!cur) { cur = { id: nid(), title: "", at: Date.now(), kind: agentKind, messages: [] }; agentThreads.unshift(cur); agentId = cur.id; }
   cur.kind = agentKind;
-  cur.messages.push({ role: "user", content: job, shown: job, done: true });
+  cur.messages.push({ role: "user", content: fileNote ? job + "\n\nATTACHED FILES. Read these. Do not say a file is missing.\n" + fileNote : job, shown: job, files: fileNames, done: true });
   const ai = { role: "assistant", content: "", think: "", done: false, started: Date.now() };
   cur.messages.push(ai);
   if (!cur.title) cur.title = job.replace(/\s+/g, " ").trim().slice(0, 72);
@@ -4578,9 +4594,10 @@ async function runBiswasAgent(job) {
     if (web) sys += "\n\nPages opened:\n" + web;
     if (officeFile(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
     if (notes) sys += "\n\nOther AIs, on the same question:\n" + notes;
+    if (fileNote) sys += "\n\nThe user attached files. Answer from these first. Do not say the file is missing. Do not change the subject of the file.\n" + fileNote.slice(0, 24000);
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
-    const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : m.content }));
-    const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys, skills: true });
+    const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : (m.shown || m.content) }));
+    const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys, skills: true, images: attachImages(files || []) });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
     const checkSys = officeFile(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
@@ -5287,6 +5304,7 @@ function startSectionChat() {
   // chat
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
+  if ((x = el("[data-ag-unpend]"))) { agFiles.splice(+x.dataset.agUnpend, 1); return renderAgPending(); }
   // Biswas AI
   if (el("[data-office-home]")) { officeOpen = ""; tabs.office = "deskchat"; pendingFiles = []; bindMessages(); showView(); return; }
   if ((x = el("[data-bk]"))) return openOfficeWork(+x.dataset.bk);
@@ -5413,12 +5431,22 @@ $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFi
 function sendAgent() {
   const box = $("#ag-job");
   const job = ((box && box.value) || "").trim();
-  if (!job) return;
+  if (!job && !agFiles.length) return;
   if (!engine) return toast(t("no_ai"));
+  const files = agFiles.splice(0);
+  renderAgPending();
   box.value = "";
   box.style.height = "auto";
-  runBiswasAgent(job);
+  runBiswasAgent(job || "Read the attached files and answer from them.", files);
 }
+let agFiles = [];
+function renderAgPending() {
+  const box = $("#ag-pending"); if (!box) return;
+  box.innerHTML = agFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-ag-unpend="${k}" aria-label="remove">✕</button></span>`).join("");
+}
+const agAttach = $("#ag-attach"); if (agAttach) agAttach.addEventListener("click", () => { const i = $("#ag-file"); if (i) i.click(); });
+const agFile = $("#ag-file");
+if (agFile) agFile.addEventListener("change", e => { const l = Array.from(e.target.files || []); e.target.value = ""; readInto(l, agFiles, renderAgPending); });
 const agBox = $("#ag-job");
 if (agBox) {
   const grow = () => { agBox.style.height = "auto"; agBox.style.height = Math.min(agBox.scrollHeight, 160) + "px"; };

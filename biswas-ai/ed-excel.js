@@ -423,6 +423,16 @@ ED.kinds.excel = (() => {
       if (axis === "c") { if (d > 0) s.colW.splice(at, 0, undefined); else s.colW.splice(at, 1); s.nc = Math.max(1, s.nc + d); } else s.nr = Math.max(1, s.nr + d);
       book.sheets.forEach((sh, i) => { for (const [k, v] of sh.cells) if (v && v[0] === "=") sh.cells.set(k, shiftRefs(v, i === si, s.name, axis, at, d)); }); });
   }
+  function delSpan(axis) {
+    const g = R();
+    const n = axis === "r" ? (g.r2 - g.r1 + 1) : (g.c2 - g.c1 + 1);
+    const at = axis === "r" ? g.r1 : g.c1;
+    for (let i = 0; i < Math.min(n, 200); i++) {
+      if (axis === "r") { sel = { r: at, c: 0 }; anc = { r: at, c: 0 }; }
+      else { sel = { r: 0, c: at }; anc = { r: 0, c: at }; }
+      structural(axis, -1);
+    }
+  }
   /* sheets */
   const uniq = base => { let n = base, k = 2; while (book.sheets.some(s => s.name.toLowerCase() === n.toLowerCase())) n = base.replace(/ \(\d+\)$/, "") + ` (${k++})`; return n.slice(0, 31); };
   function addSheet() { let n = book.sheets.length + 1; while (book.sheets.some(s => s.name === "Sheet" + n)) n++; edit(() => { book.sheets.splice(si + 1, 0, newSheet("Sheet" + n)); si++; sel = { r: 0, c: 0 }; anc = { ...sel }; }); }
@@ -646,8 +656,8 @@ ED.kinds.excel = (() => {
         btn("xs-inr", "₹", T("nf_inr"), () => fmtRange({ nf: NF.inr })), btn("xs-pct", "%", T("nf_pct"), () => fmtRange({ nf: NF.pct })), btn("xs-decup", ".0+", T("x_dec_up"), () => decimals(1)), btn("xs-decdn", ".0−", T("x_dec_dn"), () => decimals(-1)),
         btn("xs-clearf", "⌫A", T("x_clearf"), () => edit(() => forRange((s, r, c) => s.fmt.delete(K(r, c))))));
       const tb2 = h("div", { class: "ed-tool" },
-        h("button", { type: "button", class: "btn small", id: "xs-insr", onclick: () => structural("r", 1) }, T("insR")), h("button", { type: "button", class: "btn small", id: "xs-delr", onclick: () => structural("r", -1) }, T("delR")),
-        h("button", { type: "button", class: "btn small", id: "xs-insc", onclick: () => structural("c", 1) }, T("insC")), h("button", { type: "button", class: "btn small", id: "xs-delc", onclick: () => structural("c", -1) }, T("delC")), h("span", { class: "sep" }),
+        h("button", { type: "button", class: "btn small", id: "xs-insr", onclick: () => structural("r", 1) }, T("insR")), h("button", { type: "button", class: "btn small", id: "xs-delr", onclick: () => delSpan("r") }, T("delR")),
+        h("button", { type: "button", class: "btn small", id: "xs-insc", onclick: () => structural("c", 1) }, T("insC")), h("button", { type: "button", class: "btn small", id: "xs-delc", onclick: () => delSpan("c") }, T("delC")), h("span", { class: "sep" }),
         btn("xs-sortaz", "A→Z", T("x_sort_az"), () => sortBy(false)), btn("xs-sortza", "Z→A", T("x_sort_za"), () => sortBy(true)), btn("xs-filter", "⏷ " + T("x_filter"), T("x_filter"), toggleFilter), h("span", { class: "sep" }),
         btn("xs-copy", "⧉", T("x_copy"), () => { const t = grab(false); navigator.clipboard && navigator.clipboard.writeText(t).catch(() => {}); }), btn("xs-cut", "✂", T("x_cut"), () => { const t = grab(true); navigator.clipboard && navigator.clipboard.writeText(t).catch(() => {}); }),
         btn("xs-paste", "📋", T("x_paste"), async () => { if (clip) return pasteInternal(); try { pasteText(await navigator.clipboard.readText()); } catch (e) {} }),
@@ -674,7 +684,23 @@ ED.kinds.excel = (() => {
         const g = fdrag.g; let g2 = { ...g }; if (p.r > g.r2 && p.r - g.r2 >= p.c - g.c2) g2.r2 = p.r; else if (p.c > g.c2) g2.c2 = p.c; else if (p.r < g.r1) g2.r1 = p.r; else if (p.c < g.c1) g2.c1 = p.c; fdrag.g2 = g2;
         for (const t of tbl.querySelectorAll("td.fil")) t.classList.remove("fil"); for (let r = g2.r1; r <= g2.r2; r++) for (let c = g2.c1; c <= g2.c2; c++) { const t = cellTd(r, c); if (t) t.classList.add("fil"); } });
       document.addEventListener("mouseup", () => { mdrag = false; if (fdrag) { const f = fdrag; fdrag = null; for (const t of tbl.querySelectorAll("td.fil")) t.classList.remove("fil"); if (f.g2) fillTo(f.g2); } });
-      wrap.addEventListener("dblclick", e => { if (e.target.closest("td[data-r]")) { editing = true; fx.focus(); fx.setSelectionRange(fx.value.length, fx.value.length); } });
+      wrap.addEventListener("contextmenu", e => {
+        if (!e.target.closest("td,th")) return;
+        e.preventDefault();
+        let m = document.getElementById("xs-menu");
+        if (!m) { m = h("div", { class: "wd-menu", id: "xs-menu" }); document.body.append(m); }
+        const item = (label, fn) => h("button", { type: "button", onclick: () => { m.hidden = true; fn(); } }, label);
+        m.replaceChildren(
+          item(T("x_copy"), () => { const t = grab(false); navigator.clipboard && navigator.clipboard.writeText(t).catch(() => {}); }),
+          item(T("x_paste"), async () => { if (clip) return pasteInternal(); try { pasteText(await navigator.clipboard.readText()); } catch (err) {} }),
+          item(T("delR"), () => delSpan("r")),
+          item(T("delC"), () => delSpan("c"))
+        );
+        m.hidden = false;
+        m.style.left = Math.max(8, Math.min(e.clientX, window.innerWidth - 180)) + "px";
+        m.style.top = Math.max(8, Math.min(e.clientY, window.innerHeight - 200)) + "px";
+      });
+      document.addEventListener("pointerdown", e => { const m = document.getElementById("xs-menu"); if (m && !m.hidden && !m.contains(e.target)) m.hidden = true; });
       wrap.addEventListener("keydown", e => {
         if (e.target !== wrap) return; const k = e.key, mod = e.ctrlKey || e.metaKey, lk = k.toLowerCase();
         if (mod && !e.altKey) { const act = { z: () => undoDo(!e.shiftKey), y: () => undoDo(false), b: () => toggle("b"), i: () => toggle("i"), u: () => toggle("u"), d: fillDown, r: fillRight, a: selectAll, f: () => { findBar.hidden = false; fi.focus(); }, h: () => { findBar.hidden = false; ri.focus(); }, p: printSheet }[lk]; if (act) { e.preventDefault(); act(); } return; }

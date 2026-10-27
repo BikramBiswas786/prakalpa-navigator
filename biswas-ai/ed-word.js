@@ -18,7 +18,7 @@ ED.addTX({
     w_palign: "Number position", w_ok: "OK", w_kind: "Shape", w_outline: "Outline", w_fill: "Fill", w_nofill: "No fill", w_lw: "Line width", w_text: "Text", w_preset: "Style",
     w_edit_obj: "Double-click a shape or WordArt to change it.", w_fit: "Page width", w_textin: "Text inside (callouts)", w_find_n: "{0} found", w_blank: "Blank page",
     w_cut: "Cut", w_copy: "Copy", w_paste: "Paste", w_cutok: "Cut. Use Paste to put it back.", w_copyok: "Copied. Use Paste where you want it.", w_pasteok: "Pasted.", w_pasteempty: "Nothing copied yet. Select text, then Copy.",
-    w_coladd: "Add column", w_coldel: "Delete column", w_rowadd: "Add row", w_rowdel: "Delete row", w_tup: "Move table up", w_tdown: "Move table down", w_wider: "Stretch table", w_narrow: "Narrow table", w_notbl: "Click inside the table first." },
+    w_coladd: "Add column", w_coldel: "Delete column", w_rowadd: "Add row", w_rowdel: "Delete row", w_tup: "Move table up", w_tdown: "Move table down", w_wider: "Stretch table", w_narrow: "Narrow table", w_notbl: "Click inside the table first.", w_copyrow: "Copy row", w_copycol: "Copy column" },
   bn: { w_tsize: "টেবিলের মাপ বদলাতে টানুন", w_del: "মুছুন", w_cmt: "মন্তব্য", w_cmtq: "বাছাই করা লেখায় মন্তব্য:", w_cmts: "মন্তব্য", w_track: "পরিবর্তন ট্র্যাক", w_acc: "সব পরিবর্তন মেনে নিন", w_rej: "সব পরিবর্তন বাতিল", w_cols: "কলাম", w_col1: "এক কলাম", w_col2: "দুই কলাম", w_col3: "তিন কলাম", w_toc: "সূচিপত্র", w_tocT: "সূচিপত্র", w_selfirst: "আগে কিছু লেখা বাছুন।", w_trackon: "ট্র্যাক চালু: নতুন লেখা সবুজ, মোছা লেখা কাটা দাগে।", w_trackoff: "ট্র্যাক বন্ধ।", w_nohead: "আগে Heading 1–3 অনুচ্ছেদ দিন, তারপর সূচিপত্র।", w_wm: "জলছাপ", w_wmq: "জলছাপের লেখা (মুছতে ফাঁকা রাখুন):", w_fn: "পাদটীকা", w_fnq: "পাদটীকার লেখা:", w_fns: "পাদটীকা",
     w_font: "ফন্ট", w_size: "আকার", w_style: "শৈলী", w_grow: "লেখা বড়", w_shrink: "লেখা ছোট", w_strike: "কাটা দাগ", w_sup: "উপরে ছোট লেখা", w_sub: "নিচে ছোট লেখা",
     w_hl: "হাইলাইট", w_color: "লেখার রং", w_clear: "ফরম্যাট মুছুন", w_case: "অক্ষরের ধরন", w_upper: "বড় হাতের", w_lower: "ছোট হাতের", w_title: "প্রথম অক্ষর বড়",
@@ -31,7 +31,7 @@ ED.addTX({
     w_palign: "নম্বরের অবস্থান", w_ok: "ঠিক আছে", w_kind: "আকৃতি", w_outline: "রেখার রং", w_fill: "ভরাট", w_nofill: "ভরাট নয়", w_lw: "রেখার পুরুত্ব", w_text: "লেখা", w_preset: "শৈলী",
     w_edit_obj: "আকৃতি বা ওয়ার্ডআর্ট বদলাতে তাতে ডাবল-ক্লিক করুন।", w_fit: "পাতার প্রস্থ", w_textin: "ভেতরের লেখা (কলআউট)", w_find_n: "{0}টি পাওয়া গেছে", w_blank: "ফাঁকা পাতা",
     w_cut: "কাট", w_copy: "কপি", w_paste: "পেস্ট", w_cutok: "কাটা হয়েছে। পেস্ট চাপলে বসবে।", w_copyok: "কপি হয়েছে। যেখানে চান পেস্ট করুন।", w_pasteok: "পেস্ট হয়েছে।", w_pasteempty: "আগে লেখা কপি করুন।",
-    w_coladd: "কলাম যোগ", w_coldel: "কলাম মুছুন", w_rowadd: "সারি যোগ", w_rowdel: "সারি মুছুন", w_tup: "টেবিল উপরে", w_tdown: "টেবিল নিচে", w_wider: "টেবিল চওড়া", w_narrow: "টেবিল সরু", w_notbl: "আগে টেবিলের ভেতরে ক্লিক করুন।" }
+    w_coladd: "কলাম যোগ", w_coldel: "কলাম মুছুন", w_rowadd: "সারি যোগ", w_rowdel: "সারি মুছুন", w_tup: "টেবিল উপরে", w_tdown: "টেবিল নিচে", w_wider: "টেবিল চওড়া", w_narrow: "টেবিল সরু", w_notbl: "আগে টেবিলের ভেতরে ক্লিক করুন।", w_copyrow: "সারি কপি", w_copycol: "কলাম কপি" }
 });
 
 const FONTS = [["Calibri", "Calibri, Carlito, sans-serif"], ["Cambria", "Cambria, Caladea, serif"], ["Times New Roman", "'Times New Roman', Tinos, serif"], ["Arial", "Arial, Arimo, sans-serif"],
@@ -69,6 +69,12 @@ const css = `
 #wd-track[aria-pressed="true"] { background: #1a7f37; color: #fff; }
 .wd-desk .wd-page { position: relative; width: auto; max-width: none; min-height: 0; margin: 0; background: transparent; box-shadow: none; box-sizing: border-box; line-height: 1.15; user-select: text; -webkit-user-select: text; }
 .wd-page p { margin: 0 0 8pt; } .wd-page li { margin: 0; }
+.wd-page td.wd-on, .wd-page th.wd-on { outline: 2px solid #1f6feb; background: #e8f1ff; }
+.wd-cellbar { display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 0; }
+.wd-cellbar[hidden] { display: none; }
+.wd-menu { position: fixed; z-index: 80; background: #fff; color: #111; border: 1px solid #ccc; border-radius: 8px; padding: 4px; display: flex; flex-direction: column; min-width: 168px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+.wd-menu[hidden] { display: none; }
+.wd-menu button { text-align: left; background: none; border: 0; padding: 10px 12px; font: inherit; cursor: pointer; }
 .wd-page table { max-width: 100%; }
 .wd-page div.wd-vline { width: 0; height: 160px; border-left: 2px solid #000; margin: 4pt 0; padding: 0 4px 0 0; cursor: move; }
 .wd-page hr.wd-hr { border: 0; border-top: 1.5px solid #000; margin: 4pt 0 8pt; padding: 3px 0; background-clip: content-box; cursor: move; }
@@ -239,16 +245,21 @@ ED.kinds.word = (() => {
     else { ED.say("word", T("w_pasteempty")); return; }
     ED.say("word", T("w_pasteok"));
   }
-  function curCell() { const n = curEl(); return n ? n.closest("td,th") : null; }
+  let lastCell = null, cellBar = null, cellMenu = null;
+  function curCell() {
+    const n = curEl(); const c = n && n.closest && n.closest("td,th");
+    if (c && page.contains(c)) { lastCell = c; return c; }
+    return lastCell && lastCell.isConnected && page.contains(lastCell) ? lastCell : null;
+  }
   function curTable() { const c = curCell(); if (c) return c.closest("table"); const n = curEl(); return n ? n.closest("table") : page.querySelector("table"); }
   function addCol(delta) { const cell = curCell(), t = curTable(); if (!t || !t.rows.length) { ED.say("word", T("w_notbl")); return; }
     const idx = cell ? cell.cellIndex : t.rows[0].cells.length - 1;
-    if (delta < 0) { if (t.rows[0].cells.length < 2) return; for (const r of [...t.rows]) if (r.cells[idx]) r.deleteCell(idx); }
+    if (delta < 0) { if (t.rows[0].cells.length < 2) { t.remove(); lastCell = null; if (cellBar) cellBar.hidden = true; dirty(); return; } for (const r of [...t.rows]) if (r.cells[idx]) r.deleteCell(idx); }
     else { for (const r of [...t.rows]) { const c = r.insertCell(Math.min(r.cells.length, idx + 1)); c.append(h("br")); } }
     dirty(); }
   function addRow(delta) { const cell = curCell(), t = curTable(); if (!t || !t.rows.length) { ED.say("word", T("w_notbl")); return; }
     const ri = cell ? cell.parentElement.rowIndex : t.rows.length - 1;
-    if (delta < 0) { if (t.rows.length < 2) return; t.deleteRow(ri); }
+    if (delta < 0) { if (t.rows.length < 2) { t.remove(); lastCell = null; if (cellBar) cellBar.hidden = true; dirty(); return; } t.deleteRow(ri); }
     else { const n = t.rows[ri].cells.length, nr = t.insertRow(Math.min(t.rows.length, ri + 1)); for (let i = 0; i < n; i++) nr.insertCell().append(h("br")); }
     dirty(); }
   function moveTable(dir) { const t = curTable(); if (!t) { ED.say("word", T("w_notbl")); return; }
@@ -259,6 +270,30 @@ ED.kinds.word = (() => {
   function stretchTable(k) { const t = curTable(); if (!t) { ED.say("word", T("w_notbl")); return; }
     const now = parseFloat(t.style.width); const base = /%$/.test(t.style.width) ? now : 100;
     t.style.width = Math.max(30, Math.min(100, Math.round(base * k))) + "%"; t.style.maxWidth = "100%"; dirty(); }
+  function copySpan(kind) {
+    const cell = curCell(); if (!cell) { ED.say("word", T("w_notbl")); return; }
+    const t = cell.closest("table"); const bits = [];
+    if (kind === "row") bits.push(...[...cell.parentElement.cells].map(c => c.innerText || ""));
+    else [...t.rows].forEach(r => { const c = r.cells[cell.cellIndex]; if (c) bits.push(c.innerText || ""); });
+    clip = { html: "", text: bits.join(kind === "row" ? "\t" : "\n") };
+    navigator.clipboard && navigator.clipboard.writeText(clip.text).catch(() => {});
+    ED.say("word", T("w_copyok"));
+  }
+  function markCell(cell) {
+    page.querySelectorAll("td.wd-on,th.wd-on").forEach(n => n.classList.remove("wd-on"));
+    if (!cell || !page.contains(cell)) { if (cellBar) cellBar.hidden = true; return; }
+    lastCell = cell; cell.classList.add("wd-on"); if (cellBar) cellBar.hidden = false;
+  }
+  function showCellMenu(x, y, cell) {
+    markCell(cell);
+    if (!cellMenu) cellMenu = h("div", { class: "wd-menu", id: "wd-menu" });
+    if (!cellMenu.isConnected) document.body.append(cellMenu);
+    const item = (label, fn) => h("button", { type: "button", onmousedown: e => e.preventDefault(), onclick: () => { cellMenu.hidden = true; fn(); } }, label);
+    cellMenu.replaceChildren(item(T("w_copy"), () => copySel(false)), item(T("w_copyrow"), () => copySpan("row")), item(T("w_copycol"), () => copySpan("col")), item(T("w_paste"), () => pasteSel()), item(T("w_rowdel"), () => addRow(-1)), item(T("w_coldel"), () => addCol(-1)));
+    cellMenu.hidden = false;
+    cellMenu.style.left = Math.max(8, Math.min(x, window.innerWidth - 190)) + "px";
+    cellMenu.style.top = Math.max(8, Math.min(y, window.innerHeight - 240)) + "px";
+  }
   function indent(d) { const bl = selBlocks(); if (!bl.length) return; if (bl[0].tagName === "LI") return cmd(d > 0 ? "indent" : "outdent");
     for (const b of bl) { const v = Math.max(0, (parseFloat(b.style.marginLeft) || 0) + d * 48); b.style.marginLeft = v ? v + "px" : ""; } dirty(); }
   function lineSpace(v) { for (const b of selBlocks()) b.style.lineHeight = v; dirty(); }
@@ -683,13 +718,24 @@ ED.kinds.word = (() => {
       page.addEventListener("mouseup", () => { if (painter) setTimeout(applyPainter, 0); });
       page.addEventListener("dblclick", e => { const o = e.target.closest && e.target.closest("img.wd-obj"); if (!o) return; try { objDialog(o.dataset.obj, JSON.parse(o.dataset.o), o); } catch (x) {} });
       document.addEventListener("selectionchange", () => { if (ED.tab === "word" && page.contains(document.getSelection().anchorNode)) { sync(); stats(); } });
+      page.addEventListener("contextmenu", e => { const cell = e.target.closest && e.target.closest("td,th"); if (!cell || !page.contains(cell)) return; e.preventDefault(); showCellMenu(e.clientX, e.clientY, cell); });
+      let hold = 0, hx = 0, hy = 0;
+      page.addEventListener("pointerdown", e => { const cell = e.target.closest && e.target.closest("td,th"); if (!cell) return; hx = e.clientX; hy = e.clientY; hold = setTimeout(() => showCellMenu(hx, hy, cell), 550); });
+      page.addEventListener("pointerup", e => { clearTimeout(hold); const cell = e.target.closest && e.target.closest("td,th"); if (cell) markCell(cell); });
+      page.addEventListener("pointermove", e => { if (Math.abs(e.clientX - hx) + Math.abs(e.clientY - hy) > 12) clearTimeout(hold); });
+      document.addEventListener("pointerdown", e => { if (cellMenu && !cellMenu.hidden && !cellMenu.contains(e.target)) cellMenu.hidden = true; });
       page.addEventListener("copy", () => { const got = takeSel(false); if (got) clip = got; });
       page.addEventListener("cut", () => { const got = takeSel(false); if (got) clip = got; });
       page.addEventListener("paste", e => { const html = e.clipboardData.getData("text/html"); const plain = e.clipboardData.getData("text/plain"); if (html) { e.preventDefault(); const d = new DOMParser().parseFromString(html, "text/html"); d.querySelectorAll("script,style,meta,link,iframe,object,title").forEach(n => n.remove()); d.querySelectorAll("*").forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || (a.name === "href" && /^\s*javascript:/i.test(a.value)) || (a.name === "class" && /^Mso/.test(a.value))) n.removeAttribute(a.name); }); insertHTML(d.body.innerHTML); } else if (plain && /\n/.test(plain)) { e.preventDefault(); insertHTML(plain.split(/\n/).map(l => `<p>${XE(l) || "<br>"}</p>`).join("")); } });
       new ResizeObserver(() => sched()).observe(page); window.addEventListener("resize", () => { if (zoomSel.value === "fit") setZoom("fit"); });
       if (document.fonts) document.fonts.addEventListener("loadingdone", sched);
       gramPane = h("div", { class: "wd-gram", id: "wd-gram", hidden: true, role: "region", "aria-label": T("w_gram") });
-      body.append(tb, findBar, gramPane, cmtPane, desk, status);
+      cellBar = h("div", { class: "wd-cellbar", id: "wd-cellbar", hidden: true },
+        B("wd-cb-copy", T("w_copy"), T("w_copy"), () => copySel(false)),
+        B("wd-cb-paste", T("w_paste"), T("w_paste"), () => pasteSel()),
+        B("wd-cb-dr", T("w_rowdel"), T("w_rowdel"), () => addRow(-1)),
+        B("wd-cb-dc", T("w_coldel"), T("w_coldel"), () => addCol(-1)));
+      body.append(tb, cellBar, findBar, gramPane, cmtPane, desk, status);
       try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) {}
       applyGeo();
     },

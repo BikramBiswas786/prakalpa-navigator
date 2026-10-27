@@ -16,7 +16,8 @@ ED.addTX({
     i_skew: "Skew", i_skewx: "Skew horizontal (degrees)", i_skewy: "Skew vertical (degrees)", i_canvas: "Canvas size", i_pct: "Resize %", i_grey: "Greyscale", i_sharpen: "Sharpen", i_invert: "Invert colours", i_softblur: "Soften",
     i_zoom: "Zoom", i_fit: "Fit", i_grid: "Gridlines", i_ruler: "Ruler", i_layers: "Layers", i_addl: "New layer", i_dell: "Delete layer", i_up: "Move layer up", i_down: "Move layer down", i_merge: "Merge down", i_flat: "Flatten",
     i_opacity: "Opacity", i_bg: "Background", i_layer: "Layer", i_font: "Font", i_bold: "Bold", i_italic: "Italic", i_curvehint: "Now drag to bend the curve.", i_curvetip: "Curve: drag a line, then drag again to bend it.", i_cropsel: "Select the area, then Apply crop.", i_bgonly: "Can't delete the background layer.",
-    i_sel_none: "Select an area first.", i_tolerance: "Fill tolerance", i_rmbg: "Remove background", i_transp: "Transparent" },
+    i_sel_none: "Select an area first.", i_tolerance: "Fill tolerance", i_rmbg: "Remove background", i_transp: "Transparent",
+    i_roll: "Add images", i_bw: "Black & white", i_print: "Print look", i_enhance: "Enhance", i_pdf: "Selected → one PDF", i_roll_del: "Remove" },
   bn: { i_paste: "ছবি পেস্ট", i_paste_hint: "টিপ: Print Screen চাপুন, তারপর এখানে Ctrl+V দিয়ে স্ক্রিনশট পেস্ট করুন।", i_pasted: "নতুন স্তর হিসেবে পেস্ট হয়েছে — টেনে সরান, তারপর এক করুন বা রেখে দিন।", i_pasted_new: "স্ক্রিনশট পেস্ট হয়েছে। সেভ করলে নাম হবে {0}।",
     i_noclip: "ক্লিপবোর্ডে কোনো ছবি নেই। Print Screen (বা Win+Shift+S) চাপুন, তারপর এখানে Ctrl+V।", i_clipblock: "ব্রাউজার ক্লিপবোর্ড পড়তে দেয়নি — Ctrl+V চাপুন।",
     i_select: "বাছাই", i_lasso: "মুক্ত-হাতে বাছাই", i_move: "স্তর সরান", i_pencil: "পেনসিল", i_brush: "তুলি", i_eraser: "রবার", i_fill: "রং ভরুন", i_picker: "রং তুলুন",
@@ -27,7 +28,8 @@ ED.addTX({
     i_skew: "হেলান", i_skewx: "আড়াআড়ি হেলান (ডিগ্রি)", i_skewy: "খাড়া হেলান (ডিগ্রি)", i_canvas: "ক্যানভাসের মাপ", i_pct: "মাপ %", i_grey: "সাদা-কালো", i_sharpen: "ধারালো", i_invert: "রং উল্টান", i_softblur: "নরম",
     i_zoom: "জুম", i_fit: "মানানসই", i_grid: "গ্রিড", i_ruler: "রুলার", i_layers: "স্তর", i_addl: "নতুন স্তর", i_dell: "স্তর মুছুন", i_up: "স্তর ওপরে", i_down: "স্তর নিচে", i_merge: "নিচে মেশান", i_flat: "সব এক করুন",
     i_opacity: "অস্বচ্ছতা", i_bg: "পটভূমি", i_layer: "স্তর", i_font: "ফন্ট", i_bold: "মোটা", i_italic: "বাঁকা", i_curvehint: "এবার টেনে রেখাটা বাঁকান।", i_curvetip: "বাঁকা রেখা: আগে রেখা টানুন, তারপর আবার টেনে বাঁকান।", i_cropsel: "অংশ বাছুন, তারপর কাটা প্রয়োগ।", i_bgonly: "পটভূমি স্তর মোছা যায় না।",
-    i_sel_none: "আগে একটা অংশ বাছুন।", i_tolerance: "রং ভরার সহনশীলতা", i_rmbg: "পটভূমি সরান", i_transp: "স্বচ্ছ" }
+    i_sel_none: "আগে একটা অংশ বাছুন।", i_tolerance: "রং ভরার সহনশীলতা", i_rmbg: "পটভূমি সরান", i_transp: "স্বচ্ছ",
+    i_roll: "ছবি যোগ", i_bw: "সাদা-কালো", i_print: "ছাপার মতো", i_enhance: "পরিষ্কার", i_pdf: "বাছাই → এক PDF", i_roll_del: "সরান" }
 });
 const fmt = (s, ...a) => s.replace(/\{(\d)\}/g, (m, i) => a[i]);
 const mk = (w, hh) => { const c = document.createElement("canvas"); c.width = Math.max(1, w); c.height = Math.max(1, hh); return c; };
@@ -40,7 +42,7 @@ const PALETTE = ["#000000", "#7f7f7f", "#880015", "#ed1c24", "#ff7f27", "#fff200
 ED.kinds.image = (() => {
   let W = 1200, H = 800, layers = [], act = 0, cv, ctx, ov, octx, stage, box, gridEl, rT, rL, layerBox, statEl;
   let tool = "brush", brush = "round", mode = "outline", c1, c2, lw, tol, fontSel, fsz, fB, fI, zoomSel, gridChk, rulerChk, bri, con, rw, rh, keep, pctIn, ac;
-  let zoom = "fit", scale = 1, sel = null, drag = null, curve = null, undo = [], redo = [], curExt = "png", clip = null, lastXY = null;
+  let zoom = "fit", scale = 1, sel = null, drag = null, curve = null, undo = [], redo = [], curExt = "png", clip = null, lastXY = null, roll = [], rollAt = -1, strip, stripCount;
   const say = m => ED.say("image", m);
   const AL = () => layers[act];
   const LG = () => g2(AL().c);
@@ -206,6 +208,82 @@ ED.kinds.image = (() => {
     if (!n) { undo.pop(); return; } g.putImageData(im, 0, 0); render(); dirty(); }
   function preview() { cv.style.filter = (+bri.value !== 100 || +con.value !== 100) ? `brightness(${bri.value}%) contrast(${con.value}%)` : ""; }
   function applyAdj() { if (+bri.value === 100 && +con.value === 100) return; snap(); for (const L of layers) { const s = clone(L.c), g = g2(L.c); g.clearRect(0, 0, L.c.width, L.c.height); g.filter = `brightness(${bri.value}%) contrast(${con.value}%)`; g.drawImage(s, 0, 0); g.filter = "none"; } bri.value = con.value = 100; preview(); render(); dirty(); }
+  function canvasOf(bmp) {
+    const c = document.createElement("canvas"); const s = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    c.width = Math.max(1, Math.round(bmp.width * s)); c.height = Math.max(1, Math.round(bmp.height * s));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); return c;
+  }
+  function syncRoll() {
+    if (rollAt < 0 || !roll[rollAt]) return;
+    const src = flat(); const c = document.createElement("canvas"); c.width = src.width; c.height = src.height; c.getContext("2d").drawImage(src, 0, 0); roll[rollAt].c = c;
+  }
+  function paintStrip() {
+    if (!strip) return; strip.textContent = "";
+    roll.forEach((it, i) => {
+      const th = document.createElement("canvas"); th.width = 72; th.height = 72;
+      const g = th.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, 72, 72);
+      const sc = Math.min(72 / it.c.width, 72 / it.c.height), w = it.c.width * sc, hh = it.c.height * sc;
+      g.drawImage(it.c, (72 - w) / 2, (72 - hh) / 2, w, hh);
+      const box = h("div", { class: "im-roll" + (i === rollAt ? " on" : "") },
+        h("input", { type: "checkbox", checked: it.on, title: T("i_roll"), onchange: e => { it.on = e.target.checked; } }),
+        th,
+        h("button", { type: "button", class: "wd-b", onclick: () => openRoll(i) }, String(i + 1)),
+        h("button", { type: "button", class: "wd-b", title: T("i_roll_del"), onclick: () => { roll.splice(i, 1); if (rollAt >= roll.length) rollAt = roll.length - 1; paintStrip(); if (rollAt >= 0) showRoll(rollAt); } }, "✕"));
+      strip.append(box);
+    });
+    if (stripCount) stripCount.textContent = roll.length ? ((Math.max(rollAt, 0) + 1) + " / " + roll.length) : "";
+  }
+  function showRoll(i) {
+    const c = roll[i] && roll[i].c; if (!c) return; rollAt = i;
+    undo = []; redo = []; setDoc(c.width, c.height, g => g.drawImage(c, 0, 0)); paintStrip();
+  }
+  function openRoll(i) { syncRoll(); showRoll(i); }
+  function paintOn(c, kind) {
+    const g = c.getContext("2d"), w = c.width, hh = c.height, im = g.getImageData(0, 0, w, hh), d = im.data;
+    if (kind === "grey" || kind === "print") {
+      for (let i = 0; i < d.length; i += 4) {
+        let v = d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114;
+        if (kind === "print") v = Math.min(255, Math.max(0, (v - 128) * 1.2 + 128));
+        d[i] = kind === "print" ? Math.min(255, v * .97 + 10) : v;
+        d[i + 1] = kind === "print" ? Math.min(255, v * .96 + 6) : v;
+        d[i + 2] = kind === "print" ? Math.min(255, v * .92) : v;
+      }
+    } else {
+      for (let i = 0; i < d.length; i += 4) { for (let k = 0; k < 3; k++) { const v = (d[i + k] - 128) * 1.18 + 128; d[i + k] = Math.min(255, Math.max(0, v)); } }
+    }
+    g.putImageData(im, 0, 0);
+  }
+  function applyPicked(kind) {
+    syncRoll();
+    const picks = roll.some(x => x.on) ? roll.filter(x => x.on) : (roll[rollAt] ? [roll[rollAt]] : []);
+    if (!picks.length) { filt(kind === "print" || kind === "enhance" ? "sharpen" : "grey"); return; }
+    for (const it of picks) paintOn(it.c, kind);
+    if (rollAt >= 0 && roll[rollAt]) showRoll(rollAt); else paintStrip();
+  }
+  async function addRoll(files) {
+    syncRoll();
+    for (const f of [...files]) {
+      if (roll.length >= 100) break;
+      try { const bmp = await createImageBitmap(f); roll.push({ c: canvasOf(bmp), on: true, name: f.name }); } catch (e) { /* skip a file that is not a picture */ }
+    }
+    if (rollAt < 0 && roll.length) showRoll(0); else paintStrip();
+    say(roll.length + " / 100");
+  }
+  async function rollPdf() {
+    syncRoll();
+    const picks = roll.filter(x => x.on); const list = picks.length ? picks : roll;
+    if (!list.length) return;
+    if (!window.PDFLib) await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"; s.onload = res; s.onerror = rej; document.head.append(s); });
+    const pdf = await window.PDFLib.PDFDocument.create();
+    for (const it of list) {
+      const blob = await new Promise(r => it.c.toBlob(r, "image/jpeg", 0.86));
+      const img = await pdf.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+      const page = pdf.addPage([img.width, img.height]);
+      page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+    }
+    const out = await pdf.save(); const file = new Blob([out], { type: "application/pdf" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = "images.pdf"; a.click();
+  }
   /* ----- paste ----- */
   async function pasteSrc(src) { const st = ED.st.image; const fresh = !st.file && !st.dirty && layers.length === 1 && !undo.length;
     if (fresh) { setDoc(src.width, src.height, g => g.drawImage(src, 0, 0)); st.name = shotName(); ED.label("image"); dirty(); say(fmt(T("i_pasted_new"), st.name)); setTool("select"); return; }
@@ -289,12 +367,21 @@ ED.kinds.image = (() => {
       stage = h("div", { class: "im-stage", tabindex: "0", "aria-label": T("image") }, h("div", { class: "im-grid2" }, h("span", {}), rT, rL, box));
       layerBox = h("div", { class: "im-layers", id: "im-layers" });
       const side = h("aside", { class: "im-side", "aria-label": T("i_layers") }, h("b", {}, T("i_layers")), h("div", { class: "im-lbtn" }, B("im-addl", "＋", T("i_addl"), addLayer), B("im-dell", "🗑", T("i_dell"), delLayer), B("im-lup", "▲", T("i_up"), () => moveLayer(1)), B("im-ldn", "▼", T("i_down"), () => moveLayer(-1)), B("im-merge", "⤓", T("i_merge"), () => mergeDown()), B("im-flat", "▤", T("i_flat"), () => flatten())), layerBox);
-      body.append(r1, r2, r3, r4, h("div", { class: "im-work" }, stage, side));
+      const rollIn = h("input", { type: "file", accept: "image/*", multiple: true, hidden: true, onchange: e => { addRoll([...e.target.files]); e.target.value = ""; } });
+      strip = h("div", { class: "im-strip", id: "im-strip" }); stripCount = h("span", { class: "im-count", id: "im-count" });
+      const rollBar = h("div", { class: "im-stripw" },
+        B("im-addroll", "＋ " + T("i_roll"), T("i_roll"), () => rollIn.click()),
+        B("im-bw", T("i_bw"), T("i_bw"), () => applyPicked("grey")),
+        B("im-print", T("i_print"), T("i_print"), () => applyPicked("print")),
+        B("im-enh", T("i_enhance"), T("i_enhance"), () => applyPicked("enhance")),
+        B("im-pdf", T("i_pdf"), T("i_pdf"), () => rollPdf()),
+        stripCount, strip, rollIn);
+      body.append(r1, r2, r3, r4, rollBar, h("div", { class: "im-work" }, stage, side));
       ctx = g2(cv); octx = ov.getContext("2d");
       document.addEventListener("paste", onPaste); document.addEventListener("keydown", key);
       window.addEventListener("resize", () => { if (ED.tab === "image" && zoom === "fit") { applyZoom(); over(); } }); swatch(); css();
     },
-    blank() { undo = []; redo = []; curExt = "png"; bri.value = con.value = 100; setDoc(1200, 800, g => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 1200, 800); }); preview(); zoom = "fit"; setTool("brush"); },
+    blank() { undo = []; redo = []; curExt = "png"; bri.value = con.value = 100; roll = []; rollAt = -1; paintStrip(); setDoc(1200, 800, g => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 1200, 800); }); preview(); zoom = "fit"; setTool("brush"); },
     async load(buf, e) { const bmp = await createImageBitmap(new Blob([buf], { type: ED.MIME[e] || "image/png" })); undo = []; redo = []; curExt = e === "jpeg" ? "jpeg" : e; bri.value = con.value = 100; zoom = "fit"; setDoc(bmp.width, bmp.height, g => g.drawImage(bmp, 0, 0)); preview(); setTool("brush"); requestAnimationFrame(() => { applyZoom(); over(); }); },
     async export(e) { if (+bri.value !== 100 || +con.value !== 100) applyAdj(); let src = flat(); const mime = e === "jpg" || e === "jpeg" ? "image/jpeg" : e === "webp" ? "image/webp" : "image/png";
       if (mime === "image/jpeg") { const j = mk(W, H), g = g2(j); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.drawImage(src, 0, 0); src = j; }
@@ -327,6 +414,12 @@ ED.kinds.image = (() => {
 [data-theme=dark] .im-stage { background: repeating-conic-gradient(#2a2f3a 0 25%, #1f232b 0 50%) 0 0 / 20px 20px; }
 [data-theme=dark] .im-side { border-color: #3a4150; } [data-theme=dark] .im-gridl { background-image: linear-gradient(to right, rgba(255,255,255,.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.2) 1px, transparent 1px); }
 @media (max-width: 900px) { .im-work { flex-direction: column; } .im-side { width: auto; } .im-hint { display: none; } }
+.im-stripw { display: flex; gap: 8px; align-items: center; overflow: auto; padding: 6px 0; }
+.im-strip { display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding-bottom: 4px; }
+.im-roll { display: flex; flex-direction: column; align-items: center; gap: 2px; border: 2px solid transparent; border-radius: 6px; padding: 2px; font-size: 11px; }
+.im-roll.on { border-color: #1f6feb; }
+.im-roll canvas { width: 72px; height: 72px; background: #fff; display: block; }
+.im-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
 `)); }
 })();
 })();
