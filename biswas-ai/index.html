@@ -4016,6 +4016,7 @@ function signIn(name) {
   whoId = book[key].id;
   userName = book[key].name;
   loadVault();
+  keepAgents();
   return true;
 }
 function showGate(on) {
@@ -4503,12 +4504,97 @@ function serviceFacts(id) {
   const d = s[settings.lang] || s.bn;
   return [d.n, d.b, (d.c || []).join("; "), (d.d || []).join("; "), (d.s || []).join("; "), d.x || ""].filter(Boolean).join("\n");
 }
-function saveAgent() {
-  vaultSet("agents", agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30).map(t => ({
-    id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", archived: !!t.archived,
-    messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-20).map(m => ({ role: m.role, content: m.content, shown: m.shown, done: m.done, error: m.error, think: m.think || "", log: (m.log || []).slice(-24), pages: (m.pages || []).slice(0, 12).map(p => ({ title: p.title, url: p.url, via: p.via || "" })) }))
-  })));
+let agentDbP = null;
+function agentDb() {
+  if (!agentDbP) agentDbP = new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open("biswas-keep", 1);
+      r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); };
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+  return agentDbP;
 }
+function keepPut(key, value) {
+  return agentDb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readwrite");
+    tx.objectStore("kv").put(value, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  })).catch(() => {});
+}
+function keepGet(key) {
+  return agentDb().then(db => new Promise((res, rej) => {
+    const tx = db.transaction("kv", "readonly");
+    const req = tx.objectStore("kv").get(key);
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  })).catch(() => undefined);
+}
+function packPanel(list, cap) {
+  return (list || []).filter(a => a && a.text && !a.error).slice(0, 8).map(a => ({
+    provider: a.provider || "", model: a.model || "", used: !!a.used, text: String(a.text).slice(0, cap)
+  }));
+}
+function packAgentThread(t, contentCap, panelCap) {
+  return {
+    id: t.id, title: t.title || "", at: t.at || Date.now(), kind: t.kind || "free", archived: !!t.archived,
+    messages: (t.messages || []).filter(m => m.done || m.role === "user").slice(-12).map(m => ({
+      role: m.role,
+      content: String(m.content || "").slice(0, contentCap),
+      shown: m.shown,
+      files: m.files,
+      done: !!m.done,
+      error: m.error || "",
+      think: m.think || "",
+      log: (m.log || []).slice(-24),
+      pages: (m.pages || []).slice(0, 35).map(pg => ({ title: pg.title, url: pg.url, via: pg.via || "" })),
+      panel: packPanel(m.panel, panelCap)
+    }))
+  };
+}
+function mergeAgentList(local, incoming) {
+  const map = new Map();
+  const weight = t => (t.messages || []).reduce((n, m) => n + ((m.panel && m.panel.length) ? 100000 : 0) + String(m.content || "").length, 0);
+  const fold = list => {
+    (list || []).forEach(t => {
+      if (!t || !t.id) return;
+      const old = map.get(t.id);
+      if (!old) { map.set(t.id, t); return; }
+      const primary = (t.at || 0) > (old.at || 0) || ((t.at || 0) === (old.at || 0) && weight(t) >= weight(old)) ? t : old;
+      const other = primary === t ? old : t;
+      const n = Math.max((primary.messages || []).length, (other.messages || []).length);
+      const messages = [];
+      for (let i = 0; i < n; i++) {
+        const a = (primary.messages || [])[i], b = (other.messages || [])[i];
+        if (!a) { messages.push(b); continue; }
+        if (!b) { messages.push(a); continue; }
+        const panel = (a.panel && a.panel.length) ? a.panel : (b.panel || []);
+        messages.push(Object.assign({}, a, { panel, content: String(a.content || "").length >= String(b.content || "").length ? a.content : b.content }));
+      }
+      map.set(t.id, Object.assign({}, primary, { messages, at: Math.max(primary.at || 0, other.at || 0) }));
+    });
+  };
+  fold(local); fold(incoming);
+  return [...map.values()].sort((a, b) => (b.at || 0) - (a.at || 0));
+}
+function saveAgent() {
+  const rows = agentThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30);
+  vaultSet("agents", rows.slice(0, 20).map(t => packAgentThread(t, 8000, 4000)));
+  if (whoId) keepPut("agents:" + whoId, rows.slice(0, 30).map(t => packAgentThread(t, 60000, 16000)));
+}
+async function keepAgents() {
+  if (!whoId) return;
+  const saved = await keepGet("agents:" + whoId);
+  if (!Array.isArray(saved) || !saved.length) return;
+  agentThreads = mergeAgentList(agentThreads, saved);
+  agentThreads.forEach(t => { if (!Array.isArray(t.messages)) t.messages = []; });
+  if (agentId && !agentThreads.some(t => t.id === agentId) && agentThreads[0]) agentId = agentThreads[0].id;
+  try { const view = document.getElementById("v-agent"); if (view && !view.hidden) renderAgentView(); } catch (e) { /* the list is still restored */ }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { saveAgent(); } catch (e) { /* ignore */ } } });
+window.addEventListener("pagehide", () => { try { saveAgent(); } catch (e) { /* ignore */ } });
 function openAgent(id) {
   agentId = id || "";
   const cur = agentThreads.find(t => t.id === agentId);
@@ -4603,6 +4689,8 @@ async function runBiswasAgent(job, files) {
         } catch (e) { /* the file is still corrected */ }
       }
       try { ai.panel = await askPanel(job, pages, rawFile || fileNote); } catch (e) { ai.panel = []; }
+      cur.at = Date.now();
+      saveAgent();
       renderAgentView();
       if (!rawFile) {
         const r = await aiRun([{ role: "user", content: job || "Read the attached file." }], { fast: false, signal: ctl.signal, system: yearLine() + "\nThe user attached a file. Read the pictures if any. Do not say the file is missing if a picture is attached. Do the job.", skills: true, maxOut: 4096, images: attachImages(files) });
@@ -4708,6 +4796,8 @@ async function runBiswasAgent(job, files) {
     let rows = [];
     try { rows = await askPanel(job, pages); } catch (e) { rows = []; }
     ai.panel = rows;
+    cur.at = Date.now();
+    saveAgent();
     const hole = rows.map(a => String(a && a.text || "")).join(" ").match(/(?:not mentioned|do not contain|not in the pages|no information about)\s+([^.]{6,80})/i);
     if (hole && hole[1] && !driftedQuery(hole[1], job) && pages.length < 35) {
       mark(settings.lang === "en" ? "An AI still missed a part. Searching that." : "একটা AI একটা অংশ পায়নি। সেটা খুঁজছি।");
@@ -4716,6 +4806,8 @@ async function runBiswasAgent(job, files) {
         const moreRows = await askPanel(job, pages);
         const seenP = new Set((ai.panel || []).map(a => a.provider));
         ai.panel = (ai.panel || []).concat(moreRows.filter(a => a && !seenP.has(a.provider)));
+        cur.at = Date.now();
+        saveAgent();
       } catch (e) { /* keep the first answers */ }
     }
     renderAgentView();
