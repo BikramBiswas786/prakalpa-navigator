@@ -2162,13 +2162,13 @@ async function askPanel(question, pages, fileText, imgs, maxOut, signal) {
   const file = String(fileText || "").slice(0, 28000);
   const images = [];
   for (const b of (imgs || []).slice(0, 4)) { try { images.push({ mime: b.type || "image/jpeg", data: await toB64(b) }); } catch (e) { /* skip a bad picture */ } }
-  const src = file ? "" : (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
-    .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
+  const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 12)
+    .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 1400)).join("\n\n").slice(0, 18000);
   const system = file
-    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file. Read all of it. Return the FULL corrected document as Markdown, every memo and every table row. Fix grammar and spelling only. Keep every name, account number, IFSC, mobile and amount. Do not drop a row. Do not invent a person. Do not say you cannot see, create or send an attachment. Do not mention Grammarly, UPDF or any other website. Do not apologize. Do not write a preface. Start with the document."
-    : yearLine() + "\nAnswer every part of the user's question, in order. Do not stop after the first fact. Use the source pages. If one page lacks a fact, use another page. Do not say a fact is missing unless none of the pages contain it. Do not switch to a government scheme, pension, DCRB, Annapurna, or land record unless the question is about that. After each fact, name the page. Do not invent a score, a fee, a date or an order number." + (src ? "\n\nSource pages:\n" + src : "");
+    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file, including a PDF, Word, or Excel extract. Read all of it. Return the FULL document as Markdown, every memo and every table row. Keep every name, account number, IFSC, mobile and amount. Do not drop a row. Do not invent a person. Do not say you cannot see, create, or send an attachment. Do not apologize. Start with the document."
+    : yearLine() + "\nSOURCE PAGES below were opened today (" + today() + "). They are your only source for a current price, index, score, or today-fact. Do not say you have no real-time data. Do not tell the user to visit NSE, BSE, Bloomberg, Moneycontrol, or another site instead of answering. If a number is in a page, use it and name that page. If it is not in any page, leave the number out. Do not fill the gap with 2023 or 2024 memory. Write the research. Do not refuse." + (src ? "\n\nSOURCE PAGES:\n" + src : "\n\nNo page text was attached. Do not invent today's market figures.");
   const user = file
-    ? String(question || "Correct this file.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file
+    ? String(question || "Read this file and return the full document.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file + (src ? "\n\nSOURCE PAGES:\n" + src.slice(0, 8000) : "")
     : String(question || "").slice(0, 2000);
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], images, maxOut: maxOut || (file ? 7000 : 3600) }), signal: signal || (ctl ? ctl.signal : undefined) });
@@ -2684,7 +2684,36 @@ When you learn a lasting fact (name, job, place, preference, or a correction), a
 <<<END MEMORY>>>
 Skip that block when nothing new should be remembered.
 Do not turn a normal question into a West Bengal scheme card or a notesheet. Bengali is the language, not a switch to Bangladesh. Never invent government order numbers, fees or dates.
+A price, index, score, or other "today" figure is allowed only when a page opened for this turn states that exact figure. If no page was opened, say the pages did not open. Never present a remembered 2023 or 2024 number as today's number.
 When the user asks for a file, use the skill attachment blocks. A simple question does not need a file.`;
+}
+function needsLive(q) {
+  const s = String(q || "");
+  return /\b(today|current|latest|live|price|prices|market|sensex|nifty|stock|stocks|headline|news|2026)\b|right now|as of|আজ|আজকে|বর্তমান|বাজার|দাম|খবর|এখন|সেনসেক্স|নিফটি/i.test(s);
+}
+async function fetchLive(q, signal) {
+  try {
+    const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(q || "").slice(0, 180), live: true, wb: false }), signal });
+    const data = rr.ok ? await rr.json() : { pages: [] };
+    return (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && String(p.text || "").replace(/\s+/g, " ").trim().length > 40).slice(0, 8).map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 2200) }));
+  } catch (e) { return []; }
+}
+function liveBlock(pages, required) {
+  if (!required) return "";
+  const rows = pages || [];
+  if (!rows.length) return "\nNo page opened. Do not invent today's price, index, score, or date. Say the pages did not open. Do not use a 2023 or 2024 figure as if it were today.";
+  const body = rows.slice(0, 12).map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 1600)).join("\n\n").slice(0, 22000);
+  return "\nPAGES OPENED TODAY (" + today() + "). These are the only source for a price, an index, a score, or any other today-figure. If a number is not written below, do not state it. Do not recall 2023 or 2024 and call it current. Do not say you lack real-time access. Name the page.\n\n" + body;
+}
+function staleYear(text, pages) {
+  const ans = String(text || "");
+  if (!/2023|2024/.test(ans)) return ans;
+  const blob = (pages || []).map(p => String(p.text || "")).join(" ");
+  if (/2023|2024/.test(blob)) return ans;
+  const note = settings.lang === "en"
+    ? "\n\nA 2023 or 2024 figure above is not in the pages opened today. Do not treat it as today's number."
+    : "\n\nউপরের ২০২৩ বা ২০২৪-এর অঙ্ক আজ খোলা পাতায় নেই। সেটাকে আজকের অঙ্ক ধরবেন না।";
+  return ans + note;
 }
 async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false, maxOut, skills = false, deep = false, race = false } = {}) {
   if (!engine) throw { code: "not_ready" };
@@ -4503,7 +4532,16 @@ function hideAudit(text) {
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 function cleanAgent(s) {
-  return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?[^>]+>/g, "").replace(/\*\*/g, "").replace(/^\s*\|.+\|\s*$/gm, "").replace(/^\s*[-| :]{3,}\s*$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+  return String(s || "").replace(/<br\s*\/?>/gi, "\n").replace(/<\/?(?:div|span|p|font|b|i|strong|em|section|article)[^>]*>/gi, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+function hideEngines(s) {
+  return String(s || "")
+    .replace(/\b(Tavily|Exa|Serper|Firecrawl|Keiro)\b/gi, "the article")
+    .replace(/\[(?:Tavily|Exa|Serper|Parallel|Firecrawl|Keiro|Bing|DuckDuckGo)\]/gi, "")
+    .replace(/according to (?:Tavily|Exa|Serper|Parallel|Firecrawl|Keiro)/gi, "the opened article");
+}
+function siteHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; }
 }
 function renderAgents() {
   const box = $("#ag-picks");
@@ -4571,24 +4609,15 @@ function auditHead(pages) {
     + (single.length ? single.slice(0, 8).map(line).join("\n") : (en ? "- None." : "- নেই।"));
 }
 function deepDump(pages) {
-  const groups = {};
-  for (const p of pages || []) {
-    const via = p.via || "web";
-    (groups[via] ||= []).push(p);
-  }
-  return Object.keys(groups).map(via => {
-    const bits = groups[via].slice(0, 2).map(p => {
-      const bit = String(p.text || "").replace(/\s+/g, " ").trim().slice(0, 420);
-      return `**${p.title || p.url}**\n${p.url || ""}\n${bit || ""}`;
-    }).join("\n\n");
-    return `### ${engineName(via)}\n${bits}`;
+  return (pages || []).slice(0, 12).map(p => {
+    const bit = String(p.text || "").replace(/\s+/g, " ").trim().slice(0, 700);
+    return "**" + (p.title || p.url) + "**\n" + (p.url || "") + "\n" + (bit || "");
   }).join("\n\n");
 }
 function pageLinks(pages) {
   if (!pages || !pages.length) return "";
-  const groups = {};
-  for (const p of pages) (groups[p.via || "web"] ||= []).push(p);
-  return Object.keys(groups).map(via => `<div class="sources"><b>${esc(engineName(via))}</b>${groups[via].map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>`).join("")}</div>`).join("");
+  const en = settings.lang === "en";
+  return `<div class="sources"><b>${esc(en ? "Articles read" : "যে নিবন্ধ পড়া হয়েছে")}</b>${pages.map(p => `<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || siteHost(p.url) || p.url)}</a>`).join("")}</div>`;
 }
 function catalogBrief() {
   return SERVICES.map(s => { const d = s[settings.lang] || s.bn; return s.id + " | " + d.n; }).join("\n");
@@ -4875,16 +4904,13 @@ async function runBiswasAgent(job, files) {
         seen.add(hit.url);
         const snippet = String(hit.text || "");
         let one = { title: hit.title, url: hit.url, text: "", more: [] };
-        if (snippet.length < 900) {
-          mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
-          try {
-            const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
-            if (rr.ok) one = await rr.json();
-          } catch (e) { /* keep the engine text */ }
-        } else {
-          mark((settings.lang === "en" ? "From " : "সূত্র ") + (hit.title || hit.url));
-        }
-        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n").slice(0, 2800);
+        mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
+        try {
+          const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
+          if (rr.ok) one = await rr.json();
+        } catch (e) { /* the snippet remains only if the page itself did not open */ }
+        const opened = String(one.text || "");
+        const text = (opened.length > 180 ? opened : [opened, snippet].filter(t => t.length > 40).join("\n")).slice(0, 4500);
         if (text.length < 80) {
           ai.log[ai.log.length - 1] += settings.lang === "en" ? " — not a page" : " — পাতা নয়";
           ai.pages = snap();
@@ -4940,14 +4966,14 @@ async function runBiswasAgent(job, files) {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
     let webLeft = 32000;
-    const web = pages.map(p => { const bit = String(p.text || "").slice(0, Math.min(1400, Math.max(0, webLeft))); webLeft -= bit.length; return bit ? "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + bit : ""; }).filter(Boolean).join("\n\n");
+    const web = pages.map(p => { const bit = String(p.text || "").slice(0, Math.min(1800, Math.max(0, webLeft))); webLeft -= bit.length; return bit ? (p.title || siteHost(p.url) || "Article") + "\n" + p.url + "\n" + bit : ""; }).filter(Boolean).join("\n\n");
     let sys = officeFile(job)
       ? yearLine() + `\nYou are the research agent. You are not the public helper and not the office notesheet writer. ${lang} The job is about a West Bengal office rule. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only because the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. A figure, fee or date is a fact only when two pages agree. Do not show an audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date.\n\n` + auditHead(pages)
-      : yearLine() + `\nYou are the research agent. You are not the public scheme helper and not the office notesheet writer. ${lang} Answer every part of the job, in order. Use only the pages that were opened. Do not stop after the first fact. Do not mention a West Bengal scheme, DCRB, a pension, Annapurna, a fire licence, or land records unless the job asked about that. Do not answer from Bangladesh unless the job asked about Bangladesh. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
+      : yearLine() + `\nYou are the research agent. You are not the public scheme helper and not the office notesheet writer. ${lang} Answer every part of the job, in order. You already read the articles below, one by one. Write as a news researcher or a scientific note, in your own words. Never name Tavily, Exa, Serper, Parallel, Firecrawl, Keiro, Bing, or DuckDuckGo. Never say what a search tool reported. Cite the publication and its URL. Structure: what was asked; what the articles show; where they agree; where they disagree; what is still not in the articles; what to do next. A figure is allowed only when an article states it. One website: mark (one source). Two different websites: you may call it confirmed. Do not use a 2023 or 2024 number as today's number. Do not mention a West Bengal scheme unless the job asked. Do not shorten. Attach the full article once as a docx+pdf file.\n\n`;
     if (officeFile(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
     if (officeFile(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
-    sys += "\n\nCURATOR: You opened " + pages.length + " sources. Write one long answer from A to Z with headings. Cover every part of the job. After each important fact, name the page and its URL. Do not mention other AIs. Do not shorten. Do not turn the job into a West Bengal scheme unless the job asked for one. If fewer than 30 sources opened, say how many opened and still answer in full from those pages.";
+    sys += "\n\nYou read " + pages.length + " articles in full. Write the long article now. If fewer than 30 opened, say how many, then still write the full article from those articles. End with one attachment block, type docx+pdf, containing the same article.";
     if (fileNote) sys += "\n\nThe user attached files. Answer from these first. Do not say the file is missing. Do not change the subject of the file.\n" + fileNote.slice(0, 24000);
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : (m.shown || m.content) }));
@@ -4955,7 +4981,7 @@ async function runBiswasAgent(job, files) {
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
     const checkSys = officeFile(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
-      : `You are the editor. ${lang} The note must answer every part of the job. Keep facts that the pages support. Delete any paragraph about a government scheme, pension, DCRB, Annapurna, Lakshmir Bhandar, or land records if the job did not ask about that. Delete a line that says a fact is missing when another page states it. Do not invent a score. Return only the corrected note.`;
+      : `You are the editor. ${lang} Keep this as one long research article. Delete any sentence that names Tavily, Exa, Serper, Parallel, Firecrawl, or Keiro. Delete a figure that the articles do not state. Keep headings, agreements, disagreements, and the docx attachment. Do not shorten. Return the full article.`;
     const draftParts = window.BA ? BA.parse(draft.text) : { text: draft.text, atts: [] }; // files skip the editor pass, then come back
     // code, JSON and table blocks are kept verbatim; the editor and cleaners only see a placeholder.
     const kept = [];
@@ -4974,7 +5000,12 @@ async function runBiswasAgent(job, files) {
     const segs = edited.split(/(\[\[KEEP\d+\]\])/);
     ai.content = segs.map(sg => { const m = sg.match(/^\[\[KEEP(\d+)\]\]$/); return m ? "\n" + (kept[Number(m[1]) - 1] || "") + "\n" : sg.trim() ? hideAudit(dropCutoff(cleanAgent(sg), job)) : sg; }).join("").replace(/\n{3,}/g, "\n\n").trim();
     if (draftParts.atts.length) ai.content = BA.join(ai.content, draftParts.atts);
-    mark(settings.lang === "en" ? "Finished. " + pages.length + " pages read." : "শেষ। " + pages.length + "টি পাতা পড়া হয়েছে।");
+    ai.content = hideEngines(ai.content);
+    if (!/```attachment/.test(ai.content) && String(ai.content || "").length > 500) {
+      const prose = String(ai.content).replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000);
+      if (prose.length > 400) ai.content += docxFence(prose, "research-note");
+    }
+    mark(settings.lang === "en" ? "Finished. " + pages.length + " articles read." : "শেষ। " + pages.length + "টি নিবন্ধ পড়া হয়েছে।");
     ai.done = true;
     cur.at = Date.now();
     saveAgent();
@@ -5121,7 +5152,18 @@ async function ask(text) {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
     const officeExtra = "\nOFFICE SKILL: You are Office AI, separate from Biswas AI chat. Read every attached file in full. Write the whole paper. Use office memory. When a document is requested, use a <<<DOC>>> block and also one docx+pdf attachment of that same paper.";
-    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law;
+    let opened = [];
+    if (mode === "ai" && !hasFile && needsLive(text)) {
+      ai.browse = true;
+      ai.content = settings.lang === "en" ? "Opening today's pages before answering…" : "উত্তরের আগে আজকের পাতা খুলছি…";
+      if (live()) updateAt(box.indexOf(ai));
+      opened = await fetchLive(text, chatCtl.signal);
+      ai.pages = opened;
+      ai.browseAt = 0;
+      ai.content = "";
+      if (live()) updateAt(box.indexOf(ai));
+    }
+    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law + liveBlock(opened, !hasFile && needsLive(text));
     const rewrite = hasFile && raw.length > 1200 && mode === "office";
     let r;
     if (rewrite) {
@@ -5145,7 +5187,10 @@ async function ask(text) {
     }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
     if (mode === "ai") {
-      const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines.concat(autoFacts(text, ai.content)), "chat");
+      try {
+        if (needsLive(text)) ai.content = staleYear(ai.content, ai.pages);
+        const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines.concat(autoFacts(text, ai.content)), "chat");
+      } catch (eMem) { /* a memory save must not turn the answer into a connection error */ }
     }
     if (agent) {
       const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines, "office");
@@ -5155,9 +5200,13 @@ async function ask(text) {
     if (r.truncated && !/```attachment/.test(String(r.text || ""))) ai.error = errText("cut");
   } catch (e) {
     const code = e && e.code;
-    ai.content = code === "refused" ? "" : ((e && e.text) || ai.content);
+    const streamed = String(ai.content || "");
+    const partial = String((e && e.text) || "");
+    const best = partial.trim().length > streamed.trim().length ? partial : streamed;
+    ai.content = code === "refused" ? "" : best;
     if (code === "cancelled") { if (!ai.content) ai.content = t("stopped"); }
-    else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
+    else if ((code === "rate_limited" || code === "all_failed" || code === "upstream_error" || code === "timeout") && fromPages(ai.pages)) { ai.content = fromPages(ai.pages); ai.error = ""; }
+    else if (String(ai.content || "").trim().length > 160) { ai.error = ""; }
     else ai.error = aiFailed(e);
   } finally {
     if (chatCtl === mine) chatCtl = null;
@@ -5884,7 +5933,11 @@ function renderOtherView() {
     }
     thread.innerHTML = jobs.map(({ ask, ans }) => {
       const n = ans && ans.panel ? ans.panel.filter(a => a && a.text && !a.error).length : 0;
-      const head = n ? (settings.lang === "en" ? n + " AIs answered. Their files are under each reply." : n + "টি AI উত্তর দিয়েছে। ফাইল প্রতিটি উত্তরের নিচে।") : "";
+      const packed = String((ans && ans.content) || "") + ((ans && ans.panel) || []).map(a => a && a.text || "").join("\n");
+      const filesBack = /```attachment/.test(packed);
+      const head = n
+        ? (settings.lang === "en" ? n + " AIs answered" + (filesBack ? ". The file is below." : ".") : n + "টি AI উত্তর দিয়েছে" + (filesBack ? "। ফাইল নিচে।" : "।"))
+        : (ans && ans.pages && ans.pages.length ? (settings.lang === "en" ? ans.pages.length + " pages opened." : ans.pages.length + "টি পাতা খোলা হয়েছে।") : "");
       return `<article class="job"><p class="job-ask">${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p>${head ? `<p class="thought">${esc(head)}</p>` : ""}${ans && ans.content ? `<div class="doc">${mdToHtml(ans.content)}</div>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() }))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}${panelHtml(ans)}</article>`;
     }).join("");
     const sc = $("#ot-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
@@ -5935,25 +5988,49 @@ async function runOther(job, files) {
   const en = settings.lang === "en";
   try {
     const imgs = attachImages(files || []);
+    let pages = [];
+    if (needsLive(job)) {
+      ai.content = en ? "Opening today's pages, then asking the other AIs…" : "আজকের পাতা খুলে তারপর অন্য AI-কে জিজ্ঞাসা করছি…";
+      renderOtherView();
+      pages = await fetchLive(job, otCtl.signal);
+      ai.pages = pages;
+      ai.content = "";
+      renderOtherView();
+    }
     let rows = [];
-    try { rows = await askPanel(job || "Read the attachment and return the full result.", [], raw, imgs, raw ? 7000 : 3600, otCtl.signal); } catch (e) { rows = []; }
-    const good = (rows || []).filter(a => a && a.text && !a.error);
+    try { rows = await askPanel(job || "Read the attachment and return the full document.", pages, raw, imgs, raw ? 7000 : 5000, otCtl.signal); } catch (e) { rows = []; }
+    const refuse = /not included in the pages|do not have|don't have|cannot see|can't see|please consult|please check|check the (?:official|latest)|my knowledge|no real-time|not available in the provided/i;
+    const good = (rows || []).filter(a => a && a.text && !a.error && (raw || String(a.text).length > 700 || !refuse.test(a.text)));
     const base = (fileNames[0] || "other-ai").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-") || "other-ai";
     ai.panel = good.map((a, i) => {
-      const wrapped = (raw || /docx|pdf|xlsx|excel|word|table|টেবিল|ফাইল/i.test(job)) ? panelFile(a.text, base + "-" + (a.provider || i)) : "";
-      return { provider: a.provider, model: a.model, text: wrapped || a.text, error: "" };
+      const wrapped = raw ? (panelFile(a.text, base + "-" + (a.provider || i)) || a.text) : a.text;
+      return { provider: a.provider, model: a.model, text: wrapped, error: "" };
     });
-    const bundle = good.map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + String(a.text || "").slice(0, 4000)).join("\n\n").slice(0, 24000);
+    const pageNote = pages.map(p => (p.title || "") + "\n" + p.url + "\n" + String(p.text || "").slice(0, 1200)).join("\n\n").slice(0, 16000);
+    const bundle = good.map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + String(a.text || "").slice(0, 2500)).join("\n\n").slice(0, 14000);
     if (bundle) {
-      const sys = yearLine() + "\nYou are the skill layer on the Other AI page, October 2026. You are not Biswas AI chat and not Office AI. The free AIs already answered. Keep their facts. If they wrote a document, a table, or a spreadsheet, emit downloadable attachment blocks (docx+pdf, and xlsx when there is a table). Keep every name, amount and row. Do not say you cannot see the file. Do not apologize. A short line, then the files.\n\nTHEIR OUTPUT:\n" + bundle + (raw ? "\n\nORIGINAL FILE:\n" + raw.slice(0, 12000) : "");
+      const sys = yearLine() + "\nYou are the skill layer on the Other AI page. Write one long note and attach it as docx+pdf (and xlsx if there is a table). Current figures may come only from SOURCE PAGES. Do not tell the user to visit another website instead of writing the note. Do not invent a 2023 or 2024 figure. If a file was attached, the ATTACHED DOCUMENT is that file: read it and return the full corrected document in the attachment. Do not say you cannot see it.\n\nSOURCE PAGES:\n" + (pageNote || "(none)") + (bundle ? "\n\nOTHER AI NOTES (use only what matches the pages or the file):\n" + bundle : "") + (raw ? "\n\nATTACHED DOCUMENT:\n" + raw.slice(0, 20000) : "");
       try {
-        const r = await aiRunFull([{ role: "user", content: job || "Package their output as files." }], { fast: false, skills: true, maxOut: 8192, images: imgs, signal: otCtl.signal, system: sys, onText: ({ text: bit }) => { ai.content = bit; renderOtherView(); } });
+        const r = await aiRunFull([{ role: "user", content: job || "Write the full note and attach the file." }], { fast: false, skills: true, maxOut: 8192, images: imgs, signal: otCtl.signal, system: sys, onText: ({ text: bit }) => { ai.content = bit; renderOtherView(); } });
         ai.content = r.text || "";
       } catch (e2) {
-        ai.content = en ? good.length + " AIs answered. Their replies are below." : good.length + "টি AI উত্তর দিয়েছে। উত্তর নিচে।";
+        ai.content = pageNote ? (en ? "The other AIs did not finish. The note below is from the pages that opened." : "অন্য AI শেষ করেনি। নিচের নোট খোলা পাতা থেকে।") + "\n\n" + pageNote : (en ? "No answer came back. Try again." : "এখন উত্তর আসেনি। আবার চেষ্টা করুন।");
+      }
+    } else if (pageNote || raw) {
+      const sys = yearLine() + "\nWrite the full note from the pages or the attached file. Attach it as docx+pdf. Do not invent today's figures. Do not refuse.\n\nSOURCE PAGES:\n" + (pageNote || "(none)") + (raw ? "\n\nATTACHED DOCUMENT:\n" + raw.slice(0, 20000) : "");
+      try {
+        const r = await aiRunFull([{ role: "user", content: job || "Write the full note and attach the file." }], { fast: false, skills: true, maxOut: 8192, images: imgs, signal: otCtl.signal, system: sys });
+        ai.content = r.text || pageNote || "";
+      } catch (e2) {
+        ai.content = pageNote || (en ? "The file was read. The note is attached." : "ফাইল পড়া হয়েছে। নোট সংযুক্ত।");
       }
     } else {
       ai.content = en ? "No answer came back. Try again." : "এখন উত্তর আসেনি। আবার চেষ্টা করুন।";
+    }
+    if (!/```attachment/.test(String(ai.content || ""))) {
+      const prose = String(ai.content || "").replace(/```[\s\S]*?```/g, "").trim();
+      const body = prose.length > 400 ? prose.slice(0, 14000) : String(raw || "").slice(0, 18000);
+      if (body.length > 80) ai.content = String(ai.content || "") + docxFence(body, raw ? (base + "-note") : "market-note");
     }
     ai.done = true;
     cur.at = Date.now();

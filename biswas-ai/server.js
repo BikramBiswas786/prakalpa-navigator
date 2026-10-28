@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "167";
+const BUILD = "168";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -155,7 +155,7 @@ function stripPage(html) {
     .replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 3500);
+    .slice(0, 6000);
 }
 function isWall(text) {
   const t = String(text || "").slice(0, 500).toLowerCase();
@@ -177,8 +177,8 @@ function readableText(html) {
   const paras = [...raw.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
     .map(x => decodeBasic(x[1].replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim())
     .filter(t => t.length > 40)
-    .slice(0, 14);
-  const joined = bits.concat(paras).join("\n\n").slice(0, 4500);
+    .slice(0, 28);
+  const joined = bits.concat(paras).join("\n\n").slice(0, 7000);
   if (joined.length > 80 && !isWall(joined)) return joined;
   const plain = stripPage(raw);
   return plain.length > 80 && !isWall(plain) ? plain : "";
@@ -926,11 +926,34 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/api/research" && req.method === "POST") {
-      if (limited(req, "research", 20, 60 * 1000)) { tooMany(res); return; }
+      if (limited(req, "research", 70, 60 * 1000)) { tooMany(res); return; }
       const chunks = []; let size = 0;
       for await (const c of req) { size += c.length; if (size > 20000) { res.writeHead(413).end(); return; } chunks.push(c); }
       let body = {};
       try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")) || {}; } catch (e) { body = {}; }
+      if (body.live) {
+        const qLive = String(body.q || "").slice(0, 180).trim();
+        const hits = qLive ? await searchMore(qLive, { wide: true }) : [];
+        const picks = [];
+        const seenLive = new Set();
+        for (const h of hits) {
+          if (!h || !h.url || seenLive.has(h.url)) continue;
+          seenLive.add(h.url);
+          picks.push(h);
+          if (picks.length >= 8) break;
+        }
+        const openedLive = await Promise.all(picks.slice(0, 6).map(async (h) => {
+          let text = "";
+          try { text = String((await openReadable(h.url)).text || ""); } catch (e) { text = ""; }
+          if (text.length < 180) text = [text, String(h.text || "")].filter(t => String(t).length > 40).join("\n");
+          return { title: h.title || h.url, url: h.url, text: String(text || "").slice(0, 2200) };
+        }));
+        const extraLive = picks.slice(6).map(h => ({ title: h.title || h.url, url: h.url, text: String(h.text || "").slice(0, 1400) }));
+        const pagesLive = openedLive.concat(extraLive).filter(p => p && p.url && String(p.text || "").replace(/\s+/g, " ").trim().length > 40);
+        res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        res.end(JSON.stringify({ pages: pagesLive.slice(0, 8) }));
+        return;
+      }
       if (body.url) {
         try {
           const safe = safeHttpUrl(String(body.url));
