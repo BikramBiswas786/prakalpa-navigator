@@ -905,7 +905,7 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
             </button>
             <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-browser" data-t="browse_btn"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -1331,7 +1331,7 @@ const STR = {
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
     ag_google: "গুগল", ag_google_d: "চালু থাকলে গুগলের খবরের পাতাও খোলে",
-    ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. সার্চ ইঞ্জিন", ag_s3: "৩. যাচাই করা উত্তর",
+    ag_job: "কাজ", ag_s1: "১. সিদ্ধান্ত", ag_s2: "২. নিবন্ধ", ag_s3: "৩. যাচাই করা উত্তর",
     ag_browse: "পাতা খুলছি…", ag_sources: "যে পাতা খোলা হয়েছিল",
     ag_step1: "ভাবছি…", ag_step2: "লিখছি…", ag_step3: "মিলিয়ে দেখছি…",
     ag_free: "স্বাধীন এজেন্ট", ag_free_d: "নিজে ঠিক করে খোঁজে, লেখে, একবার যাচাই করে।",
@@ -1405,7 +1405,7 @@ const STR = {
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
     ag_google: "Google", ag_google_d: "When on, also opens pages found through Google News",
-    ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Search engines", ag_s3: "3. Checked reply",
+    ag_job: "Job", ag_s1: "1. Decision", ag_s2: "2. Articles", ag_s3: "3. Checked reply",
     ag_browse: "Opening pages…", ag_sources: "Pages opened",
     ag_step1: "Thinking…", ag_step2: "Writing…", ag_step3: "Checking…",
     ag_free: "Independent agent", ag_free_d: "Decides, looks up, writes, then checks once.",
@@ -2683,13 +2683,56 @@ When you learn a lasting fact (name, job, place, preference, or a correction), a
 - one fact per line
 <<<END MEMORY>>>
 Skip that block when nothing new should be remembered.
-Do not turn a normal question into a West Bengal scheme card or a notesheet. Bengali is the language, not a switch to Bangladesh. Never invent government order numbers, fees or dates.
+Do not turn a normal question into a West Bengal scheme card or a notesheet. Bengali is the language, not a switch to Bangladesh. Never invent government order numbers, fees, dates, winners, or scores. If pages were opened, they override memory.
 A price, index, score, or other "today" figure is allowed only when a page opened for this turn states that exact figure. If no page was opened, say the pages did not open. Never present a remembered 2023 or 2024 number as today's number.
 When the user asks for a file, use the skill attachment blocks. A simple question does not need a file.`;
 }
 function needsLive(q) {
+  return factQuestion(q);
+}
+function factQuestion(q) {
   const s = String(q || "");
-  return /\b(today|current|latest|live|price|prices|market|sensex|nifty|stock|stocks|headline|news|2026)\b|right now|as of|আজ|আজকে|বর্তমান|বাজার|দাম|খবর|এখন|সেনসেক্স|নিফটি/i.test(s);
+  return /\b(what happened|who won|winner|winners|result|results|final|score|scores|today|latest|current|news|headline|price|prices|market|sensex|nifty|stock|stocks|world cup|fifa|election|died|killed|appointed|resigned)\b|already happened|tell ?me what|right now|as of|কী হল|কি হল|কে জিত|ফলাফল|আজ|আজকে|খবর|দাম|বর্তমান|সেনসেক্স|নিফটি/i.test(s);
+}
+function mustBrowse(q) {
+  const s = String(q || "").trim();
+  if (s.length < 12) return false;
+  if (/^(hi|hii|hello|hey|ok|okay|thanks|thank you|ধন্যবাদ|হাই|হ্যালো)[.! ]*$/i.test(s)) return false;
+  if (fileEditJob(s) && !/\b(what happened|who won|winner|world cup|fifa|sensex|nifty|election|score)\b/i.test(s)) return false;
+  if (/^(write|draft|compose|translate|rewrite|proofread|summarize|summarise|correct|fix|edit|make a poem|make a story|make a table|create a chart|generate an image|draw |লিখ|অনুবাদ|সারাংশ|ঠিক কর|কবিতা|ছবি)/i.test(s) && !factQuestion(s)) return false;
+  return true;
+}
+function fileEditJob(q) {
+  return /correct|grammar|spell|fix\b|edit|rewrite|proofread|format|translate|clean up|বানান|ব্যাকরণ|ঠিক কর|সংশোধন|এডিট|অনুবাদ/i.test(String(q || ""));
+}
+function browseQuery(text, turns) {
+  const now = String(text || "").replace(/\s+/g, " ").trim();
+  const earlier = (turns || []).filter(m => m.role === "user").slice(0, -1).slice(-2)
+    .map(m => String(m.shown || m.content || "").split("\n\n")[0].replace(/\s+/g, " ").trim().slice(0, 160))
+    .filter(Boolean).join(" ");
+  if (earlier && (now.length < 90 || /happened|what happened|who won|result|final|tell me|already|কী হল|কে জিত|ফলাফল/i.test(now))) {
+    return (earlier + " " + now).replace(/\s+/g, " ").trim().slice(0, 180);
+  }
+  return now.slice(0, 180);
+}
+function pageDigest(pages) {
+  const en = settings.lang === "en";
+  const head = en
+    ? "From the pages opened just now. A result is included only when that page states it.\n\n"
+    : "এইমাত্র খোলা পাতা থেকে। যে ফল পাতায় নেই, সেটা এখানে নেই।\n\n";
+  return head + (pages || []).slice(0, 8).map(p => "**" + (p.title || p.url) + "**\n" + (p.url || "") + "\n" + String(p.text || "").replace(/\s+/g, " ").trim().slice(0, 700)).join("\n\n");
+}
+async function groundFacts(question, draft, pages, signal) {
+  const kept = String(draft || "").match(/```attachment[\s\S]*?```/g) || [];
+  const g = await aiRun([{ role: "user", content: "Question:\n" + String(question || "").slice(0, 1200) + "\n\nDraft:\n" + String(draft || "").replace(/```attachment[\s\S]*?```/g, "").slice(0, 4500) }], {
+    fast: false,
+    maxOut: 4500,
+    signal,
+    system: yearLine() + liveBlock(pages, true) + "\nYou are the checker for Biswas AI. Rewrite the draft. Keep a fact only when a page above states it. Delete every winner, score, date, and event the pages do not state. If the pages answer the question, write that answer clearly and name the page. If they do not, say the opened pages do not state it. Do not keep an invented story. Do not name a search engine."
+  });
+  let out = String(g.text || "").trim();
+  if (kept.length && !/```attachment/.test(out)) out += "\n\n" + kept.join("\n\n");
+  return out;
 }
 async function fetchLive(q, signal) {
   try {
@@ -2701,9 +2744,10 @@ async function fetchLive(q, signal) {
 function liveBlock(pages, required) {
   if (!required) return "";
   const rows = pages || [];
-  if (!rows.length) return "\nNo page opened. Do not invent today's price, index, score, or date. Say the pages did not open. Do not use a 2023 or 2024 figure as if it were today.";
+  if (!rows.length) return "\nNo page opened. Do not invent what happened, a winner, a score, a price, or a date. Say the pages did not open. Do not write a highlight list from memory.";
   const body = rows.slice(0, 12).map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 1600)).join("\n\n").slice(0, 22000);
-  return "\nPAGES OPENED TODAY (" + today() + "). These are the only source for a price, an index, a score, or any other today-figure. If a number is not written below, do not state it. Do not recall 2023 or 2024 and call it current. Do not say you lack real-time access. Name the page.\n\n" + body;
+  if (!required) return "\nPAGES OPENED TODAY (" + today() + "). Use them when they answer the question. Do not contradict them.\n\n" + body;
+  return "\nPAGES OPENED TODAY (" + today() + "). These are the only source for what happened, who won, a score, a price, a date, or any result. If it is not written below, do not state it. Do not write a plausible story. Do not reuse 2022, 2023, or 2024 memory as the result. If these pages do not answer, say that in one short paragraph and list the titles. Name the page for every fact.\n\n" + body;
 }
 function staleYear(text, pages) {
   const ans = String(text || "");
@@ -4822,10 +4866,13 @@ async function runBiswasAgent(job, files) {
     try {
       ai.log = [];
       const mark = (line) => { ai.log.push(line); ai.think = line; renderAgentView(); };
-      mark(googleOn
-        ? (en ? "Reading the attachment. Google is on, so the web is searched too." : "সংযুক্তি পড়ছি। গুগল চালু, তাই ওয়েবও খোঁজা হচ্ছে।")
-        : (en ? "Reading the attachment. Google is off, so the web is not searched." : "সংযুক্তি পড়ছি। গুগল বন্ধ, তাই ওয়েব খোঁজা হচ্ছে না।"));
-      if (googleOn) {
+      const fix = fileEditJob(job);
+      mark(fix
+        ? (en ? "Reading the attachment. This is a file edit, so the web is not searched." : "সংযুক্তি পড়ছি। এটা ফাইল এডিট, তাই ওয়েব খোঁজা হচ্ছে না।")
+        : (googleOn
+          ? (en ? "Reading the attachment. Google is on, so the web is searched too." : "সংযুক্তি পড়ছি। গুগল চালু, তাই ওয়েবও খোঁজা হচ্ছে।")
+          : (en ? "Reading the attachment. Google is off, so the web is not searched." : "সংযুক্তি পড়ছি। গুগল বন্ধ, তাই ওয়েব খোঁজা হচ্ছে না।")));
+      if (googleOn && !fix) {
         try {
           const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: String(job || "").replace(/\s+/g, " ").trim().slice(0, 180), list: true, google: true }), signal: ctl ? ctl.signal : undefined });
           const data = rr.ok ? await rr.json() : {};
@@ -4848,33 +4895,36 @@ async function runBiswasAgent(job, files) {
       saveAgent();
       renderAgentView();
       const pageNote = pages.map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 900)).join("\n\n").slice(0, 6000);
+      const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
       if (!rawFile) {
-        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file." }], { fast: false, deep: true, signal: ctl.signal, system: yearLine() + "\nYou are the research agent, not Other AI. The user attached a picture or a file. Read it in full, including Bengali. Write a long answer. Do not say the file is missing. Do not call other AIs." + (pageNote ? "\n\nPages:\n" + pageNote : ""), skills: true, maxOut: 8192, images: attachImages(files) });
+        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file." }], { fast: false, deep: false, signal: ctl.signal, system: yearLine() + "\nYou are the research agent, not Other AI. The user attached a picture or a file. Read it in full, including Bengali. Write a long answer. Do not say the file is missing. Do not call other AIs." + (pageNote ? "\n\nPages:\n" + pageNote : ""), skills: true, maxOut: 8192, images: attachImages(files) });
         ai.content = r.text || (en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।");
+        if (!/```attachment/.test(String(ai.content || "")) && String(ai.content || "").length > 400) ai.content += docxFence(String(ai.content).replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000), base + "-note");
+      } else if (fix || rawFile.length > 1500) {
+        const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
+        const head = en
+          ? "The attachment was read in full and corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
+          : "সংযুক্তি পুরোটা পড়া হয়েছে এবং ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
+        ai.content = head + docxFence(full, base + "-corrected");
+        ai.pages = [];
       } else {
-        const fix = /correct|grammar|spell|fix\b|বানান|ব্যাকরণ|ঠিক কর/i.test(job);
-        const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
-        let fence = "";
-        if (fix) {
-          const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
-          const head = en
-            ? "The attachment was read in full. Grammar and spelling were corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
-            : "সংযুক্তি পুরোটা পড়া হয়েছে। ব্যাকরণ ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
-          fence = head + docxFence(full, base + "-corrected");
-        }
         mark(en ? "The analysis model is reading the full attachment." : "বিশ্লেষণ মডেল সংযুক্তি পুরোটা পড়ছে।");
-        const sys = yearLine() + "\nYou are the research agent. You are not Other AI and not Office AI. Read the attached file in full. " + (settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.") + " Write a long A-to-Z note: what the file is, the important facts, numbers, names, and what to do next. Quote the file. Do not say the file is missing. Do not mention other AIs. Do not turn this into a West Bengal scheme unless the job asked.\n\nFILE:\n" + rawFile.slice(0, 28000) + (pageNote ? "\n\nPAGES:\n" + pageNote : "");
-        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file and explain it in full." }], { fast: false, deep: true, signal: ctl.signal, system: sys, skills: true, maxOut: 8192, images: attachImages(files) });
-        ai.content = ((r.text || "") + (fence ? "\n\n" + fence : "")).trim();
+        const sys = yearLine() + "\nYou are the research agent. You are not Other AI and not Office AI. Read the attached file in full. " + (settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.") + " Write a long A-to-Z note: what the file is, the important facts, numbers, names, and what to do next. Quote the file. Do not say the file is missing. Do not mention other AIs. Do not turn this into a West Bengal scheme unless the job asked. End with one docx attachment of the full note.\n\nFILE:\n" + rawFile.slice(0, 28000) + (pageNote ? "\n\nPAGES:\n" + pageNote : "");
+        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file and explain it in full." }], { fast: false, deep: false, signal: ctl.signal, system: sys, skills: true, maxOut: 8192, images: attachImages(files) });
+        ai.content = String(r.text || "").trim();
         if (!ai.content) ai.content = en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।";
+        if (!/```attachment/.test(ai.content) && ai.content.length > 400) ai.content += docxFence(ai.content.replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000), base + "-note");
       }
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
     } catch (e) {
       const aborted = agentHalt || (e && (e.name === "AbortError" || e.code === "cancelled"));
-      ai.content = aborted ? t("stopped") : (en ? "The file could not be corrected just now. Try again." : "এখন ফাইলটা ঠিক করা গেল না। আবার চেষ্টা করুন।");
-      ai.error = aborted ? "" : aiFailed(e);
+      if (!aborted && /```attachment/.test(String(ai.content || ""))) ai.error = "";
+      else {
+        ai.content = aborted ? t("stopped") : (en ? "The file could not be corrected just now. Try again." : "এখন ফাইলটা ঠিক করা গেল না। আবার চেষ্টা করুন।");
+        ai.error = aborted ? "" : aiFailed(e);
+      }
       ai.done = true;
       saveAgent();
     } finally { finish(); }
@@ -4928,6 +4978,8 @@ async function runBiswasAgent(job, files) {
     mark(t("ag_search"));
     const useGoogle = googleOn;
     let ask = job;
+    const prevJob = cur.messages.filter(m => m.role === "user").slice(0, -1).slice(-1)[0];
+    if (prevJob && factQuestion(job) && String(job).length < 160) ask = (String(prevJob.shown || prevJob.content || "").split("\n\n")[0].slice(0, 140) + " " + job).replace(/\s+/g, " ").trim();
     const asked = new Set();
     async function searchAsk(q) {
       const query = String(q || job).replace(/\s+/g, " ").trim().slice(0, 220);
@@ -5153,17 +5205,19 @@ async function ask(text) {
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
     const officeExtra = "\nOFFICE SKILL: You are Office AI, separate from Biswas AI chat. Read every attached file in full. Write the whole paper. Use office memory. When a document is requested, use a <<<DOC>>> block and also one docx+pdf attachment of that same paper.";
     let opened = [];
-    if (mode === "ai" && !hasFile && needsLive(text)) {
+    const factual = mode === "ai" && !hasFile && factQuestion(text) && !fileEditJob(text);
+    const browse = mode === "ai" && !hasFile && (factual || mustBrowse(text));
+    if (browse) {
       ai.browse = true;
-      ai.content = settings.lang === "en" ? "Opening today's pages before answering…" : "উত্তরের আগে আজকের পাতা খুলছি…";
+      ai.content = settings.lang === "en" ? "Opening pages before answering…" : "উত্তরের আগে পাতা খুলছি…";
       if (live()) updateAt(box.indexOf(ai));
-      opened = await fetchLive(text, chatCtl.signal);
+      opened = await fetchLive(browseQuery(text, turns), chatCtl.signal);
       ai.pages = opened;
       ai.browseAt = 0;
       ai.content = "";
       if (live()) updateAt(box.indexOf(ai));
     }
-    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law + liveBlock(opened, !hasFile && needsLive(text));
+    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law + liveBlock(opened, factual);
     const rewrite = hasFile && raw.length > 1200 && mode === "office";
     let r;
     if (rewrite) {
@@ -5172,11 +5226,13 @@ async function ask(text) {
       const full = await correctChunks(raw, text, chatCtl.signal);
       const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
       r = { text: (settings.lang === "en" ? "Corrected from the attachment. Names, amounts and tables are kept. Download the Word file." : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।") + docxFence(full, base + "-corrected"), via: "file", truncated: false };
+    } else if (factual && !opened.length) {
+      r = { text: settings.lang === "en" ? "The pages did not open, so this reply will not guess what happened, who won, or a score. Ask the same question again." : "পাতা খোলেনি, তাই কী হলো বা কে জিতল সেটা অনুমান করা হচ্ছে না। একই প্রশ্ন আবার করুন।", via: "pages", truncated: false };
     } else {
       const chatSkills = mode === "ai" && (hasFile || replySize(text) >= 7000 || /word|pdf|excel|docx|xlsx|letter|notesheet|report|table|chart|চিঠি|নোট|রিপোর্ট|টেবিল|ফাইল/i.test(text));
-      const out = hasFile ? 8192 : mode === "office" ? 6400 : mode === "public" ? 1800 : replySize(text);
+      const out = hasFile ? 8192 : mode === "office" ? 6400 : mode === "public" ? 1800 : (factual ? 6400 : replySize(text));
       const sendTurns = (hasFile && mode !== "ai") ? turns.slice(-2) : turns;
-      const opt = { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: mode !== "office", skills: mode === "office" || chatSkills || (mode === "public" && !hasFile), maxOut: out, onText: ({ text: bit }) => { ai.content = bit; if (live()) updateAt(box.indexOf(ai)); } };
+      const opt = { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: mode !== "office" && !factual, skills: mode === "office" || chatSkills || (mode === "public" && !hasFile), maxOut: out, onText: ({ text: bit }) => { ai.content = bit; if (live()) updateAt(box.indexOf(ai)); } };
       try {
         r = await aiRunFull(sendTurns, opt);
       } catch (e1) {
@@ -5186,9 +5242,18 @@ async function ask(text) {
       }
     }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
+    if (mode === "ai" && factual && opened.length) {
+      const draft = ai.content;
+      ai.content = settings.lang === "en" ? "Checking the answer against the pages…" : "উত্তরটা পাতার সঙ্গে মিলিয়ে দেখছি…";
+      if (live()) updateAt(box.indexOf(ai));
+      try {
+        const grounded = await groundFacts(text, draft, opened, chatCtl.signal);
+        ai.content = grounded.length > 80 ? grounded : pageDigest(opened);
+      } catch (eG) { ai.content = pageDigest(opened); }
+    }
     if (mode === "ai") {
       try {
-        if (needsLive(text)) ai.content = staleYear(ai.content, ai.pages);
+        if (factual) ai.content = staleYear(ai.content, ai.pages);
         const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines.concat(autoFacts(text, ai.content)), "chat");
       } catch (eMem) { /* a memory save must not turn the answer into a connection error */ }
     }
@@ -5988,11 +6053,22 @@ async function runOther(job, files) {
   const en = settings.lang === "en";
   try {
     const imgs = attachImages(files || []);
-    let pages = [];
-    if (needsLive(job)) {
-      ai.content = en ? "Opening today's pages, then asking the other AIs…" : "আজকের পাতা খুলে তারপর অন্য AI-কে জিজ্ঞাসা করছি…";
+    if (raw && fileEditJob(job)) {
+      const baseEdit = (fileNames[0] || "corrected").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-") || "corrected";
+      ai.content = en ? "Correcting the file in parts…" : "ফাইল অংশ অংশ ঠিক করছি…";
       renderOtherView();
-      pages = await fetchLive(job, otCtl.signal);
+      const full = await correctChunks(raw, job, otCtl.signal);
+      ai.content = (en ? "Corrected from the attachment. Names, amounts and tables were kept. Download the Word file." : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।") + docxFence(full, baseEdit + "-corrected");
+      ai.panel = [];
+      ai.done = true;
+      cur.at = Date.now();
+      saveOther();
+    } else {
+    let pages = [];
+    if (factQuestion(job) || mustBrowse(job)) {
+      ai.content = en ? "Opening pages, then asking the other AIs…" : "পাতা খুলে তারপর অন্য AI-কে জিজ্ঞাসা করছি…";
+      renderOtherView();
+      pages = await fetchLive(browseQuery(job, cur.messages), otCtl.signal);
       ai.pages = pages;
       ai.content = "";
       renderOtherView();
@@ -6035,6 +6111,7 @@ async function runOther(job, files) {
     ai.done = true;
     cur.at = Date.now();
     saveOther();
+    }
   } catch (e) {
     ai.content = (e && (e.name === "AbortError" || e.code === "cancelled")) ? t("stopped") : (en ? "Try again." : "আবার চেষ্টা করুন।");
     ai.error = "";
