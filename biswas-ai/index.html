@@ -105,13 +105,13 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 #conv-list { max-height: 42vh; overflow: auto; }
 .hist { min-height: 0; overflow: auto; padding: 12px; display: grid; align-content: start; gap: 8px; background: var(--surface); border-right: 1px solid var(--line); }
 .word-folder { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
-#hist-sheet, #ag-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
+#hist-sheet, #ag-sheet, #ot-sheet { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(380px, 100%); background: var(--paper); color: var(--ink); display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; padding: max(16px, env(safe-area-inset-top, 0px)) 16px 16px; }
 #hist-sheet { grid-template-rows: auto auto auto minmax(0, 1fr); }
-#hist-sheet[hidden], #ag-sheet[hidden] { display: none !important; }
+#hist-sheet[hidden], #ag-sheet[hidden], #ot-sheet[hidden] { display: none !important; }
 .sheet-top { display: flex; align-items: center; gap: 8px; }
 .sheet-top b { margin-right: auto; font-family: var(--f-display); font-size: 1.25rem; }
 #sheet-q { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; }
-#sheet-list, #ag-sheet-list { overflow: auto; display: grid; align-content: start; gap: 8px; }
+#sheet-list, #ag-sheet-list, #ot-sheet-list { overflow: auto; display: grid; align-content: start; gap: 8px; }
 #sheet-list h3.conv-sec, #chat-conv h3.conv-sec { margin: 16px 0 6px; font-size: .82rem; letter-spacing: .02em; color: var(--muted); }
 .welcome.home { justify-items: center; text-align: center; padding-top: 10vh; }
 .welcome.home .mark { width: 48px; height: 48px; }
@@ -172,9 +172,9 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 #v-chat .banner { grid-row: 1; }
 #v-chat .scroll { grid-row: 2; }
 #v-chat .composer { grid-row: 3; }
-#v-agent { grid-template-rows: minmax(8rem, 1fr) auto; }
-#v-agent .scroll { grid-row: 1; min-height: 8rem; }
-#v-agent .composer { grid-row: 2; }
+#v-agent, #v-others { grid-template-rows: minmax(8rem, 1fr) auto; }
+#v-agent .scroll, #v-others .scroll { grid-row: 1; min-height: 8rem; }
+#v-agent .composer, #v-others .composer { grid-row: 2; }
 #v-agent .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .sources { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .sources a { color: var(--accent); overflow-wrap: anywhere; }
@@ -186,7 +186,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .browser-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 6px 8px; }
 .browser-tabs .chip { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .browser-url { font-size: .75rem; color: var(--muted); padding: 0 10px 6px; overflow-wrap: anywhere; }
-.browser-page { max-height: 132px; overflow: auto; margin: 0; padding: 0 10px 8px; font-size: .82rem; white-space: pre-wrap; }
+.browser-page { max-height: 240px; overflow: auto; margin: 0; padding: 0 10px 8px; font-size: .82rem; white-space: pre-wrap; }
 .job { border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin: 0 0 12px; background: var(--surface); }
 .job-ask { margin: 0 0 10px; font-weight: 600; }
 .job-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
@@ -848,6 +848,23 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
       </div>
     </section>
 
+    <section class="view chat" id="v-others" hidden>
+      <div class="scroll" id="ot-scroll"><div class="thread" id="ot-thread"></div></div>
+      <div class="composer"><div class="inner">
+        <div class="pending" id="ot-pending"></div>
+        <form class="box" id="ot-form">
+          <input type="file" id="ot-file" multiple hidden accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,image/*">
+          <button class="iconbtn" type="button" id="ot-attach" aria-label="Attach">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+          </button>
+          <textarea id="ot-job" rows="1" enterkeyhint="send" data-t-ph="ot_ph"></textarea>
+          <button class="iconbtn send" type="submit" id="ot-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+          <button class="btn small" type="button" id="ot-pause" data-t="pause" hidden></button>
+        </form>
+        <div class="hint"><button class="btn small" type="button" id="ot-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ot-new" data-t="newchat"></button></div>
+      </div></div>
+    </section>
+
     <section class="view chat" id="v-agent" hidden>
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
@@ -1034,6 +1051,15 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
   </form>
 </div>
 
+<aside id="ot-sheet" hidden>
+  <div class="sheet-top">
+    <b data-t="ot_h">Other AI</b>
+    <button class="btn small" type="button" id="ot-sheet-new" data-t="newchat"></button>
+    <button class="btn small" type="button" id="ot-sheet-close" data-t="cancel"></button>
+  </div>
+  <button class="textlink" type="button" data-ot-arch></button>
+  <div id="ot-sheet-list"></div>
+</aside>
 <aside id="ag-sheet" hidden>
   <div class="sheet-top">
     <b data-t="conv_h">কথোপকথন</b>
@@ -1291,17 +1317,17 @@ const STR = {
     c_search: "প্রকল্প বা পরিষেবা খুঁজুন… (যেমন: পেনশন, কৃষক, জাতি)", c_note: "তথ্য অক্টোবর ২০২৬ পর্যন্ত। বর্তমান রাজ্য সরকারের নাম, পুরনো নাম নিচে। 'খবর অনুযায়ী' ও 'অনিশ্চিত' তথ্য সরকারি পোর্টালে মিলিয়ে নিন।", c_count: n => `${n}টি প্রকল্প ও পরিষেবা`, by_state: "রাজ্য", by_central: "কেন্দ্র",
     dt_back: "← সব প্রকল্প", dt_benefit: "কী পাবেন", dt_crit: "যোগ্যতার শর্ত", dt_docs: "প্রয়োজনীয় নথি", dt_steps: "কীভাবে আবেদন করবেন", dt_links: "আবেদন / তথ্যের লিঙ্ক", dt_help: "হেল্পলাইন", dt_note: "জরুরি তথ্য", dt_ask: "এই প্রকল্প নিয়ে AI-কে প্রশ্ন", dt_app: "আবেদনপত্র লিখিয়ে নিন", dt_nolink: "সরকারি আবেদনের লিঙ্ক এখনও প্রকাশিত হয়নি।", dt_updated: "তথ্য: অক্টোবর ২০২৬",
     ask_app: n => `${n}-এর জন্য একটি আবেদনপত্র লিখে দিন। আমার নাম, ঠিকানা ও অন্যান্য ব্যক্তিগত তথ্যের জায়গা ফাঁকা রাখুন।`,
-    tab_bikram: "বিশ্বাস AI", tab_deskchat: "ড্রাফটিং ডেস্ক চ্যাট", deskchat_pick: "আগে একটি কাজ বেছে নিন।", ph_bikram: "বিশ্বাস AI-কে লিখুন… যেমন: শো-কজ নোটিশের একটা নোটশিট লাগবে",
-    bk_hello_h: "নমস্কার, আমি বিশ্বাস AI", bk_hello_p: "কী তৈরি করবেন বলুন — নোটশিট, খসড়া চিঠি, আদেশ, নোটিশ, রিপোর্ট, Excel, Word বা PDF। দরকারি তথ্য আমি জিজ্ঞাসা করে নেব, তারপর অনুচ্ছেদে লিখে দেব। প্রিন্ট, Word, PDF, Excel বোতাম লেখার নিচেই থাকবে। যত কাজ করবেন, তত আপনার অফিসের নাম, ফরম্যাট ও পছন্দ মনে রাখব।",
+    tab_bikram: "বিশ্বাস AI", tab_office_ai: "অফিস AI", tab_deskchat: "ড্রাফটিং ডেস্ক চ্যাট", deskchat_pick: "আগে একটি কাজ বেছে নিন।", ph_bikram: "বিশ্বাস AI-কে লিখুন… যেমন: শো-কজ নোটিশের একটা নোটশিট লাগবে",
+    bk_hello_h: "নমস্কার, আমি অফিস AI", bk_hello_p: "কী তৈরি করবেন বলুন — নোটশিট, খসড়া চিঠি, আদেশ, নোটিশ, রিপোর্ট, Excel, Word বা PDF। দরকারি তথ্য আমি জিজ্ঞাসা করে নেব, তারপর অনুচ্ছেদে লিখে দেব। প্রিন্ট, Word, PDF, Excel বোতাম লেখার নিচেই থাকবে। যত কাজ করবেন, তত আপনার অফিসের নাম, ফরম্যাট ও পছন্দ মনে রাখব।",
     bk_choices: [["নোটশিট", "SDO-র কাছে পেশ", "আমি একটি নোটশিট তৈরি করতে চাই।"], ["খসড়া চিঠি (DFA)", "SDO-র স্বাক্ষরের জন্য", "আমি SDO-র স্বাক্ষরের জন্য একটি খসড়া চিঠি তৈরি করতে চাই।"], ["অফিস আদেশ", "মেমোরান্ডাম / আদেশ", "আমি একটি অফিস আদেশ তৈরি করতে চাই।"], ["নোটিশ", "শুনানি / শো-কজ", "আমি একটি নোটিশ (শুনানি / শো-কজ) তৈরি করতে চাই।"], ["রিপোর্ট", "এনকোয়ারি / মাসিক / পুনর্যাচাই", "আমি একটি রিপোর্ট তৈরি করতে চাই।"], ["Excel টেবিল", "তালিকা, হিসাব, বিবরণী", "আমি একটি Excel টেবিল তৈরি করতে চাই।"], ["Word / PDF ফাইল", "যেকোনো চিঠি বা নথি", "আমি একটি Word / PDF ফাইল তৈরি করতে চাই।"], ["অন্য কিছু", "যা দরকার বলুন", "নমস্কার, আমার একটা কাজে সাহায্য দরকার।"]],
     doc_print: "প্রিন্ট", doc_approve: "অনুমোদিত হিসেবে রাখুন", doc_approved: "রাখা হয়েছে। পরের খসড়ায় বিশ্বাস AI এই ধরন মেনে চলবে।", doc_saved: "নথি সংশোধিত",
     mem_btn: "স্মৃতি", mem_title: "বিশ্বাস AI-এর স্মৃতি", mem_help: "বিশ্বাস AI কথাবার্তা থেকে স্থায়ী তথ্য (নাম, পদ, অফিস, পছন্দের ফরম্যাট, সংশোধন) মনে রাখে এবং অনুমোদিত খসড়ার ধরন মেনে চলে। স্মৃতি এই ব্রাউজারে থাকে; অন্য কম্পিউটারে নিতে ফাইলে রাখুন।", mem_facts: "মনে রাখা তথ্য", mem_examples: "অনুমোদিত খসড়ার নমুনা", mem_add: "যোগ করুন", mem_add_ph: "নতুন তথ্য, যেমন: স্বাক্ষরকারী — শ্রী অমুক, মহকুমা শাসক, কালনা",
     mem_export: "স্মৃতি ফাইলে রাখুন", mem_import: "স্মৃতি ফাইল খুলুন", mem_clear: "সব মুছুন", mem_empty: "এখনও কিছু নেই।", mem_cleared: "স্মৃতি মুছে ফেলা হয়েছে", mem_imported: "স্মৃতি যোগ হয়েছে", mem_learned: "নতুন মনে রাখলাম: ",
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
-    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "এটা কথোপকথন। প্রশ্ন করলে আগে পাতা খুলে পড়ে, তারপর উত্তর দেয়। একটা কাজ শেষ করতে এজেন্ট খুলুন।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "একজন এজেন্ট। গুগল চালু থাকলে খবরের পাতাও খোলে। আগে তিনটা খোঁজ ঠিক করে, তারপর পাতা পড়ে, নোট লেখে, নোট মিলিয়ে দেখে। কয়েক মিনিট লাগে। কোনো সাইটে লগইন করে না।",
-    ag_ph: "একটা কাজ লিখুন। এজেন্ট কয়েকটা পাতা পড়ে শেষ করবে।",
+    nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "বিশ্বাস AI চ্যাট। অক্টোবর ২০২৬। উত্তর প্রশ্নের মাপমতো বড় হয়। স্মৃতি বাড়ে। গভীর খোঁজ এজেন্টে। অন্য AI আলাদা পাতায়।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
+    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "শুধু গভীর খোঁজ। অনেক সার্চ ইঞ্জিন, তারপর ৩০টির বেশি পাতা পড়া, তারপর একটা বিশ্লেষণ মডেল পুরো উত্তর লেখে। অন্য AI এখানে ডাকা হয় না।",
+    ag_ph: "একটা কাজ লিখুন। এজেন্ট অনেক পাতা পড়ে বিস্তারিত উত্তর দেবে।", ot_tab: "অন্য AI", ot_h: "অন্য AI", ot_note: "Gemini, Groq, Mistral এবং বাকি ফ্রি AI এখানে। Word, PDF, Excel, ছবি পাঠান। তাদের উত্তর ও ফাইল ফিরে আসে। বিশ্বাস AI চ্যাট ও এজেন্টের সঙ্গে মেশে না।", ot_ph: "অন্য AI-কে লিখুন, বা ফাইল যোগ করুন…",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
     ag_google: "গুগল", ag_google_d: "চালু থাকলে গুগলের খবরের পাতাও খোলে",
@@ -1317,7 +1343,7 @@ const STR = {
     word_h: "Word", word_note: "লেখা সেভ করুন। সেভ হওয়া ফাইল উপরে ফোল্ডারে থাকবে, Excel-এর উপরেও।", word_title_ph: "ফাইলের নাম", word_body_ph: "এখানে লিখুন", word_save: "সেভ", word_new: "নতুন পাতা", word_saved: "সেভ হয়েছে", word_empty: "আগে কিছু লিখুন।", word_untitled: "নামহীন", word_none: "এখনও কোনো ফাইল সেভ হয়নি।",
     new_person: "নতুন ব্যবহারকারী", new_person_done: "এই ফোনে নতুন ফাঁকা চ্যাট খোলা হয়েছে।",
     priv_note: "প্রত্যেক ফোনের চ্যাট আলাদা। লিঙ্কে কোনো কথা থাকে না, তাই অন্য কেউ ক্লিক করলে আপনার চ্যাট দেখে না। একই ফোন অন্যজনকে দিলে ‘নতুন ব্যবহারকারী’ চাপুন।", phone_only: "কাজ এই ফোনেই সেভ হয়। অন্য কম্পিউটারে নিতে অফিস ফাইল সেভ করুন, সেখানে খুলুন।", office_file_save: "অফিস ফাইল সেভ", office_file_open: "অফিস ফাইল খুলুন", office_file_ok: "অফিস ফাইল খোলা হয়েছে। আগের কাজ রয়ে গেছে।", office_file_bad: "এই ফাইল অফিসের ফাইল নয়।",
-    home: "হোম", nav_chat: "অফিসের চ্যাট", nav_deskchat: "ড্রাফটিং ডেস্ক চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "এসডিওর কাগজ", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
+    home: "হোম", nav_chat: "অফিস AI", nav_deskchat: "ড্রাফটিং ডেস্ক চ্যাট", nav_draft: "লেখার টেবিল", nav_excel: "Excel", nav_files: "এসডিওর কাগজ", nav_schemes: "প্রকল্প ও পরিষেবা", nav_grammar: "বানান ও ব্যাকরণ",
     lock_now: "লক", lock_set: "লক সেট", lock_clear: "লক সরান", lock_help: "এই ফোনের চ্যাট খুলতে পিন দিন।", lock_open: "খুলুন", lock_bad: "পিন মিলছে না।", lock_short: "পিন অন্তত ৪ সংখ্যার দিন।", lock_saved: "লক সেট হয়েছে।", lock_need: "আগে বাঁদিকের বারে একটি পিন সেট করুন।", lock_cleared: "লক সরানো হয়েছে।", lock_pin_ph: "৪–৮ সংখ্যার পিন",
     menu: "মেনু", office: "অফিস", public: "জনসাধারণ", schemes: "প্রকল্প", newchat: "নতুন চ্যাট", settings: "সেটিংস", close: "বন্ধ", theme: "থিম",
     rail_office: "অফিসের কাজ", rail_public: "জনসাধারণের জন্য", rail_schemes: "প্রকল্প", all_schemes: "সব প্রকল্পের বিস্তারিত",
@@ -1365,17 +1391,17 @@ const STR = {
     c_search: "Search schemes or services… (e.g. pension, farmer, caste)", c_note: "Information up to October 2026. Current State Government names, earlier names below. Check 'Reported' and 'Unconfirmed' items on the official portal.", c_count: n => `${n} schemes and services`, by_state: "State", by_central: "Central",
     dt_back: "← All schemes", dt_benefit: "What you get", dt_crit: "Eligibility", dt_docs: "Documents needed", dt_steps: "How to apply", dt_links: "Application / information links", dt_help: "Helpline", dt_note: "Important", dt_ask: "Ask the AI about this", dt_app: "Get an application written", dt_nolink: "No official application link has been published yet.", dt_updated: "Information: October 2026",
     ask_app: n => `Write an application for ${n}. Leave blanks for my name, address and other personal details.`,
-    tab_bikram: "Biswas AI", tab_deskchat: "Drafting desk chat", deskchat_pick: "Choose a kind of paper first.", ph_bikram: "Write to Biswas AI… e.g. I need a notesheet for a show-cause notice",
-    bk_hello_h: "Hello, I am Biswas AI", bk_hello_p: "Tell me what to create — notesheet, draft letter, order, notice, report, Excel, Word or PDF. I will ask for the details I need, then write it in paragraphs. Print, Word, PDF and Excel buttons appear under every document. The more we work, the more I remember your office's names, formats and preferences.",
+    tab_bikram: "Biswas AI", tab_office_ai: "Office AI", tab_deskchat: "Drafting desk chat", deskchat_pick: "Choose a kind of paper first.", ph_bikram: "Write to Biswas AI… e.g. I need a notesheet for a show-cause notice",
+    bk_hello_h: "Hello, I am Office AI", bk_hello_p: "Tell me what to create — notesheet, draft letter, order, notice, report, Excel, Word or PDF. I will ask for the details I need, then write it in paragraphs. Print, Word, PDF and Excel buttons appear under every document. The more we work, the more I remember your office's names, formats and preferences.",
     bk_choices: [["Notesheet", "Put up to the SDO", "I want to create a notesheet."], ["Draft letter (DFA)", "For the SDO's signature", "I want to create a draft letter for the SDO's signature."], ["Office order", "Memorandum / order", "I want to create an office order."], ["Notice", "Hearing / show-cause", "I want to create a notice (hearing / show-cause)."], ["Report", "Enquiry / monthly / re-verification", "I want to create a report."], ["Excel table", "List, account, statement", "I want to create an Excel table."], ["Word / PDF file", "Any letter or document", "I want to create a Word / PDF file."], ["Something else", "Tell me what you need", "Hello, I need help with a task."]],
     doc_print: "Print", doc_approve: "Keep as approved", doc_approved: "Kept. Biswas AI will follow this style in later drafts.", doc_saved: "Document updated",
     mem_btn: "Memory", mem_title: "Biswas AI memory", mem_help: "Biswas AI remembers lasting facts from your chats (names, designations, office, preferred formats, corrections) and follows the style of drafts you approve. Memory stays in this browser; save it to a file to move it to another computer.", mem_facts: "Remembered facts", mem_examples: "Approved draft examples", mem_add: "Add", mem_add_ph: "New fact, e.g. Signing officer — Sri X, SDO, Kalna",
     mem_export: "Save memory to file", mem_import: "Open memory file", mem_clear: "Clear all", mem_empty: "Nothing yet.", mem_cleared: "Memory cleared", mem_imported: "Memory added", mem_learned: "Now remembering: ",
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
-    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "This is a conversation. On a real question it opens pages, then answers. For one finished job, open Agents.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "One agent. It searches the whole question on every engine, keeps each engine's text, then asks the free AIs. If a part is still missing, it searches again. A job takes a few minutes. It does not log in to any website.",
-    ag_ph: "Write one job. The agent will read several pages before it finishes.",
+    nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Biswas AI chat. October 2026. Answers grow with the question. Memory grows. Deep research is Agents. Other AIs are on their own page.", ph_ai: "Message Biswas AI…",
+    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "Deep research only. It searches many engines, reads more than 30 sources, then one analysis model writes a full A-to-Z answer. Other AIs are not called here.",
+    ag_ph: "Write one job. The agent reads many pages, then writes a full answer.", ot_tab: "Other AI", ot_h: "Other AI", ot_note: "Gemini, Groq, Mistral and the other free AIs live here. Send Word, PDF, Excel or a picture. Their answers and files come back. This page does not mix with Biswas AI chat or Agents.", ot_ph: "Write to the other AIs, or attach a file…",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
     ag_google: "Google", ag_google_d: "When on, also opens pages found through Google News",
@@ -1390,7 +1416,7 @@ const STR = {
     conv_h: "Conversations", conv_search: "Search conversations", conv_empty: "New chat", archive: "Archive", restore: "Restore", del_chat: "Delete", del_sure: "Delete this?", show_arch: "Archive", show_chats: "Chats", arch_empty: "Nothing in the archive.",
     word_h: "Word", word_note: "Save the writing. Saved files sit in the folder above, and above Excel too.", word_title_ph: "File name", word_body_ph: "Write here", word_save: "Save", word_new: "New page", word_saved: "Saved", word_empty: "Write something first.", word_untitled: "Untitled", word_none: "No file saved yet.",
     new_person: "New person", new_person_done: "A new blank chat is open on this phone.",
-    home: "Home", nav_chat: "Office chat", nav_deskchat: "Drafting desk chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "SDO papers", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
+    home: "Home", nav_chat: "Office AI", nav_deskchat: "Drafting desk chat", nav_draft: "Drafting desk", nav_excel: "Excel", nav_files: "SDO papers", nav_schemes: "Schemes and services", nav_grammar: "Spelling and grammar",
     priv_note: "Each phone has its own chat. Nothing is stored in the link, so another person who opens it cannot read yours. On a shared phone, tap New person.", phone_only: "Work is saved on this phone only. Save the office file to open it on another computer.", office_file_save: "Save office file", office_file_open: "Open office file", office_file_ok: "Office file opened. Work already here was kept.", office_file_bad: "This is not an office file.",
     lock_now: "Lock", lock_set: "Set lock", lock_clear: "Remove lock", lock_help: "Enter the PIN to open the chat on this phone.", lock_open: "Open", lock_bad: "PIN does not match.", lock_short: "Use at least 4 digits.", lock_saved: "Lock is set.", lock_need: "Set a PIN in the left bar first.", lock_cleared: "Lock removed.", lock_pin_ph: "4–8 digit PIN",
     menu: "Menu", office: "Office", public: "Public", schemes: "Schemes", newchat: "New chat", settings: "Settings", close: "Close", theme: "Theme",
@@ -2073,7 +2099,8 @@ function dropCutoff(text, topic) {
   if (known && (denies || (asksBirthAct(topic) && !/Judicial Magistrate|জুডিশিয়াল ম্যাজিস্ট্রেট|Act 12 of 2026/i.test(src)) || (schemeNote(topic) && !/Annapurna|অন্নপূর্ণা|3,000|৩,০০০/i.test(src)) || (dcrbNote(topic) && /delaware|district of columbia|dcrb\.dc\.gov/i.test(src)))) return known;
   if (!denies) return src;
   const kept = src.split(/\n{2,}/).filter(p => !/2021|knowledge cutoff|trained on a mixture|real.?time|cannot search|can't search|no record of|not finding any record/i.test(p)).join("\n\n").trim();
-  if (kept.length > 120) return kept;
+  if (kept.length > 80) return kept;
+  if (src.length > 400) return src;
   if (settings.lang === "en") return `Today is ${today()}. I am Biswas AI as of 2026. I do read public pages. I will not say that I cannot search.`;
   return `আজ ${today()}। আমি বিশ্বাস AI, ২০২৬। আমি সরকারি পাতা পড়ি। আমি বলব না যে খুঁজতে পারি না।`;
 }
@@ -2095,7 +2122,7 @@ function panelHtml(m) {
   if (!m || !m.panel) return "";
   const good = m.panel.filter(a => a && a.text && !a.error);
   if (!good.length) return "";
-  const title = settings.lang === "en" ? "Free AIs asked. Only lines that match go into the article." : "ফ্রি AI-কে জিজ্ঞাসা করা হয়েছে। যে লাইন মিলেছে, শুধু সেটা নিবন্ধে যাবে।";
+  const title = settings.lang === "en" ? "Other AIs" : "অন্য AI";
   return `<div class="panel"><h3>${esc(title)}</h3>${good.map(a => `<article><b>${esc(PANEL_NAME[a.provider] || a.provider)}${a.model ? " · " + esc(a.model) : ""}${a.used ? (settings.lang === "en" ? " · in the article" : " · নিবন্ধে") : ""}</b><div>${mdToHtml(a.text)}</div></article>`).join("")}</div>`;
 }
 function claimWords(s) {
@@ -2131,8 +2158,10 @@ function agreeArticle(rows, pages, question) {
     + kept.slice(0, 8).map(k => k.text + " (" + [...new Set(k.who)].map(id => PANEL_NAME[id] || id).join(", ") + ")"
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
-async function askPanel(question, pages, fileText) {
+async function askPanel(question, pages, fileText, imgs, maxOut, signal) {
   const file = String(fileText || "").slice(0, 28000);
+  const images = [];
+  for (const b of (imgs || []).slice(0, 4)) { try { images.push({ mime: b.type || "image/jpeg", data: await toB64(b) }); } catch (e) { /* skip a bad picture */ } }
   const src = file ? "" : (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 16)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 900)).join("\n\n");
   const system = file
@@ -2142,7 +2171,7 @@ async function askPanel(question, pages, fileText) {
     ? String(question || "Correct this file.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file
     : String(question || "").slice(0, 2000);
   try {
-    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], maxOut: file ? 6000 : 1400 }), signal: ctl ? ctl.signal : undefined });
+    const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], images, maxOut: maxOut || (file ? 7000 : 3600) }), signal: signal || (ctl ? ctl.signal : undefined) });
     if (!r.ok) return [];
     const j = await r.json();
     return Array.isArray(j.answers) && j.answers.length ? j.answers : [];
@@ -2589,12 +2618,12 @@ const ERR = {
 const errText = code => (ERR[settings.lang] || ERR.bn)[code] || (ERR[settings.lang] || ERR.bn).upstream_error;
 const toB64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1]); r.onerror = rej; r.readAsDataURL(blob); });
 
-async function serverAsk(system, turns, imgs, { signal, onText, fast, maxOut } = {}) {
+async function serverAsk(system, turns, imgs, { signal, onText, fast, maxOut, deep, race } = {}) {
   const images = [];
   for (const b of imgs.slice(0, 4)) images.push({ mime: b.type || "image/jpeg", data: await toB64(b) });
   let res;
   try {
-    res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, maxOut: maxOut || (fast ? 1600 : undefined) }), signal });
+    res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ system, messages: turns, images, fast: !!fast, deep: !!deep, race: !!race, maxOut: maxOut || (fast ? 1600 : undefined) }), signal });
   } catch (e) { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error" }; }
   if (!res.ok) {
     const j = await res.json().catch(() => ({}));
@@ -2623,9 +2652,41 @@ function shortRules() {
   const lang = settings.lang === "en"
     ? "Reply in English unless the user writes in Bengali. Bengali answers use correct colloquial Bengali in Bengali script."
     : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
-  return yearLine() + `\nYou are Biswas AI chat, a normal assistant. You are not the public scheme desk, not the research agent, and not the office notesheet desk. Answer the question that was asked. Do not turn it into a scheme card, a notesheet, or a West Bengal office note unless the user asked for that. Bengali is only the language, not a switch to Bangladesh and not a switch to a government scheme. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say what the opened pages do not contain. Do not claim a 2021 cutoff. Write short paragraphs, not a wide table.`;
+  return yearLine() + `\nYou are Biswas AI chat, a normal assistant. You are not the public scheme desk, not the research agent, and not the office notesheet desk. Answer the question that was asked. Do not turn it into a scheme card, a notesheet, or a West Bengal office note unless the user asked for that. Bengali is only the language, not a switch to Bangladesh and not a switch to a government scheme. ${lang} Never invent government order numbers, fees or dates. If you are not sure, say what the opened pages do not contain. Do not claim a 2021 cutoff. Write as much as the question needs. A short question gets a short answer. A how, why, or compare question gets headings and a full answer.`;
 }
-async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false, maxOut, skills = false } = {}) {
+function replySize(text) {
+  const s = String(text || "");
+  const big = /why|how|compare|explain|detail|analyse|analyze|history|difference|steps|বিস্তার|কেন|কীভাবে|কিভাবে|তুলনা|ব্যাখ্যা|ধাপে|ইতিহাস|আলোচনা|পার্থক্য/i.test(s) || s.length > 180;
+  return big ? 7000 : 4200;
+}
+function autoFacts(text, answer) {
+  const src = String(text || "") + "\n" + String(answer || "");
+  const lines = [];
+  const name = src.match(/(?:my name is|i am|আমার নাম)\s+([A-Za-z\u0980-\u09FF .]{2,40})/i);
+  if (name) lines.push("User: " + name[1].trim().replace(/\s+/g, " "));
+  return lines.slice(0, 2);
+}
+function chatRules() {
+  const lang = settings.lang === "en"
+    ? "Reply in English unless the user writes in Bengali. Bengali answers use correct colloquial Bengali in Bengali script."
+    : "Reply in standard colloquial Bengali (চলিত বাংলা, Bengali script). Use correct spelling. Do not mix Hindi. If the user writes in English, reply in English.";
+  const mem = memory.length ? memory.slice(-40).map(m => "- " + m.text).join("\n") : "(nothing remembered yet — learn from this chat)";
+  return yearLine() + `\nYOU ARE BISWAS AI, the chat assistant, current in October 2026. You are not Office AI, not the research Agents, and not the Other AI page.
+Today is ${today()}. Do not say your knowledge ends in 2021, 2023 or 2024. Do not say you cannot search. If a 2026 fact is not in memory or in pages the app opened, say you are not sure and name what would confirm it. Do not answer from a frozen training cutoff.
+${lang}
+Length: match the question. A greeting is one or two lines. A how, why, compare, explain, or broad question gets a long answer with headings, the reasoning, examples, and the practical next step. Do not stop after one short paragraph when the question needs detail.
+Memory grows with every chat. Use it. Do not ask again for a fact already listed.
+MEMORY:
+${mem}
+When you learn a lasting fact (name, job, place, preference, or a correction), add at the very end, and nowhere else:
+<<<MEMORY>>>
+- one fact per line
+<<<END MEMORY>>>
+Skip that block when nothing new should be remembered.
+Do not turn a normal question into a West Bengal scheme card or a notesheet. Bengali is the language, not a switch to Bangladesh. Never invent government order numbers, fees or dates.
+When the user asks for a file, use the skill attachment blocks. A simple question does not need a file.`;
+}
+async function aiRun(turns, { images = [], onText = () => {}, signal, agent = false, system, fast = false, maxOut, skills = false, deep = false, race = false } = {}) {
   if (!engine) throw { code: "not_ready" };
   const guard = new AbortController();
   let timedOut = false;
@@ -2637,7 +2698,7 @@ async function aiRun(turns, { images = [], onText = () => {}, signal, agent = fa
     const quick = !!fast;
     let sys = system || (quick && !agent ? shortRules() : rules() + (agent ? bikramRules() : ""));
     if (skills && window.BA) { sys += BA.addendum(); maxOut = Math.max(maxOut || 0, 3600); } // skills + file attachments (all sections)
-    const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick, maxOut });
+    const r = engine === "claude" ? await sample([{ role: "user", content: sys }, ...turns], opts) : await serverAsk(sys, turns, images, { ...opts, fast: quick, maxOut, deep: !!deep, race: !!race });
     return { text: r.text, truncated: r.truncated, via: r.via || (engine === "claude" ? "claude" : "") };
   } catch (e) {
     if (e && e.code === "cancelled" && timedOut) throw { code: "timeout", text: e.text };
@@ -2672,8 +2733,8 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
-const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", write: "tab_write" };
+const TABS = { ai: ["chat", "agent", "others"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
+const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
@@ -2700,9 +2761,9 @@ function showView() {
   document.body.classList.toggle("pd-wide", mode === "pendrive"); if (mode !== "pendrive") closeRail();
   $("#open-settings").hidden = mode !== "office";
   $("#subnav").hidden = mode === "pendrive";
-  $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
+  $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : mode === "office" ? "tab_office_ai" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
   const shown = tab === "deskchat" || tab === "write" ? "chat" : tab;
-  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "pendrive"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
+  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "others", "pendrive"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
   if (tab === "files") { renderTools(); renderSdo(); }
@@ -2710,6 +2771,7 @@ function showView() {
   if (shown === "chat") { renderChat(); scrollDown(); }
   if (tab === "word" || tab === "table") renderWord();
   if (tab === "agent") renderAgentView();
+  if (tab === "others") renderOtherView();
   if (tab === "pendrive") renderPendrive();
   refreshHistory();
   renderRail();
@@ -2758,6 +2820,8 @@ function applyLang() {
   const gs = $("#g-src"); if (gs) gs.placeholder = t("g_ph");
   const cq = $("#sheet-q"); if (cq) cq.placeholder = t("conv_search");
   const gn = $("#gate-name"); if (gn) gn.placeholder = t("gate_ph");
+  const aj = $("#ag-job"); if (aj) aj.placeholder = t("ag_ph");
+  const oj = $("#ot-job"); if (oj) oj.placeholder = t("ot_ph");
   const wt = $("#word-title"); if (wt) wt.placeholder = t("word_title_ph");
   const wb = $("#word-body"); if (wb) wb.placeholder = t("word_body_ph");
   const th = store.get("theme", "auto");
@@ -3567,21 +3631,32 @@ function openDetail(id) {
 /* ---------------- Biswas AI: office chat that asks, writes documents and remembers ---------------- */
 // Memory lives in this browser (and can be exported / imported as a file). The model itself does not
 // retrain; it gets better here by reading these remembered facts and the drafts the user approved.
-let memory = [];        // not saved; a new visit cannot read it
+let memory = [];
+let officeMemory = [];
 let examples = [];
-const saveMemory = () => {};
 const MEM_MAX = 80, EX_MAX = 10;
-function learn(lines) {
+function memBag() { return mode === "office" ? officeMemory : memory; }
+function saveMemory() {
+  const pack = list => (list || []).slice(-MEM_MAX).map(m => ({ text: String(m.text || "").slice(0, 300), at: m.at || today() }));
+  vaultSet("chatMemory", pack(memory));
+  vaultSet("officeMemory", pack(officeMemory));
+  vaultSet("examples", (examples || []).slice(-EX_MAX));
+  if (whoId) keepPut("mem:" + whoId, { memory: pack(memory), officeMemory: pack(officeMemory), examples: (examples || []).slice(-EX_MAX) });
+}
+function learn(lines, bucket) {
+  const bagName = bucket || (mode === "office" ? "office" : "chat");
+  let bag = bagName === "office" ? officeMemory.slice() : memory.slice();
   const added = [];
-  for (let line of lines) {
-    line = line.replace(/^\s*[-*•]\s*/, "").trim();
+  for (let line of lines || []) {
+    line = String(line || "").replace(/^\s*[-*•]\s*/, "").trim();
     if (!line) continue;
     const forget = line.match(/^FORGET:\s*(.+)$/i);
-    if (forget) { const key = forget[1].toLowerCase(); memory = memory.filter(m => !m.text.toLowerCase().includes(key)); continue; }
-    if (line.length > 300 || memory.some(m => m.text.toLowerCase() === line.toLowerCase())) continue;
-    memory.push({ text: line, at: today() }); added.push(line);
+    if (forget) { const key = forget[1].toLowerCase(); bag = bag.filter(m => !m.text.toLowerCase().includes(key)); continue; }
+    if (line.length > 300 || bag.some(m => m.text.toLowerCase() === line.toLowerCase())) continue;
+    bag.push({ text: line, at: today() }); added.push(line);
   }
-  if (memory.length > MEM_MAX) memory = memory.slice(-MEM_MAX);
+  if (bag.length > MEM_MAX) bag = bag.slice(-MEM_MAX);
+  if (bagName === "office") officeMemory = bag; else memory = bag;
   saveMemory();
   return added;
 }
@@ -3673,11 +3748,11 @@ ______ ব্লক।
 মহকুমা শাসক
 ______ মহকুমা`;
 function bikramRules() {
-  const mem = memory.length ? memory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
+  const mem = officeMemory.length ? officeMemory.map(m => "- " + m.text).join("\n") : "(nothing yet)";
   const ex = examples.slice(-1).map(e => `--- Approved ${e.type}: ${e.title} ---\n${e.md.slice(0, 900)}`).join("\n\n") || BUILTIN_EXAMPLES;
   return `
 These office rules override any earlier output-format rule.
-YOU ARE "BISWAS AI" (বিশ্বাস AI), the office-work chat. Work like an experienced dealing assistant and drafting partner, in a natural chat. Do not call yourself by any person's name.
+YOU ARE "OFFICE AI" (অফিস AI), the office-work chat. You are not Biswas AI chat, not Agents, and not Other AI. Work like an experienced dealing assistant and drafting partner. Read an attached file in full. Write the whole paper, not a short summary, unless they asked for a summary. Do not call yourself by any person's name.
 How to work:
 - If the user has not said what they need, greet in one line and ask what to create: notesheet, draft letter (DFA), office order, notice (hearing / show-cause), report, RTI reply, Excel table, Word file, PDF, or anything else.
 - Then ask only for what is missing, at most two or three short questions at a time (subject, PUC / reference, addressee, key facts and dates, language). Use what you already remember instead of asking again. If the user says "you decide" or has given enough, write it.
@@ -3687,7 +3762,7 @@ How to work:
 Memory (it makes you better over time):
 - What you remember about this user and office is listed below. Use it (names, designations, office, preferred language and format) without asking again.
 - When you learn a lasting fact or preference (names and designations, office details, preferred language or layout, a correction the user makes, recurring tasks), add at the very end of your reply a block: a line <<<MEMORY>>>, then one fact per line starting with "- ", then a line <<<END MEMORY>>>. Only durable, useful facts. To drop a wrong memory write "- FORGET: <words of that memory>". Skip the block when there is nothing new.
-WHAT YOU REMEMBER:
+WHAT YOU REMEMBER (office only, separate from Biswas AI chat):
 ${mem}
 ${examples.length ? "DRAFTS THIS OFFICE APPROVED (follow their style and layout):" : "MODEL DOCUMENTS (follow this standard of language, structure and layout; English documents use the same structure):"}
 ${ex}`;
@@ -3740,14 +3815,20 @@ function bikramWelcome() {
     <h2>${esc(t("bk_hello_h"))}</h2>
     <p>${esc(t("bk_hello_p"))}</p>
     <div class="starters">${ch.map((c, i) => `<button class="starter" type="button" data-bk="${i}"><b>${esc(c[0])}</b><span>${esc(c[1])}</span></button>`).join("")}</div>
-    <p class="sch-note">${esc(t("mem_count", memory.length, examples.length))} <button class="btn small" type="button" data-open-memory>${esc(t("mem_btn"))}</button></p>
+    <p class="sch-note">${esc(t("mem_count", officeMemory.length, examples.length))} <button class="btn small" type="button" data-open-memory>${esc(t("mem_btn"))}</button></p>
   </div>`;
 }
 function renderMemory() {
-  $("#mem-list").innerHTML = memory.length ? memory.map((m, i) => `<li><span>${esc(m.text)}</span> <button class="btn small" type="button" data-mem-del="${i}" aria-label="${esc(t("remove"))}">✕</button></li>`).join("") : `<li class="lead">${esc(t("mem_empty"))}</li>`;
+  const bag = memBag();
+  $("#mem-list").innerHTML = bag.length ? bag.map((m, i) => `<li><span>${esc(m.text)}</span> <button class="btn small" type="button" data-mem-del="${i}" aria-label="${esc(t("remove"))}">✕</button></li>`).join("") : `<li class="lead">${esc(t("mem_empty"))}</li>`;
   $("#mem-ex").innerHTML = examples.length ? examples.map((e, i) => `<li><span>${esc(docLabel(e.type))}: ${esc(e.title)} <small class="lead">${esc(e.at)}</small></span> <button class="btn small" type="button" data-ex-del="${i}" aria-label="${esc(t("remove"))}">✕</button></li>`).join("") : `<li class="lead">${esc(t("mem_empty"))}</li>`;
 }
-function openMemory() { renderMemory(); $("#memory").showModal(); }
+function openMemory() {
+  renderMemory();
+  const h = $("#mem-h");
+  if (h) h.textContent = mode === "office" ? (settings.lang === "en" ? "Office AI memory" : "অফিস AI-এর স্মৃতি") : (settings.lang === "en" ? "Biswas AI memory" : "বিশ্বাস AI-এর স্মৃতি");
+  $("#memory").showModal();
+}
 
 /* ---------------- AI chat (both sections) ---------------- */
 const tasks = () => TASKS[mode][settings.lang] || TASKS[mode].bn;
@@ -3760,7 +3841,7 @@ function welcomeHtml() {
   const office = mode === "office";
   if (office && tabs.office === "deskchat" && !officeOpen) return bikramWelcome();
   if (office && tabs.office === "deskchat") return `<div class="welcome"><h2>${esc(officeWorkName(officeOpen))}</h2><p>${esc(t("office_only"))}</p></div>`;
-  if (office) return `<div class="welcome"><h2>${esc(t("tab_bikram"))}</h2><p>${esc(t("w_office_p"))}</p></div>`;
+  if (office) return `<div class="welcome"><h2>${esc(t("tab_office_ai"))}</h2><p>${esc(t("w_office_p"))}</p></div>`;
   if (mode === "public" && tabs.public === "write") return `<div class="welcome">
     <h2>${esc(t("tab_write"))}</h2>
     <p>${esc(t("write_p"))}</p>
@@ -3817,7 +3898,7 @@ function renderChat() {
   const head = schemeBar();
   $("#thread").innerHTML = messages.length ? head + messages.map(msgHtml).join("") : head + welcomeHtml();
   $("#q").placeholder = mode === "public" && tabs.public === "write" ? t("tab_write") : mode === "office" && tabs.office === "deskchat" && officeOpen ? officeWorkName(officeOpen) : schemeOpen && mode === "public" ? (SERVICES.find(x => x.id === schemeOpen) ? (SERVICES.find(x => x.id === schemeOpen)[settings.lang] || {}).n || t("ph_public") : t("ph_public")) : t(mode === "ai" ? "ph_ai" : mode === "office" ? "ph_bikram" : "ph_public");
-  $("#open-memory").hidden = mode !== "office";
+  $("#open-memory").hidden = !(mode === "office" || (mode === "ai" && tabs.ai === "chat"));
   renderPending();
 }
 const render = renderChat;
@@ -3850,8 +3931,8 @@ let convArch = false;
 let agArch = false;
 let delAsk = "";
 function convCard(row, kind) {
-  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : kind === "off" ? `data-off="${row.work || officeOpen}:${row.id}"` : kind === "dr" ? `data-dr="${row.id}"` : `data-thread="${row.id}"`;
-  const on = kind === "ag" ? row.id === agentId : kind === "pub" ? row.id === currentPublicId() : kind === "off" ? row.id === currentOfficeId() && (row.work || officeOpen) === officeOpen : kind === "dr" ? row.id === draft._id : row.id === threadId;
+  const openAttr = kind === "ag" ? `data-ag="${row.id}"` : kind === "ot" ? `data-ot="${row.id}"` : kind === "pub" ? `data-pub="${row.id}"` : kind === "off" ? `data-off="${row.work || officeOpen}:${row.id}"` : kind === "dr" ? `data-dr="${row.id}"` : `data-thread="${row.id}"`;
+  const on = kind === "ag" ? row.id === agentId : kind === "ot" ? row.id === otherId : kind === "pub" ? row.id === currentPublicId() : kind === "off" ? row.id === currentOfficeId() && (row.work || officeOpen) === officeOpen : kind === "dr" ? row.id === draft._id : row.id === threadId;
   const sure = delAsk === kind + ":" + row.id;
   const title = row.title || t(kind === "ag" ? "ag_job" : "conv_empty");
   return `<div class="conv-item"><button class="conv${on ? " on" : ""}" type="button" ${openAttr}><b>${esc(title)}</b><small>${esc(whenLabel(row.at))}</small></button><div class="conv-links"><button type="button" data-arch="${row.id}" data-box="${kind}">${esc(row.archived ? t("restore") : t("archive"))}</button><button type="button" data-del="${row.id}" data-box="${kind}">${esc(sure ? t("del_sure") : t("del_chat"))}</button></div></div>`;
@@ -3866,7 +3947,7 @@ function setConvHead() {
     name = s ? ((s[settings.lang] || s.bn || {}).n || t("tab_helper")) : t("tab_helper");
   } else if (mode === "office" && tabs.office === "draft") name = t("tab_draft");
   else if (mode === "office" && tabs.office === "deskchat") name = officeOpen ? officeWorkName(officeOpen) : t("tab_deskchat");
-  else if (mode === "office" && tabs.office === "chat") name = t("tab_bikram");
+  else if (mode === "office" && tabs.office === "chat") name = t("tab_office_ai");
   else if (mode === "office" && tabs.office === "word") name = t("word_h");
   else if (mode === "office" && tabs.office === "table") name = t("tab_table");
   else if (mode === "office" && tabs.office === "files") name = t("tab_files");
@@ -3890,9 +3971,11 @@ function renderOwnConv() {
 function refreshHistory() {
   const s = $("#hist-sheet");
   const ag = $("#ag-sheet");
-  if (mode === "ai" && tabs.ai === "agent") {
+  if (mode === "ai" && (tabs.ai === "agent" || tabs.ai === "others")) {
     if (s && !s.hidden) s.hidden = true;
-    if (ag && !ag.hidden) renderAgentList();
+    const ot = $("#ot-sheet");
+    if (tabs.ai === "agent") { if (ag && !ag.hidden) renderAgentList(); if (ot) ot.hidden = true; }
+    else { if (ot && !ot.hidden) renderOtherList(); if (ag) ag.hidden = true; }
     const side = $("#chat-conv"); if (side) side.innerHTML = "";
     return;
   }
@@ -3908,6 +3991,13 @@ function openHistory() {
   if (mode === "ai" && tabs.ai === "agent") {
     const s = $("#ag-sheet"); if (s) { s.hidden = false; renderAgentList(); }
     const h = $("#hist-sheet"); if (h) h.hidden = true;
+    const ot = $("#ot-sheet"); if (ot) ot.hidden = true;
+    return;
+  }
+  if (mode === "ai" && tabs.ai === "others") {
+    const s = $("#ot-sheet"); if (s) { s.hidden = false; renderOtherList(); }
+    const h = $("#hist-sheet"); if (h) h.hidden = true;
+    const ags = $("#ag-sheet"); if (ags) ags.hidden = true;
     return;
   }
   const s = $("#hist-sheet"); if (!s) return;
@@ -3990,6 +4080,16 @@ function loadVault() {
   if (!Array.isArray(agentThreads)) agentThreads = [];
   agentThreads.forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
   agentId = agentThreads[0] ? agentThreads[0].id : "";
+  otherThreads = vaultGet("others", []);
+  if (!Array.isArray(otherThreads)) otherThreads = [];
+  otherThreads.forEach(t => { if (!t.id) t.id = nid(); if (!Array.isArray(t.messages)) t.messages = []; });
+  otherId = otherThreads[0] ? otherThreads[0].id : "";
+  memory = vaultGet("chatMemory", vaultGet("memory", []));
+  if (!Array.isArray(memory)) memory = [];
+  officeMemory = vaultGet("officeMemory", []);
+  if (!Array.isArray(officeMemory)) officeMemory = [];
+  const exSaved = vaultGet("examples", []);
+  if (Array.isArray(exSaved) && exSaved.length) examples = exSaved.slice(-EX_MAX);
   messages = chats.ai;
 }
 function peopleBook() { try { return JSON.parse(localStorage.getItem("pmitra:people") || "{}"); } catch (e) { return {}; } }
@@ -4430,7 +4530,7 @@ function renderAgentView() {
         if (msgs[i].role !== "user") continue;
         jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
       }
-      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done ? `<div class="actions"><button class="btn small" type="button" data-ag-retry>${esc(t("pd_retry"))}</button><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}${panelHtml(ans)}</article>`).join("");
+      thread.innerHTML = jobs.map(({ ask, ans }) => `<article class="job"><p class="job-ask">${esc(t("ag_job"))}: ${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p><ol class="job-steps"><li><b>${esc(t("ag_s1"))}</b>${ans && ans.log && ans.log.length ? `<ol class="ag-log">${ans.log.map(line => `<li>${esc(line)}</li>`).join("")}</ol>` : `<span>${esc((ans && ans.think) || t("ag_step1"))}</span>`}</li><li><b>${esc(t("ag_s2"))}</b>${ans && ans.pages && ans.pages.length ? pageLinks(ans.pages) : `<span>${esc(t("ag_browse"))}</span>`}</li><li><b>${esc(t("ag_s3"))}</b>${ans && ans.content ? `<div class="doc">${mdToHtml(window.BA ? BA.protect(x => (x.match(/^[ \t]*(```|~~~)/m) || /^[ \t]*\|.*\|/m.test(x)) ? x.split(/(^[ \t]*(?:```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*(?:```|~~~)[ \t]*$|(?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})/m).map((sg, k) => k % 2 ? sg : hideAudit(cleanAgent(sg))).join("\n") : hideAudit(cleanAgent(x)), ans.content) : hideAudit(cleanAgent(ans.content)))}</div>` : (ans && ans.done && !ans.error ? `<p class="err">${esc(errText("empty_completion"))}</p>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() })))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}</li></ol>${ans && ans.done ? `<div class="actions"><button class="btn small" type="button" data-ag-retry>${esc(t("pd_retry"))}</button><button class="btn small" type="button" data-ag-reply>${esc(t("ag_reply"))}</button></div>` : ""}</article>`).join("");
       const sc = $("#ag-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
     }
   }
@@ -4587,14 +4687,40 @@ function saveAgent() {
 async function keepAgents() {
   if (!whoId) return;
   const saved = await keepGet("agents:" + whoId);
-  if (!Array.isArray(saved) || !saved.length) return;
-  agentThreads = mergeAgentList(agentThreads, saved);
-  agentThreads.forEach(t => { if (!Array.isArray(t.messages)) t.messages = []; });
-  if (agentId && !agentThreads.some(t => t.id === agentId) && agentThreads[0]) agentId = agentThreads[0].id;
-  try { const view = document.getElementById("v-agent"); if (view && !view.hidden) renderAgentView(); } catch (e) { /* the list is still restored */ }
+  if (Array.isArray(saved) && saved.length) {
+    agentThreads = mergeAgentList(agentThreads, saved);
+    agentThreads.forEach(t => { if (!Array.isArray(t.messages)) t.messages = []; });
+    if (agentId && !agentThreads.some(t => t.id === agentId) && agentThreads[0]) agentId = agentThreads[0].id;
+    try { const view = document.getElementById("v-agent"); if (view && !view.hidden) renderAgentView(); } catch (e) { /* the list is still restored */ }
+  }
+  const ot = await keepGet("others:" + whoId);
+  if (Array.isArray(ot) && ot.length) {
+    otherThreads = mergeAgentList(otherThreads, ot);
+    otherThreads.forEach(t => { if (!Array.isArray(t.messages)) t.messages = []; });
+    try { const view = document.getElementById("v-others"); if (view && !view.hidden) renderOtherView(); } catch (e) { /* still restored */ }
+  }
+  const mem = await keepGet("mem:" + whoId);
+  if (mem && typeof mem === "object") {
+    const merge = (a, b) => {
+      const seen = new Set((a || []).map(m => String(m.text || "").toLowerCase()));
+      const out = (a || []).slice();
+      for (const row of b || []) {
+        const key = String(row && row.text || "").toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key); out.push({ text: String(row.text).slice(0, 300), at: row.at || today() });
+      }
+      return out.slice(-MEM_MAX);
+    };
+    if (Array.isArray(mem.memory)) memory = merge(memory, mem.memory);
+    if (Array.isArray(mem.officeMemory)) officeMemory = merge(officeMemory, mem.officeMemory);
+    if (Array.isArray(mem.examples)) {
+      for (const ex of mem.examples) if (ex && ex.md && !examples.some(x => x.md === ex.md)) examples.push(ex);
+      examples = examples.slice(-EX_MAX);
+    }
+  }
 }
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { saveAgent(); } catch (e) { /* ignore */ } } });
-window.addEventListener("pagehide", () => { try { saveAgent(); } catch (e) { /* ignore */ } });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { saveAgent(); saveOther(); saveMemory(); } catch (e) { /* ignore */ } } });
+window.addEventListener("pagehide", () => { try { saveAgent(); saveOther(); saveMemory(); } catch (e) { /* ignore */ } });
 function openAgent(id) {
   agentId = id || "";
   const cur = agentThreads.find(t => t.id === agentId);
@@ -4639,9 +4765,9 @@ async function runBiswasAgent(job, files) {
   if (known && !(files && files.length)) {
     ai.content = known;
     ai.done = true;
-    ai.think = settings.lang === "en" ? "Answered from the October 2026 note. Asking the free AIs too." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর। ফ্রি AI-কেও জিজ্ঞাসা করছি।";
+    ai.think = settings.lang === "en" ? "Answered from the October 2026 note." : "অক্টোবর ২০২৬-এর নোট থেকে উত্তর।";
+    ai.panel = [];
     renderAgentView();
-    try { ai.panel = await askPanel(job); } catch (e) { ai.think = t("stopped"); }
     cur.at = Date.now();
     saveAgent();
     if (gen === runBiswasAgent.gen) {
@@ -4688,21 +4814,30 @@ async function runBiswasAgent(job, files) {
           if (pages.length) mark(en ? "Google returned " + pages.length + " page(s). The file is still corrected on its own." : "গুগল " + pages.length + "টি পাতা দিয়েছে। ফাইল আলাদা করে ঠিক হচ্ছে।");
         } catch (e) { /* the file is still corrected */ }
       }
-      try { ai.panel = await askPanel(job, pages, rawFile || fileNote); } catch (e) { ai.panel = []; }
+      ai.panel = [];
       cur.at = Date.now();
       saveAgent();
       renderAgentView();
+      const pageNote = pages.map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 900)).join("\n\n").slice(0, 6000);
       if (!rawFile) {
-        const r = await aiRun([{ role: "user", content: job || "Read the attached file." }], { fast: false, signal: ctl.signal, system: yearLine() + "\nThe user attached a file. Read the pictures if any. Do not say the file is missing if a picture is attached. Do the job.", skills: true, maxOut: 4096, images: attachImages(files) });
+        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file." }], { fast: false, deep: true, signal: ctl.signal, system: yearLine() + "\nYou are the research agent, not Other AI. The user attached a picture or a file. Read it in full, including Bengali. Write a long answer. Do not say the file is missing. Do not call other AIs." + (pageNote ? "\n\nPages:\n" + pageNote : ""), skills: true, maxOut: 8192, images: attachImages(files) });
         ai.content = r.text || (en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।");
       } else {
-        const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
+        const fix = /correct|grammar|spell|fix\b|বানান|ব্যাকরণ|ঠিক কর/i.test(job);
         const base = (fileNames[0] || "corrected-draft").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
-        ai.panel = (ai.panel || []).map((a, i) => ({ ...a, text: panelFile(a && a.text, base + "-" + ((a && a.provider) || i)) })).filter(a => a && a.text);
-        const head = en
-          ? "The attachment was read and sent to the free AIs. Grammar and spelling were corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
-          : "সংযুক্তি পড়া হয়েছে এবং ফ্রি AI-কে পাঠানো হয়েছে। ব্যাকরণ ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
-        ai.content = head + docxFence(full, base + "-corrected");
+        let fence = "";
+        if (fix) {
+          const full = await correctChunks(rawFile, job, ctl.signal, (i, n) => mark((en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n));
+          const head = en
+            ? "The attachment was read in full. Grammar and spelling were corrected in " + splitOfficeDoc(rawFile).length + " part(s). Names, account numbers, amounts and tables were kept. Download the Word file."
+            : "সংযুক্তি পুরোটা পড়া হয়েছে। ব্যাকরণ ঠিক করা হয়েছে। নাম, অ্যাকাউন্ট, টাকা ও টেবিল রাখা হয়েছে। নিচের Word ফাইল নামান।";
+          fence = head + docxFence(full, base + "-corrected");
+        }
+        mark(en ? "The analysis model is reading the full attachment." : "বিশ্লেষণ মডেল সংযুক্তি পুরোটা পড়ছে।");
+        const sys = yearLine() + "\nYou are the research agent. You are not Other AI and not Office AI. Read the attached file in full. " + (settings.lang === "en" ? "Reply in English." : "Reply in colloquial Bengali, in Bengali script.") + " Write a long A-to-Z note: what the file is, the important facts, numbers, names, and what to do next. Quote the file. Do not say the file is missing. Do not mention other AIs. Do not turn this into a West Bengal scheme unless the job asked.\n\nFILE:\n" + rawFile.slice(0, 28000) + (pageNote ? "\n\nPAGES:\n" + pageNote : "");
+        const r = await aiRunFull([{ role: "user", content: job || "Read the attached file and explain it in full." }], { fast: false, deep: true, signal: ctl.signal, system: sys, skills: true, maxOut: 8192, images: attachImages(files) });
+        ai.content = ((r.text || "") + (fence ? "\n\n" + fence : "")).trim();
+        if (!ai.content) ai.content = en ? "The file had no readable text." : "ফাইলে পড়ার মতো লেখা নেই।";
       }
       ai.done = true;
       cur.at = Date.now();
@@ -4740,7 +4875,7 @@ async function runBiswasAgent(job, files) {
         seen.add(hit.url);
         const snippet = String(hit.text || "");
         let one = { title: hit.title, url: hit.url, text: "", more: [] };
-        if (snippet.length < 180) {
+        if (snippet.length < 900) {
           mark((settings.lang === "en" ? "Reading " : "পড়ছি ") + (hit.title || hit.url));
           try {
             const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: hit.url, title: hit.title || "" }), signal: ctl ? ctl.signal : undefined });
@@ -4749,7 +4884,7 @@ async function runBiswasAgent(job, files) {
         } else {
           mark((settings.lang === "en" ? "From " : "সূত্র ") + (hit.title || hit.url));
         }
-        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n").slice(0, 1600);
+        const text = [snippet, String(one.text || "")].filter(t => t.length > 40).join("\n").slice(0, 2800);
         if (text.length < 80) {
           ai.log[ai.log.length - 1] += settings.lang === "en" ? " — not a page" : " — পাতা নয়";
           ai.pages = snap();
@@ -4792,48 +4927,31 @@ async function runBiswasAgent(job, files) {
       ask = core;
       mark(settings.lang === "en" ? "Fewer than 35 sources. Searching again." : "৩৫টি সূত্রের কম। আবার খুঁজছি।");
     }
-    mark(settings.lang === "en" ? "Asking the free AIs the whole question" : "পুরো প্রশ্নটা ফ্রি AI-কে জিজ্ঞাসা করছি");
-    let rows = [];
-    try { rows = await askPanel(job, pages); } catch (e) { rows = []; }
-    ai.panel = rows;
-    cur.at = Date.now();
-    saveAgent();
-    const hole = rows.map(a => String(a && a.text || "")).join(" ").match(/(?:not mentioned|do not contain|not in the pages|no information about)\s+([^.]{6,80})/i);
-    if (hole && hole[1] && !driftedQuery(hole[1], job) && pages.length < 35) {
-      mark(settings.lang === "en" ? "An AI still missed a part. Searching that." : "একটা AI একটা অংশ পায়নি। সেটা খুঁজছি।");
-      await searchAsk((job + " " + hole[1]).slice(0, 220));
-      try {
-        const moreRows = await askPanel(job, pages);
-        const seenP = new Set((ai.panel || []).map(a => a.provider));
-        ai.panel = (ai.panel || []).concat(moreRows.filter(a => a && !seenP.has(a.provider)));
-        cur.at = Date.now();
-        saveAgent();
-      } catch (e) { /* keep the first answers */ }
-    }
-    renderAgentView();
-    const notes = (ai.panel || []).filter(a => a && a.text && !a.error).map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + a.text).join("\n\n").slice(0, 8000);
+    ai.panel = [];
+    mark(settings.lang === "en" ? "Read " + pages.length + " sources. The analysis model is writing the full answer." : pages.length + "টি সূত্র পড়া হয়েছে। বিশ্লেষণ মডেল পুরো উত্তর লিখছে।");
+    const notes = "";
     if (writerOff) {
-      const best = (ai.panel || []).filter(a => a && a.text && !/not mentioned|do not contain|was not mentioned/i.test(a.text)).sort((a, b) => b.text.length - a.text.length)[0];
       ai.pages = snap();
-      ai.content = hideAudit((best && best.text) || deepDump(pages) || (settings.lang === "en" ? "No page text came back." : "পাতার লেখা আসেনি।"));
+      ai.content = hideAudit(deepDump(pages) || (settings.lang === "en" ? "No page text came back." : "পাতার লেখা আসেনি।"));
       ai.done = true;
       cur.at = Date.now();
       saveAgent();
     } else {
     mark(settings.lang === "en" ? "Writing the note from " + pages.length + " pages" : pages.length + "টি পাতা থেকে নোট লিখছি");
     const facts = ids.map(serviceFacts).filter(Boolean).join("\n\n");
-    const web = pages.map(p => "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + p.text).join("\n\n");
+    let webLeft = 32000;
+    const web = pages.map(p => { const bit = String(p.text || "").slice(0, Math.min(1400, Math.max(0, webLeft))); webLeft -= bit.length; return bit ? "[" + engineName(p.via || "web") + "] " + p.title + "\n" + p.url + "\n" + bit : ""; }).filter(Boolean).join("\n\n");
     let sys = officeFile(job)
       ? yearLine() + `\nYou are the research agent. You are not the public helper and not the office notesheet writer. ${lang} The job is about a West Bengal office rule. DCRB means the West Bengal Services (Death-cum-Retirement Benefit) Rules, 1971, and only because the job is about DCRB. If a page is about Delaware or the District of Columbia, ignore that page. A figure, fee or date is a fact only when two pages agree. Do not show an audit. Write a full note in plain paragraphs. Name the page after each fact. Do not invent a fee, an order number or a date.\n\n` + auditHead(pages)
-      : yearLine() + `\nYou are the research agent. You are not the public scheme helper and not the office notesheet writer. ${lang} Answer every part of the job, in order. Use the pages and the other AI notes. Do not stop after the first fact. Do not mention a West Bengal scheme, DCRB, a pension, Annapurna, a fire licence, or land records unless the job asked about that. Do not answer from Bangladesh unless the job asked about Bangladesh. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
+      : yearLine() + `\nYou are the research agent. You are not the public scheme helper and not the office notesheet writer. ${lang} Answer every part of the job, in order. Use only the pages that were opened. Do not stop after the first fact. Do not mention a West Bengal scheme, DCRB, a pension, Annapurna, a fire licence, or land records unless the job asked about that. Do not answer from Bangladesh unless the job asked about Bangladesh. Name the page after each fact. Do not invent a score. Do not show an audit. Do not claim a 2021 cutoff.\n\n`;
     if (officeFile(job) && /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট/i.test(job)) sys += "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN);
     if (web) sys += "\n\nPages opened:\n" + web;
     if (officeFile(job) && facts) sys += "\n\nNotes already in this app:\n" + facts;
-    if (notes) sys += "\n\nOther AIs, on the same question:\n" + notes;
+    sys += "\n\nCURATOR: You opened " + pages.length + " sources. Write one long answer from A to Z with headings. Cover every part of the job. After each important fact, name the page and its URL. Do not mention other AIs. Do not shorten. Do not turn the job into a West Bengal scheme unless the job asked for one. If fewer than 30 sources opened, say how many opened and still answer in full from those pages.";
     if (fileNote) sys += "\n\nThe user attached files. Answer from these first. Do not say the file is missing. Do not change the subject of the file.\n" + fileNote.slice(0, 24000);
     if (names.length && !web) sys += " The app list has: " + names.join(", ") + ".";
     const prior = cur.messages.filter(m => m.done && m.content && m !== ai).slice(-6).map(m => ({ role: m.role, content: m.role === "assistant" ? cleanAgent(m.content) : (m.shown || m.content) }));
-    const draft = await aiRun(prior, { fast: true, signal: ctl.signal, system: sys, skills: true, images: attachImages(files || []) });
+    const draft = await aiRunFull(prior, { fast: false, signal: ctl.signal, system: sys, skills: true, maxOut: 8192, images: attachImages(files || []) });
     mark(settings.lang === "en" ? "Checking the note against the pages" : "নোটটা পাতার সঙ্গে মিলিয়ে দেখছি");
     const checkSys = officeFile(job)
       ? `You are the audit engine. ${lang} Keep a fee, date or amount only if the private audit lists it under Agreed, or the same figure is on two pages from different engines. Delete the rest. Do not print the audit. Keep the full note. Never rewrite it as a model trained until September 2021. Return only the corrected note.`
@@ -4842,7 +4960,13 @@ async function runBiswasAgent(job, files) {
     // code, JSON and table blocks are kept verbatim; the editor and cleaners only see a placeholder.
     const kept = [];
     draftParts.text = draftParts.text.replace(/^([ \t]*(```|~~~)[^\n]*\n[\s\S]*?\n[ \t]*\2[ \t]*$)|((?:^[ \t]*\|.*\|[ \t]*(?:\n|$)){2,})|(^[ \t]*[\[{][ \t]*\n[\s\S]*?\n[ \t]*[\]}][ \t]*$)/gm, m => { kept.push(m.replace(/\n$/, "")); return "[[KEEP" + kept.length + "]]\n"; });
-    const checked = await aiRun([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draftParts.text + "\n\nPages:\n" + web.slice(0, 12000) }], { fast: true, signal: ctl.signal, system: checkSys + (kept.length ? " Lines like [[KEEP1]] are code, JSON or table blocks: copy each one unchanged on its own line. Only check prose; if a prose claim is not on the pages, add (unverified) after it instead of deleting numbers." : "") });
+    let checked = { text: draft.text };
+    try {
+      checked = await aiRunFull([{ role: "user", content: "Job:\n" + job + "\n\nNote:\n" + draftParts.text + "\n\nPages:\n" + web.slice(0, 18000) + "\n\nDo not shorten the note. Expand any thin section. Return the full A-to-Z answer." }], { fast: false, deep: true, signal: ctl.signal, system: checkSys + " Do not shorten. " + (kept.length ? " Lines like [[KEEP1]] are code, JSON or table blocks: copy each one unchanged on its own line. Only check prose; if a prose claim is not on the pages, add (unverified) after it instead of deleting numbers." : ""), maxOut: 8192 });
+    } catch (e2) {
+      if (e2 && (e2.name === "AbortError" || e2.code === "cancelled")) throw e2;
+      checked = { text: draft.text };
+    }
     ai.pages = snap();
     let edited = checked.text || draftParts.text;
     const lost = kept.map((_, k) => k + 1).filter(n => !edited.includes("[[KEEP" + n + "]]"));
@@ -4995,10 +5119,10 @@ async function ask(text) {
   const agent = mode === "office";
   try {
     const law = /birth|death|জন্ম|মৃত্যু|magistrate|ম্যাজিস্ট্রেট|amendment|সংশোধন/i.test(String(text || "")) ? "\n\n" + (settings.lang === "en" ? LAW_EN : LAW_BN) : "";
-    const think = "\nThis is a normal answer. Do not say you are opening pages. Think from the knowledge below. If it is a West Bengal scheme, certificate or prakalpa, use only the facts written below. Do not invent an amount or an order number.\n";
-    const system = hasFile ? deepSystem() : mode === "public" ? rules() : mode === "office" ? rules() + bikramRules() : shortRules() + law + think + (knowledge() || "");
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
-    const rewrite = hasFile && raw.length > 1200;
+    const officeExtra = "\nOFFICE SKILL: You are Office AI, separate from Biswas AI chat. Read every attached file in full. Write the whole paper. Use office memory. When a document is requested, use a <<<DOC>>> block and also one docx+pdf attachment of that same paper.";
+    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law;
+    const rewrite = hasFile && raw.length > 1200 && mode === "office";
     let r;
     if (rewrite) {
       ai.content = settings.lang === "en" ? "Reading the attachment and correcting it in parts…" : "সংযুক্তি পড়ে অংশ অংশ ঠিক করছি…";
@@ -5007,11 +5131,24 @@ async function ask(text) {
       const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
       r = { text: (settings.lang === "en" ? "Corrected from the attachment. Names, amounts and tables are kept. Download the Word file." : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।") + docxFence(full, base + "-corrected"), via: "file", truncated: false };
     } else {
-      r = await aiRunFull(hasFile ? turns.slice(-2) : turns, { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: !hasFile, skills: !hasFile, maxOut: hasFile ? 8192 : mode === "office" ? 4096 : mode === "public" ? 1800 : 2000, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+      const chatSkills = mode === "ai" && (hasFile || replySize(text) >= 7000 || /word|pdf|excel|docx|xlsx|letter|notesheet|report|table|chart|চিঠি|নোট|রিপোর্ট|টেবিল|ফাইল/i.test(text));
+      const out = hasFile ? 8192 : mode === "office" ? 6400 : mode === "public" ? 1800 : replySize(text);
+      const sendTurns = (hasFile && mode !== "ai") ? turns.slice(-2) : turns;
+      const opt = { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: mode !== "office", skills: mode === "office" || chatSkills || (mode === "public" && !hasFile), maxOut: out, onText: ({ text: bit }) => { ai.content = bit; if (live()) updateAt(box.indexOf(ai)); } };
+      try {
+        r = await aiRunFull(sendTurns, opt);
+      } catch (e1) {
+        const code = e1 && e1.code;
+        if (mode !== "ai" || !["all_failed", "rate_limited", "timeout", "upstream_error", "empty_completion"].includes(code)) throw e1;
+        r = await aiRunFull(sendTurns, Object.assign({}, opt, { fast: false, race: true }));
+      }
     }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
+    if (mode === "ai") {
+      const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines.concat(autoFacts(text, ai.content)), "chat");
+    }
     if (agent) {
-      const sm = splitMemory(r.text); ai.content = sm.clean || r.text; ai.learned = learn(sm.lines);
+      const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines, "office");
       // the AI forgot the document markers: treat the whole answer as the document
       if (wantDoc && !DOC_START.test(ai.content)) ai.content = `<<<DOC type="${wantDoc}" title="${wantDoc}">>>\n${ai.content.replace(/^```[a-z]*\n?|```\s*$/g, "").trim()}\n<<<END DOC>>>`;
     }
@@ -5047,16 +5184,16 @@ async function browseLatest() {
   const live = () => box === messages && chatCtl === mine;
   let researchNote = "";
   try {
-    const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: topic.slice(0, 180), google: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(topic) }), signal: mine.signal });
+    const rr = await fetch("/api/research", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ q: topic.slice(0, 180), google: true, rich: true, wb: mode === "public" && !/bangladesh|বাংলাদেশ/i.test(topic) }), signal: mine.signal });
     const data = rr.ok ? await rr.json() : { pages: [] };
     const foreign = p => mode === "public" && /\.bd(\/|$)|bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test((p.url || "") + " " + (p.title || "") + " " + (p.text || "")) && !/west bengal|পশ্চিমবঙ্গ/i.test((p.title || "") + " " + (p.text || ""));
-    const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && !foreign(p)).slice(0, 8);
-    ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 700) }));
+    const pages = (Array.isArray(data.pages) ? data.pages : []).filter(p => p && p.url && !foreign(p)).slice(0, 14);
+    ai.pages = pages.map(p => ({ title: p.title || p.url, url: p.url, text: String(p.text || "").slice(0, 1600) }));
     ai.browseAt = 0;
     researchNote = pages.filter(p => p.text && String(p.text).length > 40).map(p => (p.title || "") + "\n" + p.url + "\n" + p.text).join("\n\n");
     if (live()) updateAt(box.indexOf(ai));
-    const system = yearLine() + "\nThe person pressed Browser research. Answer the question in normal paragraphs from the pages below. Do not write a notesheet, a memo, a letter, or a signature block unless they asked for a letter. Copy a price, a time, or a date only when that exact figure is written in a page. If a page does not say whether a market is open, or does not give the price or the closing time, say the opened page does not state it. Do not invent a countdown. Do not turn the answer into a West Bengal office note.\n\nPAGES:\n" + (researchNote || "No readable page came back.");
-    const r = await aiRunFull([{ role: "user", content: topic }], { signal: mine.signal, system, fast: false, skills: false, maxOut: 3200, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+    const system = yearLine() + "\nThe person pressed Browser research in Biswas AI chat, October 2026. You are not Office AI. Read the pages below. Write a long current answer with headings: what the pages agree on, where they differ, the dates, and what is still not in the pages. Quote a price, time, or date only when that figure is written in a page, and name that page. If a page does not state a fact, say the opened page does not state it. Do not invent a countdown. Do not write a notesheet or a signature block unless they asked for a letter. Do not claim a 2021 cutoff. Do not turn the answer into a West Bengal office note unless they asked for one.\n\nPAGES:\n" + (researchNote || "No readable page came back.");
+    const r = await aiRunFull([{ role: "user", content: topic }], { signal: mine.signal, system, fast: false, deep: true, skills: false, maxOut: 6400, onText: ({ text: bit }) => { ai.content = bit; if (live()) updateAt(box.indexOf(ai)); } });
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, topic), r.text) : dropCutoff(r.text, topic); ai.via = r.via;
   } catch (e) {
     if (e && (e.name === "AbortError" || e.code === "cancelled")) { if (!ai.content) ai.content = t("stopped"); }
@@ -5336,7 +5473,8 @@ $("#mem-file").addEventListener("change", async e => {
   const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
   try {
     const j = JSON.parse(await f.text());
-    learn((j.memory || []).map(m => m.text || m));
+    learn((j.memory || []).map(m => m.text || m), mode === "office" ? "office" : "chat");
+    if (Array.isArray(j.officeMemory)) learn(j.officeMemory.map(m => m.text || m), "office");
     for (const ex of j.examples || []) if (ex && ex.md && !examples.some(x => x.md === ex.md)) examples.push(ex);
     examples = examples.slice(-EX_MAX); saveMemory(); renderMemory(); toast(t("mem_imported"));
   } catch (err) { toast(t("dl_fail")); }
@@ -5422,6 +5560,10 @@ document.addEventListener("click", e => {
   if (el("#ag-convs")) { const s = $("#ag-sheet"); if (s) { s.hidden = false; renderAgentList(); } return; }
   if (el("#ag-sheet-close")) { const s = $("#ag-sheet"); if (s) s.hidden = true; return; }
   if ((x = el("[data-ag]"))) { const s = $("#ag-sheet"); if (s) s.hidden = true; return openAgent(x.dataset.ag); }
+  if (el("#ot-new") || el("#ot-sheet-new")) return newOther();
+  if (el("#ot-convs")) { const s = $("#ot-sheet"); if (s) { s.hidden = false; renderOtherList(); } return; }
+  if (el("#ot-sheet-close")) { const s = $("#ot-sheet"); if (s) s.hidden = true; return; }
+  if ((x = el("[data-ot]"))) { const s = $("#ot-sheet"); if (s) s.hidden = true; return openOther(x.dataset.ot); }
   if ((x = el("[data-agent]"))) { agentKind = x.dataset.agent; renderAgents(); const job = $("#ag-job"); if (job) job.focus(); return; }
   if ((x = el("[data-kind]"))) {
     saveDraft();
@@ -5437,8 +5579,9 @@ document.addEventListener("click", e => {
   }
   if ((x = el("[data-del]"))) {
     const key = (x.dataset.box || "chat") + ":" + x.dataset.del;
-    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "pub" ? renderPublicConv() : x.dataset.box === "off" ? renderOfficeConv() : x.dataset.box === "dr" ? renderDraftConv() : renderConv(); return; }
+    if (delAsk !== key) { delAsk = key; x.dataset.box === "ag" ? renderAgentList() : x.dataset.box === "ot" ? renderOtherList() : x.dataset.box === "pub" ? renderPublicConv() : x.dataset.box === "off" ? renderOfficeConv() : x.dataset.box === "dr" ? renderDraftConv() : renderConv(); return; }
     if (x.dataset.box === "ag") deleteAgent(x.dataset.del);
+    else if (x.dataset.box === "ot") deleteOther(x.dataset.del);
     else if (x.dataset.box === "pub") deletePublicChat(x.dataset.del);
     else if (x.dataset.box === "off") deleteOfficeChat(x.dataset.del);
     else if (x.dataset.box === "dr") deleteDraftCase(x.dataset.del);
@@ -5448,6 +5591,7 @@ document.addEventListener("click", e => {
   if ((x = el("[data-arch]"))) {
     delAsk = "";
     if (x.dataset.box === "ag") toggleAgentArch(x.dataset.arch);
+    else if (x.dataset.box === "ot") { const row = otherThreads.find(t => t.id === x.dataset.arch); if (row) { row.archived = !row.archived; if (row.archived && otherId === row.id) otherId = ""; saveOther(); renderOtherView(); } }
     else if (x.dataset.box === "pub") togglePublicArch(x.dataset.arch);
     else if (x.dataset.box === "off") toggleOfficeArch(x.dataset.arch);
     else if (x.dataset.box === "dr") toggleDraftArch(x.dataset.arch);
@@ -5461,6 +5605,7 @@ document.addEventListener("click", e => {
     convArch = !convArch; delAsk = ""; renderConv(); return;
   }
   if (el("[data-ag-arch]")) { agArch = !agArch; delAsk = ""; renderAgentList(); return; }
+  if (el("[data-ot-arch]")) { otArch = !otArch; delAsk = ""; renderOtherList(); return; }
   if ((x = el("[data-dr]"))) {
     const s = $("#hist-sheet"); if (s) s.hidden = true;
     const found = findSaved(x.dataset.dr);
@@ -5488,6 +5633,7 @@ function startSectionChat() {
   if (mode === "public" && (tabs.public === "chat" || tabs.public === "write")) return newPublicChat();
   if (mode === "office" && tabs.office === "draft") return newDraftCase();
   if (mode === "office" && (tabs.office === "chat" || tabs.office === "deskchat")) return newOfficeChat();
+  if (mode === "ai" && tabs.ai === "others") return newOther();
   if (mode === "ai" && tabs.ai === "chat") return newThread();
 }
   if (el("#conv-new") || el("#hist-new")) { closeRail(); return startSectionChat(); }
@@ -5580,6 +5726,7 @@ function startSectionChat() {
   if ((x = el("[data-task]"))) { q.value = tasks()[+x.dataset.task][2]; autosize(); q.focus(); q.setSelectionRange(q.value.length, q.value.length); return; }
   if ((x = el("[data-unpend]"))) { pendingFiles.splice(+x.dataset.unpend, 1); return renderPending(); }
   if ((x = el("[data-ag-unpend]"))) { agFiles.splice(+x.dataset.agUnpend, 1); return renderAgPending(); }
+  if ((x = el("[data-ot-unpend]"))) { otFiles.splice(+x.dataset.otUnpend, 1); return renderOtPending(); }
   // Biswas AI
   if (el("[data-office-home]")) { officeOpen = ""; tabs.office = "deskchat"; pendingFiles = []; bindMessages(); showView(); return; }
   if ((x = el("[data-bk]"))) return openOfficeWork(+x.dataset.bk);
@@ -5597,13 +5744,13 @@ function startSectionChat() {
   }
   if (el("[data-open-memory], #open-memory")) return openMemory();
   if (el("#memory-close")) return $("#memory").close();
-  if ((x = el("[data-mem-del]"))) { memory.splice(+x.dataset.memDel, 1); saveMemory(); return renderMemory(); }
+  if ((x = el("[data-mem-del]"))) { const bag = memBag(); bag.splice(+x.dataset.memDel, 1); if (mode === "office") officeMemory = bag; else memory = bag; saveMemory(); return renderMemory(); }
   if ((x = el("[data-ex-del]"))) { examples.splice(+x.dataset.exDel, 1); saveMemory(); return renderMemory(); }
-  if (el("#mem-export")) return offer(`biswas-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI", memory, examples }, null, 2)], { type: "application/json" }));
+  if (el("#mem-export")) return offer(`biswas-ai-memory-${stamp()}.json`, new Blob([JSON.stringify({ app: "Biswas AI", memory, officeMemory, examples }, null, 2)], { type: "application/json" }));
   if (el("#office-save")) return saveOfficeFile();
   if (el("#office-open")) return $("#office-file").click();
   if (el("#mem-import")) return $("#mem-file").click();
-  if (el("#mem-clear")) { memory = []; examples = []; saveMemory(); renderMemory(); return toast(t("mem_cleared")); }
+  if (el("#mem-clear")) { if (mode === "office") { officeMemory = []; examples = []; } else memory = []; saveMemory(); renderMemory(); return toast(t("mem_cleared")); }
   if ((x = el("[data-act]"))) {
     const k = +x.closest(".msg").dataset.k; const m = messages[k]; const act = x.dataset.act;
     if (act === "copy") navigator.clipboard.writeText(m.content).then(() => toast(t("copied")), () => toast(t("copy_fail")));
@@ -5709,6 +5856,142 @@ $("#gate-form").addEventListener("submit", e => {
   if (!booted) { startApp(); try { pdRestore(99); } catch (e) { /* not ready */ } } else { mode = "ai"; messages = chats.ai; tabs.ai = "chat"; showView(); }
 });
 $("#word-form").addEventListener("submit", e => { e.preventDefault(); saveWordFile(); });
+let otherThreads = [];
+let otherId = "";
+let otherBusy = false;
+let otArch = false;
+let otCtl = null;
+function renderOtherList() {
+  const list = $("#ot-sheet-list");
+  if (!list) return;
+  const rows = otherThreads.filter(t => (t.messages || []).length && !!t.archived === otArch);
+  list.innerHTML = rows.length ? rows.map(t => convCard(t, "ot")).join("") : `<p class="lead">${esc(otArch ? t("arch_empty") : t("conv_empty"))}</p>`;
+  document.querySelectorAll("[data-ot-arch]").forEach(b => { b.textContent = otArch ? t("show_chats") : t("show_arch"); });
+}
+function renderOtherView() {
+  const thread = $("#ot-thread");
+  const cur = otherThreads.find(x => x.id === otherId);
+  const msgs = cur ? cur.messages : [];
+  const box = $("#ot-job"); if (box) box.placeholder = t("ot_ph");
+  if (!thread) return;
+  if (!msgs.length) {
+    thread.innerHTML = `<div class="welcome home"><h2>${esc(t("ot_h"))}</h2><p>${esc(t("ot_note"))}</p></div>`;
+  } else {
+    const jobs = [];
+    for (let i = 0; i < msgs.length; i++) {
+      if (msgs[i].role !== "user") continue;
+      jobs.push({ ask: msgs[i], ans: msgs[i + 1] && msgs[i + 1].role !== "user" ? msgs[i + 1] : null });
+    }
+    thread.innerHTML = jobs.map(({ ask, ans }) => {
+      const n = ans && ans.panel ? ans.panel.filter(a => a && a.text && !a.error).length : 0;
+      const head = n ? (settings.lang === "en" ? n + " AIs answered. Their files are under each reply." : n + "টি AI উত্তর দিয়েছে। ফাইল প্রতিটি উত্তরের নিচে।") : "";
+      return `<article class="job"><p class="job-ask">${esc(ask.shown || ask.content)}${ask.files && ask.files.length ? `<br><span class="file">${ask.files.map(esc).join("</span> <span class=\"file\">")}</span>` : ""}</p>${head ? `<p class="thought">${esc(head)}</p>` : ""}${ans && ans.content ? `<div class="doc">${mdToHtml(ans.content)}</div>` : (ans && ans.done ? "" : thinkingHtml(ans || { started: Date.now() }))}${ans && ans.error ? `<div class="err">${esc(ans.error)}</div>` : ""}${panelHtml(ans)}</article>`;
+    }).join("");
+    const sc = $("#ot-scroll"); if (sc) sc.scrollTop = sc.scrollHeight;
+  }
+  try { renderOtherList(); } catch (e) { /* the replies stay on screen */ }
+}
+function saveOther() {
+  const rows = otherThreads.filter(t => (t.messages || []).some(m => m.role === "user")).slice(0, 30);
+  vaultSet("others", rows.slice(0, 20).map(t => packAgentThread(t, 8000, 4000)));
+  if (whoId) keepPut("others:" + whoId, rows.slice(0, 30).map(t => packAgentThread(t, 60000, 16000)));
+}
+function openOther(id) {
+  otherId = id || "";
+  renderOtherView();
+}
+function newOther() {
+  otherId = "";
+  const s = $("#ot-sheet"); if (s) s.hidden = true;
+  renderOtherView();
+  const job = $("#ot-job"); if (job) job.focus();
+}
+function deleteOther(id) {
+  otherThreads = otherThreads.filter(t => t.id !== id);
+  if (otherId === id) otherId = (otherThreads.find(t => !t.archived) || {}).id || "";
+  delAsk = "";
+  saveOther();
+  renderOtherView();
+}
+function setOtherBusy(b) {
+  otherBusy = !!b;
+  const p = $("#ot-pause"); if (p) p.hidden = !b;
+  const go = $("#ot-go"); if (go) go.disabled = !!b;
+}
+async function runOther(job, files) {
+  if (!engine) return toast(t("no_ai"));
+  if (otCtl) { try { otCtl.abort(); } catch (e) { /* the new job replaces it */ } }
+  otCtl = new AbortController();
+  setOtherBusy(true);
+  const fileNames = (files || []).map(f => f.name);
+  const raw = (files || []).map(f => f.text ? "--- " + f.name + " ---\n" + f.text : "").filter(Boolean).join("\n\n");
+  let cur = otherThreads.find(t => t.id === otherId);
+  if (!cur) { cur = { id: nid(), title: "", at: Date.now(), messages: [] }; otherThreads.unshift(cur); otherId = cur.id; }
+  cur.messages.push({ role: "user", content: job, shown: job, files: fileNames, done: true });
+  const ai = { role: "assistant", content: "", panel: [], done: false, started: Date.now() };
+  cur.messages.push(ai);
+  if (!cur.title) cur.title = String(job || fileNames[0] || "Other AI").replace(/\s+/g, " ").trim().slice(0, 72);
+  renderOtherView();
+  const en = settings.lang === "en";
+  try {
+    const imgs = attachImages(files || []);
+    let rows = [];
+    try { rows = await askPanel(job || "Read the attachment and return the full result.", [], raw, imgs, raw ? 7000 : 3600, otCtl.signal); } catch (e) { rows = []; }
+    const good = (rows || []).filter(a => a && a.text && !a.error);
+    const base = (fileNames[0] || "other-ai").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-") || "other-ai";
+    ai.panel = good.map((a, i) => {
+      const wrapped = (raw || /docx|pdf|xlsx|excel|word|table|টেবিল|ফাইল/i.test(job)) ? panelFile(a.text, base + "-" + (a.provider || i)) : "";
+      return { provider: a.provider, model: a.model, text: wrapped || a.text, error: "" };
+    });
+    const bundle = good.map(a => (PANEL_NAME[a.provider] || a.provider) + ":\n" + String(a.text || "").slice(0, 4000)).join("\n\n").slice(0, 24000);
+    if (bundle) {
+      const sys = yearLine() + "\nYou are the skill layer on the Other AI page, October 2026. You are not Biswas AI chat and not Office AI. The free AIs already answered. Keep their facts. If they wrote a document, a table, or a spreadsheet, emit downloadable attachment blocks (docx+pdf, and xlsx when there is a table). Keep every name, amount and row. Do not say you cannot see the file. Do not apologize. A short line, then the files.\n\nTHEIR OUTPUT:\n" + bundle + (raw ? "\n\nORIGINAL FILE:\n" + raw.slice(0, 12000) : "");
+      try {
+        const r = await aiRunFull([{ role: "user", content: job || "Package their output as files." }], { fast: false, skills: true, maxOut: 8192, images: imgs, signal: otCtl.signal, system: sys, onText: ({ text: bit }) => { ai.content = bit; renderOtherView(); } });
+        ai.content = r.text || "";
+      } catch (e2) {
+        ai.content = en ? good.length + " AIs answered. Their replies are below." : good.length + "টি AI উত্তর দিয়েছে। উত্তর নিচে।";
+      }
+    } else {
+      ai.content = en ? "No answer came back. Try again." : "এখন উত্তর আসেনি। আবার চেষ্টা করুন।";
+    }
+    ai.done = true;
+    cur.at = Date.now();
+    saveOther();
+  } catch (e) {
+    ai.content = (e && (e.name === "AbortError" || e.code === "cancelled")) ? t("stopped") : (en ? "Try again." : "আবার চেষ্টা করুন।");
+    ai.error = "";
+    ai.done = true;
+    saveOther();
+  } finally {
+    otCtl = null;
+    setOtherBusy(false);
+    renderOtherView();
+  }
+}
+function sendOther() {
+  const box = $("#ot-job");
+  const job = ((box && box.value) || "").trim();
+  if (!job && !otFiles.length && !otReading) return;
+  if (!engine) return toast(t("no_ai"));
+  const go = async () => {
+    try { await otRead; } catch (e) { /* a failed read is skipped */ }
+    if (!job && !otFiles.length) return;
+    const files = otFiles.splice(0);
+    renderOtPending();
+    if (box) { box.value = ""; box.style.height = "auto"; }
+    runOther(job || "Read the attached files and return the full result, including any document or table.", files);
+  };
+  go();
+}
+let otFiles = [];
+let otRead = Promise.resolve();
+let otReading = false;
+function renderOtPending() {
+  const box = $("#ot-pending"); if (!box) return;
+  box.innerHTML = otFiles.map((f, k) => `<span class="file">${esc(f.name)}<button type="button" data-ot-unpend="${k}" aria-label="remove">✕</button></span>`).join("");
+}
+
 function sendAgent() {
   const box = $("#ag-job");
   const job = ((box && box.value) || "").trim();
@@ -5750,6 +6033,23 @@ if (agBox) {
 }
 const agGo = $("#ag-go"); if (agGo) agGo.addEventListener("mousedown", e => e.preventDefault());
 $("#ag-form").addEventListener("submit", e => { e.preventDefault(); sendAgent(); });
+const otAttach = $("#ot-attach"); if (otAttach) otAttach.addEventListener("click", () => { const i = $("#ot-file"); if (i) i.click(); });
+const otFile = $("#ot-file");
+if (otFile) otFile.addEventListener("change", e => {
+  const l = Array.from(e.target.files || []);
+  e.target.value = "";
+  otReading = true;
+  otRead = readInto(l, otFiles, renderOtPending).finally(() => { otReading = false; });
+});
+const otBox = $("#ot-job");
+if (otBox) {
+  const grow = () => { otBox.style.height = "auto"; otBox.style.height = Math.min(otBox.scrollHeight, 160) + "px"; };
+  otBox.addEventListener("input", grow);
+  otBox.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendOther(); } });
+}
+const otGo = $("#ot-go"); if (otGo) otGo.addEventListener("mousedown", e => e.preventDefault());
+const otForm = $("#ot-form"); if (otForm) otForm.addEventListener("submit", e => { e.preventDefault(); sendOther(); });
+const otPause = $("#ot-pause"); if (otPause) otPause.addEventListener("click", () => { if (otCtl) otCtl.abort(); });
 const pauseBtn = $("#pause"); if (pauseBtn) pauseBtn.addEventListener("click", () => { if (chatCtl) chatCtl.abort(); });
 const agPause = $("#ag-pause"); if (agPause) agPause.addEventListener("click", () => { agentHalt = true; if (ctl) ctl.abort(); });
 $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word-title"), b = $("#word-body"); if (a) a.value = ""; if (b) b.value = ""; });

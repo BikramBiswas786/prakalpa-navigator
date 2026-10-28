@@ -346,7 +346,7 @@ export async function POST(request) {
       for (const name of extra) if (!models.includes(name)) models.push(name);
       let last = { provider: id, model: models[0], text: "", error: "no answer" };
       for (const model of models.slice(0, 2)) {
-        const r = await attempt(p, model, { ...body, images: [], maxOut: out }, request.signal, fileJob ? 35000 : 14000);
+        const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 35000 : 14000);
         if (!r.ok) {
           const raw = String(r.error || "");
           last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };

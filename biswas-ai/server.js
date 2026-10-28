@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "166";
+const BUILD = "167";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -784,14 +784,15 @@ async function research(q, opts) {
   const more = await searchMore(query, opts);
   const pages = [];
   const seen = new Set();
+  const cap = opts && opts.rich ? 14 : 6;
   const add = (hit) => {
-    if (!hit || !hit.url || seen.has(hit.url) || pages.length >= 6) return;
+    if (!hit || !hit.url || seen.has(hit.url) || pages.length >= cap) return;
     if (opts && opts.wb && dropBangladesh(hit)) return;
     seen.add(hit.url);
     pages.push({ title: hit.title || hit.url, url: hit.url, text: hit.text || "", via: hit.via || "" });
   };
-  more.slice(0, 4).forEach(add);
-  hits.slice(0, 2).forEach(add);
+  more.slice(0, opts && opts.rich ? 10 : 4).forEach(add);
+  hits.slice(0, opts && opts.rich ? 4 : 2).forEach(add);
   for (const p of pages) {
     if (String(p.text || "").length > 80) continue;
     try { p.text = await readPage(p.url); } catch (e) { p.text = ""; }
@@ -799,7 +800,7 @@ async function research(q, opts) {
   if (pages.filter(p => String(p.text || "").length > 80).length < 2) {
     for (const w of await wiki(query)) if (!seen.has(w.url) && !(opts && opts.wb && dropBangladesh(w))) { seen.add(w.url); pages.push(w); }
   }
-  return pages.slice(0, 6);
+  return pages.slice(0, cap);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -969,30 +970,31 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ pages }));
         return;
       }
-      let pages = q ? await research(rawQ, { wb }) : [];
+      const rich = !!body.rich;
+      let pages = q ? await research(rawQ, { wb, rich }) : [];
       if (body.google && q) {
         try {
           const g = await searchGoogle(q);
-          for (const hit of (Array.isArray(g) ? g : []).slice(0, 2)) {
+          for (const hit of (Array.isArray(g) ? g : []).slice(0, rich ? 6 : 2)) {
             if (!hit || !hit.url || pages.some(p => p.url === hit.url) || (wb && dropBangladesh(hit))) continue;
             let text = "";
             try { text = await readPage(hit.url); } catch (e) { text = ""; }
-            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: "google" });
+            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, rich ? 2200 : 1800), via: "google" });
           }
         } catch (e) { /* the pages already opened still go back */ }
       }
       if (body.google && q) {
         try {
-          for (const hit of (await searchMore(q)).slice(0, 2)) {
+          for (const hit of (await searchMore(q)).slice(0, rich ? 6 : 2)) {
             if (!hit || !hit.url || pages.some(p => p.url === hit.url) || (wb && dropBangladesh(hit))) continue;
             let text = "";
             try { text = await readPage(hit.url); } catch (e) { text = ""; }
-            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, 1800), via: hit.via || "web" });
+            pages.push({ title: hit.title || hit.url, url: hit.url, text: String(text || "").slice(0, rich ? 2200 : 1800), via: hit.via || "web" });
           }
         } catch (e) { /* keep what is already open */ }
       }
       res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-      res.end(JSON.stringify({ pages: pages.slice(0, 8) }));
+      res.end(JSON.stringify({ pages: pages.slice(0, rich ? 14 : 8) }));
       return;
     }
     if (url.pathname === "/healthz/pendrive") {
