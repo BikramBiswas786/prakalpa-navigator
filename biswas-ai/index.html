@@ -2188,7 +2188,7 @@ async function askPanel(question, pages, fileText, imgs, maxOut, signal) {
   const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 12)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 1400)).join("\n\n").slice(0, 18000);
   const system = file
-    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file, including a PDF, Word, or Excel extract. Read all of it. Return the FULL document as Markdown, every memo and every table row. Keep every name, account number, IFSC, mobile and amount. Do not drop a row. Do not invent a person. Do not say you cannot see, create, or send an attachment. Do not apologize. Start with the document."
+    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file, including a PDF, Word, or Excel extract. Read all of it. Do not return the file unchanged. Write ONE better document in Markdown: what the file is; a careful analysis using only names, dates, amounts and rows that are in the file; wording rectified without changing a figure; a fuller explanation of the columns, blanks and groups; then the full data as Markdown tables, every row. Do not invent a person or a row. Do not drop a row. Do not say you cannot see, create, or send an attachment. Do not apologize. Start with the document."
     : yearLine() + "\nSOURCE PAGES below were opened today (" + today() + "). They are your only source for a current price, index, score, or today-fact. Do not say you have no real-time data. Do not tell the user to visit NSE, BSE, Bloomberg, Moneycontrol, or another site instead of answering. If a number is in a page, use it and name that page. If it is not in any page, leave the number out. Do not fill the gap with 2023 or 2024 memory. Write the research. Do not refuse." + (src ? "\n\nSOURCE PAGES:\n" + src : "\n\nNo page text was attached. Do not invent today's market figures.");
   const user = file
     ? String(question || "Read this file and return the full document.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file + (src ? "\n\nSOURCE PAGES:\n" + src.slice(0, 8000) : "")
@@ -2802,6 +2802,114 @@ function copyHead(copies) {
   return en
     ? "Corrected from the attachment. Names, amounts and tables are kept. Download the Word file."
     : "সংযুক্তি থেকে ঠিক করা হয়েছে। নাম, টাকা ও টেবিল রাখা হয়েছে। Word ফাইল নামান।";
+}
+function wantsBetter(q) {
+  const s = String(q || "");
+  if (wantsResearch(s) || wantsAnalysis(s) || wantsCreate(s)) return true;
+  return /\b(better|accurate|accuracy|rectify|rectification|improve|improved|careful|carefully|detail|detailed|larger|bigger|expand|deeper|deep|audit|review|explain|big doc|গভীর|বিশ্লেষণ|সঠিক|বিস্তার)\b/i.test(s);
+}
+function isSheetExtract(raw) {
+  const s = String(raw || "");
+  if (/\[Sheet:/i.test(s)) return true;
+  const lines = s.split("\n");
+  const tabs = lines.filter(l => l.includes("\t")).length;
+  return tabs >= 3 && tabs > lines.length * 0.4;
+}
+function sheetBlocks(raw) {
+  const text = String(raw || "").replace(/\r/g, "");
+  if (!isSheetExtract(text)) return [];
+  return text.split(/\n(?=\[Sheet:)/).map(s => s.trim()).filter(Boolean).map(part => {
+    const m = part.match(/^\[Sheet:\s*([^\]]+)\][^\n]*\n([\s\S]*)$/);
+    const body = m ? m[2] : part;
+    const rows = body.split("\n").filter(l => l.trim());
+    return rows.length ? { name: m ? m[1].trim() : "Sheet", rows } : null;
+  }).filter(Boolean);
+}
+function mdTable(grid) {
+  const clean = grid.map(r => r.map(c => String(c ?? "").replace(/\|/g, "/").replace(/\s+/g, " ").trim()));
+  let width = 1;
+  for (const r of clean) if (r.length > width) width = r.length;
+  const line = r => "| " + Array.from({ length: width }, (_, i) => r[i] || "").join(" | ") + " |";
+  const sep = "| " + Array.from({ length: width }, () => "---").join(" | ") + " |";
+  return [line(clean[0] || []), sep].concat(clean.slice(1).map(line)).join("\n");
+}
+function sheetPack(raw) {
+  const blocks = sheetBlocks(raw);
+  if (!blocks.length) {
+    const text = String(raw || "").trim();
+    const lines = text.split("\n").filter(l => l.trim());
+    return { sheet: false, facts: "Prose document: " + lines.length + " lines, " + text.length + " characters.", record: text };
+  }
+  const factLines = [];
+  const tables = [];
+  for (const b of blocks) {
+    const grid = b.rows.map(l => l.split("\t"));
+    let width = 1;
+    for (const r of grid) if (r.length > width) width = r.length;
+    factLines.push(b.name + ": " + grid.length + " rows, " + width + " columns.");
+    const heads = (grid[0] || []).map(c => String(c).trim()).filter(Boolean).slice(0, 14);
+    if (heads.length) factLines.push("Headings: " + heads.join(" | "));
+    const body = grid.slice(1);
+    let blanks = 0;
+    body.forEach(r => { for (let i = 0; i < width; i++) if (!String(r[i] || "").trim()) blanks++; });
+    if (blanks) factLines.push("Blank cells in the data rows: " + blanks + ".");
+    const seen = new Map();
+    body.forEach(r => { const k = String(r[0] || "").trim(); if (k) seen.set(k, (seen.get(k) || 0) + 1); });
+    const dups = [...seen.entries()].filter((pair) => pair[1] > 1).slice(0, 8);
+    if (dups.length) factLines.push("Repeated in the first column: " + dups.map(pair => pair[0] + " ×" + pair[1]).join("; ") + ".");
+    for (let c = 0; c < width; c++) {
+      const nums = [];
+      for (const r of body) {
+        const v = String(r[c] || "").trim();
+        if (/^-?\d[\d,]*(\.\d+)?$/.test(v)) nums.push(Number(v.replace(/,/g, "")));
+      }
+      if (nums.length >= 2 && nums.length >= Math.max(2, Math.floor(body.length * 0.5))) {
+        const sum = nums.reduce((a, n) => a + n, 0);
+        const label = String((grid[0] || [])[c] || ("Column " + (c + 1))).trim() || ("Column " + (c + 1));
+        const shown = Number.isInteger(sum) ? sum.toLocaleString("en-IN") : sum.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+        factLines.push("Sum of " + nums.length + " numbers already printed under " + label + ": " + shown + ".");
+      }
+    }
+    tables.push("### " + b.name + "\n\n" + mdTable(grid));
+  }
+  let record = tables.join("\n\n");
+  if (record.length > 90000) record = record.slice(0, 90000) + "\n\n(The extract stops here. The rows above are from the file. No figure was rewritten.)";
+  return { sheet: true, facts: factLines.join("\n"), record };
+}
+async function betterDocument(raw, job, signal, onStep) {
+  const src = String(raw || "").trim();
+  const built = sheetPack(src);
+  const en = settings.lang === "en";
+  if (onStep) onStep(en ? "Reading every row. The better document keeps them and adds the analysis." : "প্রতিটি সারি পড়ছি। উন্নত নথিতে সারি থাকবে, সঙ্গে বিশ্লেষণ।");
+  const sys = "You read an office file for Biswas AI. Today is " + today() + ". Write a careful reading in Markdown. Do not paste the table. Do not return the file unchanged.\n"
+    + "Rules:\n"
+    + "- Every name, date, amount, account, IFSC and row count must come from FILE FACTS or the EXCERPT. If it is not there, do not state it.\n"
+    + "- Do not invent a person, a row, or a total. A total is allowed only when FILE FACTS already gives that sum.\n"
+    + "- Rectify grammar in your own sentences. Do not change a figure that is printed in the file.\n"
+    + "- Write more than a short summary: what the file is, how it is organised, what each column is for, what the printed figures show, blanks, repeats, and what should be verified.\n"
+    + "- Do not say you cannot see the file. Do not apologise. Do not tell the user to upload again or to open another website.\n"
+    + "- Use these sections: What this file is; Careful reading; Figures that are in the file; What to verify; Rectifications.\n"
+    + "- If the job is in English, reply in English. If the job is in Bengali, reply in colloquial Bengali.";
+  let reading = "";
+  try {
+    const r = await aiRun([{ role: "user", content: "Job:\n" + String(job || "Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row.").slice(0, 1500) + "\n\nFILE FACTS (counted from the file):\n" + built.facts.slice(0, 4000) + "\n\nEXCERPT:\n" + src.slice(0, 14000) }], { fast: false, smart: true, signal, system: sys, maxOut: 5000 });
+    reading = String(r.text || "").trim();
+  } catch (e) {
+    if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
+    reading = "";
+  }
+  const echo = src.slice(0, 180);
+  if (echo.length > 40 && reading.includes(echo)) reading = reading.split("\n").filter(line => line.length < 80 || !src.includes(line)).join("\n").trim();
+  if (reading.length < 280) {
+    reading = (en
+      ? "The file was read in full. The model did not add a separate note, so this reading is the count taken from the file itself.\n\n" + built.facts
+      : "ফাইল পুরোটা পড়া হয়েছে। আলাদা নোট আসেনি, তাই এই পড়া ফাইল থেকে গোনা হিসাব।\n\n" + built.facts);
+  }
+  const title = en
+    ? "# Better document\n\nOne document. The reading is new and longer. The record underneath is the same information: every row kept, no figure rewritten.\n\n"
+    : "# উন্নত নথি\n\nএকটি নথি। উপরের পড়া নতুন ও বড়। নিচের রেকর্ড সেই একই তথ্য: প্রতিটি সারি আছে, কোনো অঙ্ক বদলানো হয়নি।\n\n";
+  const recHead = en ? "## Full accurate record\n\nNothing in this record was dropped or recalculated by hand.\n\n" : "## সম্পূর্ণ সঠিক রেকর্ড\n\nএই রেকর্ড থেকে কোনো সারি বাদ যায়নি।\n\n";
+  return title + reading + "\n\n" + recHead + built.record;
 }
 function copiedFigures(pages) {
   const out = [];
@@ -5364,7 +5472,8 @@ async function ask(text) {
     const fixOnly = onlyFileFix(text);
     const factual = mode === "ai" && !hasFile && factQuestion(text) && !fixOnly;
     const browseQ = hasFile ? researchQuery(text) : browseQuery(text, turns);
-    const browse = mode === "ai" && !fixOnly && !!browseQ && (factual || wantsResearch(text) || (!hasFile && mustBrowse(text)));
+    const docRead = mode === "ai" && hasFile && raw.length > 80 && wantsBetter(text) && !factQuestion(text);
+    const browse = mode === "ai" && !fixOnly && !docRead && !!browseQ && (factual || wantsResearch(text) || (!hasFile && mustBrowse(text)));
     if (browse) {
       ai.browse = true;
       ai.content = settings.lang === "en" ? "Opening pages before answering…" : "উত্তরের আগে পাতা খুলছি…";
@@ -5385,6 +5494,29 @@ async function ask(text) {
       const full = await keptFile(raw, text, chatCtl.signal);
       const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
       r = { text: copyHead(copies) + docxFence(full, base + (copies > 1 ? "-copies" : "-corrected")), via: "file", truncated: false };
+    } else if (mode === "ai" && raw.length > 80 && wantsBetter(text) && !fixOnly) {
+      const enB = settings.lang === "en";
+      let head = "";
+      if (fileLayer) {
+        ai.content = enB ? "Correcting the file first. The better document is added after. Rows stay." : "আগে ফাইল ঠিক করছি। উন্নত নথি পরে যোগ হবে। সারি থাকবে।";
+        if (live()) updateAt(box.indexOf(ai));
+        const full = await keptFile(raw, text, chatCtl.signal);
+        const base0 = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+        head = copyHead(copies) + docxFence(full, base0 + (copies > 1 ? "-copies" : "-corrected"));
+        keptFence = head;
+        ai.content = head;
+        if (live()) updateAt(box.indexOf(ai));
+      }
+      const pageBit = (opened || []).slice(0, 4).map(p => (p.title || p.url || "") + "\n" + String(p.text || "").slice(0, 500)).join("\n\n").slice(0, 2500);
+      const base = String((files[0] && files[0].name) || "document").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+      const better = await betterDocument(raw, text + (pageBit ? "\n\nPages opened:\n" + pageBit : ""), chatCtl.signal, (line) => {
+        ai.content = (head ? head + "\n\n" : "") + line;
+        if (live()) updateAt(box.indexOf(ai));
+      });
+      const intro = enB
+        ? "Read in full. This is one better document: a careful analysis, then the same accurate record with every row. Figures were not rewritten."
+        : "পুরোটা পড়া হয়েছে। এটি একটি উন্নত নথি: সতর্ক বিশ্লেষণ, তারপর একই সঠিক রেকর্ড, প্রতিটি সারিসহ। অঙ্ক বদলানো হয়নি।";
+      r = { text: (head ? head + "\n\n" : "") + intro + docxFence(better, base + "-better"), via: "file", truncated: false };
     } else if (factual && !opened.length) {
       r = { text: settings.lang === "en" ? "The pages did not open, so this reply will not guess what happened, who won, or a score. Ask the same question again." : "পাতা খোলেনি, তাই কী হলো বা কে জিতল সেটা অনুমান করা হচ্ছে না। একই প্রশ্ন আবার করুন।", via: "pages", truncated: false };
     } else {
@@ -5517,43 +5649,88 @@ async function deepChat() {
   let keptFence = "";
   try {
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
-    const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
+    const base = String((files[0] && files[0].name) || "document").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-");
     const fixOnly = onlyFileFix(typed);
-    if (raw.length > 80 && (fixOnly || fileEditJob(typed) || copyCount(typed) > 1)) {
-      ai.content = settings.lang === "en" ? "Reading the whole file. Every row stays." : "পুরো ফাইল পড়ছি। প্রতিটি সারি থাকবে।";
+    const en = settings.lang === "en";
+    if (mode !== "ai") {
+      if (raw.length > 80 && (fixOnly || fileEditJob(typed) || copyCount(typed) > 1)) {
+        ai.content = en ? "Reading the whole file. Every row stays." : "পুরো ফাইল পড়ছি। প্রতিটি সারি থাকবে।";
+        if (live()) updateAt(box.indexOf(ai));
+        const full = await keptFile(raw, typed || "Correct the file and keep every page.", mine.signal, (i, n) => {
+          ai.content = (en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n;
+          if (live()) updateAt(box.indexOf(ai));
+        });
+        keptFence = copyHead(copyCount(typed)) + docxFence(full, base + (copyCount(typed) > 1 ? "-copies" : "-corrected"));
+        ai.content = keptFence;
+        ai.via = "file";
+        if (live()) updateAt(box.indexOf(ai));
+      } else if (raw.length > 1800) {
+        keptFence = (en ? "The full attachment is in the Word file. The note below is the research and analysis." : "পুরো সংযুক্তি Word ফাইলে। নিচের নোট খোঁজ ও বিশ্লেষণ।") + docxFence(raw.slice(0, 100000), base + "-full");
+        ai.content = keptFence;
+        if (live()) updateAt(box.indexOf(ai));
+      }
+      if (!fixOnly) {
+        let pageNote = "";
+        const q = researchQuery(typed) || (factQuestion(typed) ? browseQuery(typed, []) : "");
+        if (q && (wantsResearch(typed) || factQuestion(typed))) {
+          ai.content = keptFence + (en ? "\n\nOpening pages for the research…" : "\n\nখোঁজের জন্য পাতা খুলছি…");
+          if (live()) updateAt(box.indexOf(ai));
+          try {
+            const pages = await fetchLive(q, mine.signal);
+            ai.pages = pages;
+            pageNote = (pages || []).map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 1200)).join("\n\n").slice(0, 12000);
+          } catch (eP) { pageNote = ""; }
+        }
+        const r = await aiRunFull([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem() + (pageNote ? "\n\nPAGES:\n" + pageNote : "") + "\nDo the research, the analysis, and any new document that was asked. Do not delete the file already saved. Do not drop rows from it.", fast: false, smart: true, skills: true, maxOut: 8192, onText: ({ text }) => { ai.content = (keptFence ? keptFence + "\n\n" : "") + text; if (live()) updateAt(box.indexOf(ai)); } });
+        ai.content = (keptFence ? keptFence + "\n\n" : "") + String(r.text || "").trim();
+        ai.via = r.via || ai.via;
+        if (!/```attachment/.test(ai.content) && String(r.text || "").length > 400) ai.content += docxFence(String(r.text).replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000), base + "-note");
+        if (r.truncated && !/```attachment/.test(String(ai.content || ""))) ai.error = errText("cut");
+      }
+    } else if (raw.length > 80 && fixOnly) {
+      ai.content = en ? "Reading the whole file. Every row stays." : "পুরো ফাইল পড়ছি। প্রতিটি সারি থাকবে।";
       if (live()) updateAt(box.indexOf(ai));
       const full = await keptFile(raw, typed || "Correct the file and keep every page.", mine.signal, (i, n) => {
-        ai.content = (settings.lang === "en" ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n;
+        ai.content = (en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n;
         if (live()) updateAt(box.indexOf(ai));
       });
-      keptFence = copyHead(copyCount(typed)) + docxFence(full, base + (copyCount(typed) > 1 ? "-copies" : "-corrected"));
-      ai.content = keptFence;
+      ai.content = copyHead(copyCount(typed)) + docxFence(full, base + (copyCount(typed) > 1 ? "-copies" : "-corrected"));
       ai.via = "file";
-      if (live()) updateAt(box.indexOf(ai));
-    } else if (raw.length > 1800) {
-      keptFence = (settings.lang === "en" ? "The full attachment is in the Word file. The note below is the research and analysis." : "পুরো সংযুক্তি Word ফাইলে। নিচের নোট খোঁজ ও বিশ্লেষণ।") + docxFence(raw.slice(0, 100000), base + "-full");
-      ai.content = keptFence;
-      if (live()) updateAt(box.indexOf(ai));
-    }
-    if (!fixOnly) {
-      let pageNote = "";
-      const q = researchQuery(typed) || (factQuestion(typed) ? browseQuery(typed, []) : "");
-      if (q && (wantsResearch(typed) || factQuestion(typed))) {
-        ai.content = keptFence + (settings.lang === "en" ? "\n\nOpening pages for the research…" : "\n\nখোঁজের জন্য পাতা খুলছি…");
+    } else if (raw.length > 80) {
+      if (fileEditJob(typed) || copyCount(typed) > 1) {
+        ai.content = en ? "Correcting the file first. The better document is added after. Rows stay." : "আগে ফাইল ঠিক করছি। উন্নত নথি পরে যোগ হবে। সারি থাকবে।";
         if (live()) updateAt(box.indexOf(ai));
+        const full = await keptFile(raw, typed || "Correct the file and keep every row.", mine.signal, (i, n) => {
+          ai.content = (en ? "Correcting part " : "অংশ ঠিক করছি ") + i + " / " + n;
+          if (live()) updateAt(box.indexOf(ai));
+        });
+        keptFence = copyHead(copyCount(typed)) + docxFence(full, base + (copyCount(typed) > 1 ? "-copies" : "-corrected"));
+        ai.content = keptFence;
+        ai.via = "file";
+        if (live()) updateAt(box.indexOf(ai));
+      }
+      let pageNote = "";
+      if (factQuestion(typed)) {
         try {
-          const pages = await fetchLive(q, mine.signal);
+          const pages = await fetchLive(browseQuery(typed, []), mine.signal);
           ai.pages = pages;
-          pageNote = (pages || []).map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text || "").slice(0, 1200)).join("\n\n").slice(0, 12000);
+          pageNote = (pages || []).slice(0, 4).map(p => (p.title || "") + "\n" + String(p.text || "").slice(0, 400)).join("\n").slice(0, 2500);
         } catch (eP) { pageNote = ""; }
       }
-      const r = await aiRunFull([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem() + (pageNote ? "\n\nPAGES:\n" + pageNote : "") + "\nDo the research, the analysis, and any new document that was asked. Do not delete the file already saved. Do not drop rows from it.", fast: false, smart: true, skills: true, maxOut: 8192, onText: ({ text }) => { ai.content = (keptFence ? keptFence + "\n\n" : "") + text; if (live()) updateAt(box.indexOf(ai)); } });
-      ai.content = (keptFence ? keptFence + "\n\n" : "") + String(r.text || "").trim();
-      ai.via = r.via || ai.via;
-      if (!/```attachment/.test(ai.content) && String(r.text || "").length > 400) ai.content += docxFence(String(r.text).replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000), base + "-note");
-      const tb = parseMd(String(r.text || "")).find(b => b.t === "table");
-      if (tb && mode === "office") { grid = tb.rows.map(row => row.map(c => plain(c))); saveGrid(); }
-      if (r.truncated && !/```attachment/.test(String(ai.content || ""))) ai.error = errText("cut");
+      const better = await betterDocument(raw, (typed || "Deep research. Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row and every figure.") + (pageNote ? "\n\nPages opened:\n" + pageNote : ""), mine.signal, (line) => {
+        ai.content = (keptFence ? keptFence + "\n\n" : "") + line;
+        if (live()) updateAt(box.indexOf(ai));
+      });
+      const intro = en
+        ? "Read in full. This is one better document: a careful analysis, then the same accurate record with every row. Figures were not rewritten."
+        : "পুরোটা পড়া হয়েছে। এটি একটি উন্নত নথি: সতর্ক বিশ্লেষণ, তারপর একই সঠিক রেকর্ড, প্রতিটি সারিসহ। অঙ্ক বদলানো হয়নি।";
+      ai.content = (keptFence ? keptFence + "\n\n" : "") + intro + docxFence(better, base + "-better");
+      ai.via = ai.via || "file";
+    } else {
+      const r = await aiRunFull([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem() + "\nRead the attached pages or picture. Write a careful analysis and one better document. Do not say the file is missing.", fast: false, smart: true, skills: true, maxOut: 8192, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
+      ai.content = String(r.text || "").trim();
+      ai.via = r.via;
+      if (!/```attachment/.test(ai.content) && ai.content.length > 400) ai.content += docxFence(ai.content.replace(/```[\s\S]*?```/g, "").trim().slice(0, 14000), base + "-note");
     }
   } catch (e) {
     if (/```attachment/.test(String(ai.content || ""))) ai.error = "";
@@ -6268,6 +6445,37 @@ async function runOther(job, files) {
       saveOther();
       renderOtherView();
     }
+    const plain = (files || []).map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
+    const base = (fileNames[0] || "other-ai").replace(/\.[a-z0-9]+$/i, "").replace(/[^\w.-]+/g, "-") || "other-ai";
+    if (plain.length > 80) {
+      ai.content = (keptFence ? keptFence + "\n\n" : "") + (en ? "Sending the file to the other AIs. Each one reads it and writes a better document. The careful file is built here at the same time." : "ফাইল অন্য AI-দের কাছে যাচ্ছে। প্রত্যেকে পড়ে একটি উন্নত নথি লিখবে। এখানেও সতর্ক ফাইল তৈরি হচ্ছে।");
+      renderOtherView();
+      let rows = [];
+      let better = "";
+      try {
+        const both = await Promise.all([
+          askPanel(job || "Read this file carefully. Analyse it. Rectify wording. Write one larger accurate document. Keep every row and every figure. Do not return the file unchanged.", [], plain, imgs, 7000, otCtl.signal).catch(e => { if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e; return []; }),
+          betterDocument(plain, job || "Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row and every figure.", otCtl.signal, (line) => {
+            ai.content = (keptFence ? keptFence + "\n\n" : "") + line;
+            renderOtherView();
+          }).catch(e => { if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e; return ""; })
+        ]);
+        rows = both[0] || [];
+        better = both[1] || "";
+      } catch (e) {
+        if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
+        rows = [];
+      }
+      const named = (rows || []).filter(a => a && a.text && !a.error);
+      const failed = (rows || []).filter(a => a && (!a.text || a.error));
+      ai.panel = named.map((a, i) => ({ provider: a.provider, model: a.model, text: panelFile(a.text, base + "-" + (a.provider || i)) || a.text, error: "" }));
+      const who = named.map(a => PANEL_NAME[a.provider] || a.provider).join(", ");
+      const miss = failed.map(a => (PANEL_NAME[a.provider] || a.provider) + (a.error ? " (" + a.error + ")" : "")).join(", ");
+      const intro = en
+        ? "The file was sent to the other AIs" + (named.length ? ". " + named.length + " sent a document back (" + who + ")" : ". None of them answered in time") + (miss ? ". No file from: " + miss : "") + ". Each answer is its own Word file under Other AIs. The first file is the careful document: same facts, more detail, wording rectified, every row kept."
+        : "ফাইল অন্য AI-দের কাছে গেছে" + (named.length ? "। " + named.length + "টি নথি ফিরেছে (" + who + ")" : "। সময়মতো কেউ উত্তর দেয়নি") + (miss ? "। ফাইল আসেনি: " + miss : "") + "। প্রত্যেকের উত্তর নিচে আলাদা Word ফাইল। প্রথম ফাইল সতর্ক নথি: একই তথ্য, বেশি বিস্তার, বানান ঠিক, প্রতিটি সারি আছে।";
+      ai.content = (keptFence ? keptFence + "\n\n" : "") + intro + docxFence(better || plain.slice(0, 90000), base + (better ? "-better" : "-record"));
+    } else {
     let pages = [];
     const qOther = raw ? researchQuery(job) : browseQuery(job, cur.messages);
     if (qOther && (factQuestion(job) || wantsResearch(job) || (!raw && mustBrowse(job)))) {
@@ -6316,6 +6524,7 @@ async function runOther(job, files) {
       const prose = String(ai.content || "").replace(/```[\s\S]*?```/g, "").trim();
       const body = prose.length > 400 ? prose.slice(0, 14000) : String(raw || "").slice(0, 18000);
       if (body.length > 80) ai.content = String(ai.content || "") + docxFence(body, raw ? (base + "-note") : "market-note");
+    }
     }
     ai.done = true;
     cur.at = Date.now();

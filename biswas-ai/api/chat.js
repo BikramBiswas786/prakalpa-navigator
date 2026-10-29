@@ -321,7 +321,7 @@ export async function POST(request) {
 
   if (body.panel) {
     const FREE = ["groq", "gemini", "nvidia", "cerebras", "mistral", "openrouter", "sambanova", "cloudflare", "zai", "llm7", "nara", "cohere", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, 6);
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, 5);
     const out = Math.min(12288, Math.max(256, Number(body.maxOut) || 1400));
     const fileJob = out > 1800;
     const capChars = fileJob ? 28000 : 14000;
@@ -329,7 +329,7 @@ export async function POST(request) {
       const reader = stream.getReader();
       const dec = new TextDecoder();
       let text = "";
-      const stop = Date.now() + (fileJob ? 55000 : 32000);
+      const stop = Date.now() + (fileJob ? 36000 : 20000);
       while (text.length < capChars && Date.now() < stop) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -338,32 +338,32 @@ export async function POST(request) {
       try { await stream.cancel(); } catch { /* done */ }
       return text.replace(/\u0000[A-Z_]+$/, "").trim();
     };
-    const answers = [];
-    for (let i = 0; i < ids.length; i += 2) {
-      const batch = await Promise.all(ids.slice(i, i + 2).map(async id => {
-      const p = PROVIDERS[id];
-      const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
-      const models = p.models.slice();
-      for (const name of extra) if (!models.includes(name)) models.push(name);
-      models.sort((a, b) => rankModel(a) - rankModel(b));
-      let last = { provider: id, model: models[0], text: "", error: "no answer" };
-      for (const model of models.slice(0, 2)) {
-        const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 35000 : 14000);
-        if (!r.ok) {
-          const raw = String(r.error || "");
-          last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };
-          if (/rate limit|429|1300/i.test(raw)) continue;
-          break;
+    const answers = await Promise.all(ids.map(async id => {
+      try {
+        const p = PROVIDERS[id];
+        const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
+        const models = p.models.slice();
+        for (const name of extra) if (!models.includes(name)) models.push(name);
+        models.sort((a, b) => rankModel(a) - rankModel(b));
+        let last = { provider: id, model: models[0], text: "", error: "no answer" };
+        for (const model of models.slice(0, 2)) {
+          const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 26000 : 12000);
+          if (!r.ok) {
+            const raw = String(r.error || "");
+            last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };
+            if (/rate limit|429|1300/i.test(raw)) continue;
+            break;
+          }
+          const text = await readAll(r.stream);
+          if (text && !/^\s*\{"object"\s*:\s*"error"/i.test(text)) return { provider: id, model, text, error: "" };
+          last = { provider: id, model, text: "", error: "empty answer" };
         }
-        const text = await readAll(r.stream);
-        if (text && !/^\s*\{"object"\s*:\s*"error"/i.test(text)) return { provider: id, model, text, error: "" };
-        last = { provider: id, model, text: "", error: "empty answer" };
+        if (last.error === "rate limit") cool(id, 60 * 1000);
+        return last;
+      } catch {
+        return { provider: id, model: "", text: "", error: "no answer" };
       }
-      if (last.error === "rate limit") cool(id, 60 * 1000);
-      return last;
     }));
-      answers.push(...batch);
-    }
     return json({ answers });
   }
 
