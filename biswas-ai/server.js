@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "170";
+const BUILD = "171";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -679,6 +679,74 @@ function dropBangladesh(row) {
   if (/bangladesh|বাংলাদেশ|fireservice\.gov\.bd|qanun\.com/i.test(blob) && !/west bengal|পশ্চিমবঙ্গ/i.test(blob)) return true;
   return false;
 }
+function inr2(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "";
+  const neg = x < 0;
+  const [a, b] = Math.abs(x).toFixed(2).split(".");
+  const head = a.length > 3 ? a.slice(0, -3) : "";
+  const tail = a.slice(-3);
+  const grouped = (head ? head.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," : "") + tail;
+  return (neg ? "-" : "") + grouped + "." + b;
+}
+function istStamp(sec) {
+  const d = new Date((Number(sec) + 19800) * 1000);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = n => String(n).padStart(2, "0");
+  return p(d.getUTCDate()) + "." + p(d.getUTCMonth() + 1) + "." + d.getUTCFullYear() + " " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()) + " IST";
+}
+async function indexQuotes(q) {
+  if (!/\b(sensex|nifty|share market|stock market)\b/i.test(String(q || ""))) return [];
+  const jobs = [
+    { name: "S&P BSE SENSEX", id: "in%3BSEN", page: "https://www.moneycontrol.com/indian-indices/sensex-4.html", yahoo: "^BSESN" },
+    { name: "Nifty 50", id: "in%3BNSX", page: "https://www.moneycontrol.com/indian-indices/nifty-50-9.html", yahoo: "^NSEI" }
+  ];
+  const one = async (job) => {
+    const line = (parts) => parts.filter(Boolean).join(". ") + ".";
+    try {
+      const r = await fetch("https://priceapi.moneycontrol.com/pricefeed/notapplicable/inidicesindia/" + job.id, {
+        signal: AbortSignal.timeout(8000),
+        headers: { "user-agent": CHROME, accept: "application/json" }
+      });
+      const data = r.ok ? await r.json() : null;
+      const d = data && data.data;
+      const px = d && inr2(d.pricecurrent);
+      if (px) {
+        const text = line([
+          job.name + " live level: " + px,
+          d.pricechange ? "Change: " + inr2(d.pricechange) + (d.pricepercentchange ? " (" + Number(d.pricepercentchange).toFixed(2) + "%)" : "") : "",
+          d.HIGH ? "Day high: " + inr2(d.HIGH) : "",
+          d.LOW ? "Day low: " + inr2(d.LOW) : "",
+          d.priceprevclose ? "Previous close: " + inr2(d.priceprevclose) : "",
+          d.lastupd ? "As of " + d.lastupd + " IST" : "",
+          "This is the live index level"
+        ]);
+        return { title: job.name + " live " + px, url: job.page, text };
+      }
+    } catch (e) { /* the other quote source still runs */ }
+    try {
+      const r = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(job.yahoo) + "?interval=1d&range=1d", {
+        signal: AbortSignal.timeout(8000),
+        headers: { "user-agent": CHROME, accept: "application/json" }
+      });
+      const data = r.ok ? await r.json() : null;
+      const meta = data && data.chart && data.chart.result && data.chart.result[0] && data.chart.result[0].meta;
+      const px = meta && inr2(meta.regularMarketPrice);
+      if (!px) return null;
+      const text = line([
+        job.name + " live level: " + px,
+        "Change: " + inr2(meta.fulldayChange) + (typeof meta.fulldayChangePercent === "number" ? " (" + meta.fulldayChangePercent.toFixed(2) + "%)" : ""),
+        "Day high: " + inr2(meta.regularMarketDayHigh),
+        "Day low: " + inr2(meta.regularMarketDayLow),
+        "Previous close: " + inr2(meta.chartPreviousClose),
+        meta.regularMarketTime ? "As of " + istStamp(meta.regularMarketTime) : "",
+        "This is the live index level"
+      ]);
+      return { title: job.name + " live " + px, url: "https://finance.yahoo.com/quote/" + encodeURIComponent(job.yahoo), text };
+    } catch (e) { return null; }
+  };
+  return (await Promise.all(jobs.map(one))).filter(Boolean);
+}
 async function searchMore(q, opts) {
   const cap = opts && opts.wide ? 48 : 24;
   const [par, parKey, tavily, exa, fire, serper, keiro, bing, msn, yahoo, duck, instant, wiki] = await Promise.all([
@@ -932,26 +1000,53 @@ const server = http.createServer(async (req, res) => {
       let body = {};
       try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")) || {}; } catch (e) { body = {}; }
       if (body.live) {
-        const qLive = String(body.q || "").slice(0, 180).trim();
+        let qLive = String(body.q || "").slice(0, 180).trim();
+        if (/\b(sensex|nifty)\b/i.test(qLive)) qLive = (qLive + " Sensex Nifty live level today").slice(0, 180);
+        const quoteP = indexQuotes(qLive).catch(() => []);
         const hits = qLive ? await searchMore(qLive, { wide: true }) : [];
+        const stop = new Set(["what", "whats", "today", "live", "level", "india", "the", "and", "for", "with", "from", "this", "that", "latest", "current", "news", "price", "update", "market", "stock", "share", "index"]);
+        const keys = qLive.toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3 && !stop.has(w));
+        const score = (h) => {
+          const hay = (String(h.title || "") + " " + String(h.url || "") + " " + String(h.text || "")).toLowerCase();
+          let s = 0;
+          for (const w of keys) if (hay.includes(w)) s += 4;
+          if (/sensex|nifty/.test(hay) && /\b\d{2},?\d{3}(?:\.\d+)?\b/.test(hay)) s += 6;
+          if (/moneycontrol|economictimes|nseindia|bseindia|livemint|business-standard|reuters|finance\.yahoo/.test(hay)) s += 3;
+          if (/\b(sensex|nifty)\b/i.test(qLive)) {
+            if (/2026/.test(hay)) s += 2;
+            if (/\b202[0-4]\b/.test(hay) && !/2026/.test(hay)) s -= 4;
+          }
+          if (/grammar|youtube\.com|updf|spellcheck/.test(hay)) s -= 8;
+          return s;
+        };
+        const ranked = hits.filter(h => h && h.url).sort((a, b) => score(b) - score(a));
         const picks = [];
         const seenLive = new Set();
-        for (const h of hits) {
-          if (!h || !h.url || seenLive.has(h.url)) continue;
+        for (const h of ranked) {
+          if (seenLive.has(h.url)) continue;
+          if (keys.length && score(h) < 4) continue;
           seenLive.add(h.url);
           picks.push(h);
-          if (picks.length >= 10) break;
+          if (picks.length >= 8) break;
         }
-        const openedLive = await Promise.all(picks.slice(0, 8).map(async (h) => {
+        const openedLive = await Promise.all(picks.map(async (h) => {
           let text = "";
           try { text = String((await openReadable(h.url)).text || ""); } catch (e) { text = ""; }
           if (text.length < 180) text = [text, String(h.text || "")].filter(t => String(t).length > 40).join("\n");
           return { title: h.title || h.url, url: h.url, text: String(text || "").slice(0, 2800) };
         }));
-        const extraLive = picks.slice(6).map(h => ({ title: h.title || h.url, url: h.url, text: String(h.text || "").slice(0, 1400) }));
-        const pagesLive = openedLive.concat(extraLive).filter(p => p && p.url && String(p.text || "").replace(/\s+/g, " ").trim().length > 40);
+        const quotes = await quoteP;
+        const pagesLive = openedLive.filter(p => p && p.url && String(p.text || "").replace(/\s+/g, " ").trim().length > 40 && (!keys.length || score(p) >= 4));
+        const merged = [];
+        const seenQuote = new Set();
+        for (const p of [...quotes, ...pagesLive]) {
+          if (!p || !p.url || seenQuote.has(p.url)) continue;
+          seenQuote.add(p.url);
+          merged.push(p);
+          if (merged.length >= 8) break;
+        }
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(JSON.stringify({ pages: pagesLive.slice(0, 10) }));
+        res.end(JSON.stringify({ pages: merged }));
         return;
       }
       if (body.url) {
