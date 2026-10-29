@@ -71,8 +71,9 @@ const modelCool = new Map(); // "id/model" → until (a model that stalled or fa
 const mCooled = k => (modelCool.get(k) || 0) > Date.now();
 const IDLE_MS = Number(env("IDLE_MS")) || 60000;
 
+const rankModel = model => { const m = String(model).toLowerCase(); return /70b|72b|120b|405|ultra|scout|medium|kimi|105b/.test(m) ? 0 : /flash-lite|8b|nemo|fast\b/.test(m) ? 2 : 1; };
 const outTokens = body => {
-  const cap = body && body.deep ? 12288 : MAX_OUT;
+  const cap = body && (body.deep || body.smart) ? 12288 : MAX_OUT;
   const n = Number(body && body.maxOut);
   return Number.isFinite(n) ? Math.max(256, Math.min(cap, Math.floor(n))) : cap;
 };
@@ -319,16 +320,16 @@ export async function POST(request) {
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
   if (body.panel) {
-    const FREE = ["llm7", "nara", "gemini", "groq", "nvidia", "mistral", "openrouter", "cloudflare", "sambanova", "zai", "cohere", "cerebras", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).slice(0, 8);
-    const out = Math.min(8192, Math.max(256, Number(body.maxOut) || 1400));
+    const FREE = ["groq", "gemini", "nvidia", "cerebras", "mistral", "openrouter", "sambanova", "cloudflare", "zai", "llm7", "nara", "cohere", "sarvam"];
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, 6);
+    const out = Math.min(12288, Math.max(256, Number(body.maxOut) || 1400));
     const fileJob = out > 1800;
-    const capChars = fileJob ? 28000 : 6000;
+    const capChars = fileJob ? 28000 : 14000;
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();
       let text = "";
-      const stop = Date.now() + (fileJob ? 55000 : 18000);
+      const stop = Date.now() + (fileJob ? 55000 : 32000);
       while (text.length < capChars && Date.now() < stop) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -344,6 +345,7 @@ export async function POST(request) {
       const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
       const models = p.models.slice();
       for (const name of extra) if (!models.includes(name)) models.push(name);
+      models.sort((a, b) => rankModel(a) - rankModel(b));
       let last = { provider: id, model: models[0], text: "", error: "no answer" };
       for (const model of models.slice(0, 2)) {
         const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 35000 : 14000);
@@ -394,14 +396,13 @@ export async function POST(request) {
   // then (only if every model missed it) the first few are retried with the long wait.
   const pairs = fastPairs(ids, wantsVision, !!body.freeOnly);
   const order = [...pairs.filter(([id, m]) => !mCooled(id + "/" + m)), ...pairs.filter(([id, m]) => mCooled(id + "/" + m))];
-  if (body.deep) {
-    const rank = (model) => { const m = String(model).toLowerCase(); return /70b|72b|120b|405|ultra|scout|medium|kimi|105b/.test(m) ? 0 : /flash|llama-3\.3|gpt-oss|nemotron/.test(m) ? 1 : 2; };
-    order.sort((a, b) => rank(a[1]) - rank(b[1]));
+  if (body.deep || body.smart) {
+    order.sort((a, b) => rankModel(a[1]) - rankModel(b[1]));
   }
   const slow = [];
   for (const [i, [id, model]] of order.entries()) {
     if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);
-    const first = body.deep ? 22000 : body.fast ? Math.min(FIRST_TEXT_MS, 8000) : NORMAL_FIRST_MS;
+    const first = body.deep ? 22000 : body.smart ? 14000 : body.fast ? Math.min(FIRST_TEXT_MS, 8000) : NORMAL_FIRST_MS;
     const t0 = Date.now(); const r = await attempt(PROVIDERS[id], model, body, request.signal, first);
     speedNote(id, model, r.ok ? Date.now() - t0 : null);
     if (r.ok) {
@@ -412,7 +413,7 @@ export async function POST(request) {
     modelCool.set(id + "/" + model, Date.now() + 3 * 60 * 1000);
     if (quotaError(r.status, r.error)) { sawLimit = true; cool(id, 60 * 1000); } else if (/in time|stalled|no text/i.test(String(r.error))) slow.push([id, model]);
     tried.push(`${id}/${model}: ${r.status || ""} ${r.error}`.trim());
-    if (i >= (body.deep ? 16 : 11) && slow.length) break; // don't walk the whole list at 4 s each
+    if (i >= (body.deep ? 16 : body.smart ? 8 : 11) && slow.length) break; // don't walk the whole list at 4 s each
   }
   for (const [id, model] of slow.slice(0, 2)) { // everyone missed the short wait: give the quickest stallers the long wait
     if (request.signal && request.signal.aborted) return json({ error: "cancelled" }, 499);

@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "169";
+const BUILD = "170";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -940,18 +940,18 @@ const server = http.createServer(async (req, res) => {
           if (!h || !h.url || seenLive.has(h.url)) continue;
           seenLive.add(h.url);
           picks.push(h);
-          if (picks.length >= 8) break;
+          if (picks.length >= 10) break;
         }
-        const openedLive = await Promise.all(picks.slice(0, 6).map(async (h) => {
+        const openedLive = await Promise.all(picks.slice(0, 8).map(async (h) => {
           let text = "";
           try { text = String((await openReadable(h.url)).text || ""); } catch (e) { text = ""; }
           if (text.length < 180) text = [text, String(h.text || "")].filter(t => String(t).length > 40).join("\n");
-          return { title: h.title || h.url, url: h.url, text: String(text || "").slice(0, 2200) };
+          return { title: h.title || h.url, url: h.url, text: String(text || "").slice(0, 2800) };
         }));
         const extraLive = picks.slice(6).map(h => ({ title: h.title || h.url, url: h.url, text: String(h.text || "").slice(0, 1400) }));
         const pagesLive = openedLive.concat(extraLive).filter(p => p && p.url && String(p.text || "").replace(/\s+/g, " ").trim().length > 40);
         res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-        res.end(JSON.stringify({ pages: pagesLive.slice(0, 8) }));
+        res.end(JSON.stringify({ pages: pagesLive.slice(0, 10) }));
         return;
       }
       if (body.url) {
