@@ -211,6 +211,7 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 .box { display: flex; gap: 8px; align-items: flex-end; border: 1px solid var(--line); border-radius: 12px; padding: 6px; background: var(--paper); }
 .box textarea { flex: 1; min-width: 0; border: 0; background: none; resize: none; max-height: 200px; min-height: 40px; padding: 8px; outline: none; }
 .iconbtn { border: 0; background: none; cursor: pointer; width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); flex: none; }
+.iconbtn.pd-src { width: auto; min-width: 38px; padding: 0 8px; font: inherit; font-size: .72rem; font-weight: 700; }
 .iconbtn:hover { background: var(--accent-soft); color: var(--accent); }
 .send { background: var(--accent); color: var(--accent-ink); }
 .send:hover { background: var(--accent); color: var(--accent-ink); opacity: .9; }
@@ -617,6 +618,8 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
 .ed-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: .88rem; margin: 6px 0; } .ed-crumbs button { font: inherit; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 2px 4px; border-radius: 4px; } .ed-crumbs button:hover { background: var(--accent-soft); }
 .ed-pk-list { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--line); border-radius: 8px; max-height: 300px; overflow: auto; }
 .ed-pk-list button { display: block; width: 100%; text-align: left; font: inherit; font-size: .9rem; background: none; border: 0; color: var(--ink); padding: 6px 8px; border-radius: 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-pk-list label { display: flex; gap: 8px; align-items: center; padding: 6px 8px; cursor: pointer; border-radius: 6px; }
+.ed-pk-list label:hover { background: var(--accent-soft); }
 .ed-pk-list button:hover, .ed-pk-list button:focus-visible { background: var(--accent-soft); } .ed-pk-list button.dim { color: var(--muted); }
 .ed-pk-list .hint { padding: 8px; color: var(--muted); } .ed-pk-act { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 </style>
@@ -857,11 +860,12 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
           <button class="iconbtn" type="button" id="ot-attach" aria-label="Attach">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
           </button>
+          <button class="iconbtn pd-src" type="button" data-pd-pick="other" id="ot-pd" aria-label="Pendrive">PD</button>
           <textarea id="ot-job" rows="1" enterkeyhint="send" data-t-ph="ot_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ot-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           <button class="btn small" type="button" id="ot-pause" data-t="pause" hidden></button>
         </form>
-        <div class="hint"><button class="btn small" type="button" id="ot-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ot-new" data-t="newchat"></button></div>
+        <div class="hint"><button class="btn small" type="button" id="ot-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ot-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="other" data-t="pd_pick_btn"></button></div>
       </div></div>
     </section>
 
@@ -874,11 +878,12 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
           <button class="iconbtn" type="button" id="ag-attach" aria-label="Attach">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
           </button>
+          <button class="iconbtn pd-src" type="button" data-pd-pick="agent" id="ag-pd" aria-label="Pendrive">PD</button>
           <textarea id="ag-job" rows="1" enterkeyhint="send" data-t-ph="ag_ph"></textarea>
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           <button class="btn small" type="button" id="ag-pause" data-t="pause" hidden></button>
         </form>
-        <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <span id="ag-picks"></span></div>
+        <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="agent" data-t="pd_pick_btn"></button> <span id="ag-picks"></span></div>
       </div></div>
     </section>
 
@@ -899,13 +904,14 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
             <button class="iconbtn" type="button" id="attach" aria-label="Attach">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
             </button>
+            <button class="iconbtn pd-src" type="button" data-pd-pick="chat" id="attach-pd" aria-label="Pendrive">PD</button>
             <textarea id="q" rows="1" enterkeyhint="send"></textarea>
             <button class="iconbtn send" type="submit" id="send" aria-label="Send">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </button>
             <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="chat" data-t="pd_pick_btn"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -1091,6 +1097,23 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
   </form>
 </div>
 
+<dialog class="ed-pick" id="pd-pick">
+  <form id="pd-pick-login" autocomplete="off">
+    <h3 data-t="pd_pick_h"></h3>
+    <div class="field"><label for="pd-pick-name" data-t="pd_name"></label><input id="pd-pick-name" maxlength="60" autocomplete="off" required></div>
+    <div class="field"><label for="pd-pick-pin" data-t="pd_pin"></label><input id="pd-pick-pin" type="password" inputmode="numeric" pattern="\d{4,8}" maxlength="8" autocomplete="off" required></div>
+    <p class="status-line" id="pd-pick-msg" role="status"></p>
+    <div class="ed-pk-act"><button class="btn" type="button" id="pd-pick-cancel" data-t="close"></button><button class="btn primary" type="submit" data-t="pd_pick_open"></button></div>
+  </form>
+  <div id="pd-pick-files" hidden>
+    <h3 id="pd-pick-title"></h3>
+    <div class="ed-crumbs" id="pd-pick-crumbs"></div>
+    <input id="pd-pick-q" type="search" autocomplete="off">
+    <div class="ed-pk-list" id="pd-pick-list"></div>
+    <p class="status-line" id="pd-pick-status" role="status"></p>
+    <div class="ed-pk-act"><button class="btn" type="button" id="pd-pick-switch" data-t="pd_pick_change"></button><button class="btn" type="button" id="pd-pick-close" data-t="close"></button><button class="btn primary" type="button" id="pd-pick-go" data-t="pd_pick_attach"></button></div>
+  </div>
+</dialog>
 <dialog id="settings">
   <form method="dialog" class="form" id="settings-form">
     <h2 data-t="set_title">সেটিংস</h2>
@@ -2915,14 +2938,14 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent", "others"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
+const TABS = { ai: ["chat", "agent", "others"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar", "pendrive"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
 const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
-  const items = [["home", "", "home"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
+  const items = [["home", "", "home"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["office", "pendrive", "pd_tab"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
   const nav = $("#rail-nav"); if (!nav) return;
   nav.innerHTML = items.map(([sec, id, key]) => {
     const on = key === "home" ? mode === "ai" && tab === "chat" : key === "nav_grammar" ? tab === "grammar" : key === "word_h" ? tab === "word" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
@@ -2955,6 +2978,7 @@ function showView() {
   if (tab === "agent") renderAgentView();
   if (tab === "others") renderOtherView();
   if (tab === "pendrive") renderPendrive();
+  document.querySelectorAll("[data-pd-pick='chat']").forEach(el => { el.hidden = mode === "public"; });
   refreshHistory();
   renderRail();
 }
@@ -2985,6 +3009,7 @@ function applyLang() {
   document.title = settings.lang === "en" ? "Biswas AI for Office" : "বিশ্বাস AI · Biswas AI for Office";
   if (bannerText) $("#banner-text").textContent = bannerText();
   document.querySelectorAll("[data-t]").forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll(".pd-src").forEach(el => { el.textContent = settings.lang === "en" ? "PD" : "পেন"; el.title = t("pd_pick_btn"); el.setAttribute("aria-label", t("pd_pick_btn")); });
   $("#lang-bn").setAttribute("aria-pressed", settings.lang === "bn");
   $("#lang-en").setAttribute("aria-pressed", settings.lang === "en");
   $("#c-search").placeholder = t("c_search");
@@ -2993,6 +3018,7 @@ function applyLang() {
   $("#d-rev").placeholder = t("d_rev_ph");
   $("#t-src").placeholder = t("t_src_ph");
   $("#mem-new").placeholder = t("mem_add_ph");
+  const pq = $("#pd-pick-q"); if (pq) pq.placeholder = t("pd_pick_find");
   const fx = $("#xl-fx"); if (fx && !fx.value) fx.placeholder = t("xl_fx_ph");
   const fl = $("#xl-filter"); if (fl) fl.placeholder = t("xl_filter_ph");
   const amt = $("#desk-amt"); if (amt) amt.placeholder = t("desk_amt_ph");
@@ -6394,7 +6420,7 @@ $("#word-new").addEventListener("click", () => { wordId = ""; const a = $("#word
 const sheetQ = $("#sheet-q"); if (sheetQ) sheetQ.addEventListener("input", () => { if ($("#hist-sheet") && !$("#hist-sheet").hidden) openHistory(); });
 /* ---------------- AI Pendrive ---------------- */
 Object.assign(STR.bn, {
-  pd_tab: "এআই পেনড্রাইভ", pd_title: "এআই পেনড্রাইভ", pd_intro: "অফিসের ফাইল একটা জায়গায় রাখুন। নাম আর PIN জানলে যে কোনো কম্পিউটার বা ফোন থেকে খোলা যাবে। পাশেই AI ফাইলগুলো পড়ে কাজ করে দেবে।",
+  pd_tab: "এআই পেনড্রাইভ", pd_pick_btn: "পেনড্রাইভ", pd_pick_h: "পেনড্রাইভ থেকে ফাইল", pd_pick_open: "খুলুন", pd_pick_attach: "যোগ করুন", pd_pick_change: "অন্য পেনড্রাইভ", pd_pick_busy: "ফাইল পড়ছি…", pd_pick_bad: "এই চ্যাটে PDF, Word, Excel, লেখা বা ছবি যোগ করা যায়।", pd_pick_big: "ফাইলটা ৮০ MB-এর বড়।", pd_pick_need: "আগে একটা ফাইলে টিক দিন।", pd_pick_empty: "এই ফোল্ডারে ফাইল নেই।", pd_pick_find: "নাম খুঁজুন", pd_title: "এআই পেনড্রাইভ", pd_intro: "অফিসের ফাইল একটা জায়গায় রাখুন। নাম আর PIN জানলে যে কোনো কম্পিউটার বা ফোন থেকে খোলা যাবে। পাশেই AI ফাইলগুলো পড়ে কাজ করে দেবে।",
   pd_create_h: "নতুন পেনড্রাইভ বানান", pd_open_h: "পেনড্রাইভ খুলুন", pd_name: "পেনড্রাইভের নাম", pd_pin: "PIN (৪-৮ সংখ্যা)", pd_pin2: "PIN আরেকবার",
   pd_pin_hint: "৬ বা তার বেশি সংখ্যার PIN দিলে বেশি নিরাপদ।", pd_create: "বানান", pd_open: "খুলুন", pd_close: "বন্ধ করুন",
   pd_up_files: "ফাইল যোগ করুন", pd_up_folder: "ফোল্ডার যোগ করুন (ডেস্কটপ থেকে)", pd_mkdir: "নতুন ফোল্ডার", pd_rename: "নাম বদল", pd_move: "সরান", pd_cut: "কাট", pd_copy: "কপি", pd_paste: "পেস্ট", pd_download: "ডাউনলোড", pd_delete: "🗑 বাছাই মুছুন", pd_del_one: "মুছুন",
@@ -6422,7 +6448,7 @@ Object.assign(STR.bn, {
   pd_leave: "ফাইল তোলা চলছে। সত্যিই পাতা ছাড়বেন?"
 });
 Object.assign(STR.en, {
-  pd_tab: "AI Pendrive", pd_title: "AI Pendrive", pd_intro: "Keep office files in one place. Anyone with the name and PIN can open it from any computer or phone. The AI next to it reads the files and does the work.",
+  pd_tab: "AI Pendrive", pd_pick_btn: "Pendrive", pd_pick_h: "Files from the pendrive", pd_pick_open: "Open", pd_pick_attach: "Attach", pd_pick_change: "Different pendrive", pd_pick_busy: "Reading the file…", pd_pick_bad: "This chat can attach a PDF, Word, Excel, text, or a picture.", pd_pick_big: "That file is over 80 MB.", pd_pick_need: "Tick a file first.", pd_pick_empty: "No files in this folder.", pd_pick_find: "Search by name", pd_title: "AI Pendrive", pd_intro: "Keep office files in one place. Anyone with the name and PIN can open it from any computer or phone. The AI next to it reads the files and does the work.",
   pd_create_h: "Create a pendrive", pd_open_h: "Open a pendrive", pd_name: "Pendrive name", pd_pin: "PIN (4-8 digits)", pd_pin2: "PIN again",
   pd_pin_hint: "A PIN of 6 or more digits is stronger.", pd_create: "Create", pd_open: "Open", pd_close: "Close",
   pd_up_files: "Add files", pd_up_folder: "Add folder from desktop", pd_mkdir: "New folder", pd_rename: "Rename", pd_move: "Move", pd_cut: "Cut", pd_copy: "Copy", pd_paste: "Paste", pd_download: "Download", pd_delete: "🗑 Delete selected", pd_del_one: "Delete",
@@ -6485,6 +6511,138 @@ function pdSession(j) {
 }
 function pdLogout() { pd.aiSel = new Set(); pd.token = ""; pd.files = []; pd.folders = []; pd.sel.clear(); try { sessionStorage.removeItem("pd:session"); } catch (e) { /* ignore */ } renderPendrive(); }
 async function pdRefresh() { let j; try { j = await pdApi("list"); if (window.PDO) { PDO.saveList(j); if (j.limited) PDO.enter(); } } catch (e) { const c = window.PDO && PDO.isDown(e) && await PDO.loadList(); if (!c) throw e; PDO.enter(); j = c; } pd.files = j.files; pd.folders = j.folders; pd.quota = j.quota; pd.used = j.used; pd.binUsed = j.binUsed || 0; pd.maxFile = j.maxFile || 0; pd.name = j.name; pd.listed = true; if (pd.cwd && !pd.folders.includes(pd.cwd)) pdCd(pd.cwd, false); renderPdList(); pdResumeHint(); }
+const pdPick = { target: "chat", cwd: "" };
+function pdPickShowLogin(msg) {
+  const login = $("#pd-pick-login"), files = $("#pd-pick-files");
+  if (login) login.hidden = false;
+  if (files) files.hidden = true;
+  const m = $("#pd-pick-msg"); if (m) m.textContent = msg || "";
+}
+function pdPickShowFiles() {
+  const login = $("#pd-pick-login"), files = $("#pd-pick-files");
+  if (login) login.hidden = true;
+  if (files) files.hidden = false;
+  const title = $("#pd-pick-title"); if (title) title.textContent = (pd.name || t("pd_pick_h"));
+  pdPickRender();
+}
+function pdPickKids() {
+  const q = String(($("#pd-pick-q") && $("#pd-pick-q").value) || "").trim().toLowerCase();
+  if (q) return { folders: [], files: (pd.files || []).filter(f => String(f.path || "").toLowerCase().includes(q)) };
+  const cwd = pdPick.cwd || "";
+  const prefix = cwd ? cwd + "/" : "";
+  const folders = new Set();
+  const files = [];
+  for (const folder of pd.folders || []) {
+    if (cwd && !folder.startsWith(prefix)) continue;
+    const rest = cwd ? folder.slice(prefix.length) : folder;
+    const name = rest.split("/")[0];
+    if (name) folders.add(name);
+  }
+  for (const f of pd.files || []) {
+    const p = String(f.path || "");
+    if (cwd) {
+      if (!p.startsWith(prefix)) continue;
+      const rest = p.slice(prefix.length);
+      if (!rest || rest.includes("/")) { if (rest) folders.add(rest.split("/")[0]); continue; }
+      files.push(f);
+    } else if (p.includes("/")) folders.add(p.split("/")[0]);
+    else files.push(f);
+  }
+  return { folders: [...folders].sort((a, b) => a.localeCompare(b)), files };
+}
+function pdPickRender() {
+  const box = $("#pd-pick-list"), crumbs = $("#pd-pick-crumbs"), status = $("#pd-pick-status");
+  if (!box) return;
+  if (status) status.textContent = "";
+  const parts = pdPick.cwd ? pdPick.cwd.split("/") : [];
+  if (crumbs) {
+    let acc = "";
+    const bits = [`<button type="button" data-pd-cwd="">${esc(t("pd_root"))}</button>`];
+    for (const p of parts) { acc = acc ? acc + "/" + p : p; bits.push(`<button type="button" data-pd-cwd="${esc(acc)}">${esc(p)}</button>`); }
+    crumbs.innerHTML = bits.join(" / ");
+  }
+  const { folders, files } = pdPickKids();
+  const rows = folders.map(name => `<button type="button" data-pd-dir="${esc(name)}">📁 ${esc(name)}</button>`);
+  for (const f of files) {
+    const name = String(f.path || "file").split("/").pop();
+    rows.push(`<label><input type="checkbox" value="${esc(f.id)}"> ${esc(name)} <span class="hint">${esc(pdSize(f.size || 0))}</span></label>`);
+  }
+  box.innerHTML = rows.length ? rows.join("") : `<p class="hint">${esc(t("pd_pick_empty"))}</p>`;
+}
+async function pdPickOpen(target) {
+  pdPick.target = target || "chat";
+  pdPick.cwd = "";
+  const dlg = $("#pd-pick");
+  if (!dlg) return;
+  if (!dlg.open) dlg.showModal();
+  if (!pd.token) { pdPickShowLogin(""); return; }
+  pdPickShowFiles();
+  const status = $("#pd-pick-status"); if (status) status.textContent = t("pd_pick_busy");
+  try { await pdRefresh(); pdPickRender(); if (status) status.textContent = ""; }
+  catch (e) { pdPickShowLogin(pdErrText(e)); }
+}
+async function pdPickAttach() {
+  const ids = [...document.querySelectorAll("#pd-pick-list input:checked")].map(el => el.value).slice(0, 8);
+  const status = $("#pd-pick-status");
+  if (!ids.length) { if (status) status.textContent = t("pd_pick_need"); return; }
+  const target = pdPick.target;
+  const arr = target === "agent" ? agFiles : target === "other" ? otFiles : pendingFiles;
+  const after = target === "agent" ? renderAgPending : target === "other" ? renderOtPending : renderPending;
+  const got = [];
+  try {
+    for (const id of ids) {
+      const meta = (pd.files || []).find(f => f.id === id);
+      if (!meta) continue;
+      const name = String(meta.path || "file").split("/").pop();
+      const ext = (name.split(".").pop() || "").toLowerCase();
+      const image = /^image\//.test(meta.type || "") || ["png", "jpg", "jpeg", "webp", "gif"].includes(ext);
+      const ok = image || ["pdf", "docx", "xlsx", "xls", "csv", "txt", "md"].includes(ext);
+      if (!ok) { toast(t("pd_pick_bad")); continue; }
+      if ((meta.size || 0) > OFFICE_BYTES && !["csv", "txt", "md"].includes(ext)) { toast(name + " — " + t("pd_pick_big")); continue; }
+      if (status) status.textContent = t("pd_pick_busy") + " " + name;
+      try {
+        const { url } = await pdApi("download", { id, inline: true });
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("http_" + r.status);
+        const blob = await r.blob();
+        got.push(new File([blob], name, { type: meta.type || blob.type || "" }));
+      } catch (e1) {
+        if (!meta.text) throw e1;
+        const saved = await pdApi("text-get", { id });
+        const txt = String(saved.text || "");
+        if (txt.length < 20) throw e1;
+        got.push(new File([txt], name.replace(/\.[^.]+$/, "") + ".txt", { type: "text/plain" }));
+      }
+    }
+  } catch (e) { if (status) status.textContent = pdErrText(e); return; }
+  const dlg = $("#pd-pick"); if (dlg && dlg.open) dlg.close();
+  if (got.length) await readInto(got, arr, after);
+}
+$("#pd-pick-login").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#pd-pick-msg"); if (msg) msg.textContent = "";
+  const name = $("#pd-pick-name").value.trim(), pin = $("#pd-pick-pin").value;
+  if (!/^\d{4,8}$/.test(pin)) { if (msg) msg.textContent = t("pd_bad_pin"); return; }
+  try {
+    const j = await pdApi("open", { name, pin, ticket: window.PDO && PDO.ticket(name) });
+    pdSession(j); window.PDO && PDO.opened(j, name); $("#pd-pick-pin").value = ""; pd.loaded = false; pd.listed = false;
+    pdPick.cwd = "";
+    await pdRefresh();
+    pdPickShowFiles();
+  } catch (err) { if (msg) msg.textContent = pdErrText(err); }
+});
+$("#pd-pick-cancel").addEventListener("click", () => { const d = $("#pd-pick"); if (d && d.open) d.close(); });
+$("#pd-pick-close").addEventListener("click", () => { const d = $("#pd-pick"); if (d && d.open) d.close(); });
+$("#pd-pick-switch").addEventListener("click", () => { pdLogout(); pdPickShowLogin(""); });
+$("#pd-pick-go").addEventListener("click", () => { pdPickAttach(); });
+$("#pd-pick-q").addEventListener("input", () => pdPickRender());
+$("#pd-pick").addEventListener("click", e => {
+  const dir = e.target.closest("[data-pd-dir]");
+  if (dir) { pdPick.cwd = pdPick.cwd ? pdPick.cwd + "/" + dir.dataset.pdDir : dir.dataset.pdDir; const q = $("#pd-pick-q"); if (q) q.value = ""; pdPickRender(); return; }
+  const crumb = e.target.closest("[data-pd-cwd]");
+  if (crumb) { pdPick.cwd = crumb.dataset.pdCwd || ""; pdPickRender(); }
+});
+document.addEventListener("click", e => { const b = e.target.closest("[data-pd-pick]"); if (b) pdPickOpen(b.dataset.pdPick); });
 let pdRefreshT = 0;
 function pdRefreshSoon() { clearTimeout(pdRefreshT); pdRefreshT = setTimeout(() => { pdRefreshT = 0; pdRefresh().catch(() => {}); }, 1500); }
 function renderPendrive() {
