@@ -310,10 +310,11 @@ async function nvidiaPicture(prompt, images) {
   if (!key) throw new Error("nvidia missing");
   const im = (images || [])[0];
   if (im) {
+    const dataUrl = "data:" + (im.mime || "image/jpeg") + ";base64," + im.b64;
     const r = await tfetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev", {
       method: "POST",
       headers: { authorization: "Bearer " + key, "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1500), image: im.b64, steps: 20, aspect_ratio: "1:1" })
+      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1500), image: dataUrl, steps: 30, seed: 0 })
     }, 90000);
     if (!r.ok) throw new Error("nvidia " + r.status + " " + (await r.text()).slice(0, 90));
     const j = await r.json();
