@@ -323,8 +323,9 @@ export async function POST(request) {
     const FREE = ["groq", "gemini", "nvidia", "cerebras", "mistral", "openrouter", "sambanova", "cloudflare", "zai", "llm7", "nara", "cohere", "sarvam"];
     const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, 5);
     const out = Math.min(12288, Math.max(256, Number(body.maxOut) || 1400));
-    const fileJob = out > 1800;
-    const capChars = fileJob ? 28000 : 14000;
+    const blob0 = (body.messages || []).map(m => String(m.content || "")).join("\n").slice(0, 2800);
+    const fileJob = /FILE READING \(every row counted\)/.test(blob0);
+    const capChars = fileJob ? 20000 : 14000;
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();

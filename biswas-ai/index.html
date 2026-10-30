@@ -2182,16 +2182,23 @@ function agreeArticle(rows, pages, question) {
       + (k.cites.length ? "\n" + k.cites.map(c => (c.title || c.url) + " — " + c.url).join("\n") : "")).join("\n\n");
 }
 async function askPanel(question, pages, fileText, imgs, maxOut, signal) {
-  const file = String(fileText || "").slice(0, 28000);
+  const file = String(fileText || "");
   const images = [];
   for (const b of (imgs || []).slice(0, 4)) { try { images.push({ mime: b.type || "image/jpeg", data: await toB64(b) }); } catch (e) { /* skip a bad picture */ } }
   const src = (pages || []).filter(p => p && p.url && String(p.text || "").length > 40).slice(0, 12)
     .map(p => (p.title || p.url) + "\n" + p.url + "\n" + String(p.text).slice(0, 1400)).join("\n\n").slice(0, 18000);
+  let packed = "";
+  if (file) {
+    if (file.length > 1500) {
+      const brief = columnBrief(file);
+      packed = "FILE READING (every row counted)\n" + brief.prose.slice(0, 7000) + "\n\nSAMPLES FROM THE START, THE MIDDLE AND THE END\n" + brief.samples.slice(0, 7000);
+    } else packed = "FILE READING (every row counted)\n" + file;
+  }
   const system = file
-    ? yearLine() + "\nThe user message includes the uploaded file under ATTACHED DOCUMENT. That text IS the file, including a PDF, Word, or Excel extract. Read all of it. Do not return the file unchanged. Write ONE better document in Markdown: what the file is; a careful analysis using only names, dates, amounts and rows that are in the file; wording rectified without changing a figure; a fuller explanation of the columns, blanks and groups; then the full data as Markdown tables, every row. Do not invent a person or a row. Do not drop a row. Do not say you cannot see, create, or send an attachment. Do not apologize. Start with the document."
+    ? yearLine() + "\nThe user message contains FILE READING counted from the whole attachment. That text is the file. Read it. Do not return the file unchanged and do not paste every row: the app attaches the full record. Write ONE longer analysis in Markdown with these sections: What this file is; Careful reading; Figures that are in the file; What to verify; Rectifications. Every name, date and amount must appear in the FILE READING or the samples. Do not invent a person or a row. Do not say you cannot see, create, or send an attachment. Do not apologise. Start with the analysis. If SOURCE PAGES are included, a today-figure is allowed only when those pages state it, in a short section, and it does not replace the file analysis."
     : yearLine() + "\nSOURCE PAGES below were opened today (" + today() + "). They are your only source for a current price, index, score, or today-fact. Do not say you have no real-time data. Do not tell the user to visit NSE, BSE, Bloomberg, Moneycontrol, or another site instead of answering. If a number is in a page, use it and name that page. If it is not in any page, leave the number out. Do not fill the gap with 2023 or 2024 memory. Write the research. Do not refuse." + (src ? "\n\nSOURCE PAGES:\n" + src : "\n\nNo page text was attached. Do not invent today's market figures.");
   const user = file
-    ? String(question || "Read this file and return the full document.").slice(0, 1200) + "\n\nATTACHED DOCUMENT:\n" + file + (src ? "\n\nSOURCE PAGES:\n" + src.slice(0, 8000) : "")
+    ? String(question || "Read this file carefully. Analyse it. Write one larger accurate document.").slice(0, 1200) + "\n\n" + packed + (src ? "\n\nSOURCE PAGES:\n" + src.slice(0, 4000) : "")
     : String(question || "").slice(0, 2000);
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ panel: true, system, messages: [{ role: "user", content: user }], images, maxOut: maxOut || (file ? 7000 : 3600) }), signal: signal || (ctl ? ctl.signal : undefined) });
@@ -2808,6 +2815,13 @@ function wantsBetter(q) {
   if (wantsResearch(s) || wantsAnalysis(s) || wantsCreate(s)) return true;
   return /\b(better|accurate|accuracy|rectify|rectification|improve|improved|careful|carefully|detail|detailed|larger|bigger|expand|deeper|deep|audit|review|explain|big doc|গভীর|বিশ্লেষণ|সঠিক|বিস্তার)\b/i.test(s);
 }
+function jobPlan(text, hasFile, rawLen) {
+  const fixOnly = onlyFileFix(text);
+  const news = factQuestion(text) && !fixOnly;
+  const better = !!hasFile && Number(rawLen) > 80 && wantsBetter(text) && !fixOnly;
+  const browse = !fixOnly && (news || (!hasFile && (wantsResearch(text) || mustBrowse(text))));
+  return { fixOnly, news, better, browse };
+}
 function isSheetExtract(raw) {
   const s = String(raw || "");
   if (/\[Sheet:/i.test(s)) return true;
@@ -2876,40 +2890,169 @@ function sheetPack(raw) {
   if (record.length > 90000) record = record.slice(0, 90000) + "\n\n(The extract stops here. The rows above are from the file. No figure was rewritten.)";
   return { sheet: true, facts: factLines.join("\n"), record };
 }
+function fmtCount(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "";
+  const neg = x < 0;
+  const [a, b] = Math.abs(x).toFixed(2).split(".");
+  const head = a.length > 3 ? a.slice(0, -3) : "";
+  const tail = a.slice(-3);
+  const grouped = (head ? head.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," : "") + tail;
+  return (neg ? "-" : "") + (b === "00" ? grouped : grouped + "." + b);
+}
+function takeRows(grid, nHead, nMid, nTail) {
+  const head = grid[0] || [];
+  const body = grid.slice(1);
+  const pick = new Set();
+  for (let i = 0; i < Math.min(nHead, body.length); i++) pick.add(i);
+  const mid = Math.max(0, Math.floor(body.length / 2) - Math.floor(nMid / 2));
+  for (let i = mid; i < Math.min(body.length, mid + nMid); i++) pick.add(i);
+  for (let i = Math.max(0, body.length - nTail); i < body.length; i++) pick.add(i);
+  const lines = ["HEADING\t" + head.join("\t")];
+  [...pick].sort((a, b) => a - b).forEach(i => lines.push("ROW " + (i + 1) + "\t" + body[i].join("\t")));
+  return lines.join("\n");
+}
+function columnBrief(raw) {
+  const text = String(raw || "").replace(/\r/g, "");
+  const blocks = sheetBlocks(text);
+  if (!blocks.length) {
+    const nonempty = text.split("\n").filter(l => l.trim());
+    const dates = [...new Set([...text.matchAll(/\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b/g)].map(m => m[0]))].slice(0, 12);
+    const memo = (text.match(/Memo(?:randum)?\s*No\.?\s*[:\-]?\s*[^\n]{0,48}/i) || [""])[0];
+    const prose = [
+      "This is a prose document, not a spreadsheet.",
+      nonempty.length + " non-empty lines. " + text.length + " characters.",
+      memo ? "A memo line printed in the file: " + memo.trim() : "",
+      dates.length ? "Dates printed in the file: " + dates.join(", ") + "." : "No date written as digits with dots or slashes was found."
+    ].filter(Boolean).join("\n");
+    const midAt = Math.max(0, Math.floor(nonempty.length / 2) - 6);
+    const samples = "START\n" + nonempty.slice(0, 18).join("\n") + "\n\nMIDDLE\n" + nonempty.slice(midAt, midAt + 12).join("\n") + "\n\nEND\n" + nonempty.slice(-12).join("\n");
+    return { sheet: false, rows: nonempty.length, prose, samples };
+  }
+  const parts = [];
+  const samples = [];
+  let dataRows = 0;
+  for (const b of blocks) {
+    const grid = b.rows.map(l => l.split("\t"));
+    let width = 1;
+    for (const r of grid) if (r.length > width) width = r.length;
+    grid.forEach(r => { while (r.length < width) r.push(""); });
+    const body = grid.slice(1);
+    dataRows += body.length;
+    parts.push("Sheet \"" + b.name + "\": " + grid.length + " rows including the heading, " + body.length + " data rows, " + width + " columns. Every data row was counted.");
+    const heads = grid[0] || [];
+    for (let c = 0; c < width; c++) {
+      const label = String(heads[c] || "").trim() || ("Column " + (c + 1));
+      let filled = 0, blank = 0;
+      const nums = [];
+      const texts = new Map();
+      for (const r of body) {
+        const v = String(r[c] || "").trim();
+        if (!v) { blank++; continue; }
+        filled++;
+        if (/^-?\d[\d,]*(\.\d+)?$/.test(v)) nums.push(Number(v.replace(/,/g, "")));
+        else texts.set(v, (texts.get(v) || 0) + 1);
+      }
+      let bit = "Column \"" + label + "\": " + filled + " filled, " + blank + " blank.";
+      if (nums.length && nums.length >= Math.max(2, Math.floor(filled * 0.5))) {
+        const sum = nums.reduce((a, n) => a + n, 0);
+        bit += " " + nums.length + " numbers. Sum " + fmtCount(sum) + ". Smallest " + fmtCount(Math.min.apply(null, nums)) + ". Largest " + fmtCount(Math.max.apply(null, nums)) + ".";
+      } else if (texts.size) {
+        const top = [...texts.entries()].sort((a, b2) => b2[1] - a[1]).slice(0, 5);
+        bit += " Distinct text values: " + texts.size + ". Examples: " + top.map(pair => pair[0].slice(0, 48) + (pair[1] > 1 ? " ×" + pair[1] : "")).join("; ") + ".";
+      }
+      parts.push(bit);
+    }
+    samples.push("[" + b.name + "]\n" + takeRows(grid, 12, 8, 8));
+  }
+  return { sheet: true, rows: dataRows, prose: parts.join("\n"), samples: samples.join("\n\n").slice(0, 9000) };
+}
+function localNarrative(brief) {
+  const b = brief || { sheet: false, rows: 0, prose: "" };
+  const en = typeof settings === "undefined" || settings.lang === "en";
+  if (en) {
+    return "The file was read in full before this note was written. The counts below come from the extract, not from memory.\n\n"
+      + "What this file is. " + (b.sheet ? "It is a spreadsheet. " + b.rows + " data rows were counted, including rows past the first screen." : "It is a written paper. " + b.rows + " non-empty lines were counted.")
+      + "\n\nCareful reading.\n" + b.prose
+      + "\n\nWhat to verify. A blank stays blank. A name is not changed into a different person. A sum above is only the addition of numbers already printed in that column. It is not a new sanction and not a live market figure.\n\nRectifications. These sentences are new. No figure printed in the file was rewritten. The full record follows, with every row that was in the extract.";
+  }
+  return "ফাইলটা নোট লেখার আগে পুরোটা পড়া হয়েছে। নিচের গণনা স্মৃতি থেকে নয়।\n\n"
+    + "এই ফাইল কী। " + (b.sheet ? "এটি একটি স্প্রেডশিট। " + b.rows + "টি তথ্য-সারি গোনা হয়েছে, প্রথম পর্দার পরের সারিও।" : "এটি লেখা নথি। " + b.rows + "টি অশূন্য লাইন গোনা হয়েছে।")
+    + "\n\nসতর্ক পাঠ।\n" + b.prose
+    + "\n\nযা মিলিয়ে দেখতে হবে। খালি ঘর খালিই থাকবে। নাম বদলে অন্য ব্যক্তি করা হয়নি। উপরের যোগফল শুধু সেই কলামে ছাপা সংখ্যার যোগ। নতুন মঞ্জুরি নয়, আজকের বাজারদরও নয়।\n\nসংশোধন। এই বাক্য নতুন। ফাইলে ছাপা কোনো অঙ্ক বদলানো হয়নি। নিচে পুরো রেকর্ড, এক্সট্র্যাক্টের প্রতিটি সারিসহ।";
+}
+function originalProse(text, src) {
+  const lines = String(text || "").split("\n");
+  const kept = [];
+  let own = 0, copied = 0;
+  const source = String(src || "");
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) { kept.push(""); continue; }
+    if (/^#{1,6}\s/.test(t)) { kept.push(line); continue; }
+    if (/^\|/.test(t) || (t.length > 8 && source.includes(t))) { copied += t.length; continue; }
+    own += t.length;
+    kept.push(line);
+  }
+  return { text: kept.join("\n").replace(/\n{3,}/g, "\n\n").trim(), own, copied };
+}
+function slimForNews(turns) {
+  return (turns || []).map(m => {
+    let c = String(m.content || "");
+    c = c.replace(/```attachment[\s\S]*?```/g, "\n[A file from earlier is still in the chat. It is not part of this question.]\n");
+    c = c.replace(/--- [^\n]* ---\n[\s\S]*?--- End of [^\n]+ ---/g, "\n[An earlier attachment was left out of this question.]\n");
+    if (c.length > 2200) c = c.slice(0, 1800) + "\n[Shortened so today's pages are the source.]\n";
+    return { role: m.role, content: c.trim() || (m.role === "user" ? "Earlier message." : "Earlier answer.") };
+  });
+}
 async function betterDocument(raw, job, signal, onStep) {
   const src = String(raw || "").trim();
   const built = sheetPack(src);
+  const brief = columnBrief(src);
+  const local = localNarrative(brief);
   const en = settings.lang === "en";
-  if (onStep) onStep(en ? "Reading every row. The better document keeps them and adds the analysis." : "প্রতিটি সারি পড়ছি। উন্নত নথিতে সারি থাকবে, সঙ্গে বিশ্লেষণ।");
+  if (onStep) onStep(en ? "Reading every row. The note is new. The record under it keeps every row." : "প্রতিটি সারি পড়ছি। নোট নতুন। নিচের রেকর্ডে প্রতিটি সারি থাকবে।");
   const sys = "You read an office file for Biswas AI. Today is " + today() + ". Write a careful reading in Markdown. Do not paste the table. Do not return the file unchanged.\n"
     + "Rules:\n"
-    + "- Every name, date, amount, account, IFSC and row count must come from FILE FACTS or the EXCERPT. If it is not there, do not state it.\n"
-    + "- Do not invent a person, a row, or a total. A total is allowed only when FILE FACTS already gives that sum.\n"
+    + "- Every name, date, amount, account, IFSC and row count must come from FILE READING or the SAMPLES. If it is not there, do not state it.\n"
+    + "- Do not invent a person, a row, or a total. A total is allowed only when FILE READING already gives that sum.\n"
     + "- Rectify grammar in your own sentences. Do not change a figure that is printed in the file.\n"
     + "- Write more than a short summary: what the file is, how it is organised, what each column is for, what the printed figures show, blanks, repeats, and what should be verified.\n"
+    + "- The app already counted every row. Discuss the whole file, not only the first rows in the sample.\n"
+    + "- If the job includes pages opened today, a live price or score is allowed only when those pages state that exact figure, in a short section. Do not replace the file reading with the news.\n"
     + "- Do not say you cannot see the file. Do not apologise. Do not tell the user to upload again or to open another website.\n"
     + "- Use these sections: What this file is; Careful reading; Figures that are in the file; What to verify; Rectifications.\n"
     + "- If the job is in English, reply in English. If the job is in Bengali, reply in colloquial Bengali.";
-  let reading = "";
+  let model = "";
   try {
-    const r = await aiRun([{ role: "user", content: "Job:\n" + String(job || "Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row.").slice(0, 1500) + "\n\nFILE FACTS (counted from the file):\n" + built.facts.slice(0, 4000) + "\n\nEXCERPT:\n" + src.slice(0, 14000) }], { fast: false, smart: true, signal, system: sys, maxOut: 5000 });
-    reading = String(r.text || "").trim();
+    const r = await aiRun([{ role: "user", content: "Job:\n" + String(job || "Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row.").slice(0, 1800) + "\n\nFILE READING (every row counted):\n" + brief.prose.slice(0, 8000) + "\n\nSAMPLES (start, middle and end):\n" + brief.samples.slice(0, 8000) }], { fast: false, smart: false, signal, system: sys, maxOut: 6000 });
+    model = originalProse(r.text, src).text;
   } catch (e) {
     if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
-    reading = "";
+    model = "";
   }
-  const echo = src.slice(0, 180);
-  if (echo.length > 40 && reading.includes(echo)) reading = reading.split("\n").filter(line => line.length < 80 || !src.includes(line)).join("\n").trim();
-  if (reading.length < 280) {
-    reading = (en
-      ? "The file was read in full. The model did not add a separate note, so this reading is the count taken from the file itself.\n\n" + built.facts
-      : "ফাইল পুরোটা পড়া হয়েছে। আলাদা নোট আসেনি, তাই এই পড়া ফাইল থেকে গোনা হিসাব।\n\n" + built.facts);
-  }
+  const judged = originalProse(model, brief.prose);
+  const modelOk = judged.own >= 450 && judged.own > judged.copied;
+  const reading = modelOk ? model : local;
+  const counted = !modelOk || !reading.includes(brief.prose.slice(0, 80))
+    ? (en ? "## Counted from every row\n\n" : "## প্রতিটি সারি থেকে গোনা\n\n") + brief.prose + "\n\n"
+    : "";
   const title = en
-    ? "# Better document\n\nOne document. The reading is new and longer. The record underneath is the same information: every row kept, no figure rewritten.\n\n"
-    : "# উন্নত নথি\n\nএকটি নথি। উপরের পড়া নতুন ও বড়। নিচের রেকর্ড সেই একই তথ্য: প্রতিটি সারি আছে, কোনো অঙ্ক বদলানো হয়নি।\n\n";
+    ? "# Better document\n\nOne document. " + brief.rows + (brief.sheet ? " data rows were read." : " lines were read.") + " The reading is new. The record underneath is the same information: every row kept, no figure rewritten.\n\n"
+    : "# উন্নত নথি\n\nএকটি নথি। " + brief.rows + (brief.sheet ? "টি তথ্য-সারি পড়া হয়েছে।" : "টি লাইন পড়া হয়েছে।") + " উপরের পড়া নতুন। নিচের রেকর্ড সেই একই তথ্য: প্রতিটি সারি আছে, কোনো অঙ্ক বদলানো হয়নি।\n\n";
   const recHead = en ? "## Full accurate record\n\nNothing in this record was dropped or recalculated by hand.\n\n" : "## সম্পূর্ণ সঠিক রেকর্ড\n\nএই রেকর্ড থেকে কোনো সারি বাদ যায়নি।\n\n";
-  return title + reading + "\n\n" + recHead + built.record;
+  return title + reading + "\n\n" + counted + recHead + built.record;
+}
+function offlineBetter(raw) {
+  const src = String(raw || "").trim();
+  const built = sheetPack(src);
+  const brief = columnBrief(src);
+  const en = typeof settings === "undefined" || settings.lang === "en";
+  const title = en
+    ? "# Better document\n\n" + brief.rows + (brief.sheet ? " data rows were read. " : " lines were read. ") + "This reading is the count of every row. No figure was rewritten.\n\n"
+    : "# উন্নত নথি\n\n" + brief.rows + (brief.sheet ? "টি তথ্য-সারি পড়া হয়েছে। " : "টি লাইন পড়া হয়েছে। ") + "এই পড়া প্রতিটি সারির গণনা। কোনো অঙ্ক বদলানো হয়নি।\n\n";
+  const recHead = en ? "## Full accurate record\n\nNothing in this record was dropped.\n\n" : "## সম্পূর্ণ সঠিক রেকর্ড\n\nএই রেকর্ড থেকে কোনো সারি বাদ যায়নি।\n\n";
+  return title + localNarrative(brief) + "\n\n" + recHead + built.record;
 }
 function copiedFigures(pages) {
   const out = [];
@@ -5469,11 +5612,12 @@ async function ask(text) {
     const raw = files.map(f => String(f.text || "").trim()).filter(Boolean).join("\n\n");
     const officeExtra = "\nOFFICE SKILL: You are Office AI, separate from Biswas AI chat. Read every attached file in full. Write the whole paper. Use office memory. When a document is requested, use a <<<DOC>>> block and also one docx+pdf attachment of that same paper.";
     let opened = [];
-    const fixOnly = onlyFileFix(text);
-    const factual = mode === "ai" && !hasFile && factQuestion(text) && !fixOnly;
-    const browseQ = hasFile ? researchQuery(text) : browseQuery(text, turns);
-    const docRead = mode === "ai" && hasFile && raw.length > 80 && wantsBetter(text) && !factQuestion(text);
-    const browse = mode === "ai" && !fixOnly && !docRead && !!browseQ && (factual || wantsResearch(text) || (!hasFile && mustBrowse(text)));
+    const plan = mode === "ai" ? jobPlan(text, hasFile, raw.length) : { fixOnly: onlyFileFix(text), news: false, better: false, browse: false };
+    const fixOnly = plan.fixOnly;
+    const news = !!plan.news;
+    const betterJob = !!plan.better;
+    const browseQ = news ? browseQuery(text, hasFile ? [] : turns) : (!hasFile ? browseQuery(text, turns) : "");
+    const browse = mode === "ai" && plan.browse && !!browseQ;
     if (browse) {
       ai.browse = true;
       ai.content = settings.lang === "en" ? "Opening pages before answering…" : "উত্তরের আগে পাতা খুলছি…";
@@ -5484,7 +5628,7 @@ async function ask(text) {
       ai.content = "";
       if (live()) updateAt(box.indexOf(ai));
     }
-    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law + liveBlock(opened, factual);
+    const system = mode === "public" ? (hasFile ? deepSystem() : rules()) : mode === "office" ? ((hasFile ? deepSystem() + "\n" : "") + rules() + bikramRules() + officeExtra) : chatRules() + law + liveBlock(opened, news);
     const copies = copyCount(text);
     const fileLayer = hasFile && raw.length > 80 && (fileEditJob(text) || copies > 1) && (mode === "ai" || mode === "office");
     let r;
@@ -5494,7 +5638,7 @@ async function ask(text) {
       const full = await keptFile(raw, text, chatCtl.signal);
       const base = String((files[0] && files[0].name) || "corrected").replace(/\.[a-z0-9]+$/i, "");
       r = { text: copyHead(copies) + docxFence(full, base + (copies > 1 ? "-copies" : "-corrected")), via: "file", truncated: false };
-    } else if (mode === "ai" && raw.length > 80 && wantsBetter(text) && !fixOnly) {
+    } else if (betterJob) {
       const enB = settings.lang === "en";
       let head = "";
       if (fileLayer) {
@@ -5517,7 +5661,7 @@ async function ask(text) {
         ? "Read in full. This is one better document: a careful analysis, then the same accurate record with every row. Figures were not rewritten."
         : "পুরোটা পড়া হয়েছে। এটি একটি উন্নত নথি: সতর্ক বিশ্লেষণ, তারপর একই সঠিক রেকর্ড, প্রতিটি সারিসহ। অঙ্ক বদলানো হয়নি।";
       r = { text: (head ? head + "\n\n" : "") + intro + docxFence(better, base + "-better"), via: "file", truncated: false };
-    } else if (factual && !opened.length) {
+    } else if (news && !hasFile && !opened.length) {
       r = { text: settings.lang === "en" ? "The pages did not open, so this reply will not guess what happened, who won, or a score. Ask the same question again." : "পাতা খোলেনি, তাই কী হলো বা কে জিতল সেটা অনুমান করা হচ্ছে না। একই প্রশ্ন আবার করুন।", via: "pages", truncated: false };
     } else {
       if (fileLayer) {
@@ -5531,7 +5675,16 @@ async function ask(text) {
       }
       const chatSkills = mode === "ai" && (hasFile || replySize(text) >= 7000 || wantsResearch(text) || wantsAnalysis(text) || wantsCreate(text) || /word|pdf|excel|docx|xlsx|letter|notesheet|report|table|chart|চিঠি|নোট|রিপোর্ট|টেবিল|ফাইল/i.test(text));
       const out = hasFile ? 12288 : mode === "office" ? 6400 : mode === "public" ? 1800 : (mode === "ai" && !greet ? Math.max(replySize(text), 6400) : replySize(text));
-      const sendTurns = (hasFile && mode !== "ai") ? turns.slice(-2) : turns;
+      let sendTurns = (hasFile && mode !== "ai") ? turns.slice(-2) : turns;
+      if (news && mode === "ai") {
+        const older = slimForNews(sendTurns.slice(0, -1));
+        let last = sendTurns[sendTurns.length - 1];
+        if (hasFile && raw && last) {
+          const brief = columnBrief(raw);
+          last = { role: "user", content: String(text || "").slice(0, 1500) + "\n\nAnswer today's question from the pages. The file was counted in full. Use it only if the question is about the file. Do not paste the file back.\n\nFILE READING (every row counted)\n" + brief.prose.slice(0, 4000) };
+        }
+        sendTurns = older.concat(last ? [last] : []);
+      }
       const opt = { images: imgs, signal: chatCtl.signal, agent: hasFile ? false : agent, system, fast: mode === "ai" ? !!greet : mode !== "office", smart: mode === "ai" && !greet, skills: mode === "office" || chatSkills || (mode === "public" && !hasFile), maxOut: out, onText: ({ text: bit }) => { ai.content = (keptFence ? keptFence + "\n\n" : "") + bit; if (live()) updateAt(box.indexOf(ai)); } };
       try {
         r = await aiRunFull(sendTurns, opt);
@@ -5545,7 +5698,8 @@ async function ask(text) {
     }
     ai.content = window.BA ? BA.protect(x => dropCutoff(x, text), r.text) : dropCutoff(r.text, text); ai.via = r.via;
     if (keptFence && !/```attachment/.test(String(ai.content || ""))) ai.content = keptFence + "\n\n" + String(ai.content || "");
-    if (mode === "ai" && factual && opened.length && !keptFence) {
+    if (betterJob && opened.length) ai.content = pinFigures(ai.content, opened);
+    if (mode === "ai" && news && opened.length && !betterJob && !keptFence) {
       const draft = ai.content;
       ai.content = settings.lang === "en" ? "Checking the answer against the pages…" : "উত্তরটা পাতার সঙ্গে মিলিয়ে দেখছি…";
       if (live()) updateAt(box.indexOf(ai));
@@ -5557,7 +5711,7 @@ async function ask(text) {
     }
     if (mode === "ai") {
       try {
-        if (factual) ai.content = staleYear(ai.content, ai.pages);
+        if (news && !betterJob) ai.content = staleYear(ai.content, ai.pages);
         const sm = splitMemory(ai.content); ai.content = sm.clean || ai.content; ai.learned = learn(sm.lines.concat(autoFacts(text, ai.content)), "chat");
       } catch (eMem) { /* a memory save must not turn the answer into a connection error */ }
     }
@@ -5725,6 +5879,7 @@ async function deepChat() {
         ? "Read in full. This is one better document: a careful analysis, then the same accurate record with every row. Figures were not rewritten."
         : "পুরোটা পড়া হয়েছে। এটি একটি উন্নত নথি: সতর্ক বিশ্লেষণ, তারপর একই সঠিক রেকর্ড, প্রতিটি সারিসহ। অঙ্ক বদলানো হয়নি।";
       ai.content = (keptFence ? keptFence + "\n\n" : "") + intro + docxFence(better, base + "-better");
+      if (ai.pages && ai.pages.length) ai.content = pinFigures(ai.content, ai.pages);
       ai.via = ai.via || "file";
     } else {
       const r = await aiRunFull([{ role: "user", content: box[box.length - 2].content }], { images: attachImages(files), signal: mine.signal, system: deepSystem() + "\nRead the attached pages or picture. Write a careful analysis and one better document. Do not say the file is missing.", fast: false, smart: true, skills: true, maxOut: 8192, onText: ({ text }) => { ai.content = text; if (live()) updateAt(box.indexOf(ai)); } });
@@ -6452,20 +6607,25 @@ async function runOther(job, files) {
       renderOtherView();
       let rows = [];
       let better = "";
+      let livePages = [];
+      const newsJob = factQuestion(job);
       try {
         const both = await Promise.all([
+          newsJob ? fetchLive(browseQuery(job, []), otCtl.signal).catch(e => { if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e; return []; }) : Promise.resolve([]),
           askPanel(job || "Read this file carefully. Analyse it. Rectify wording. Write one larger accurate document. Keep every row and every figure. Do not return the file unchanged.", [], plain, imgs, 7000, otCtl.signal).catch(e => { if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e; return []; }),
           betterDocument(plain, job || "Read carefully. Analyse. Rectify wording. Write one larger accurate document. Keep every row and every figure.", otCtl.signal, (line) => {
             ai.content = (keptFence ? keptFence + "\n\n" : "") + line;
             renderOtherView();
           }).catch(e => { if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e; return ""; })
         ]);
-        rows = both[0] || [];
-        better = both[1] || "";
+        livePages = both[0] || [];
+        rows = both[1] || [];
+        better = both[2] || "";
       } catch (e) {
         if (e && (e.name === "AbortError" || e.code === "cancelled")) throw e;
         rows = [];
       }
+      if (livePages.length) ai.pages = livePages;
       const named = (rows || []).filter(a => a && a.text && !a.error);
       const failed = (rows || []).filter(a => a && (!a.text || a.error));
       ai.panel = named.map((a, i) => ({ provider: a.provider, model: a.model, text: panelFile(a.text, base + "-" + (a.provider || i)) || a.text, error: "" }));
@@ -6474,7 +6634,10 @@ async function runOther(job, files) {
       const intro = en
         ? "The file was sent to the other AIs" + (named.length ? ". " + named.length + " sent a document back (" + who + ")" : ". None of them answered in time") + (miss ? ". No file from: " + miss : "") + ". Each answer is its own Word file under Other AIs. The first file is the careful document: same facts, more detail, wording rectified, every row kept."
         : "ফাইল অন্য AI-দের কাছে গেছে" + (named.length ? "। " + named.length + "টি নথি ফিরেছে (" + who + ")" : "। সময়মতো কেউ উত্তর দেয়নি") + (miss ? "। ফাইল আসেনি: " + miss : "") + "। প্রত্যেকের উত্তর নিচে আলাদা Word ফাইল। প্রথম ফাইল সতর্ক নথি: একই তথ্য, বেশি বিস্তার, বানান ঠিক, প্রতিটি সারি আছে।";
-      ai.content = (keptFence ? keptFence + "\n\n" : "") + intro + docxFence(better || plain.slice(0, 90000), base + (better ? "-better" : "-record"));
+      const doc = (better && String(better).length > 400) ? better : offlineBetter(plain);
+      let body = (keptFence ? keptFence + "\n\n" : "") + intro + docxFence(doc, base + "-better");
+      if (livePages.length) body = pinFigures(body, livePages);
+      ai.content = body;
     } else {
     let pages = [];
     const qOther = raw ? researchQuery(job) : browseQuery(job, cur.messages);
