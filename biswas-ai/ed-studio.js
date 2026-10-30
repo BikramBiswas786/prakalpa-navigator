@@ -289,19 +289,52 @@
   async function localBg(blob) {
     const c = await canvasFromBlob(blob, 1600);
     const g = c.getContext("2d");
-    // Soft local stand-in: blur + darken edges so the centre subject stands out more
     const copy = clone(c);
-    g.filter = "blur(18px) brightness(0.72) saturate(1.15)";
+    g.filter = "blur(22px) brightness(0.68) saturate(1.2)";
     g.drawImage(copy, 0, 0);
     g.filter = "none";
-    // Keep the centre sharper
-    const cx = c.width * 0.5, cy = c.height * 0.48, r = Math.min(c.width, c.height) * 0.38;
+    const cx = c.width * 0.5, cy = c.height * 0.46, r = Math.min(c.width, c.height) * 0.36;
     g.save();
     g.beginPath();
-    g.ellipse(cx, cy, r * 1.15, r * 1.35, 0, 0, Math.PI * 2);
+    g.ellipse(cx, cy, r * 1.2, r * 1.4, 0, 0, Math.PI * 2);
     g.clip();
     g.drawImage(copy, 0, 0);
     g.restore();
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+    return out;
+  }
+  async function localIsolate(blob) {
+    const c = await canvasFromBlob(blob, 1600);
+    const g = c.getContext("2d");
+    const copy = clone(c);
+    // Approximate subject cut: keep centre, fade edges to white
+    g.drawImage(copy, 0, 0);
+    const cx = c.width * 0.5, cy = c.height * 0.48, rx = c.width * 0.42, ry = c.height * 0.48;
+    g.save();
+    g.globalCompositeOperation = "destination-in";
+    const grd = g.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.55, cx, cy, Math.max(rx, ry));
+    grd.addColorStop(0, "rgba(0,0,0,1)");
+    grd.addColorStop(0.75, "rgba(0,0,0,0.85)");
+    grd.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, c.width, c.height);
+    g.restore();
+    const out = await new Promise(res => c.toBlob(res, "image/png", 0.95));
+    return out;
+  }
+  async function localCinematic(blob) {
+    const c = await canvasFromBlob(blob, 1600);
+    const g = c.getContext("2d");
+    const copy = clone(c);
+    g.filter = "contrast(1.12) saturate(1.18) sepia(0.08)";
+    g.drawImage(copy, 0, 0);
+    g.filter = "none";
+    // Soft vignette
+    const grd = g.createRadialGradient(c.width/2, c.height/2, Math.min(c.width,c.height)*0.3, c.width/2, c.height/2, Math.max(c.width,c.height)*0.7);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(1, "rgba(0,0,0,0.35)");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, c.width, c.height);
     const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
     return out;
   }
@@ -405,6 +438,23 @@
       }
       if (kind === "poster") {
         prompt = (line || "movie poster") + ". Turn into a high-end poster with clear readable text if requested. Cinematic, sharp.";
+      }
+      // Independent local path for tasks that do not need a foundation model
+      if (usePhoto && (kind === "enhance" || kind === "isolate" || kind === "vfx" || kind === "hero")) {
+        try {
+          const local = kind === "isolate" ? await localIsolate(photo.blob)
+            : (kind === "vfx" || kind === "hero") ? await localCinematic(photo.blob)
+            : await localClearer(photo.blob);
+          if (local) {
+            thread.pop();
+            const url = URL.createObjectURL(local);
+            thread.push({ role: "ai", url, blob: local, text: "Own AI (local) — no external model called." });
+            photo = { blob: local, url };
+            renderThread();
+            busy = false;
+            return;
+          }
+        } catch (_) { /* fall through to external */ }
       }
       const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt, video: kind === "video", images, w: size.w, h: size.h };
       let j;
