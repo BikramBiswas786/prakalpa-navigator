@@ -202,6 +202,51 @@ function fitSize(w, h) {
   const s = Math.min(1, 1024 / Math.max(W, H));
   return { w: snap(W * s), h: snap(H * s) };
 }
+
+async function xaiGenerate(prompt, w, h) {
+  const key = env("XAI_API_KEY");
+  if (!key) throw new Error("xai missing");
+  const r = await tfetch("https://api.x.ai/v1/images/generations", {
+    method: "POST",
+    headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: env("XAI_IMAGE_MODEL") || "grok-imagine-image-2.0",
+      prompt: String(prompt || "").slice(0, 1800),
+      response_format: "b64_json",
+      n: 1
+    })
+  }, 90000);
+  if (!r.ok) throw new Error("xai gen " + r.status + " " + (await r.text()).slice(0, 120));
+  const j = await r.json();
+  const d = (j.data || [])[0];
+  const b64 = d && (d.b64_json || d.b64 || "");
+  if (!b64) throw new Error("xai empty");
+  return { mime: "image/jpeg", b64: String(b64).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
+}
+async function xaiEdit(prompt, images) {
+  const key = env("XAI_API_KEY");
+  if (!key) throw new Error("xai missing");
+  const im = (images || [])[0];
+  if (!im || !im.b64) throw new Error("xai no image");
+  const dataUrl = "data:" + (im.mime || "image/jpeg") + ";base64," + im.b64;
+  const r = await tfetch("https://api.x.ai/v1/images/edits", {
+    method: "POST",
+    headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: env("XAI_IMAGE_MODEL") || "grok-imagine-image-2.0",
+      prompt: String(prompt || "").slice(0, 1800),
+      image: { url: dataUrl, type: "image_url" },
+      response_format: "b64_json",
+      quality: "medium"
+    })
+  }, 120000);
+  if (!r.ok) throw new Error("xai edit " + r.status + " " + (await r.text()).slice(0, 120));
+  const j = await r.json();
+  const d = (j.data || [])[0];
+  const b64 = d && (d.b64_json || d.b64 || "");
+  if (!b64) throw new Error("xai empty");
+  return { mime: "image/jpeg", b64: String(b64).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
+}
 async function editWithFallback(brief, images, w, h) {
   const errs = [];
   if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
@@ -210,6 +255,10 @@ async function editWithFallback(brief, images, w, h) {
   }
   try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
   catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
+  if (env("XAI_API_KEY")) {
+    try { const t = Date.now(); const out = await xaiEdit(brief, images); return { ...out, provider: "xai", ms: Date.now() - t }; }
+    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
+  }
   const detail = errs.join("; ");
   const quota = /429|allocation|quota|rate.?limit/i.test(detail);
   const err = new Error(quota ? "quota_exhausted" : "edit_failed");
@@ -219,6 +268,10 @@ async function editWithFallback(brief, images, w, h) {
 }
 async function makeWithFallback(brief, w, h) {
   const errs = [];
+  if (env("XAI_API_KEY")) {
+    try { const t = Date.now(); const out = await xaiGenerate(brief, w, h); return { ...out, provider: "xai", ms: Date.now() - t }; }
+    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
+  }
   if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
     try { const t = Date.now(); const out = await cloudflareKlein(brief, [], w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
     catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
