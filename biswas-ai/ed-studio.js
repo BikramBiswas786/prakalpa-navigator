@@ -559,22 +559,6 @@
     thread.push({ role: "ai", text: t.working });
     renderThread();
     const hold = thread[thread.length - 1];
-    const onPhone = usePhoto && /^(enhance|restore|bg|isolate|hero|vfx|poster)$/.test(kind);
-    if (onPhone) {
-      try {
-        const local = kind === "bg" ? await localBg(photo.blob)
-          : kind === "isolate" ? await localIsolate(photo.blob)
-          : (kind === "hero" || kind === "vfx" || kind === "poster") ? await localCinematic(photo.blob)
-          : await localClearer(photo.blob);
-        if (local) {
-          thread.pop();
-          await pushPicture({ blob: local }, kind === "bg" ? "Background replaced on this phone." : kind === "isolate" ? "Background removed on this phone." : (kind === "hero" || kind === "vfx" || kind === "poster") ? "Hero grade on this phone." : "Sharpened on this phone.");
-          say(t.ready);
-          busy = false;
-          return;
-        }
-      } catch (err) { /* hosts next */ }
-    }
     try {
       let images = [];
       let size = { w: 1024, h: 1024 };

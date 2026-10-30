@@ -14,6 +14,9 @@ async function tfetch(url, opt = {}, ms = 45000) {
 }
 const b64OfRes = async r => Buffer.from(await r.arrayBuffer()).toString("base64");
 const PROVIDERS = [
+  { name: "llm7", ok: () => env("LLM7_API_KEY"), run: p => llm7Picture(p, []) },
+  { name: "nara", ok: () => env("NARA_API_KEY"), run: p => naraPicture(p, []) },
+  { name: "zai", ok: () => env("ZAI_API_KEY"), run: p => zaiPicture(p) },
   { name: "cloudflare", ok: () => env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID"), run: async (p, w, h) => {
     const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/run/@cf/black-forest-labs/flux-1-schnell`, { method: "POST", headers: { authorization: "Bearer " + env("CLOUDFLARE_API_TOKEN"), "content-type": "application/json" }, body: JSON.stringify({ prompt: p, steps: 6 }) });
     if (!r.ok) throw new Error("cloudflare " + r.status);
@@ -402,15 +405,122 @@ async function cloudflareSd(prompt, images) {
   if (!img) throw new Error("cf-sd empty");
   return { mime: "image/png", b64: String(img).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
 }
+async function llm7Picture(prompt, images) {
+  const key = env("LLM7_API_KEY");
+  if (!key) throw new Error("llm7 missing");
+  const model = env("LLM7_IMAGE_MODEL") || "gpt-image-2";
+  const im = (images || [])[0];
+  let r;
+  if (im) {
+    const form = new FormData();
+    form.append("model", model);
+    form.append("prompt", String(prompt || "").slice(0, 1500));
+    form.append("size", "1024x1024");
+    form.append("image", new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "photo.jpg");
+    r = await tfetch("https://api.llm7.io/v1/images/edits", { method: "POST", headers: { authorization: "Bearer " + key }, body: form }, 50000);
+  } else {
+    r = await tfetch("https://api.llm7.io/v1/images/generations", {
+      method: "POST",
+      headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+      body: JSON.stringify({ model, prompt: String(prompt || "").slice(0, 1500), size: "1024x1024", n: 1 })
+    }, 50000);
+  }
+  if (!r.ok) throw new Error("llm7 " + r.status + " " + (await r.text()).slice(0, 80));
+  const out = imageOut(await r.json());
+  if (!out) throw new Error("llm7 empty");
+  return out;
+}
+async function naraPicture(prompt, images) {
+  const key = env("NARA_API_KEY");
+  if (!key) throw new Error("nara missing");
+  const model = env("NARA_IMAGE_MODEL") || "gpt-image-2";
+  const im = (images || [])[0];
+  const headers = { authorization: "Bearer " + key };
+  let r;
+  if (im) {
+    const form = new FormData();
+    form.append("model", model);
+    form.append("prompt", String(prompt || "").slice(0, 1500));
+    form.append("image", new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "photo.jpg");
+    r = await tfetch("https://api-images.bynara.id/v1/images/edits", { method: "POST", headers, body: form }, 45000);
+  } else {
+    r = await tfetch("https://api-images.bynara.id/v1/images/generations", {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ model, prompt: String(prompt || "").slice(0, 1500), size: "1024x1024", n: 1 })
+    }, 45000);
+  }
+  if (!r.ok) throw new Error("nara " + r.status + " " + (await r.text()).slice(0, 80));
+  const j = await r.json();
+  const out = imageOut(j);
+  if (out) return out;
+  const url = ((j.data || [])[0] || {}).url;
+  if (url && /^https:/.test(url)) {
+    const img = await tfetch(url, {}, 20000);
+    if (!img.ok) throw new Error("nara fetch " + img.status);
+    return { mime: (img.headers.get("content-type") || "image/png").split(";")[0], b64: await b64OfRes(img) };
+  }
+  throw new Error("nara empty");
+}
+async function zaiPicture(prompt) {
+  const key = env("ZAI_API_KEY");
+  if (!key) throw new Error("zai missing");
+  const r = await tfetch("https://api.z.ai/api/paas/v4/images/generations", {
+    method: "POST",
+    headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+    body: JSON.stringify({ model: env("ZAI_IMAGE_MODEL") || "glm-image", prompt: String(prompt || "").slice(0, 1500), size: "1280x1280", quality: "standard" })
+  }, 40000);
+  if (!r.ok) throw new Error("zai " + r.status + " " + (await r.text()).slice(0, 80));
+  const j = await r.json();
+  const url = ((j.data || [])[0] || {}).url;
+  if (!url || !/^https:/.test(url)) throw new Error("zai empty");
+  const img = await tfetch(url, {}, 20000);
+  if (!img.ok) throw new Error("zai fetch " + img.status);
+  return { mime: (img.headers.get("content-type") || "image/png").split(";")[0], b64: await b64OfRes(img) };
+}
+async function nvidiaKlein(prompt, images) {
+  const key = env("NVIDIA_API_KEY");
+  if (!key) throw new Error("nvidia missing");
+  const im = (images || [])[0];
+  if (!im) return PROVIDERS.find(x => x.name === "nvidia").run(prompt, 1024, 1024);
+  const dataUrl = "data:" + (im.mime || "image/jpeg") + ";base64," + im.b64;
+  let last = "nvidia empty";
+  for (const model of ["black-forest-labs/flux.2-klein-4b", "black-forest-labs/flux.2-klein-9b"]) {
+    const r = await tfetch("https://ai.api.nvidia.com/v1/images/edits", {
+      method: "POST",
+      headers: { authorization: "Bearer " + key, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ model, prompt: String(prompt || "").slice(0, 1500), image: [dataUrl], n: 1, response_format: "b64_json" })
+    }, 35000);
+    if (!r.ok) {
+      last = "nvidia " + r.status + " " + (await r.text()).slice(0, 70);
+      if (r.status === 401 || r.status === 403 || r.status === 429) break;
+      continue;
+    }
+    const j = await r.json();
+    const b64 = (((j.data || [])[0] || {}).b64_json) || ((j.artifacts || [])[0] || {}).base64 || "";
+    if (b64) return { mime: "image/jpeg", b64: String(b64).replace(/\s/g, "") };
+  }
+  throw new Error(last);
+}
 async function runChain(steps) {
   const errs = [];
+  const live = [];
   for (const step of steps) {
     if (!step.on()) { errs.push(step.name + " no-key"); continue; }
+    live.push(step);
+  }
+  if (live.length) {
     try {
-      const t = Date.now();
-      const out = await step.run();
-      return { ...out, provider: step.name, ms: Date.now() - t };
-    } catch (e) { errs.push(step.name + " " + String(e && e.message || e).replace(/\s+/g, " ").slice(0, 48)); }
+      return await Promise.any(live.map(step => (async () => {
+        const t = Date.now();
+        const out = await step.run();
+        if (!out || !out.b64) throw new Error("empty");
+        return { ...out, provider: step.name, ms: Date.now() - t };
+      })().catch(e => {
+        errs.push(step.name + " " + String(e && e.message || e).replace(/\s+/g, " ").slice(0, 48));
+        throw e;
+      })));
+    } catch { /* every host failed; report them together */ }
   }
   const detail = errs.join("; ")
     .replace(/\b429\b/g, "daily-limit")
@@ -425,6 +535,9 @@ async function runChain(steps) {
 }
 function editSteps(brief, images, w, h) {
   return [
+    { name: "llm7", on: () => !!env("LLM7_API_KEY"), run: () => llm7Picture(brief, images) },
+    { name: "nara", on: () => !!env("NARA_API_KEY"), run: () => naraPicture(brief, images) },
+    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaKlein(brief, images) },
     { name: "openai", on: () => !!env("OPENAI_API_KEY"), run: () => openaiPicture(brief, images) },
     { name: "flux2", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareFlux2(brief, images, w, h) },
     { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
@@ -436,6 +549,9 @@ function editSteps(brief, images, w, h) {
 }
 function makeSteps(brief, w, h) {
   return [
+    { name: "llm7", on: () => !!env("LLM7_API_KEY"), run: () => llm7Picture(brief, []) },
+    { name: "nara", on: () => !!env("NARA_API_KEY"), run: () => naraPicture(brief, []) },
+    { name: "zai", on: () => !!env("ZAI_API_KEY"), run: () => zaiPicture(brief) },
     { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiGenerate(brief, w, h) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, []) },
     { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, []) },
@@ -447,7 +563,7 @@ function makeSteps(brief, w, h) {
   ];
 }
 function keyedOn() {
-  return !!(env("XAI_API_KEY") || env("OPENROUTER_API_KEY") || env("TOGETHER_API_KEY") || env("NVIDIA_API_KEY") || env("OPENAI_API_KEY") || env("GEMINI_API_KEY") || (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")));
+  return !!(env("LLM7_API_KEY") || env("NARA_API_KEY") || env("ZAI_API_KEY") || env("XAI_API_KEY") || env("OPENROUTER_API_KEY") || env("TOGETHER_API_KEY") || env("NVIDIA_API_KEY") || env("OPENAI_API_KEY") || env("GEMINI_API_KEY") || (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")));
 }
 async function editWithFallback(brief, images, w, h) {
   return runChain(editSteps(brief, images, w, h));
