@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "175";
+const BUILD = "176";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -53,6 +53,7 @@ const PAGE_HEADERS = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
+    "media-src 'self' blob:",
     `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${[...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].map(o => " " + o).join("")}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data:",
@@ -918,6 +919,15 @@ const server = http.createServer(async (req, res) => {
         const j = await r.json(); sendJson(200, { lang: j.language && j.language.name, matches: (j.matches || []).slice(0, 200).map(m => ({ offset: m.offset, length: m.length, message: m.message, short: m.shortMessage || "", kind: m.rule && m.rule.issueType || "", rep: (m.replacements || []).slice(0, 4).map(x => x.value) })) });
       } catch (e) { sendJson(502, { error: "grammar_unavailable" }); }
       return;
+    }
+    if (url.pathname === "/api/studio") {
+      const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(JSON.stringify(obj)); };
+      if (req.method !== "POST") { res.writeHead(405).end(); return; }
+      if (limited(req, "studio", 6, 60 * 1000)) { tooMany(res); return; }
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 8 * 1024 * 1024) { res.writeHead(413).end(); return; } chunks.push(c); }
+      let body = {}; try { body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch (e) { sendJson(400, { error: "bad_json" }); return; }
+      await imagegen.handleStudio(req, body, sendJson); return;
     }
     if (url.pathname === "/api/imagegen") { // text-to-image (free providers first, capped paid fallback)
       const sendJson = (status, obj) => { if (!res.headersSent) res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(JSON.stringify(obj)); };

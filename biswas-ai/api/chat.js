@@ -325,12 +325,13 @@ export async function POST(request) {
     const out = Math.min(12288, Math.max(256, Number(body.maxOut) || 1400));
     const blob0 = (body.messages || []).map(m => String(m.content || "")).join("\n").slice(0, 2800);
     const fileJob = /FILE READING \(every row counted\)/.test(blob0);
+    const visionJob = !fileJob && Array.isArray(body.images) && body.images.length > 0;
     const capChars = fileJob ? 20000 : 14000;
     const readAll = async stream => {
       const reader = stream.getReader();
       const dec = new TextDecoder();
       let text = "";
-      const stop = Date.now() + (fileJob ? 36000 : 20000);
+      const stop = Date.now() + (fileJob ? 36000 : visionJob ? 28000 : 20000);
       while (text.length < capChars && Date.now() < stop) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -348,7 +349,7 @@ export async function POST(request) {
         models.sort((a, b) => rankModel(a) - rankModel(b));
         let last = { provider: id, model: models[0], text: "", error: "no answer" };
         for (const model of models.slice(0, 2)) {
-          const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 26000 : 12000);
+          const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 26000 : visionJob ? 22000 : 12000);
           if (!r.ok) {
             const raw = String(r.error || "");
             last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };

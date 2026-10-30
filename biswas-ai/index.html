@@ -307,6 +307,16 @@ button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-al
 .page { overflow-y: auto; }
 .page-inner { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; display: grid; gap: 16px; }
 .page-inner > h2 { font-size: 1.4rem; }
+.studio-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 16px; align-items: start; }
+@media (max-width: 800px) { .studio-grid { grid-template-columns: minmax(0, 1fr); } }
+.studio-stage { background: #0e1016; border-radius: 12px; min-height: 240px; display: grid; place-items: center; overflow: hidden; position: relative; }
+.studio-stage canvas { max-width: 100%; height: auto; display: block; }
+.studio-stage p { color: #c5c9d6; margin: 0; padding: 24px; text-align: center; }
+.studio-out { display: grid; gap: 12px; }
+.studio-card { display: grid; gap: 6px; }
+.studio-card img, #st-preview { width: 100%; border-radius: 8px; background: #0e1016; }
+.studio-shot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.studio-shot b { font-size: .82rem; }
 .lead { color: var(--muted); margin: 0; font-size: .9rem; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
 .field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 7px 9px; width: 100%; min-height: 110px; resize: vertical; }
@@ -851,6 +861,67 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
       </div>
     </section>
 
+    <section class="view page" id="v-studio" hidden>
+      <div class="page-inner">
+        <h2 id="st-h"></h2>
+        <p class="lead" id="st-note"></p>
+        <div class="studio-grid">
+          <div>
+            <div class="studio-stage" id="st-stage"><canvas id="st-cv" hidden></canvas><p id="st-empty"></p></div>
+            <div class="tools">
+              <label id="st-l-bri"></label><input id="st-bri" type="range" min="40" max="170" value="100">
+              <label id="st-l-con"></label><input id="st-con" type="range" min="40" max="180" value="100">
+              <label id="st-l-sat"></label><input id="st-sat" type="range" min="0" max="180" value="100">
+            </div>
+            <div class="tools">
+              <button class="btn small" type="button" id="st-apply"></button>
+              <button class="btn small" type="button" id="st-sharp"></button>
+              <button class="btn small" type="button" id="st-rot"></button>
+              <button class="btn small" type="button" id="st-flip"></button>
+              <button class="btn small" type="button" id="st-crop"></button>
+              <button class="btn small" type="button" id="st-text"></button>
+              <button class="btn small" type="button" id="st-undo"></button>
+              <button class="btn small" type="button" id="st-dl"></button>
+              <label id="st-l-size"></label>
+              <select id="st-savew"><option value="0">1×</option><option value="1920">1920</option><option value="2560">2560</option></select>
+            </div>
+          </div>
+          <form class="panel" id="st-form">
+            <textarea id="st-prompt" rows="4"></textarea>
+            <div class="tools">
+              <input type="file" id="st-file" accept="image/*" hidden>
+              <button class="btn small" type="button" id="st-pick"></button>
+              <input type="file" id="st-face" accept="image/*" hidden>
+              <button class="btn small" type="button" id="st-face-btn"></button>
+              <select id="st-ratio"><option value="square">1:1</option><option value="wide">16:9</option><option value="tall">9:16</option></select>
+            </div>
+            <div class="tools">
+              <button class="btn primary" type="submit" id="st-go"></button>
+              <button class="btn" type="button" id="st-swap"></button>
+              <button class="btn" type="button" id="st-others"></button>
+            </div>
+            <p class="status-line" id="st-status" role="status"></p>
+            <div class="studio-out" id="st-out"></div>
+          </form>
+        </div>
+        <div class="panel" id="st-film">
+          <h3 id="st-film-h"></h3>
+          <p class="lead" id="st-film-note"></p>
+          <div class="tools">
+            <button class="btn small" type="button" id="st-add-still"></button>
+            <input type="file" id="st-vid" accept="video/*" hidden>
+            <button class="btn small" type="button" id="st-add-clip"></button>
+            <input id="st-title" maxlength="80">
+            <button class="btn small" type="button" id="st-add-title"></button>
+            <button class="btn small" type="button" id="st-play"></button>
+            <button class="btn primary" type="button" id="st-export"></button>
+          </div>
+          <div id="st-shots"></div>
+          <video id="st-preview" controls playsinline hidden></video>
+        </div>
+      </div>
+    </section>
+
     <section class="view chat" id="v-others" hidden>
       <div class="scroll" id="ot-scroll"><div class="thread" id="ot-thread"></div></div>
       <div class="composer"><div class="inner">
@@ -865,7 +936,7 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
           <button class="iconbtn send" type="submit" id="ot-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           <button class="btn small" type="button" id="ot-pause" data-t="pause" hidden></button>
         </form>
-        <div class="hint"><button class="btn small" type="button" id="ot-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ot-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="other" data-t="pd_pick_btn"></button></div>
+        <div class="hint"><button class="btn small" type="button" id="ot-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ot-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="other" data-t="pd_pick_btn"></button> <button class="btn small" type="button" data-nav="ai:studio" data-t="st_tab"></button></div>
       </div></div>
     </section>
 
@@ -883,7 +954,7 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
           <button class="iconbtn send" type="submit" id="ag-go" aria-label="Run"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
           <button class="btn small" type="button" id="ag-pause" data-t="pause" hidden></button>
         </form>
-        <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="agent" data-t="pd_pick_btn"></button> <span id="ag-picks"></span></div>
+        <div class="hint"><button class="btn small" type="button" id="ag-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="ag-new" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="agent" data-t="pd_pick_btn"></button> <button class="btn small" type="button" data-nav="ai:studio" data-t="st_tab"></button> <span id="ag-picks"></span></div>
       </div></div>
     </section>
 
@@ -911,7 +982,7 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
             </button>
             <button class="btn small" type="button" id="pause" data-t="pause" hidden></button>
           </form>
-          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="chat" data-t="pd_pick_btn"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
+          <div class="hint"><button class="btn small" type="button" id="show-convs" data-t="conv_h"></button> <button class="btn small" type="button" id="new-chat" data-t="newchat"></button> <button class="btn small" type="button" data-pd-pick="chat" data-t="pd_pick_btn"></button> <button class="btn small" type="button" data-nav="ai:studio" data-t="st_tab"></button> <button class="btn small" type="button" id="open-deep" data-t="deep_btn"></button> <button class="btn small" type="button" id="open-status" data-t="status"></button> <button class="btn small" type="button" id="open-memory" data-t="mem_btn" hidden></button> <span data-t="hint"></span><span id="engine-note"></span></div>
         </div>
       </div>
     </section>
@@ -1349,7 +1420,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "বিশ্বাস AI চ্যাট। অক্টোবর ২০২৬। উত্তর প্রশ্নের মাপমতো বড় হয়। স্মৃতি বাড়ে। গভীর খোঁজ এজেন্টে। অন্য AI আলাদা পাতায়।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "শুধু গভীর খোঁজ। অনেক সার্চ ইঞ্জিন, তারপর ৩০টির বেশি পাতা পড়া, তারপর একটা বিশ্লেষণ মডেল পুরো উত্তর লেখে। অন্য AI এখানে ডাকা হয় না।",
+    ag_tab: "এজেন্ট", st_tab: "ছবি ও ফিল্ম", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "শুধু গভীর খোঁজ। অনেক সার্চ ইঞ্জিন, তারপর ৩০টির বেশি পাতা পড়া, তারপর একটা বিশ্লেষণ মডেল পুরো উত্তর লেখে। অন্য AI এখানে ডাকা হয় না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট অনেক পাতা পড়ে বিস্তারিত উত্তর দেবে।", ot_tab: "অন্য AI", ot_h: "অন্য AI", ot_note: "Gemini, Groq, Mistral এবং বাকি ফ্রি AI এখানে। Word, PDF, Excel, ছবি পাঠান। তাদের উত্তর ও ফাইল ফিরে আসে। বিশ্বাস AI চ্যাট ও এজেন্টের সঙ্গে মেশে না।", ot_ph: "অন্য AI-কে লিখুন, বা ফাইল যোগ করুন…",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1423,7 +1494,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Biswas AI chat. October 2026. Answers grow with the question. Memory grows. Deep research is Agents. Other AIs are on their own page.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "Deep research only. It searches many engines, reads more than 30 sources, then one analysis model writes a full A-to-Z answer. Other AIs are not called here.",
+    ag_tab: "Agents", st_tab: "Images", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "Deep research only. It searches many engines, reads more than 30 sources, then one analysis model writes a full A-to-Z answer. Other AIs are not called here.",
     ag_ph: "Write one job. The agent reads many pages, then writes a full answer.", ot_tab: "Other AI", ot_h: "Other AI", ot_note: "Gemini, Groq, Mistral and the other free AIs live here. Send Word, PDF, Excel or a picture. Their answers and files come back. This page does not mix with Biswas AI chat or Agents.", ot_ph: "Write to the other AIs, or attach a file…",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -3189,14 +3260,14 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent", "others"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar", "pendrive"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
-const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write" };
+const TABS = { ai: ["chat", "agent", "others", "studio"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar", "pendrive"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
+const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write", studio: "st_tab" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
-  const items = [["home", "", "home"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["office", "pendrive", "pd_tab"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
+  const items = [["home", "", "home"], ["ai", "studio", "st_tab"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["office", "pendrive", "pd_tab"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
   const nav = $("#rail-nav"); if (!nav) return;
   nav.innerHTML = items.map(([sec, id, key]) => {
     const on = key === "home" ? mode === "ai" && tab === "chat" : key === "nav_grammar" ? tab === "grammar" : key === "word_h" ? tab === "word" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
@@ -3219,7 +3290,7 @@ function showView() {
   $("#subnav").hidden = mode === "pendrive";
   $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : mode === "office" ? "tab_office_ai" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
   const shown = tab === "deskchat" || tab === "write" ? "chat" : tab;
-  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "others", "pendrive"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
+  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "others", "pendrive", "studio"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
   if (tab === "files") { renderTools(); renderSdo(); }
@@ -3229,6 +3300,7 @@ function showView() {
   if (tab === "agent") renderAgentView();
   if (tab === "others") renderOtherView();
   if (tab === "pendrive") renderPendrive();
+  if (tab === "studio" && window.BA_STUDIO) BA_STUDIO.open();
   document.querySelectorAll("[data-pd-pick='chat']").forEach(el => { el.hidden = mode === "public"; });
   refreshHistory();
   renderRail();
@@ -3256,6 +3328,7 @@ function setLang(lang) {
 function applyLang() {
   document.documentElement.lang = settings.lang === "en" ? "en" : "bn";
   if (window.BA_ED && BA_ED.relabel) BA_ED.relabel();
+  if (window.BA_STUDIO && BA_STUDIO.relabel) BA_STUDIO.relabel();
   { const fl = document.querySelector(".pd-fast"); if (fl) fl.title = t("pd_fast_tip"); }
   document.title = settings.lang === "en" ? "Biswas AI for Office" : "বিশ্বাস AI · Biswas AI for Office";
   if (bannerText) $("#banner-text").textContent = bannerText();
@@ -8260,5 +8333,6 @@ resume();
 <script src="/ed-ocr.js?h=161" defer></script>
 <script src="/ed-tally.js?h=159" defer></script>
 <script src="/ed-ai.js?h=162" defer></script>
+<script src="/ed-studio.js?h=1" defer></script>
 </body>
 </html>

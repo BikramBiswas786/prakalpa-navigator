@@ -70,12 +70,90 @@ export async function generate(prompt, opt = {}) {
   const e = new Error("no_image_provider"); e.status = 503; e.detail = errs.join("; "); throw e;
 }
 // POST /api/imagegen {prompt, w, h}
-export async function handle(req, body, sendJson) {
+export const studioInstruction = (task, prompt) => {
+  const p = String(prompt || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+/g, " ").trim().slice(0, 1200);
+  if (task === "swap") return "Edit the two photographs. The first image is the person whose face must be used. The second image is the picture to change. Place that face onto the main person in the second image. Keep the second image's pose, clothes, lighting and background. Photoreal, sharp, natural skin, correct anatomy. No text, no watermark, no extra people." + (p ? " Also follow: " + p : "");
+  if (task === "edit") return "Edit the attached photograph so it follows the instruction. Keep the same person unless the instruction asks for a change. High detail, sharp, natural light, no text, no watermark. Instruction: " + (p || "Improve clarity and colour. Do not change the person or the place.");
+  return "Create one high-detail image. Sharp focus, natural light, no text, no letters, no watermark, no logo. " + (p || "A quiet realistic scene.");
+};
+function cleanImages(list) {
+  const out = [];
+  for (const im of Array.isArray(list) ? list : []) {
+    if (!im || typeof im !== "object") continue;
+    const mime = String(im.mime || "image/jpeg").toLowerCase();
+    if (!/^image\/(jpeg|png|webp)$/.test(mime)) continue;
+    const raw = String(im.b64 || im.data || "");
+    const b64 = raw.replace(/^data:[^,]+,/, "").replace(/\s/g, "");
+    if (b64.length < 80 || b64.length > 1800000 || !/^[A-Za-z0-9+/=]+$/.test(b64)) continue;
+    out.push({ mime, b64 });
+    if (out.length === 2) break;
+  }
+  return out;
+}
+async function geminiPicture(prompt, images) {
+  const key = env("GEMINI_API_KEY");
+  if (!key) throw new Error("gemini missing");
+  const models = [...new Set([env("GEMINI_IMAGE_MODEL"), "gemini-2.5-flash-image", "gemini-3.1-flash-lite-image"].filter(Boolean))];
+  let last = "gemini empty";
+  for (const model of models) {
+    const parts = [{ text: prompt }];
+    for (const im of images || []) parts.push({ inline_data: { mime_type: im.mime, data: im.b64 } });
+    const r = await tfetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST",
+      headers: { "x-goog-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE", "TEXT"] } })
+    }, images && images.length ? 90000 : 60000);
+    if (r.status === 429) throw new Error("gemini 429");
+    if (!r.ok) { last = "gemini " + r.status; continue; }
+    const j = await r.json();
+    const part = ((((j.candidates || [])[0] || {}).content || {}).parts || []).find(x => x.inlineData || x.inline_data);
+    const d = part && (part.inlineData || part.inline_data);
+    if (!d || !d.data) { last = "gemini empty"; continue; }
+    return { mime: d.mimeType || d.mime_type || "image/png", b64: d.data };
+  }
+  throw new Error(last);
+}
+export async function generateStudio(prompt, opt = {}) {
+  const task = ["make", "edit", "swap"].includes(opt.task) ? opt.task : "make";
+  const images = cleanImages(opt.images);
+  if (task === "swap" && images.length < 2) { const e = new Error("need_two_pictures"); e.status = 400; throw e; }
+  if (task === "edit" && !images.length) { const e = new Error("need_picture"); e.status = 400; throw e; }
+  const brief = studioInstruction(task, prompt);
+  if (task !== "swap" && task !== "edit" && brief.length < 20) { const e = new Error("bad_prompt"); e.status = 400; throw e; }
+  const w = snap(opt.w || 1024), h = snap(opt.h || 1024);
+  if (images.length) {
+    try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
+    catch (e) { const err = new Error("edit_failed"); err.status = 502; err.detail = String(e && e.message || e).slice(0, 80); throw err; }
+  }
+  const errs = [];
+  const order = (env("IMAGE_PROVIDER_ORDER") ? env("IMAGE_PROVIDER_ORDER").split(",").map(s => s.trim()) : PROVIDERS.map(x => x.name));
+  for (const n of order) {
+    const pr = PROVIDERS.find(x => x.name === n); if (!pr || !pr.ok()) continue;
+    try {
+      const t = Date.now();
+      const out = n === "gemini" ? await geminiPicture(brief, []) : await pr.run(brief, w, h);
+      return { ...out, provider: pr.name, ms: Date.now() - t };
+    } catch (e) { errs.push(String(e && e.message || e).slice(0, 60)); }
+  }
+  const e = new Error("no_image_provider"); e.status = 503; e.detail = errs.join("; "); throw e;
+}
+function takeSlot(req) {
   roll();
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
   const n = (counts.ip.get(ip) || 0) + 1;
-  if (n > PER_IP_DAILY) return sendJson(429, { error: "image_daily_limit" });
+  if (n > PER_IP_DAILY) return { ip, n, limited: true };
   counts.ip.set(ip, n);
+  return { ip, n, limited: false };
+}
+export async function handle(req, body, sendJson) {
+  const slot = takeSlot(req);
+  if (slot.limited) return sendJson(429, { error: "image_daily_limit" });
   try { const r = await generate(body && body.prompt, body || {}); sendJson(200, r); }
-  catch (e) { counts.ip.set(ip, n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
+  catch (e) { counts.ip.set(slot.ip, slot.n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
+}
+export async function handleStudio(req, body, sendJson) {
+  const slot = takeSlot(req);
+  if (slot.limited) return sendJson(429, { error: "image_daily_limit" });
+  try { const r = await generateStudio(body && body.prompt, body || {}); sendJson(200, r); }
+  catch (e) { counts.ip.set(slot.ip, slot.n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
 }
