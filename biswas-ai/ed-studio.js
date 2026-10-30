@@ -25,7 +25,7 @@
     badPicture: "That picture could not be read. Try a JPG.",
     limit: "The picture limit for today is used.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
-    quota: "Free daily quota used (Cloudflare 10 + Gemini). Try again tomorrow, or use Enhance for a local clearer version.",
+    quota: "Free daily quota used (Cloudflare Klein 10 + Gemini). Real background change needs a paid image model. Try again tomorrow. A local stand-in is shown below if possible.",
     noModel: "No image model answered. Try again in a moment.",
     sent: "Asking the other AIs…",
     back: " came back.",
@@ -286,6 +286,25 @@
     const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
     return out;
   }
+  async function localBg(blob) {
+    const c = await canvasFromBlob(blob, 1600);
+    const g = c.getContext("2d");
+    // Soft local stand-in: blur + darken edges so the centre subject stands out more
+    const copy = clone(c);
+    g.filter = "blur(18px) brightness(0.72) saturate(1.15)";
+    g.drawImage(copy, 0, 0);
+    g.filter = "none";
+    // Keep the centre sharper
+    const cx = c.width * 0.5, cy = c.height * 0.48, r = Math.min(c.width, c.height) * 0.38;
+    g.save();
+    g.beginPath();
+    g.ellipse(cx, cy, r * 1.15, r * 1.35, 0, 0, Math.PI * 2);
+    g.clip();
+    g.drawImage(copy, 0, 0);
+    g.restore();
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+    return out;
+  }
   function fitDraw(ctx, src, W, H, t, alpha) {
     ctx.save();
     ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -423,10 +442,13 @@
       else thread.push({ role: "ai", text: errText(e) });
       if (usePhoto && (kind === "enhance" || kind === "hero" || kind === "bg" || kind === "isolate" || /quota|429/i.test(String(e.message || e.detail || "")))) {
         try {
-          const clearer = await localClearer(photo.blob);
-          if (clearer) {
-            const url = URL.createObjectURL(clearer);
-            thread.push({ role: "ai", url, blob: clearer, text: L().localNote });
+          const fallback = (kind === "bg" || kind === "isolate") ? await localBg(photo.blob) : await localClearer(photo.blob);
+          if (fallback) {
+            const url = URL.createObjectURL(fallback);
+            const note = (kind === "bg" || kind === "isolate")
+              ? "Free models are out of quota. This is a local blur-around-subject stand-in, not a real background replacement."
+              : L().localNote;
+            thread.push({ role: "ai", url, blob: fallback, text: note });
           }
         } catch (err) { /* keep the error line */ }
       }
