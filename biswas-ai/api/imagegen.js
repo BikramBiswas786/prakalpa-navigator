@@ -273,7 +273,12 @@ async function openrouterPicture(prompt, images) {
       headers: { authorization: "Bearer " + key, "content-type": "application/json" },
       body: JSON.stringify(body)
     }, 90000);
-    if (!r.ok) { last = "openrouter " + r.status + " " + (await r.text()).slice(0, 90); continue; }
+    if (!r.ok) {
+      const body = (await r.text()).slice(0, 80);
+      last = r.status === 402 || r.status === 401 ? "openrouter " + r.status + " no-credits" : "openrouter " + r.status + " " + body;
+      if (r.status === 402 || r.status === 401) break;
+      continue;
+    }
     const out = imageOut(await r.json());
     if (out && out.b64) return out;
     last = "openrouter empty " + model;
@@ -377,14 +382,14 @@ async function runChain(steps) {
 }
 function editSteps(brief, images, w, h) {
   return [
+    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, images) },
+    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) },
+    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, images) },
+    { name: "openai", on: () => !!env("OPENAI_API_KEY"), run: () => openaiPicture(brief, images) },
+    { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
     { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiEdit(brief, images) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, images) },
-    { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, images) },
-    { name: "openai", on: () => !!env("OPENAI_API_KEY"), run: () => openaiPicture(brief, images) },
-    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, images) },
-    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, images) },
-    { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
-    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) }
+    { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, images) }
   ];
 }
 function makeSteps(brief, w, h) {

@@ -26,7 +26,7 @@
     limit: "The free picture cap for today is used. Keys that are set are still tried.",
     minute: "Too many tries this minute. Wait a moment and send again.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
-    quota: "The keys that answered with a quota error are listed below. A key that is set and still has credit is tried at the same time.",
+    quota: "The free daily image limit was used. A key with credit was not available for this edit.",
     noModel: "No image key is set, so nothing could make a picture.",
     sent: "Sending this picture to every image key (Grok, OpenRouter, Together, NVIDIA, OpenAI, Cloudflare, Gemini)…",
     back: " came back.",
@@ -198,7 +198,7 @@
     if (code === "too_many_requests") msg = t.minute || t.limit;
     else if (code === "image_daily_limit") msg = t.limit;
     else if (code === "need_two_pictures") msg = t.needTwo;
-    else if (code === "quota_exhausted" || /429|allocation|quota/i.test(String(e.detail || e.message || ""))) msg = t.quota || t.editFail;
+    else if (code === "quota_exhausted") msg = t.quota || t.editFail;
     else if (code === "edit_failed" || code === "need_picture") msg = t.editFail;
     else if (code === "no_image_provider") msg = t.noModel;
     else if (code === "bad_picture") msg = t.badPicture;
@@ -540,9 +540,21 @@
       }
       say(t.ready);
     } catch (e) {
-      if (thread.indexOf(hold) >= 0) hold.text = errText(e);
+      let local = null;
+      if (usePhoto) {
+        try {
+          if (kind === "bg") local = await localBg(photo.blob);
+          else if (kind === "isolate") local = await localIsolate(photo.blob);
+          else if (kind === "hero" || kind === "vfx" || kind === "poster") local = await localCinematic(photo.blob);
+          else local = await localClearer(photo.blob);
+        } catch (err) { local = null; }
+      }
+      if (local) {
+        if (thread.indexOf(hold) >= 0) thread.splice(thread.indexOf(hold), 1);
+        await pushPicture({ blob: local }, L().localNote);
+      } else if (thread.indexOf(hold) >= 0) hold.text = errText(e);
       else thread.push({ role: "ai", text: errText(e) });
-      if (kind === "video" && usePhoto) {
+      if (kind === "video" && usePhoto && !local) {
         try {
           const vid = await clipFrom([photo.blob]);
           if (vid) thread.push({ role: "ai", videoUrl: URL.createObjectURL(vid), videoBlob: vid, text: L().videoNote });
