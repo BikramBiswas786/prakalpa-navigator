@@ -307,6 +307,14 @@ button.brand { border: 0; background: none; padding: 0; cursor: pointer; text-al
 .page { overflow-y: auto; }
 .page-inner { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 18px 40px; display: grid; gap: 16px; }
 .page-inner > h2 { font-size: 1.4rem; }
+#v-studio .scroll { grid-row: 1; }
+#v-studio .composer { grid-row: 2; }
+#v-studio .st-pic { width: min(100%, 440px); border-radius: 12px; display: block; background: #0e1016; }
+#v-studio .msg.user .st-pic { width: 120px; }
+#v-studio video.st-pic { width: min(100%, 440px); max-height: 70vh; }
+#v-studio details.st-more { font-size: .85rem; }
+#v-studio details.st-more summary { cursor: pointer; color: var(--muted); }
+#v-studio .studio-stage { min-height: 160px; }
 .studio-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr); gap: 16px; align-items: start; }
 @media (max-width: 800px) { .studio-grid { grid-template-columns: minmax(0, 1fr); } }
 .studio-stage { background: #0e1016; border-radius: 12px; min-height: 240px; display: grid; place-items: center; overflow: hidden; position: relative; }
@@ -861,52 +869,44 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
       </div>
     </section>
 
-    <section class="view page" id="v-studio" hidden>
-      <div class="page-inner">
-        <h2 id="st-h"></h2>
-        <p class="lead" id="st-note"></p>
-        <div class="studio-grid">
-          <div>
-            <div class="studio-stage" id="st-stage"><canvas id="st-cv" hidden></canvas><p id="st-empty"></p></div>
-            <div class="tools">
-              <label id="st-l-bri"></label><input id="st-bri" type="range" min="40" max="170" value="100">
-              <label id="st-l-con"></label><input id="st-con" type="range" min="40" max="180" value="100">
-              <label id="st-l-sat"></label><input id="st-sat" type="range" min="0" max="180" value="100">
-            </div>
-            <div class="tools">
-              <button class="btn small" type="button" id="st-apply"></button>
-              <button class="btn small" type="button" id="st-sharp"></button>
-              <button class="btn small" type="button" id="st-rot"></button>
-              <button class="btn small" type="button" id="st-flip"></button>
-              <button class="btn small" type="button" id="st-crop"></button>
-              <button class="btn small" type="button" id="st-text"></button>
-              <button class="btn small" type="button" id="st-undo"></button>
-              <button class="btn small" type="button" id="st-dl"></button>
-              <label id="st-l-size"></label>
-              <select id="st-savew"><option value="0">1×</option><option value="1920">1920</option><option value="2560">2560</option></select>
-            </div>
+    <section class="view chat" id="v-studio" hidden>
+      <div class="scroll" id="st-scroll"><div class="thread" id="st-thread"></div></div>
+      <div class="composer"><div class="inner">
+        <div class="pending" id="st-pending"></div>
+        <div class="chips" id="st-chips"></div>
+        <form class="box" id="st-form">
+          <input type="file" id="st-file" accept="image/*" hidden>
+          <button class="iconbtn" type="button" id="st-pick" aria-label="Picture">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
+          </button>
+          <input type="file" id="st-face" accept="image/*" hidden>
+          <button class="iconbtn" type="button" id="st-face-btn" aria-label="Face">Face</button>
+          <textarea id="st-prompt" rows="1" enterkeyhint="send"></textarea>
+          <button class="iconbtn send" type="submit" id="st-go" aria-label="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <p class="status-line" id="st-status" role="status"></p>
+        <details class="st-more" id="st-more">
+          <summary id="st-more-sum"></summary>
+          <div class="studio-stage" id="st-stage"><canvas id="st-cv" hidden></canvas><p id="st-empty"></p></div>
+          <div class="tools">
+            <label id="st-l-bri"></label><input id="st-bri" type="range" min="40" max="170" value="100">
+            <label id="st-l-con"></label><input id="st-con" type="range" min="40" max="180" value="100">
+            <label id="st-l-sat"></label><input id="st-sat" type="range" min="0" max="180" value="100">
           </div>
-          <form class="panel" id="st-form">
-            <textarea id="st-prompt" rows="4"></textarea>
-            <div class="tools">
-              <input type="file" id="st-file" accept="image/*" hidden>
-              <button class="btn small" type="button" id="st-pick"></button>
-              <input type="file" id="st-face" accept="image/*" hidden>
-              <button class="btn small" type="button" id="st-face-btn"></button>
-              <select id="st-ratio"><option value="square">1:1</option><option value="wide">16:9</option><option value="tall">9:16</option></select>
-            </div>
-            <div class="tools">
-              <button class="btn primary" type="submit" id="st-go"></button>
-              <button class="btn" type="button" id="st-swap"></button>
-              <button class="btn" type="button" id="st-others"></button>
-            </div>
-            <p class="status-line" id="st-status" role="status"></p>
-            <div class="studio-out" id="st-out"></div>
-          </form>
-        </div>
-        <div class="panel" id="st-film">
-          <h3 id="st-film-h"></h3>
-          <p class="lead" id="st-film-note"></p>
+          <div class="tools">
+            <button class="btn small" type="button" id="st-apply"></button>
+            <button class="btn small" type="button" id="st-sharp"></button>
+            <button class="btn small" type="button" id="st-rot"></button>
+            <button class="btn small" type="button" id="st-flip"></button>
+            <button class="btn small" type="button" id="st-crop"></button>
+            <button class="btn small" type="button" id="st-text"></button>
+            <button class="btn small" type="button" id="st-undo"></button>
+            <button class="btn small" type="button" id="st-dl"></button>
+            <label id="st-l-size"></label>
+            <select id="st-savew"><option value="0">1×</option><option value="1920">1920</option><option value="2560">2560</option></select>
+          </div>
           <div class="tools">
             <button class="btn small" type="button" id="st-add-still"></button>
             <input type="file" id="st-vid" accept="video/*" hidden>
@@ -914,12 +914,14 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
             <input id="st-title" maxlength="80">
             <button class="btn small" type="button" id="st-add-title"></button>
             <button class="btn small" type="button" id="st-play"></button>
-            <button class="btn primary" type="button" id="st-export"></button>
+            <button class="btn" type="button" id="st-export"></button>
+            <button class="btn small" type="button" id="st-others"></button>
+            <button class="btn small" type="button" id="st-swap"></button>
           </div>
           <div id="st-shots"></div>
           <video id="st-preview" controls playsinline hidden></video>
-        </div>
-      </div>
+        </details>
+      </div></div>
     </section>
 
     <section class="view chat" id="v-others" hidden>

@@ -70,11 +70,32 @@ export async function generate(prompt, opt = {}) {
   const e = new Error("no_image_provider"); e.status = 503; e.detail = errs.join("; "); throw e;
 }
 // POST /api/imagegen {prompt, w, h}
-export const studioInstruction = (task, prompt) => {
-  const p = String(prompt || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+/g, " ").trim().slice(0, 1200);
-  if (task === "swap") return "Edit the two photographs. The first image is the person whose face must be used. The second image is the picture to change. Place that face onto the main person in the second image. Keep the second image's pose, clothes, lighting and background. Photoreal, sharp, natural skin, correct anatomy. No text, no watermark, no extra people." + (p ? " Also follow: " + p : "");
-  if (task === "edit") return "Edit the attached photograph so it follows the instruction. Keep the same person unless the instruction asks for a change. High detail, sharp, natural light, no text, no watermark. Instruction: " + (p || "Improve clarity and colour. Do not change the person or the place.");
-  return "Create one high-detail image. Sharp focus, natural light, no text, no letters, no watermark, no logo. " + (p || "A quiet realistic scene.");
+export const studioInstruction = (task, prompt, kind) => {
+  const p = String(prompt || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+/g, " ").trim().slice(0, 900);
+  const low = p.toLowerCase();
+  const want = kind || (/\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(p) ? "video"
+    : /\b(hero|cinematic|poster|epic)\b/.test(low) || /হিরো/.test(p) ? "hero"
+    : /\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality)\b/.test(low) || /স্পষ্ট|উন্নত/.test(p) ? "enhance" : "");
+  if (task === "swap") return "Put the face from the first reference photo onto the main person in the second reference photo. Keep the second photo's pose, clothes, lighting and background. Photoreal, sharp, natural skin, correct anatomy. No text, no watermark." + (p ? " Also: " + p : "");
+  const keep = "Use the reference photograph. Keep the same people, the same faces, the same clothes, the same jewellery and the same place, unless the instruction changes one of those. Photoreal, sharp focus, natural skin, no plastic look, no text, no letters, no watermark, no logo. ";
+  if (task === "edit" || task === "swap") {
+    if (want === "hero") return keep + "Turn it into a cinematic hero still: richer colour, a stronger but natural light, a slight low angle, shallow depth of field. The people must stay recognisable.";
+    if (want === "video") return keep + "The same moment a second later: a softer expression, hair moved a little by a breeze, a small ripple on any water. Do not change who they are.";
+    if (want === "enhance" || !p) return keep + "Make the photograph clearer and more detailed. Do not redesign the scene and do not change who they are.";
+    return keep + "Instruction: " + p;
+  }
+  if (want === "hero") return "One cinematic photoreal hero still, sharp, natural skin, no text, no watermark. " + (p || "A person standing in a real place, low angle, strong natural light.");
+  if (want === "video") return "One photoreal film still, sharp, a little motion in hair or water, no text, no watermark. " + (p || "A quiet real place with one person.");
+  return "One high-detail photoreal photograph. Sharp focus, natural light, real textures, no text, no letters, no watermark, no logo. " + (p || "A quiet realistic scene.");
+};
+export const studioIntent = prompt => {
+  const p = String(prompt || "");
+  const low = p.toLowerCase();
+  if (/\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(p)) return "video";
+  if (/\b(swap|face\s*swap)\b/.test(low) || /ফেস\s*সোয়াপ|মুখ\s*বদল/.test(p)) return "swap";
+  if (/\b(hero|cinematic|poster|epic)\b/.test(low) || /হিরো/.test(p)) return "hero";
+  if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality)\b/.test(low) || /স্পষ্ট|উন্নত/.test(p)) return "enhance";
+  return "";
 };
 function cleanImages(list) {
   const out = [];
@@ -103,7 +124,7 @@ async function geminiPicture(prompt, images) {
       headers: { "x-goog-api-key": key, "content-type": "application/json" },
       body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { responseModalities: ["IMAGE", "TEXT"] } })
     }, images && images.length ? 90000 : 60000);
-    if (r.status === 429) throw new Error("gemini 429");
+    if (r.status === 429) { last = "gemini 429"; continue; }
     if (!r.ok) { last = "gemini " + r.status; continue; }
     const j = await r.json();
     const part = ((((j.candidates || [])[0] || {}).content || {}).parts || []).find(x => x.inlineData || x.inline_data);
@@ -113,20 +134,50 @@ async function geminiPicture(prompt, images) {
   }
   throw new Error(last);
 }
-export async function generateStudio(prompt, opt = {}) {
-  const task = ["make", "edit", "swap"].includes(opt.task) ? opt.task : "make";
-  const images = cleanImages(opt.images);
-  if (task === "swap" && images.length < 2) { const e = new Error("need_two_pictures"); e.status = 400; throw e; }
-  if (task === "edit" && !images.length) { const e = new Error("need_picture"); e.status = 400; throw e; }
-  const brief = studioInstruction(task, prompt);
-  if (task !== "swap" && task !== "edit" && brief.length < 20) { const e = new Error("bad_prompt"); e.status = 400; throw e; }
-  const w = snap(opt.w || 1024), h = snap(opt.h || 1024);
-  if (images.length) {
-    try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
-    catch (e) { const err = new Error("edit_failed"); err.status = 502; err.detail = String(e && e.message || e).slice(0, 80); throw err; }
-  }
+async function cloudflareKlein(prompt, images, w, h) {
+  const token = env("CLOUDFLARE_API_TOKEN"), account = env("CLOUDFLARE_ACCOUNT_ID");
+  if (!token || !account) throw new Error("cloudflare missing");
+  const form = new FormData();
+  form.append("prompt", String(prompt || "").slice(0, 1800));
+  form.append("width", String(w));
+  form.append("height", String(h));
+  (images || []).slice(0, 2).forEach((im, i) => {
+    form.append("input_image_" + i, new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "ref" + i + ".jpg");
+  });
+  const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/black-forest-labs/flux-2-klein-9b`, {
+    method: "POST", headers: { authorization: "Bearer " + token }, body: form
+  }, 90000);
+  const ct = r.headers.get("content-type") || "";
+  if (!r.ok) throw new Error("klein " + r.status + " " + (await r.text()).slice(0, 140));
+  if (/^image\//.test(ct)) return { mime: ct.split(";")[0], b64: await b64OfRes(r) };
+  const j = await r.json();
+  const img = (j && j.result && (j.result.image || j.result.b64)) || j.image || "";
+  if (!img) throw new Error("klein empty");
+  const b64 = String(img).replace(/^data:[^,]+,/, "").replace(/\s/g, "");
+  return { mime: "image/jpeg", b64 };
+}
+function fitSize(w, h) {
+  let W = snap(w || 1024), H = snap(h || 1024);
+  const s = Math.min(1, 1024 / Math.max(W, H));
+  return { w: snap(W * s), h: snap(H * s) };
+}
+async function editWithFallback(brief, images, w, h) {
   const errs = [];
-  const order = (env("IMAGE_PROVIDER_ORDER") ? env("IMAGE_PROVIDER_ORDER").split(",").map(s => s.trim()) : PROVIDERS.map(x => x.name));
+  if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
+    try { const t = Date.now(); const out = await cloudflareKlein(brief, images, w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
+    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
+  }
+  try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
+  catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
+  const err = new Error("edit_failed"); err.status = 502; err.detail = errs.join("; "); throw err;
+}
+async function makeWithFallback(brief, w, h) {
+  const errs = [];
+  if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
+    try { const t = Date.now(); const out = await cloudflareKlein(brief, [], w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
+    catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
+  }
+  const order = (env("IMAGE_PROVIDER_ORDER") ? env("IMAGE_PROVIDER_ORDER").split(",").map(s => s.trim()) : ["gemini", "nvidia", "cloudflare", "pollinations", "openai"]);
   for (const n of order) {
     const pr = PROVIDERS.find(x => x.name === n); if (!pr || !pr.ok()) continue;
     try {
@@ -136,6 +187,30 @@ export async function generateStudio(prompt, opt = {}) {
     } catch (e) { errs.push(String(e && e.message || e).slice(0, 60)); }
   }
   const e = new Error("no_image_provider"); e.status = 503; e.detail = errs.join("; "); throw e;
+}
+export async function generateStudio(prompt, opt = {}) {
+  const images = cleanImages(opt.images);
+  const intent = studioIntent(prompt);
+  let task = ["make", "edit", "swap"].includes(opt.task) ? opt.task : "make";
+  if (task !== "swap" && images.length) task = "edit";
+  if (task === "swap" || (intent === "swap" && images.length >= 2)) task = "swap";
+  if (!images.length) task = "make";
+  const video = opt.video === true || intent === "video";
+  if (task === "swap" && images.length < 2) { const e = new Error("need_two_pictures"); e.status = 400; throw e; }
+  if ((task === "edit" || task === "swap") && !images.length) { const e = new Error("need_picture"); e.status = 400; throw e; }
+  const size = fitSize(opt.w, opt.h);
+  const run = brief => images.length ? editWithFallback(brief, images, size.w, size.h) : makeWithFallback(brief, size.w, size.h);
+  if (!video) {
+    const brief = studioInstruction(task, prompt);
+    if (task === "make" && brief.length < 20) { const e = new Error("bad_prompt"); e.status = 400; throw e; }
+    return run(brief);
+  }
+  let start = null, end = null, err = null;
+  try { start = await run(studioInstruction(task, prompt, "enhance")); } catch (e) { err = e; }
+  try { end = await run(studioInstruction(task, prompt, "video")); } catch (e) { if (!start) err = e; }
+  const main = end || start;
+  if (!main) throw err;
+  return { ...main, video: true, extra: start && end ? { mime: start.mime, b64: start.b64, provider: start.provider } : null };
 }
 function takeSlot(req) {
   roll();
