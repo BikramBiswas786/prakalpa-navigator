@@ -330,6 +330,9 @@
     thread.push({ role: "ai", url, blob, text: caption });
     renderThread();
     try { await setBase(blob); } catch (e) { /* adjust drawer can stay empty */ }
+    // Multi-step: next edit uses this result as the photo so changes accumulate
+    if (photo && photo.url) try { URL.revokeObjectURL(photo.url); } catch (e) {}
+    photo = { blob, url, name: "edited.jpg" };
     return blob;
   }
   async function send(text, flags) {
