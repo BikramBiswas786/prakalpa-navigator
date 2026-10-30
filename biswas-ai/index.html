@@ -875,11 +875,11 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
         <div class="pending" id="st-pending"></div>
         <div class="chips" id="st-chips"></div>
         <form class="box" id="st-form">
-          <input type="file" id="st-file" accept="image/*" hidden>
+          <input type="file" id="st-file" accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/*" hidden>
           <button class="iconbtn" type="button" id="st-pick" aria-label="Picture">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5"/></svg>
           </button>
-          <input type="file" id="st-face" accept="image/*" hidden>
+          <input type="file" id="st-face" accept="image/jpeg,image/jpg,.jpg,.jpeg,.jpe,.jfif,image/*" hidden>
           <button class="iconbtn" type="button" id="st-face-btn" aria-label="Face">Face</button>
           <textarea id="st-prompt" rows="1" enterkeyhint="send"></textarea>
           <button class="iconbtn send" type="submit" id="st-go" aria-label="Send">

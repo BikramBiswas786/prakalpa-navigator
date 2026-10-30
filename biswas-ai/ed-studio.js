@@ -108,12 +108,60 @@
     return cv;
   }
   function resetSliders() { ["st-bri", "st-con", "st-sat"].forEach(id => { const n = $("#" + id); if (n) n.value = "100"; }); }
+  async function normalizePicture(file) {
+    const name = String(file && file.name || "");
+    const type = String(file && file.type || "").toLowerCase();
+    const jpegName = /\.jpe?g$|\.jfif$|\.jpe$/i.test(name);
+    const jpegType = /^image\/(jpe?g|pjpeg|jfif|x-jpeg|x-citrix-jpeg)$/.test(type);
+    let buf;
+    try { buf = await file.arrayBuffer(); }
+    catch (e) { return file; }
+    const u = new Uint8Array(buf);
+    const jpegMagic = u.length > 3 && u[0] === 0xFF && u[1] === 0xD8 && u[2] === 0xFF;
+    if (jpegMagic || jpegName || jpegType) return new Blob([u], { type: "image/jpeg" });
+    return file.type ? file : new Blob([u], { type: type || "application/octet-stream" });
+  }
+  function loadImage(src) {
+    return new Promise((res, rej) => {
+      const url = typeof src === "string" ? src : URL.createObjectURL(src);
+      const im = new Image();
+      im.onload = () => { if (typeof src !== "string") URL.revokeObjectURL(url); if ((im.naturalWidth || im.width) > 0) res(im); else rej(new Error("bad_picture")); };
+      im.onerror = () => { if (typeof src !== "string") URL.revokeObjectURL(url); const err = new Error("bad_picture"); err.code = "bad_picture"; rej(err); };
+      im.src = url;
+    });
+  }
+  async function decodePicture(blob, max) {
+    const src = await normalizePicture(blob);
+    const limit = max || 1600;
+    const tries = [
+      () => createImageBitmap(src, { imageOrientation: "from-image", resizeWidth: limit, resizeQuality: "high" }),
+      () => createImageBitmap(src, { imageOrientation: "from-image" }),
+      () => createImageBitmap(src),
+      () => loadImage(src),
+      () => new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => loadImage(String(r.result)).then(res, rej);
+        r.onerror = () => rej(new Error("bad_picture"));
+        r.readAsDataURL(src);
+      })
+    ];
+    for (const fn of tries) {
+      try {
+        const bmp = await fn();
+        if (bmp && (bmp.naturalWidth || bmp.width) > 0) return bmp;
+      } catch (e) { /* next decoder */ }
+    }
+    const err = new Error("bad_picture");
+    err.code = "bad_picture";
+    throw err;
+  }
   async function canvasFromBlob(blob, max) {
-    const bmp = await createImageBitmap(blob);
-    const sc = Math.min(1, (max || 1280) / Math.max(bmp.width, bmp.height));
+    const bmp = await decodePicture(blob, max || 1600);
+    const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
+    const sc = Math.min(1, (max || 1600) / Math.max(sw, sh, 1));
     const c = document.createElement("canvas");
-    c.width = Math.max(1, Math.round(bmp.width * sc));
-    c.height = Math.max(1, Math.round(bmp.height * sc));
+    c.width = Math.max(1, Math.round(sw * sc));
+    c.height = Math.max(1, Math.round(sh * sc));
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close && bmp.close();
     return c;
@@ -166,18 +214,8 @@
     return { w: 1024, h: 1024 };
   }
   async function payloadOf(blob, small) {
-    const max = small ? 640 : 1024;
-    let bmp;
-    try { bmp = await createImageBitmap(blob); }
-    catch (e) {
-      bmp = await new Promise((res, rej) => {
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = () => { URL.revokeObjectURL(url); res(img); };
-        img.onerror = () => { URL.revokeObjectURL(url); const err = new Error("bad_picture"); err.code = "bad_picture"; rej(err); };
-        img.src = url;
-      });
-    }
+    const max = small ? 640 : 1600;
+    const bmp = await decodePicture(blob, max);
     const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
     const sc = Math.min(1, max / Math.max(sw, sh, 1));
     const c = document.createElement("canvas");
@@ -185,7 +223,7 @@
     c.height = Math.max(1, Math.round(sh * sc));
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close && bmp.close();
-    const data = c.toDataURL("image/jpeg", 0.86).split(",")[1];
+    const data = c.toDataURL("image/jpeg", 0.9).split(",")[1];
     if (!data || data.length < 80) { const err = new Error("bad_picture"); err.code = "bad_picture"; throw err; }
     const size = sizeOf(c.width, c.height);
     return { mime: "image/jpeg", data, w: size.w, h: size.h };
@@ -752,19 +790,23 @@
     on("st-pick", () => $("#st-file").click());
     on("st-face-btn", () => $("#st-face").click());
     const file = $("#st-file");
-    if (file) file.addEventListener("change", () => {
+    if (file) file.addEventListener("change", async () => {
       const f = file.files && file.files[0]; file.value = "";
       if (!f) return;
+      let blob = f;
+      try { blob = await normalizePicture(f); } catch (e) { blob = f; }
       if (photo && photo.url) URL.revokeObjectURL(photo.url);
-      photo = { blob: f, url: URL.createObjectURL(f), name: f.name || "picture" };
+      photo = { blob, url: URL.createObjectURL(blob), name: f.name || "picture.jpg" };
       fresh = false; pending();
     });
     const faceIn = $("#st-face");
-    if (faceIn) faceIn.addEventListener("change", () => {
+    if (faceIn) faceIn.addEventListener("change", async () => {
       const f = faceIn.files && faceIn.files[0]; faceIn.value = "";
       if (!f) return;
+      let blob = f;
+      try { blob = await normalizePicture(f); } catch (e) { blob = f; }
       if (face && face.url) URL.revokeObjectURL(face.url);
-      face = { blob: f, url: URL.createObjectURL(f), name: f.name || "face" };
+      face = { blob, url: URL.createObjectURL(blob), name: f.name || "face.jpg" };
       pending();
     });
     const form = $("#st-form");

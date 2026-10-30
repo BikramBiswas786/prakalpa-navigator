@@ -142,10 +142,12 @@ function cleanImages(list) {
   const out = [];
   for (const im of Array.isArray(list) ? list : []) {
     if (!im || typeof im !== "object") continue;
-    const mime = String(im.mime || "image/jpeg").toLowerCase();
-    if (!/^image\/(jpeg|png|webp)$/.test(mime)) continue;
+    let mime = String(im.mime || "image/jpeg").toLowerCase().split(";")[0].trim();
+    if (/^image\/(jpg|pjpeg|jfif|x-jpeg|x-citrix-jpeg)$/.test(mime)) mime = "image/jpeg";
     const raw = String(im.b64 || im.data || "");
     const b64 = raw.replace(/^data:[^,]+,/, "").replace(/\s/g, "");
+    if (b64.startsWith("/9j/") || b64.startsWith("/9J/")) mime = "image/jpeg";
+    if (!/^image\/(jpeg|png|webp)$/.test(mime)) continue;
     if (b64.length < 80 || b64.length > 3500000 || !/^[A-Za-z0-9+/=]+$/.test(b64)) continue;
     out.push({ mime, b64 });
     if (out.length === 2) break;
