@@ -41,7 +41,7 @@
     vfxCut: "Cut", vfxFade: "Fade", vfxZoom: "Zoom", vfxGrade: "Colour", vfxGrain: "Grain",
     freshNote: "Describe the new picture. The attached photo is ignored this once.",
     videoNote: "A short silent clip. If a video model is not available, this is a camera move between the pictures the image model returned.",
-    localNote: "Done on this phone.",
+    localNote: "Edited on this phone.",
     via: "Made with "
   };
   const BN = {
@@ -335,81 +335,153 @@
     if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality|restore|retouch)\b/.test(low) || /স্পষ্ট|উন্নত|রিস্টোর/.test(text)) return "enhance";
     return "";
   }
-  async function localClearer(blob) {
-    const c = await canvasFromBlob(blob, 1600);
+  function canvasBlob(c, type, q) {
+    return new Promise(res => c.toBlob(b => res(b), type || "image/jpeg", q == null ? 0.92 : q));
+  }
+  function subjectMask(src) {
+    const max = 360;
+    const sc = Math.min(1, max / Math.max(src.width, src.height, 1));
+    const w = Math.max(8, Math.round(src.width * sc));
+    const h = Math.max(8, Math.round(src.height * sc));
+    const small = document.createElement("canvas");
+    small.width = w; small.height = h;
+    small.getContext("2d").drawImage(src, 0, 0, w, h);
+    const img = small.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, w, h);
+    const d = img.data;
+    const bg = new Uint8Array(w * h);
+    const seen = new Uint8Array(w * h);
+    const qx = new Int32Array(w * h);
+    const qy = new Int32Array(w * h);
+    let qe = 0;
+    const push = (x, y) => {
+      const i = y * w + x;
+      if (seen[i]) return;
+      seen[i] = 1;
+      qx[qe] = x; qy[qe] = y; qe++;
+    };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    const limit = 38 * 38;
+    let qs = 0;
+    while (qs < qe) {
+      const x = qx[qs], y = qy[qs]; qs++;
+      const i = y * w + x;
+      bg[i] = 1;
+      const o = i * 4, r = d[o], gch = d[o + 1], b = d[o + 2];
+      const step = (nx, ny) => {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+        const j = ny * w + nx;
+        if (seen[j]) return;
+        const p = j * 4;
+        const dr = d[p] - r, dg = d[p + 1] - gch, db = d[p + 2] - b;
+        if (dr * dr + dg * dg + db * db <= limit) { seen[j] = 1; qx[qe] = nx; qy[qe] = ny; qe++; }
+      };
+      step(x + 1, y); step(x - 1, y); step(x, y + 1); step(x, y - 1);
+    }
+    let n = 0;
+    for (let i = 0; i < bg.length; i++) if (bg[i]) n++;
+    const ratio = n / bg.length;
+    if (ratio > 0.9 || ratio < 0.12) {
+      bg.fill(1);
+      const cx = w * 0.5, cy = h * 0.45, rx = w * 0.32, ry = h * 0.4;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const ex = (x - cx) / rx, ey = (y - cy) / ry;
+        if (ex * ex + ey * ey <= 1) bg[y * w + x] = 0;
+      }
+    }
+    return { bg, w, h };
+  }
+  function cutSubject(src, mask, paint) {
+    const c = document.createElement("canvas");
+    c.width = src.width; c.height = src.height;
     const g = c.getContext("2d");
-    const copy = clone(c);
-    // Mild contrast + saturation, then a light unsharp via overlay
-    g.filter = "contrast(1.22) saturate(1.12)";
-    g.drawImage(copy, 0, 0);
-    g.filter = "none";
-    g.globalCompositeOperation = "overlay";
-    g.globalAlpha = 0.32;
-    g.filter = "contrast(1.4)";
-    g.drawImage(copy, 0, 0);
-    g.globalAlpha = 1;
-    g.globalCompositeOperation = "source-over";
-    g.filter = "none";
-    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.93));
-    return out;
+    paint(g, c);
+    const layer = document.createElement("canvas");
+    layer.width = c.width; layer.height = c.height;
+    const lg = layer.getContext("2d", { willReadFrequently: true });
+    lg.drawImage(src, 0, 0);
+    const img = lg.getImageData(0, 0, c.width, c.height);
+    const d = img.data, mw = mask.w, mh = mask.h, bg = mask.bg;
+    for (let y = 0; y < c.height; y++) {
+      const my = Math.min(mh - 1, (y * mh / c.height) | 0);
+      for (let x = 0; x < c.width; x++) {
+        const mx = Math.min(mw - 1, (x * mw / c.width) | 0);
+        let keep = bg[my * mw + mx] ? 0 : 255;
+        if (keep && ((mx > 0 && bg[my * mw + mx - 1]) || (my > 0 && bg[(my - 1) * mw + mx]))) keep = 160;
+        d[(y * c.width + x) * 4 + 3] = keep;
+      }
+    }
+    lg.putImageData(img, 0, 0);
+    g.drawImage(layer, 0, 0);
+    return c;
+  }
+  async function localClearer(blob) {
+    const c = await canvasFromBlob(blob, 1400);
+    const g = c.getContext("2d", { willReadFrequently: true });
+    const img = g.getImageData(0, 0, c.width, c.height);
+    const d = img.data, w = c.width, h = c.height;
+    const srcPx = new Uint8ClampedArray(d);
+    for (let y = 2; y < h - 2; y++) {
+      for (let x = 2; x < w - 2; x++) {
+        const i = (y * w + x) * 4;
+        for (let k = 0; k < 3; k++) {
+          const blur = (srcPx[i + k] + srcPx[(y * w + x - 2) * 4 + k] + srcPx[(y * w + x + 2) * 4 + k] + srcPx[((y - 2) * w + x) * 4 + k] + srcPx[((y + 2) * w + x) * 4 + k]) / 5;
+          let v = srcPx[i + k] + 1.15 * (srcPx[i + k] - blur);
+          v = (v - 128) * 1.22 + 132;
+          d[i + k] = v < 0 ? 0 : v > 255 ? 255 : v;
+        }
+      }
+    }
+    g.putImageData(img, 0, 0);
+    return canvasBlob(c, "image/jpeg", 0.93);
   }
   async function localBg(blob) {
-    const c = await canvasFromBlob(blob, 1600);
-    const g = c.getContext("2d");
-    const copy = clone(c);
-    g.filter = "blur(26px) brightness(1.05)";
-    g.drawImage(copy, 0, 0);
-    g.filter = "none";
-    g.fillStyle = "rgba(236, 232, 226, 0.78)";
-    g.fillRect(0, 0, c.width, c.height);
-    const cx = c.width * 0.5, cy = c.height * 0.46, r = Math.min(c.width, c.height) * 0.34;
-    g.save();
-    g.beginPath();
-    g.ellipse(cx, cy, r * 1.2, r * 1.4, 0, 0, Math.PI * 2);
-    g.clip();
-    g.drawImage(copy, 0, 0);
-    g.restore();
-    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
-    return out;
+    const src = await canvasFromBlob(blob, 1400);
+    const mask = subjectMask(src);
+    const c = cutSubject(src, mask, (g, cv) => {
+      const wall = g.createLinearGradient(0, 0, 0, cv.height);
+      wall.addColorStop(0, "#f7f4ef");
+      wall.addColorStop(0.62, "#d9d3cb");
+      wall.addColorStop(1, "#b7b0a6");
+      g.fillStyle = wall;
+      g.fillRect(0, 0, cv.width, cv.height);
+      g.fillStyle = "rgba(90, 80, 70, 0.18)";
+      g.fillRect(0, cv.height * 0.72, cv.width, cv.height * 0.28);
+    });
+    return canvasBlob(c, "image/jpeg", 0.92);
   }
   async function localIsolate(blob) {
-    const c = await canvasFromBlob(blob, 1600);
-    const g = c.getContext("2d");
-    const copy = clone(c);
-    // Approximate subject cut: keep centre, fade edges to white
-    g.drawImage(copy, 0, 0);
-    const cx = c.width * 0.5, cy = c.height * 0.48, rx = c.width * 0.42, ry = c.height * 0.48;
-    g.save();
-    g.globalCompositeOperation = "destination-in";
-    const grd = g.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.55, cx, cy, Math.max(rx, ry));
-    grd.addColorStop(0, "rgba(0,0,0,1)");
-    grd.addColorStop(0.75, "rgba(0,0,0,0.85)");
-    grd.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = grd;
-    g.fillRect(0, 0, c.width, c.height);
-    g.restore();
-    const out = await new Promise(res => c.toBlob(res, "image/png", 0.95));
-    return out;
+    const src = await canvasFromBlob(blob, 1400);
+    const mask = subjectMask(src);
+    const c = cutSubject(src, mask, (g, cv) => {
+      g.fillStyle = "#ffffff";
+      g.fillRect(0, 0, cv.width, cv.height);
+    });
+    return canvasBlob(c, "image/png", 0.95);
   }
   async function localCinematic(blob) {
-    const c = await canvasFromBlob(blob, 1600);
-    const g = c.getContext("2d");
-    const copy = clone(c);
-    g.filter = "contrast(1.12) saturate(1.18) sepia(0.08)";
-    g.drawImage(copy, 0, 0);
-    g.filter = "none";
-    // Soft vignette
-    const grd = g.createRadialGradient(c.width/2, c.height/2, Math.min(c.width,c.height)*0.3, c.width/2, c.height/2, Math.max(c.width,c.height)*0.7);
-    grd.addColorStop(0, "rgba(0,0,0,0)");
-    grd.addColorStop(1, "rgba(0,0,0,0.35)");
-    g.fillStyle = grd;
-    g.fillRect(0, 0, c.width, c.height);
-    g.fillStyle = "#111";
-    const bar = Math.round(c.height * 0.06);
+    const c = await canvasFromBlob(blob, 1400);
+    const g = c.getContext("2d", { willReadFrequently: true });
+    const img = g.getImageData(0, 0, c.width, c.height);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      let r = d[i], gc = d[i + 1], b = d[i + 2];
+      const y = (r + gc + b) / 3;
+      r = (r - 128) * 1.28 + 128;
+      gc = (gc - 128) * 1.18 + 124;
+      b = (b - 128) * 1.12 + 118;
+      if (y < 120) { r -= 18; b += 16; }
+      else { r += 14; gc += 4; b -= 10; }
+      d[i] = r < 0 ? 0 : r > 255 ? 255 : r;
+      d[i + 1] = gc < 0 ? 0 : gc > 255 ? 255 : gc;
+      d[i + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+    }
+    g.putImageData(img, 0, 0);
+    g.fillStyle = "#0a0a0a";
+    const bar = Math.max(18, Math.round(c.height * 0.07));
     g.fillRect(0, 0, c.width, bar);
     g.fillRect(0, c.height - bar, c.width, bar);
-    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
-    return out;
+    return canvasBlob(c, "image/jpeg", 0.92);
   }
   function fitDraw(ctx, src, W, H, t, alpha) {
     ctx.save();
@@ -496,7 +568,7 @@
           : await localClearer(photo.blob);
         if (local) {
           thread.pop();
-          await pushPicture({ blob: local }, t.localNote);
+          await pushPicture({ blob: local }, kind === "bg" ? "Background replaced on this phone." : kind === "isolate" ? "Background removed on this phone." : (kind === "hero" || kind === "vfx" || kind === "poster") ? "Hero grade on this phone." : "Sharpened on this phone.");
           say(t.ready);
           busy = false;
           return;
