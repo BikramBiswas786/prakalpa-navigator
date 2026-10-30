@@ -210,7 +210,12 @@ async function editWithFallback(brief, images, w, h) {
   }
   try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
   catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
-  const err = new Error("edit_failed"); err.status = 502; err.detail = errs.join("; "); throw err;
+  const detail = errs.join("; ");
+  const quota = /429|allocation|quota|rate.?limit/i.test(detail);
+  const err = new Error(quota ? "quota_exhausted" : "edit_failed");
+  err.status = quota ? 429 : 502;
+  err.detail = detail;
+  throw err;
 }
 async function makeWithFallback(brief, w, h) {
   const errs = [];

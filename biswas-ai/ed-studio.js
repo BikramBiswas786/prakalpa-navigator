@@ -25,6 +25,7 @@
     badPicture: "That picture could not be read. Try a JPG.",
     limit: "The picture limit for today is used.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
+    quota: "Free daily quota used (Cloudflare 10 + Gemini). Try again tomorrow, or use Enhance for a local clearer version.",
     noModel: "No image model answered. Try again in a moment.",
     sent: "Asking the other AIs…",
     back: " came back.",
@@ -65,6 +66,7 @@
     badPicture: "এই ছবি পড়া যায়নি। একটা JPG দিন।",
     limit: "আজকের ছবির সীমা শেষ।",
     editFail: "ইমেজ মডেল ছবি বদলাতে পারেনি। আপনার ছবি আগের মতোই আছে।",
+    quota: "ফ্রি দৈনিক সীমা শেষ (Cloudflare 10 + Gemini)। আগামীকাল আবার চেষ্টা করুন, বা স্পষ্ট করো দিয়ে ফোনে ক্লিয়ার করুন।",
     noModel: "কোনো ইমেজ মডেল উত্তর দেয়নি। একটু পরে আবার চেষ্টা করুন।",
     sent: "অন্য AI-দের জিজ্ঞেস করা হচ্ছে…",
     back: " ফিরেছে।",
@@ -146,6 +148,7 @@
     let msg = t.none;
     if (code === "image_daily_limit" || code === "too_many_requests") msg = t.limit;
     else if (code === "need_two_pictures") msg = t.needTwo;
+    else if (code === "quota_exhausted" || /429|allocation|quota/i.test(String(e.detail || e.message || ""))) msg = t.quota || t.editFail;
     else if (code === "edit_failed" || code === "need_picture") msg = t.editFail;
     else if (code === "no_image_provider") msg = t.noModel;
     else if (code === "bad_picture") msg = t.badPicture;
@@ -418,7 +421,7 @@
     } catch (e) {
       if (thread.indexOf(hold) >= 0) hold.text = errText(e);
       else thread.push({ role: "ai", text: errText(e) });
-      if (usePhoto && (kind === "enhance" || kind === "hero")) {
+      if (usePhoto && (kind === "enhance" || kind === "hero" || kind === "bg" || kind === "isolate" || /quota|429/i.test(String(e.message || e.detail || "")))) {
         try {
           const clearer = await localClearer(photo.blob);
           if (clearer) {
