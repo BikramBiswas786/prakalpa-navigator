@@ -999,7 +999,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", ...PAGE_HEADERS });
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...PAGE_HEADERS });
       res.end(PAGE_HTML);
       return;
     }
