@@ -247,46 +247,179 @@ async function xaiEdit(prompt, images) {
   if (!b64) throw new Error("xai empty");
   return { mime: "image/jpeg", b64: String(b64).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
 }
-async function editWithFallback(brief, images, w, h) {
+function imageOut(j) {
+  const d = (j && (j.data || [])[0]) || j || {};
+  const b64 = d.b64_json || d.b64 || (typeof d.image === "string" ? d.image : "");
+  if (!b64) return null;
+  return { mime: d.media_type || d.mime || "image/png", b64: String(b64).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
+}
+async function openrouterPicture(prompt, images) {
+  const key = env("OPENROUTER_API_KEY");
+  if (!key) throw new Error("openrouter missing");
+  const models = (env("OPENROUTER_IMAGE_MODELS") || "google/gemini-2.5-flash-image,black-forest-labs/flux.2-klein,bytedance-seed/seedream-4.5").split(",").map(s => s.trim()).filter(Boolean);
+  const refs = (images || []).slice(0, 2).map(im => ({ type: "image_url", image_url: { url: "data:" + (im.mime || "image/jpeg") + ";base64," + im.b64 } }));
+  let last = "openrouter empty";
+  for (const model of models) {
+    const body = { model, prompt: String(prompt || "").slice(0, 1500), n: 1 };
+    if (refs.length) body.input_references = refs;
+    const r = await tfetch("https://openrouter.ai/api/v1/images", {
+      method: "POST",
+      headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }, 90000);
+    if (!r.ok) { last = "openrouter " + r.status + " " + (await r.text()).slice(0, 90); continue; }
+    const out = imageOut(await r.json());
+    if (out && out.b64) return out;
+    last = "openrouter empty " + model;
+  }
+  throw new Error(last);
+}
+async function togetherPicture(prompt, images) {
+  const key = env("TOGETHER_API_KEY");
+  if (!key) throw new Error("together missing");
+  const im = (images || [])[0];
+  const body = {
+    model: env("TOGETHER_IMAGE_MODEL") || (im ? "black-forest-labs/FLUX.1-kontext-dev" : "black-forest-labs/FLUX.1-schnell-Free"),
+    prompt: String(prompt || "").slice(0, 1500),
+    width: 1024, height: 1024, n: 1, response_format: "b64_json"
+  };
+  if (im) body.image_url = "data:" + (im.mime || "image/jpeg") + ";base64," + im.b64;
+  const r = await tfetch("https://api.together.xyz/v1/images/generations", {
+    method: "POST",
+    headers: { authorization: "Bearer " + key, "content-type": "application/json" },
+    body: JSON.stringify(body)
+  }, 90000);
+  if (!r.ok) throw new Error("together " + r.status + " " + (await r.text()).slice(0, 100));
+  const out = imageOut(await r.json());
+  if (!out) throw new Error("together empty");
+  return out;
+}
+async function nvidiaPicture(prompt, images) {
+  const key = env("NVIDIA_API_KEY");
+  if (!key) throw new Error("nvidia missing");
+  const im = (images || [])[0];
+  if (im) {
+    const r = await tfetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-kontext-dev", {
+      method: "POST",
+      headers: { authorization: "Bearer " + key, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ prompt: String(prompt || "").slice(0, 1500), image: im.b64, steps: 20, aspect_ratio: "1:1" })
+    }, 90000);
+    if (!r.ok) throw new Error("nvidia " + r.status + " " + (await r.text()).slice(0, 90));
+    const j = await r.json();
+    const a = (j.artifacts || [])[0];
+    if (!a || !a.base64) throw new Error("nvidia empty");
+    return { mime: "image/jpeg", b64: a.base64 };
+  }
+  return PROVIDERS.find(x => x.name === "nvidia").run(prompt, 1024, 1024);
+}
+async function openaiPicture(prompt, images) {
+  const key = env("OPENAI_API_KEY");
+  if (!key) throw new Error("openai missing");
+  const im = (images || [])[0];
+  if (!im) return PROVIDERS.find(x => x.name === "openai").run(prompt, 1024, 1024);
+  const form = new FormData();
+  form.append("model", env("OPENAI_IMAGE_MODEL") || "gpt-image-1-mini");
+  form.append("prompt", String(prompt || "").slice(0, 1500));
+  form.append("size", "1024x1024");
+  form.append("image", new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "photo.jpg");
+  const r = await tfetch("https://api.openai.com/v1/images/edits", {
+    method: "POST", headers: { authorization: "Bearer " + key }, body: form
+  }, 90000);
+  if (!r.ok) throw new Error("openai " + r.status + " " + (await r.text()).slice(0, 90));
+  const out = imageOut(await r.json());
+  if (!out) throw new Error("openai empty");
+  return out;
+}
+async function cloudflareSd(prompt, images) {
+  const token = env("CLOUDFLARE_API_TOKEN"), account = env("CLOUDFLARE_ACCOUNT_ID");
+  if (!token || !account) throw new Error("cloudflare missing");
+  const im = (images || [])[0];
+  const model = im ? "@cf/runwayml/stable-diffusion-v1-5-img2img" : "@cf/black-forest-labs/flux-1-schnell";
+  const body = im
+    ? { prompt: String(prompt || "").slice(0, 900), image_b64: im.b64, strength: 0.72, num_steps: 20 }
+    : { prompt: String(prompt || "").slice(0, 900), steps: 4 };
+  const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/${model}`, {
+    method: "POST",
+    headers: { authorization: "Bearer " + token, "content-type": "application/json" },
+    body: JSON.stringify(body)
+  }, 90000);
+  const ct = r.headers.get("content-type") || "";
+  if (!r.ok) throw new Error("cf-sd " + r.status + " " + (await r.text()).slice(0, 90));
+  if (/^image\//.test(ct)) return { mime: ct.split(";")[0], b64: await b64OfRes(r) };
+  const j = await r.json();
+  const img = (j && j.result && (j.result.image || j.result.b64)) || "";
+  if (!img) throw new Error("cf-sd empty");
+  return { mime: "image/png", b64: String(img).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
+}
+async function runChain(steps) {
   const errs = [];
-  // Prefer xAI when available — better preservation and not limited to the free daily 10
-  if (env("XAI_API_KEY")) {
-    try { const t = Date.now(); const out = await xaiEdit(brief, images); return { ...out, provider: "xai", ms: Date.now() - t }; }
-    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
+  for (const step of steps) {
+    if (!step.on()) { errs.push(step.name + " no-key"); continue; }
+    try {
+      const t = Date.now();
+      const out = await step.run();
+      return { ...out, provider: step.name, ms: Date.now() - t };
+    } catch (e) { errs.push(String(e && e.message || e).slice(0, 110)); }
   }
-  if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
-    try { const t = Date.now(); const out = await cloudflareKlein(brief, images, w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
-    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
-  }
-  try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
-  catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
   const detail = errs.join("; ");
-  const quota = /429|allocation|quota|rate.?limit/i.test(detail);
-  const err = new Error(quota ? "quota_exhausted" : "edit_failed");
-  err.status = quota ? 429 : 502;
+  const tried = errs.filter(e => !/no-key/.test(e));
+  const allQuota = tried.length > 0 && tried.every(e => /429|allocation|quota|rate.?limit/i.test(e));
+  const err = new Error(allQuota ? "quota_exhausted" : (tried.length ? "edit_failed" : "no_image_provider"));
+  err.status = allQuota ? 429 : (tried.length ? 502 : 503);
   err.detail = detail;
   throw err;
 }
+function editSteps(brief, images, w, h) {
+  return [
+    { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiEdit(brief, images) },
+    { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, images) },
+    { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, images) },
+    { name: "openai", on: () => !!env("OPENAI_API_KEY"), run: () => openaiPicture(brief, images) },
+    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, images) },
+    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, images) },
+    { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
+    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) }
+  ];
+}
+function makeSteps(brief, w, h) {
+  return [
+    { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiGenerate(brief, w, h) },
+    { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, []) },
+    { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, []) },
+    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, []) },
+    { name: "pollinations", on: () => env("IMAGE_POLLINATIONS") !== "off", run: () => PROVIDERS.find(x => x.name === "pollinations").run(brief, w, h) },
+    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, []) },
+    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, []) },
+    { name: "openai", on: () => !!env("OPENAI_API_KEY") && OPENAI_DAILY > 0, run: () => openaiPicture(brief, []) }
+  ];
+}
+function keyedOn() {
+  return !!(env("XAI_API_KEY") || env("OPENROUTER_API_KEY") || env("TOGETHER_API_KEY") || env("NVIDIA_API_KEY") || env("OPENAI_API_KEY") || env("GEMINI_API_KEY") || (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")));
+}
+async function editWithFallback(brief, images, w, h) {
+  return runChain(editSteps(brief, images, w, h));
+}
 async function makeWithFallback(brief, w, h) {
-  const errs = [];
-  if (env("XAI_API_KEY")) {
-    try { const t = Date.now(); const out = await xaiGenerate(brief, w, h); return { ...out, provider: "xai", ms: Date.now() - t }; }
-    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
-  }
-  if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
-    try { const t = Date.now(); const out = await cloudflareKlein(brief, [], w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
-    catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
-  }
-  const order = (env("IMAGE_PROVIDER_ORDER") ? env("IMAGE_PROVIDER_ORDER").split(",").map(s => s.trim()) : ["gemini", "nvidia", "cloudflare", "pollinations", "openai"]);
-  for (const n of order) {
-    const pr = PROVIDERS.find(x => x.name === n); if (!pr || !pr.ok()) continue;
+  return runChain(makeSteps(brief, w, h));
+}
+export async function fanoutStudio(prompt, opt = {}) {
+  const images = cleanImages(opt.images);
+  const task = images.length ? "edit" : "make";
+  const brief = studioInstruction(task, prompt || "Professionally enhance this photograph. Keep the same people.");
+  const size = fitSize(opt.w, opt.h);
+  const steps = images.length ? editSteps(brief, images, size.w, size.h) : makeSteps(brief, size.w, size.h);
+  const imagesOut = [];
+  const errors = [];
+  await Promise.all(steps.map(async step => {
+    if (!step.on()) { errors.push(step.name + " no-key"); return; }
     try {
       const t = Date.now();
-      const out = n === "gemini" ? await geminiPicture(brief, []) : await pr.run(brief, w, h);
-      return { ...out, provider: pr.name, ms: Date.now() - t };
-    } catch (e) { errs.push(String(e && e.message || e).slice(0, 60)); }
-  }
-  const e = new Error("no_image_provider"); e.status = 503; e.detail = errs.join("; "); throw e;
+      const out = await step.run();
+      if (out && out.b64) imagesOut.push({ provider: step.name, mime: out.mime || "image/jpeg", b64: out.b64, ms: Date.now() - t });
+      else errors.push(step.name + " empty");
+    } catch (e) { errors.push(step.name + " " + String(e && e.message || e).slice(0, 90)); }
+  }));
+  return { images: imagesOut, errors };
 }
 export async function generateStudio(prompt, opt = {}) {
   const images = cleanImages(opt.images);
@@ -317,8 +450,9 @@ export async function generateStudio(prompt, opt = {}) {
 function takeSlot(req) {
   roll();
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+  const cap = keyedOn() ? Math.max(PER_IP_DAILY, 400) : PER_IP_DAILY;
   const n = (counts.ip.get(ip) || 0) + 1;
-  if (n > PER_IP_DAILY) return { ip, n, limited: true };
+  if (n > cap) return { ip, n, limited: true };
   counts.ip.set(ip, n);
   return { ip, n, limited: false };
 }
@@ -331,6 +465,22 @@ export async function handle(req, body, sendJson) {
 export async function handleStudio(req, body, sendJson, res) {
   const slot = takeSlot(req);
   if (slot.limited) return sendJson(429, { error: "image_daily_limit" });
+  if (body && body.fanout) {
+    try {
+      const pack = await fanoutStudio(body.prompt, body || {});
+      const tried = (pack.errors || []).filter(e => !/no-key/.test(e));
+      if (!pack.images.length) {
+        const allQuota = tried.length > 0 && tried.every(e => /429|allocation|quota|rate.?limit/i.test(e));
+        const err = allQuota ? "quota_exhausted" : (tried.length ? "edit_failed" : "no_image_provider");
+        counts.ip.set(slot.ip, slot.n - 1);
+        return sendJson(allQuota ? 429 : 502, { error: err, detail: (pack.errors || []).join("; "), images: [] });
+      }
+      return sendJson(200, pack);
+    } catch (e) {
+      counts.ip.set(slot.ip, slot.n - 1);
+      return sendJson(e.status || 500, { error: e.message, detail: e.detail || "" });
+    }
+  }
   try {
     const r = await generateStudio(body && body.prompt, body || {});
     const buf = Buffer.from(String(r.b64 || "").replace(/\s/g, ""), "base64");

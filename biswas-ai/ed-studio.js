@@ -14,7 +14,7 @@
     size: "Save width",
     face: "Face",
     still: "Add this picture", clip: "Add a clip", titlePh: "Title card", addTitle: "Add title", play: "Play", exp: "Export film",
-    others: "Ask other AIs", swap: "Face swap",
+    others: "Send to other AIs", swap: "Face swap",
     use: "Use this picture", save: "Download",
     working: "Working on it…",
     recording: "Recording the video…",
@@ -23,11 +23,12 @@
     needTwo: "Face swap needs a face photo and the picture to change.",
     none: "No picture came back. Try again.",
     badPicture: "That picture could not be read. Try a JPG.",
-    limit: "The picture limit for today is used.",
+    limit: "The free picture cap for today is used. Keys that are set are still tried.",
+    minute: "Too many tries this minute. Wait a moment and send again.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
-    quota: "Free models are out of quota. xAI Grok Imagine is tried next if the key is set. If you still see this, the xAI call also failed. A local stand-in is shown below.",
-    noModel: "No image model answered. Try again in a moment.",
-    sent: "Asking the other AIs…",
+    quota: "The keys that answered with a quota error are listed below. A key that is set and still has credit is tried at the same time.",
+    noModel: "No image key is set, so nothing could make a picture.",
+    sent: "Sending this picture to every image key (Grok, OpenRouter, Together, NVIDIA, OpenAI, Cloudflare, Gemini)…",
     back: " came back.",
     noAi: "The other AIs did not answer in time. One picture was still made from your line.",
     filmNeed: "Add at least one shot.",
@@ -146,7 +147,8 @@
     const t = L();
     const code = String((e && (e.code || e.message)) || "");
     let msg = t.none;
-    if (code === "image_daily_limit" || code === "too_many_requests") msg = t.limit;
+    if (code === "too_many_requests") msg = t.minute || t.limit;
+    else if (code === "image_daily_limit") msg = t.limit;
     else if (code === "need_two_pictures") msg = t.needTwo;
     else if (code === "quota_exhausted" || /429|allocation|quota/i.test(String(e.detail || e.message || ""))) msg = t.quota || t.editFail;
     else if (code === "edit_failed" || code === "need_picture") msg = t.editFail;
@@ -394,7 +396,8 @@
     renderThread();
     try { await setBase(blob); } catch (e) { /* adjust drawer can stay empty */ }
     // Multi-step: next edit uses this result as the photo so changes accumulate
-    if (photo && photo.url) try { URL.revokeObjectURL(photo.url); } catch (e) {}
+    const live = new Set(thread.map(m => m.url).filter(Boolean));
+    if (photo && photo.url && photo.url !== url && !live.has(photo.url)) try { URL.revokeObjectURL(photo.url); } catch (e) {}
     photo = { blob, url, name: "edited.jpg" };
     return blob;
   }
@@ -447,23 +450,6 @@
       if (kind === "poster") {
         prompt = (line || "movie poster") + ". Turn into a high-end poster with clear readable text if requested. Cinematic, sharp.";
       }
-      // Independent local path for tasks that do not need a foundation model
-      if (usePhoto && (kind === "enhance" || kind === "isolate" || kind === "vfx" || kind === "hero")) {
-        try {
-          const local = kind === "isolate" ? await localIsolate(photo.blob)
-            : (kind === "vfx" || kind === "hero") ? await localCinematic(photo.blob)
-            : await localClearer(photo.blob);
-          if (local) {
-            thread.pop();
-            const url = URL.createObjectURL(local);
-            thread.push({ role: "ai", url, blob: local, text: "Own AI (local) — no external model called." });
-            photo = { blob: local, url };
-            renderThread();
-            busy = false;
-            return;
-          }
-        } catch (_) { /* fall through to external */ }
-      }
       const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt, video: kind === "video", images, w: size.w, h: size.h };
       let j;
       try { j = await studio(body); }
@@ -499,18 +485,6 @@
     } catch (e) {
       if (thread.indexOf(hold) >= 0) hold.text = errText(e);
       else thread.push({ role: "ai", text: errText(e) });
-      if (usePhoto && (kind === "enhance" || kind === "hero" || kind === "bg" || kind === "isolate" || /quota|429/i.test(String(e.message || e.detail || "")))) {
-        try {
-          const fallback = (kind === "bg" || kind === "isolate") ? await localBg(photo.blob) : await localClearer(photo.blob);
-          if (fallback) {
-            const url = URL.createObjectURL(fallback);
-            const note = (kind === "bg" || kind === "isolate")
-              ? "Free models are out of quota. This is a local blur-around-subject stand-in, not a real background replacement."
-              : L().localNote;
-            thread.push({ role: "ai", url, blob: fallback, text: note });
-          }
-        } catch (err) { /* keep the error line */ }
-      }
       if (kind === "video" && usePhoto) {
         try {
           const vid = await clipFrom([photo.blob]);
@@ -533,35 +507,30 @@
     if (photo) { const a = await payloadOf(photo.blob, false); images.push({ mime: a.mime, data: a.data }); }
     if (!images.length && prompt.length < 3) { say(t.need); return; }
     busy = true; say(t.sent);
-    thread.push({ role: "user", text: prompt || "Ask the other AIs", url: photo ? photo.url : "" });
+    thread.push({ role: "user", text: prompt || "Send to other AIs", url: photo ? photo.url : "" });
     renderThread();
     try {
-      const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
-        panel: true, maxOut: 900,
-        system: "You are one free AI in an image studio. If a photograph is attached, look at it. Write what you see in a few lines, then one line that starts with PROMPT: followed by one English sentence a photo model can paint or edit. Do not refuse.",
-        messages: [{ role: "user", content: prompt || "Describe this picture and write a careful edit." }],
-        images
+      const signal = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined;
+      const r = await fetch("/api/studio", { method: "POST", headers: { "content-type": "application/json" }, signal, body: JSON.stringify({
+        fanout: true,
+        task: images.length ? "edit" : "make",
+        prompt: prompt || "Professionally enhance this photograph. Keep the same people, faces, clothes and pose.",
+        images, w: 1024, h: 1024
       }) });
-      const j = r.ok ? await r.json() : { answers: [] };
-      const rows = (j.answers || []).filter(a => a && a.text && !a.error);
-      const seen = new Set(); const prompts = [];
-      for (const a of rows) {
-        thread.push({ role: "ai", text: (a.provider || "AI") + ": " + String(a.text).replace(/\s+/g, " ").trim().slice(0, 500) });
-        const line = promptOf(a.text);
-        const key = line.toLowerCase();
-        if (line.length > 12 && !seen.has(key)) { seen.add(key); prompts.push({ who: a.provider || "AI", line }); }
+      const j = await r.json().catch(() => ({}));
+      const pics = (j && j.images) || [];
+      if (!r.ok || !pics.length) {
+        const e = new Error((j && j.error) || ("http_" + r.status));
+        e.code = (j && j.error) || ("http_" + r.status);
+        e.detail = (j && j.detail) || "";
+        thread.push({ role: "ai", text: errText(e) });
+      } else {
+        for (const pic of pics) await pushPicture({ mime: pic.mime, b64: pic.b64, provider: pic.provider }, (pic.provider || "AI") + t.back);
+        const failed = (j.errors || []).filter(x => !/no-key/.test(x));
+        if (failed.length) thread.push({ role: "ai", text: "Did not answer: " + failed.slice(0, 6).join("; ") });
+        say(t.ready);
       }
       renderThread();
-      const jobs = prompts.slice(0, 2);
-      if (!jobs.length) {
-        const j2 = await studio({ task: images.length ? "edit" : "make", prompt: prompt || "A sharp realistic photograph", images, w: 1024, h: 1024 });
-        if (j2 && j2.b64) await pushPicture(j2, t.noAi);
-      } else {
-        for (const job of jobs) {
-          const made = await studio({ task: images.length ? "edit" : "make", prompt: job.line, images, w: 1024, h: 1024 });
-          if (made && made.b64) await pushPicture(made, job.who + t.back);
-        }
-      }
     } catch (e) { thread.push({ role: "ai", text: errText(e) }); renderThread(); }
     finally { busy = false; }
   }
