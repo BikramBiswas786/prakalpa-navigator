@@ -71,30 +71,71 @@ export async function generate(prompt, opt = {}) {
 }
 // POST /api/imagegen {prompt, w, h}
 export const studioInstruction = (task, prompt, kind) => {
-  const p = String(prompt || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+/g, " ").trim().slice(0, 900);
+  const p = String(prompt || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/\s+/g, " ").trim().slice(0, 1200);
   const low = p.toLowerCase();
-  const want = kind || (/\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(p) ? "video"
-    : /\b(hero|cinematic|poster|epic)\b/.test(low) || /হিরো/.test(p) ? "hero"
-    : /\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality)\b/.test(low) || /স্পষ্ট|উন্নত/.test(p) ? "enhance" : "");
+  const isBg = /\b(background|bg|backdrop|environment|place|setting|scene)\b/.test(low) && /\b(change|replace|remove|new|different|put|place|set|to|into)\b/.test(low)
+    || /ব্যাকগ্রাউন্ড|পটভূমি|জায়গা\s*বদল|ব্যাকগ্রাউন্ড\s*বদল/.test(p)
+    || /\b(remove\s+background|transparent|isolate|cutout|no\s+background)\b/.test(low);
+  const isRestore = /\b(restore|restoration|old|blurry|damaged|fix\s+photo|recover)\b/.test(low) || /পুরনো|স্পষ্ট\s*করো|রিস্টোর/.test(p);
+  const isCinematic = /\b(hero|cinematic|poster|epic|dramatic|vfx|movie|hollywood|film\s*still)\b/.test(low) || /হিরো|সিনেমাটিক/.test(p);
+  const isEnhance = /\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality|retouch)\b/.test(low) || /স্পষ্ট|উন্নত|রেটাচ/.test(p);
+  const want = kind || ( /\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(p) ? "video"
+    : isCinematic ? "hero"
+    : isEnhance || isRestore ? "enhance"
+    : isBg ? "bg" : "");
+
   if (task === "swap") return "Put the face from the first reference photo onto the main person in the second reference photo. Keep the second photo's pose, clothes, lighting and background. Photoreal, sharp, natural skin, correct anatomy. No text, no watermark." + (p ? " Also: " + p : "");
-  const keep = "Use the reference photograph. Keep the same people, the same faces, the same clothes, the same jewellery and the same place, unless the instruction changes one of those. Photoreal, sharp focus, natural skin, no plastic look, no text, no letters, no watermark, no logo. ";
-  if (task === "edit" || task === "swap") {
-    if (want === "hero") return keep + "Turn it into a cinematic hero still: richer colour, a stronger but natural light, a slight low angle, shallow depth of field. The people must stay recognisable.";
-    if (want === "video") return keep + "The same moment a second later: a softer expression, hair moved a little by a breeze, a small ripple on any water. Do not change who they are.";
-    if (want === "enhance" || !p) return keep + "Make the photograph clearer and more detailed. Do not redesign the scene and do not change who they are.";
-    return keep + "Instruction: " + p;
+
+  if (task === "edit" || (task === "swap" && false)) {
+    if (want === "isolate" || /\b(remove\s+background|transparent|isolate|cutout)\b/.test(low)) {
+      return `Use the reference photograph. Keep the exact same people, their faces, body proportions, clothes and jewellery perfectly identical. Completely remove the original background and isolate the subjects on a pure clean white background. Do not keep any original environment. Photoreal, sharp, natural skin, no text, no watermark. Instruction: ${p || "isolate on white"}`;
+    }
+    if (want === "vfx" || /\b(vfx|cinematic\s*vfx|dramatic\s*lighting|hollywood)\b/.test(low)) {
+      return `Use the reference photograph. Keep the same people and faces clearly recognisable. Add high-end cinematic VFX: dramatic lighting, realistic shadows, subtle fog or light rays if suitable, depth, professional colour grade, atmospheric effects. Do not redesign the people. Photoreal, sharp, natural skin, no plastic, no text, no watermark. Instruction: ${p || "cinematic VFX with dramatic light and depth"}`;
+    }
+    if (want === "poster" || /\b(poster|movie\s*poster)\b/.test(low)) {
+      return `Use the reference photograph. Keep the people recognisable. Turn into a high-end cinematic poster. If text is requested, render it clearly and correctly. Strong composition, dramatic lighting, professional grade. Photoreal or designed as asked. Instruction: ${p || "cinematic movie poster"}`;
+    }
+    if (isBg) {
+      const wantTransparent = /transparent|isolate|cutout|no\s+background|remove\s+background/.test(low);
+      const desc = p || "a clean modern studio backdrop with soft even light";
+      if (wantTransparent) {
+        return `Use the reference photograph. Keep the exact same people, their faces, body proportions, clothes and jewellery perfectly identical and recognisable. Completely remove the original background and isolate the subjects on a pure clean white background (or transparent if the model supports it). Do not keep any part of the original room, outdoor setting, water, boat, walls or backdrop. Subjects must stay pixel-accurate. Photoreal, sharp focus, natural skin, no plastic look, no text, no letters, no watermark, no logo. Instruction: ${desc}`;
+      }
+      return `Use the reference photograph. Keep the exact same people, their faces, body proportions, clothes and jewellery perfectly identical and recognisable — do not redesign, re-pose or re-light the subjects. Completely erase and replace the entire original background and environment with a brand-new photorealistic one. Do not keep any part of the original room, outdoor setting, water, boat, walls, sky or backdrop. The new background must be completely different and match the lighting on the subjects. Photoreal, sharp focus, natural skin, no plastic look, no text, no letters, no watermark, no logo. New background: ${desc}`;
+    }
+    if (want === "hero" || isCinematic) {
+      return `Use the reference photograph. Keep the same people and faces clearly recognisable. Transform into a high-end cinematic movie still: richer colour grading, dramatic but natural lighting, subtle atmospheric effects if suitable (soft fog, light rays, depth), shallow depth of field, professional look. Photoreal, sharp, natural skin, no plastic, no text, no watermark. Instruction: ${p || "cinematic hero shot with stronger light and depth"}`;
+    }
+    if (want === "video") {
+      return `Use the reference photograph. Keep the same people and faces. Show the same moment a second later with slight natural motion: softer expression, hair moved a little by a breeze, small ripple on any water. Photoreal, sharp, natural skin, no text, no watermark. ${p}`;
+    }
+    if (want === "enhance" || isRestore || !p) {
+      return `Use the reference photograph. Keep the same people, faces, clothes and composition. Professionally enhance and restore: improve sharpness, detail, lighting, colour balance and clarity. Reduce noise or blur if present while preserving natural skin texture and identity. Photoreal, high quality, natural skin, no plastic look, no text, no watermark. ${p || "Make the photograph clearer and more detailed."}`;
+    }
+    return `Use the reference photograph. Keep the same people, faces, clothes and jewellery. Follow the instruction carefully and change only what is asked. Photoreal, sharp focus, natural skin, no plastic look, no text, no letters, no watermark, no logo. Instruction: ${p}`;
   }
-  if (want === "hero") return "One cinematic photoreal hero still, sharp, natural skin, no text, no watermark. " + (p || "A person standing in a real place, low angle, strong natural light.");
-  if (want === "video") return "One photoreal film still, sharp, a little motion in hair or water, no text, no watermark. " + (p || "A quiet real place with one person.");
-  return "One high-detail photoreal photograph. Sharp focus, natural light, real textures, no text, no letters, no watermark, no logo. " + (p || "A quiet realistic scene.");
+
+  if (want === "hero" || isCinematic) return "One cinematic photoreal hero still, sharp, natural skin, professional colour grade. " + (p || "A person standing in a real place, low angle, strong natural light.") + ( /\b(text|poster|title|letter)\b/.test(low) ? "" : " No text, no watermark.");
+  if (want === "video") return "One photoreal film still, sharp, a little motion in hair or water. " + (p || "A quiet real place with one person.") + " No text, no watermark.";
+  if (isBg) return "Photoreal photograph with the described background. Sharp, natural. " + p + " No text, no watermark.";
+  const allowText = /\b(poster|text|title|letter|words|typography|logo)\b/.test(low) || /পোস্টার|লেখা|টাইটেল/.test(p);
+  return (allowText
+    ? "One high-detail photoreal or designed image. Sharp, clear, professional. Include any requested text clearly and correctly. "
+    : "One high-detail photoreal photograph. Sharp focus, natural light, real textures, no text, no letters, no watermark, no logo. ")
+    + (p || "A quiet realistic scene.");
 };
 export const studioIntent = prompt => {
   const p = String(prompt || "");
   const low = p.toLowerCase();
   if (/\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(p)) return "video";
   if (/\b(swap|face\s*swap)\b/.test(low) || /ফেস\s*সোয়াপ|মুখ\s*বদল/.test(p)) return "swap";
+  if (/\b(remove\s+background|transparent|isolate|cutout|no\s+background)\b/.test(low) || /ব্যাকগ্রাউন্ড\s*সরান/.test(p)) return "isolate";
+  if (/\b(background|bg|backdrop)\b/.test(low) && /\b(change|replace|remove|new)\b/.test(low) || /ব্যাকগ্রাউন্ড|পটভূমি/.test(p)) return "bg";
+  if (/\b(vfx|cinematic\s*vfx|dramatic\s*lighting)\b/.test(low)) return "vfx";
+  if (/\b(poster|movie\s*poster)\b/.test(low) || /পোস্টার/.test(p)) return "poster";
   if (/\b(hero|cinematic|poster|epic)\b/.test(low) || /হিরো/.test(p)) return "hero";
-  if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality)\b/.test(low) || /স্পষ্ট|উন্নত/.test(p)) return "enhance";
+  if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality|restore|retouch)\b/.test(low) || /স্পষ্ট|উন্নত|রিস্টোর/.test(p)) return "enhance";
   return "";
 };
 function cleanImages(list) {

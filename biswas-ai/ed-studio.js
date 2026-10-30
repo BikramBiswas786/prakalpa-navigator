@@ -4,10 +4,10 @@
   const $ = s => document.querySelector(s);
   const EN = {
     h: "Images",
-    note: "Attach a picture and say what you want. Enhance, make it hero, or create a video. The result comes back in this chat. Download it — this chat is not kept after a reload.",
+    note: "Attach a picture and say what you want. Enhance, change background (type the new place), make it hero, cinematic VFX, restore, remove background, poster, or create a video. Free models do their best — results vary. Download the result — this chat is not kept after a reload.",
     empty: "Open Adjust to change light, crop and text on the latest picture.",
-    ph: "Enhance, make it hero, create a video…",
-    chips: [["enhance", "Enhance"], ["hero", "Make it hero"], ["video", "Create a video"], ["fresh", "New picture"]],
+    ph: "Enhance, change background to beach, make it hero, restore…",
+    chips: [["enhance", "Enhance"], ["hero", "Make it hero"], ["bg", "Change background"], ["isolate", "Remove background"], ["vfx", "Cinematic VFX"], ["restore", "Restore"], ["poster", "Poster"], ["video", "Create a video"], ["fresh", "New picture"]],
     more: "Adjust, crop, film desk",
     bri: "Light", con: "Contrast", sat: "Colour",
     apply: "Apply look", sharp: "Sharpen", rot: "Rotate", flip: "Flip", crop: "Square crop", text: "Text", undo: "Undo", dl: "Download",
@@ -47,7 +47,7 @@
     note: "একটা ছবি যোগ করে বলুন কী চান। স্পষ্ট, হিরো, বা ভিডিও। উত্তর এই চ্যাটে আসবে। নামিয়ে রাখুন — রিলোডের পর এই চ্যাট থাকে না।",
     empty: "আলো, কাট আর লেখা বদলাতে অ্যাডজাস্ট খুলুন।",
     ph: "স্পষ্ট করো, হিরো বানাও, ভিডিও বানাও…",
-    chips: [["enhance", "স্পষ্ট করো"], ["hero", "হিরো বানাও"], ["video", "ভিডিও বানাও"], ["fresh", "নতুন ছবি"]],
+    chips: [["enhance", "স্পষ্ট করো"], ["hero", "হিরো বানাও"], ["bg", "ব্যাকগ্রাউন্ড বদলাও"], ["isolate", "ব্যাকগ্রাউন্ড সরান"], ["vfx", "সিনেমাটিক VFX"], ["restore", "রিস্টোর"], ["poster", "পোস্টার"], ["video", "ভিডিও বানাও"], ["fresh", "নতুন ছবি"]],
     more: "অ্যাডজাস্ট, কাট, ফিল্ম ডেস্ক",
     bri: "আলো", con: "কনট্রাস্ট", sat: "রং",
     apply: "লুক বসান", sharp: "ধারালো", rot: "ঘোরান", flip: "উল্টান", crop: "বর্গ কাটুন", text: "লেখা", undo: "আগের", dl: "নামান",
@@ -265,8 +265,12 @@
     const low = String(text || "").toLowerCase();
     if (/\b(video|movie|film|animate|clip|reel)\b/.test(low) || /ভিডিও|মুভি|ফিল্ম/.test(text)) return "video";
     if (/\b(swap|face\s*swap)\b/.test(low) || /ফেস|মুখ/.test(text)) return "swap";
+    if (/\b(remove\s+background|transparent|isolate|cutout|no\s+background)\b/.test(low) || /ব্যাকগ্রাউন্ড\s*সরান/.test(text)) return "isolate";
+    if (/\b(background|bg|backdrop)\b/.test(low) && /\b(change|replace|remove|new)\b/.test(low) || /ব্যাকগ্রাউন্ড|পটভূমি/.test(text)) return "bg";
+    if (/\b(vfx|cinematic\s*vfx|dramatic\s*lighting|hollywood)\b/.test(low) || /সিনেমাটিক/.test(text)) return "vfx";
+    if (/\b(poster|movie\s*poster|title\s*card)\b/.test(low) || /পোস্টার/.test(text)) return "poster";
     if (/\b(hero|cinematic|poster|epic)\b/.test(low) || /হিরো/.test(text)) return "hero";
-    if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality)\b/.test(low) || /স্পষ্ট|উন্নত/.test(text)) return "enhance";
+    if (/\b(enhance|sharper|sharpen|hd|upscale|clearer|improve|quality|restore|retouch)\b/.test(low) || /স্পষ্ট|উন্নত|রিস্টোর/.test(text)) return "enhance";
     return "";
   }
   async function localClearer(blob) {
@@ -337,7 +341,7 @@
     fresh = false;
     const usePhoto = photo && !ignore;
     if (!usePhoto && line.length < 3 && kind !== "enhance") { say(t.need); return; }
-    if ((kind === "enhance" || kind === "hero" || kind === "video" || kind === "swap") && !usePhoto && !(face && photo)) {
+    if ((kind === "enhance" || kind === "hero" || kind === "video" || kind === "swap" || kind === "bg" || kind === "restore" || kind === "isolate" || kind === "vfx" || kind === "poster") && !usePhoto && !(face && photo)) {
       thread.push({ role: "user", text: line || kind });
       thread.push({ role: "ai", text: t.need });
       renderThread(); return;
@@ -364,7 +368,20 @@
         images = [{ mime: a.mime, data: a.data }];
         size = { w: a.w, h: a.h };
       }
-      const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt: line || kind, video: kind === "video", images, w: size.w, h: size.h };
+      let prompt = line || kind;
+      if (kind === "bg" && (!line || /^(change\s+background|ব্যাকগ্রাউন্ড\s*বদলাও|bg)$/i.test(line.trim()))) {
+        prompt = "change background to a clean modern studio backdrop, keep the people exactly the same";
+      }
+      if (kind === "isolate") {
+        prompt = (line && !/remove\s+background|isolate|ব্যাকগ্রাউন্ড\s*সরান/i.test(line) ? line + ". " : "") + "remove background, isolate the subjects on pure white";
+      }
+      if (kind === "vfx") {
+        prompt = (line || "cinematic VFX") + ". Add dramatic cinematic lighting, depth, subtle atmospheric effects, professional colour grade. Keep the people recognisable.";
+      }
+      if (kind === "poster") {
+        prompt = (line || "movie poster") + ". Turn into a high-end poster with clear readable text if requested. Cinematic, sharp.";
+      }
+      const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt, video: kind === "video", images, w: size.w, h: size.h };
       let j;
       try { j = await studio(body); }
       catch (e) {
@@ -641,6 +658,15 @@
         b.type = "button"; b.className = "chip"; b.textContent = lab;
         b.addEventListener("click", () => {
           if (id === "fresh") { fresh = true; const p = $("#st-prompt"); if (p) p.focus(); say(t.freshNote); return; }
+          if (id === "bg") {
+            const p = $("#st-prompt");
+            if (p && !p.value.trim()) {
+              p.value = "change background to a clean modern studio backdrop";
+              p.focus();
+              say("Edit the new background description if you want, then press Enter or Send.");
+              return;
+            }
+          }
           send(lab, { kind: id });
         });
         chips.append(b);
