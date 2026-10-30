@@ -143,12 +143,16 @@ function cleanImages(list) {
   for (const im of Array.isArray(list) ? list : []) {
     if (!im || typeof im !== "object") continue;
     let mime = String(im.mime || "image/jpeg").toLowerCase().split(";")[0].trim();
-    if (/^image\/(jpg|pjpeg|jfif|x-jpeg|x-citrix-jpeg)$/.test(mime)) mime = "image/jpeg";
-    const raw = String(im.b64 || im.data || "");
-    const b64 = raw.replace(/^data:[^,]+,/, "").replace(/\s/g, "");
-    if (b64.startsWith("/9j/") || b64.startsWith("/9J/")) mime = "image/jpeg";
+    if (/jpe?g|pjpeg|jfif/.test(mime)) mime = "image/jpeg";
+    else if (mime.includes("png")) mime = "image/png";
+    else if (mime.includes("webp")) mime = "image/webp";
+    let b64 = String(im.b64 || im.data || "").replace(/^data:[^,]+,/, "").replace(/\s/g, "").replace(/-/g, "+").replace(/_/g, "/");
+    b64 = b64.replace(/[^A-Za-z0-9+/=]/g, "");
+    if (b64.startsWith("/9j") || b64.startsWith("/9J")) mime = "image/jpeg";
+    else if (b64.startsWith("iVBOR")) mime = "image/png";
+    else if (b64.startsWith("UklGR")) mime = "image/webp";
     if (!/^image\/(jpeg|png|webp)$/.test(mime)) continue;
-    if (b64.length < 80 || b64.length > 3500000 || !/^[A-Za-z0-9+/=]+$/.test(b64)) continue;
+    if (b64.length < 80 || b64.length > 12000000) continue;
     out.push({ mime, b64 });
     if (out.length === 2) break;
   }

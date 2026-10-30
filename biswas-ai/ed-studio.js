@@ -213,20 +213,39 @@
     if (a < 0.84) return { w: 768, h: 1280 };
     return { w: 1024, h: 1024 };
   }
+  function readDataUrl(blob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result || ""));
+      r.onerror = () => rej(new Error("bad_picture"));
+      r.readAsDataURL(blob);
+    });
+  }
   async function payloadOf(blob, small) {
     const max = small ? 640 : 1600;
-    const bmp = await decodePicture(blob, max);
-    const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
-    const sc = Math.min(1, max / Math.max(sw, sh, 1));
-    const c = document.createElement("canvas");
-    c.width = Math.max(1, Math.round(sw * sc));
-    c.height = Math.max(1, Math.round(sh * sc));
-    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    bmp.close && bmp.close();
-    const data = c.toDataURL("image/jpeg", 0.9).split(",")[1];
-    if (!data || data.length < 80) { const err = new Error("bad_picture"); err.code = "bad_picture"; throw err; }
-    const size = sizeOf(c.width, c.height);
-    return { mime: "image/jpeg", data, w: size.w, h: size.h };
+    const typed = await normalizePicture(blob);
+    try {
+      const bmp = await decodePicture(typed, max);
+      const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
+      const sc = Math.min(1, max / Math.max(sw, sh, 1));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(sw * sc));
+      c.height = Math.max(1, Math.round(sh * sc));
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      bmp.close && bmp.close();
+      const data = (c.toDataURL("image/jpeg", 0.9).split(",")[1] || "").replace(/\s/g, "");
+      if (data.length >= 80 && data.length < 2500000) {
+        const size = sizeOf(c.width, c.height);
+        return { mime: "image/jpeg", data, w: size.w, h: size.h };
+      }
+    } catch (e) { /* keep the original JPEG bytes */ }
+    const url = await readDataUrl(typed);
+    const data = (url.split(",")[1] || "").replace(/\s/g, "");
+    const mime = /^data:image\/png/i.test(url) ? "image/png" : /^data:image\/webp/i.test(url) ? "image/webp" : "image/jpeg";
+    if (data.length >= 80) return { mime, data, w: 0, h: 0 };
+    const err = new Error("bad_picture");
+    err.code = "bad_picture";
+    throw err;
   }
   async function studio(body) {
     const signal = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined;
