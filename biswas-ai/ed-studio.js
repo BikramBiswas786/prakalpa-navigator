@@ -41,7 +41,7 @@
     vfxCut: "Cut", vfxFade: "Fade", vfxZoom: "Zoom", vfxGrade: "Colour", vfxGrain: "Grain",
     freshNote: "Describe the new picture. The attached photo is ignored this once.",
     videoNote: "A short silent clip. If a video model is not available, this is a camera move between the pictures the image model returned.",
-    localNote: "The image model did not answer. This is a clearer copy made on the phone, not a new generated photo.",
+    localNote: "Done on this phone.",
     via: "Made with "
   };
   const BN = {
@@ -82,7 +82,7 @@
     vfxCut: "কাট", vfxFade: "ফেড", vfxZoom: "জুম", vfxGrade: "রং", vfxGrain: "গ্রেইন",
     freshNote: "নতুন ছবির কথা লিখুন। এই একবার যোগ করা ছবি বাদ যাবে।",
     videoNote: "একটা ছোট নিঃশব্দ ক্লিপ। ভিডিও মডেল না থাকলে এটা ইমেজ মডেলের ছবির ওপর ক্যামেরা চলা।",
-    localNote: "ইমেজ মডেল উত্তর দেয়নি। এটা ফোনে বানানো একটা স্পষ্ট কপি, নতুন জেনারেট করা ছবি নয়।",
+    localNote: "ফোনেই হয়ে গেছে।",
     via: "বানিয়েছে "
   };
   const L = () => ((window.settings && settings.lang === "bn") || document.documentElement.lang === "bn" ? BN : EN);
@@ -199,7 +199,7 @@
     else if (code === "image_daily_limit") msg = t.limit;
     else if (code === "need_two_pictures") msg = t.needTwo;
     else if (code === "quota_exhausted") msg = t.quota || t.editFail;
-    else if (code === "edit_failed" || code === "need_picture") msg = t.editFail;
+    else if (code === "edit_failed" || code === "need_picture") return t.editFail;
     else if (code === "no_image_provider") msg = t.noModel;
     else if (code === "bad_picture") msg = t.badPicture;
     else if (code === "too_large" || code === "http_413") msg = t.none;
@@ -340,11 +340,11 @@
     const g = c.getContext("2d");
     const copy = clone(c);
     // Mild contrast + saturation, then a light unsharp via overlay
-    g.filter = "contrast(1.1) saturate(1.08)";
+    g.filter = "contrast(1.22) saturate(1.12)";
     g.drawImage(copy, 0, 0);
     g.filter = "none";
     g.globalCompositeOperation = "overlay";
-    g.globalAlpha = 0.18;
+    g.globalAlpha = 0.32;
     g.filter = "contrast(1.4)";
     g.drawImage(copy, 0, 0);
     g.globalAlpha = 1;
@@ -357,10 +357,12 @@
     const c = await canvasFromBlob(blob, 1600);
     const g = c.getContext("2d");
     const copy = clone(c);
-    g.filter = "blur(22px) brightness(0.68) saturate(1.2)";
+    g.filter = "blur(26px) brightness(1.05)";
     g.drawImage(copy, 0, 0);
     g.filter = "none";
-    const cx = c.width * 0.5, cy = c.height * 0.46, r = Math.min(c.width, c.height) * 0.36;
+    g.fillStyle = "rgba(236, 232, 226, 0.78)";
+    g.fillRect(0, 0, c.width, c.height);
+    const cx = c.width * 0.5, cy = c.height * 0.46, r = Math.min(c.width, c.height) * 0.34;
     g.save();
     g.beginPath();
     g.ellipse(cx, cy, r * 1.2, r * 1.4, 0, 0, Math.PI * 2);
@@ -402,6 +404,10 @@
     grd.addColorStop(1, "rgba(0,0,0,0.35)");
     g.fillStyle = grd;
     g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = "#111";
+    const bar = Math.round(c.height * 0.06);
+    g.fillRect(0, 0, c.width, bar);
+    g.fillRect(0, c.height - bar, c.width, bar);
     const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
     return out;
   }
@@ -481,6 +487,22 @@
     thread.push({ role: "ai", text: t.working });
     renderThread();
     const hold = thread[thread.length - 1];
+    const onPhone = usePhoto && /^(enhance|restore|bg|isolate|hero|vfx|poster)$/.test(kind);
+    if (onPhone) {
+      try {
+        const local = kind === "bg" ? await localBg(photo.blob)
+          : kind === "isolate" ? await localIsolate(photo.blob)
+          : (kind === "hero" || kind === "vfx" || kind === "poster") ? await localCinematic(photo.blob)
+          : await localClearer(photo.blob);
+        if (local) {
+          thread.pop();
+          await pushPicture({ blob: local }, t.localNote);
+          say(t.ready);
+          busy = false;
+          return;
+        }
+      } catch (err) { /* hosts next */ }
+    }
     try {
       let images = [];
       let size = { w: 1024, h: 1024 };
@@ -511,7 +533,7 @@
       let j;
       try { j = await studio(body); }
       catch (e) {
-        if (images.length && /klein 400|512|dimension|too large|payload|bad_picture|edit_failed/i.test(String((e && (e.detail || e.code)) || ""))) {
+        if (images.length && /too large|payload|bad_picture|dimension/i.test(String((e && (e.detail || e.code)) || ""))) {
           const again = [];
           if (kind === "swap") {
             const a = await payloadOf(face.blob, true), b = await payloadOf(photo.blob, true);
