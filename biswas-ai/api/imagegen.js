@@ -105,7 +105,7 @@ function cleanImages(list) {
     if (!/^image\/(jpeg|png|webp)$/.test(mime)) continue;
     const raw = String(im.b64 || im.data || "");
     const b64 = raw.replace(/^data:[^,]+,/, "").replace(/\s/g, "");
-    if (b64.length < 80 || b64.length > 1800000 || !/^[A-Za-z0-9+/=]+$/.test(b64)) continue;
+    if (b64.length < 80 || b64.length > 3500000 || !/^[A-Za-z0-9+/=]+$/.test(b64)) continue;
     out.push({ mime, b64 });
     if (out.length === 2) break;
   }
@@ -190,6 +190,8 @@ async function makeWithFallback(brief, w, h) {
 }
 export async function generateStudio(prompt, opt = {}) {
   const images = cleanImages(opt.images);
+  const sent = Array.isArray(opt.images) && opt.images.some(im => im && (im.b64 || im.data));
+  if (sent && !images.length) { const e = new Error("bad_picture"); e.status = 400; throw e; }
   const intent = studioIntent(prompt);
   let task = ["make", "edit", "swap"].includes(opt.task) ? opt.task : "make";
   if (task !== "swap" && images.length) task = "edit";
@@ -226,9 +228,22 @@ export async function handle(req, body, sendJson) {
   try { const r = await generate(body && body.prompt, body || {}); sendJson(200, r); }
   catch (e) { counts.ip.set(slot.ip, slot.n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
 }
-export async function handleStudio(req, body, sendJson) {
+export async function handleStudio(req, body, sendJson, res) {
   const slot = takeSlot(req);
   if (slot.limited) return sendJson(429, { error: "image_daily_limit" });
-  try { const r = await generateStudio(body && body.prompt, body || {}); sendJson(200, r); }
-  catch (e) { counts.ip.set(slot.ip, slot.n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
+  try {
+    const r = await generateStudio(body && body.prompt, body || {});
+    const buf = Buffer.from(String(r.b64 || "").replace(/\s/g, ""), "base64");
+    if (buf.length < 32) { const e = new Error("no_image"); e.status = 502; throw e; }
+    const mime = /^image\/(jpeg|png|webp)$/.test(r.mime || "") ? r.mime : "image/jpeg";
+    res.writeHead(200, {
+      "content-type": mime,
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-provider": String(r.provider || "").slice(0, 40),
+      "x-ms": String(r.ms || 0),
+      "x-video": r.video ? "1" : "0"
+    });
+    res.end(buf);
+  } catch (e) { counts.ip.set(slot.ip, slot.n - 1); sendJson(e.status || 500, { error: e.message, detail: e.detail || "" }); }
 }

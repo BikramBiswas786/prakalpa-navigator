@@ -22,6 +22,7 @@
     need: "Attach a picture, or describe a new one.",
     needTwo: "Face swap needs a face photo and the picture to change.",
     none: "No picture came back. Try again.",
+    badPicture: "That picture could not be read. Try a JPG.",
     limit: "The picture limit for today is used.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
     noModel: "No image model answered. Try again in a moment.",
@@ -61,6 +62,7 @@
     need: "একটা ছবি যোগ করুন, বা নতুন একটার কথা লিখুন।",
     needTwo: "ফেস সোয়াপে মুখের ছবি আর যে ছবি বদলাবে দুটোই লাগে।",
     none: "কোনো ছবি আসেনি। আবার চেষ্টা করুন।",
+    badPicture: "এই ছবি পড়া যায়নি। একটা JPG দিন।",
     limit: "আজকের ছবির সীমা শেষ।",
     editFail: "ইমেজ মডেল ছবি বদলাতে পারেনি। আপনার ছবি আগের মতোই আছে।",
     noModel: "কোনো ইমেজ মডেল উত্তর দেয়নি। একটু পরে আবার চেষ্টা করুন।",
@@ -139,12 +141,17 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 8000);
   }
   function errText(e) {
-    const t = L(), code = e && (e.code || e.message);
-    if (code === "image_daily_limit" || code === "too_many_requests") return t.limit;
-    if (code === "need_two_pictures") return t.needTwo;
-    if (code === "edit_failed" || code === "need_picture") return t.editFail;
-    if (code === "no_image_provider") return t.noModel;
-    return t.none;
+    const t = L();
+    const code = String((e && (e.code || e.message)) || "");
+    let msg = t.none;
+    if (code === "image_daily_limit" || code === "too_many_requests") msg = t.limit;
+    else if (code === "need_two_pictures") msg = t.needTwo;
+    else if (code === "edit_failed" || code === "need_picture") msg = t.editFail;
+    else if (code === "no_image_provider") msg = t.noModel;
+    else if (code === "bad_picture") msg = t.badPicture;
+    else if (code === "too_large" || code === "http_413") msg = t.none;
+    const d = String((e && e.detail) || "").replace(/\s+/g, " ").trim().slice(0, 120);
+    return d && d !== msg ? msg + " (" + d + ")" : msg;
   }
   function sizeOf(w, h) {
     if (!w || !h) return { w: 1024, h: 1024 };
@@ -154,24 +161,45 @@
     return { w: 1024, h: 1024 };
   }
   async function payloadOf(blob, small) {
-    const type = blob.type || "image/jpeg";
-    if (!small && blob.size > 0 && blob.size < 1400000 && /^image\/(jpeg|png|webp)$/.test(type)) {
-      const bmp = await createImageBitmap(blob);
-      const size = sizeOf(bmp.width, bmp.height);
-      bmp.close && bmp.close();
-      return { mime: type, data: await blobToB64(blob), w: size.w, h: size.h };
+    const max = small ? 640 : 1024;
+    let bmp;
+    try { bmp = await createImageBitmap(blob); }
+    catch (e) {
+      bmp = await new Promise((res, rej) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); res(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); const err = new Error("bad_picture"); err.code = "bad_picture"; rej(err); };
+        img.src = url;
+      });
     }
-    const c = await canvasFromBlob(blob, small ? 480 : 1280);
-    const j = jpegB64(c, small ? 480 : 1280, 0.9);
+    const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
+    const sc = Math.min(1, max / Math.max(sw, sh, 1));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(sw * sc));
+    c.height = Math.max(1, Math.round(sh * sc));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close && bmp.close();
+    const data = c.toDataURL("image/jpeg", 0.86).split(",")[1];
+    if (!data || data.length < 80) { const err = new Error("bad_picture"); err.code = "bad_picture"; throw err; }
     const size = sizeOf(c.width, c.height);
-    return { mime: "image/jpeg", data: j.data, w: size.w, h: size.h };
+    return { mime: "image/jpeg", data, w: size.w, h: size.h };
   }
   async function studio(body) {
-    const signal = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(150000) : undefined;
+    const signal = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(120000) : undefined;
     const r = await fetch("/api/studio", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal });
+    const ct = (r.headers.get("content-type") || "").toLowerCase();
+    if (r.ok && /^image\//.test(ct)) {
+      const blob = await r.blob();
+      if (!blob || !blob.size) { const e = new Error("no_image"); e.code = "no_image"; throw e; }
+      return { blob, mime: ct.split(";")[0], provider: r.headers.get("x-provider") || "", ms: Number(r.headers.get("x-ms") || 0), video: r.headers.get("x-video") === "1" };
+    }
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { const e = new Error(j.error || "failed"); e.code = j.error || ""; e.detail = j.detail || ""; throw e; }
-    return j;
+    if (r.ok && j && j.b64) return { blob: blobFromB64(j.mime, j.b64), mime: j.mime, provider: j.provider || "", ms: j.ms || 0, video: !!j.video, extra: j.extra };
+    const e = new Error(j.error || ("http_" + r.status));
+    e.code = j.error || ("http_" + r.status);
+    e.detail = j.detail || "";
+    throw e;
   }
   function scrollThread() { const s = $("#st-scroll"); if (s) s.scrollTop = s.scrollHeight; }
   function renderThread() {
@@ -293,7 +321,7 @@
     return chunks.length ? new Blob(chunks, { type: "video/webm" }) : null;
   }
   async function pushPicture(j, caption) {
-    const blob = blobFromB64(j.mime, j.b64);
+    const blob = j.blob || blobFromB64(j.mime, j.b64);
     const url = URL.createObjectURL(blob);
     thread.push({ role: "ai", url, blob, text: caption });
     renderThread();
@@ -340,7 +368,7 @@
       let j;
       try { j = await studio(body); }
       catch (e) {
-        if (images.length && /klein 400|512|dimension|too large|payload/i.test(String(e.detail || ""))) {
+        if (images.length && /klein 400|512|dimension|too large|payload|bad_picture|edit_failed/i.test(String((e && (e.detail || e.code)) || ""))) {
           const again = [];
           if (kind === "swap") {
             const a = await payloadOf(face.blob, true), b = await payloadOf(photo.blob, true);
@@ -352,9 +380,8 @@
           j = await studio({ ...body, images: again });
         } else throw e;
       }
-      if (!j || !j.b64) { hold.text = t.none; renderThread(); return; }
+      if (!j || !j.blob) { const e = new Error("no_image"); e.code = "no_image"; throw e; }
       const who = (t.via || "") + (j.provider || "image");
-      hold.text = "";
       thread.pop();
       const mainBlob = await pushPicture(j, who);
       let startBlob = null;
@@ -369,7 +396,8 @@
       }
       say(t.ready);
     } catch (e) {
-      hold.text = errText(e);
+      if (thread.indexOf(hold) >= 0) hold.text = errText(e);
+      else thread.push({ role: "ai", text: errText(e) });
       if (usePhoto && (kind === "enhance" || kind === "hero")) {
         try {
           const clearer = await localClearer(photo.blob);
