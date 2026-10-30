@@ -249,16 +249,17 @@ async function xaiEdit(prompt, images) {
 }
 async function editWithFallback(brief, images, w, h) {
   const errs = [];
+  // Prefer xAI when available — better preservation and not limited to the free daily 10
+  if (env("XAI_API_KEY")) {
+    try { const t = Date.now(); const out = await xaiEdit(brief, images); return { ...out, provider: "xai", ms: Date.now() - t }; }
+    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
+  }
   if (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")) {
     try { const t = Date.now(); const out = await cloudflareKlein(brief, images, w, h); return { ...out, provider: "cloudflare", ms: Date.now() - t }; }
     catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
   }
   try { const t = Date.now(); const out = await geminiPicture(brief, images); return { ...out, provider: "gemini", ms: Date.now() - t }; }
   catch (e) { errs.push(String(e && e.message || e).slice(0, 80)); }
-  if (env("XAI_API_KEY")) {
-    try { const t = Date.now(); const out = await xaiEdit(brief, images); return { ...out, provider: "xai", ms: Date.now() - t }; }
-    catch (e) { errs.push(String(e && e.message || e).slice(0, 100)); }
-  }
   const detail = errs.join("; ");
   const quota = /429|allocation|quota|rate.?limit/i.test(detail);
   const err = new Error(quota ? "quota_exhausted" : "edit_failed");

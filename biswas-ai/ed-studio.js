@@ -25,7 +25,7 @@
     badPicture: "That picture could not be read. Try a JPG.",
     limit: "The picture limit for today is used.",
     editFail: "The image model did not change the photo. Your picture is still attached.",
-    quota: "Free daily quota used (Cloudflare Klein 10 + Gemini). Real background change needs a paid image model. Try again tomorrow. A local stand-in is shown below if possible.",
+    quota: "Free models are out of quota. xAI Grok Imagine is tried next if the key is set. If you still see this, the xAI call also failed. A local stand-in is shown below.",
     noModel: "No image model answered. Try again in a moment.",
     sent: "Asking the other AIs…",
     back: " came back.",
