@@ -279,11 +279,19 @@
   async function localClearer(blob) {
     const c = await canvasFromBlob(blob, 1600);
     const g = c.getContext("2d");
-    g.filter = "contrast(1.08) saturate(1.06)";
     const copy = clone(c);
-    g.filter = "none";
+    // Mild contrast + saturation, then a light unsharp via overlay
+    g.filter = "contrast(1.1) saturate(1.08)";
     g.drawImage(copy, 0, 0);
-    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.92));
+    g.filter = "none";
+    g.globalCompositeOperation = "overlay";
+    g.globalAlpha = 0.18;
+    g.filter = "contrast(1.4)";
+    g.drawImage(copy, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = "source-over";
+    g.filter = "none";
+    const out = await new Promise(res => c.toBlob(res, "image/jpeg", 0.93));
     return out;
   }
   async function localBg(blob) {
@@ -476,6 +484,7 @@
       const who = (t.via || "") + (j.provider || "image");
       thread.pop();
       const mainBlob = await pushPicture(j, who);
+      if (mainBlob && photo) photo = { blob: mainBlob, url: URL.createObjectURL(mainBlob), name: "edited.jpg" };
       let startBlob = null;
       if (j.extra && j.extra.b64) startBlob = blobFromB64(j.extra.mime, j.extra.b64);
       if (kind === "video") {

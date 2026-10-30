@@ -113,7 +113,7 @@ export const studioInstruction = (task, prompt, kind) => {
     if (want === "enhance" || isRestore || !p) {
       return `Use the reference photograph. Keep the same people, faces, clothes and composition. Professionally enhance and restore: improve sharpness, detail, lighting, colour balance and clarity. Reduce noise or blur if present while preserving natural skin texture and identity. Photoreal, high quality, natural skin, no plastic look, no text, no watermark. ${p || "Make the photograph clearer and more detailed."}`;
     }
-    return `Use the reference photograph. Keep the exact same people, their faces, body proportions, clothes, jewellery, pose and position perfectly recognisable. Change only what the instruction explicitly asks. Do not redesign, re-pose, re-light or invent new objects unless asked. Photoreal, sharp focus, natural skin texture, no plastic look, no text, no letters, no watermark, no logo. Instruction: ${p}`;
+    return `Use the reference photograph. Keep the exact same people, their faces, facial structure, eyes, body proportions, clothes, jewellery, hands, pose and position perfectly identical. Change only the requested element. Do not redesign, move, re-pose or invent new objects unless asked. Preserve subject lighting. Photoreal, sharp focus, natural skin texture, no plastic look, no text, no letters, no watermark, no logo. Instruction: ${p}`;
   }
 
   if (want === "hero" || isCinematic) return "One cinematic photoreal hero still, sharp, natural skin, professional colour grade. " + (p || "A person standing in a real place, low angle, strong natural light.") + ( /\b(text|poster|title|letter)\b/.test(low) ? "" : " No text, no watermark.");
