@@ -203,6 +203,32 @@ async function cloudflareKlein(prompt, images, w, h) {
   const b64 = String(img).replace(/^data:[^,]+,/, "").replace(/\s/g, "");
   return { mime: "image/jpeg", b64 };
 }
+async function cloudflareFlux2(prompt, images, w, h) {
+  const token = env("CLOUDFLARE_API_TOKEN"), account = env("CLOUDFLARE_ACCOUNT_ID");
+  if (!token || !account) throw new Error("cloudflare missing");
+  const form = new FormData();
+  form.append("prompt", String(prompt || "").slice(0, 1500));
+  form.append("width", String(w || 1024));
+  form.append("height", String(h || 1024));
+  (images || []).slice(0, 2).forEach((im, i) => {
+    form.append("input_image_" + i, new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "ref" + i + ".jpg");
+  });
+  const r = await tfetch(`https://api.cloudflare.com/client/v4/accounts/${account}/ai/run/@cf/black-forest-labs/flux-2-dev`, {
+    method: "POST", headers: { authorization: "Bearer " + token }, body: form
+  }, 90000);
+  const ct = r.headers.get("content-type") || "";
+  if (!r.ok) throw new Error("flux2 " + r.status + " " + (await r.text()).slice(0, 80));
+  if (/^image\//.test(ct)) return { mime: ct.split(";")[0], b64: await b64OfRes(r) };
+  const j = await r.json();
+  const img = (j && j.result && (j.result.image || j.result.b64)) || j.image || "";
+  if (!img) throw new Error("flux2 empty");
+  if (/^https:/.test(img)) {
+    const got = await tfetch(img, {}, 30000);
+    if (!got.ok) throw new Error("flux2 fetch " + got.status);
+    return { mime: (got.headers.get("content-type") || "image/jpeg").split(";")[0], b64: await b64OfRes(got) };
+  }
+  return { mime: "image/jpeg", b64: String(img).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
+}
 function fitSize(w, h) {
   let W = snap(w || 1024), H = snap(h || 1024);
   const s = Math.min(1, 1024 / Math.max(W, H));
@@ -329,18 +355,31 @@ async function openaiPicture(prompt, images) {
   if (!key) throw new Error("openai missing");
   const im = (images || [])[0];
   if (!im) return PROVIDERS.find(x => x.name === "openai").run(prompt, 1024, 1024);
-  const form = new FormData();
-  form.append("model", env("OPENAI_IMAGE_MODEL") || "gpt-image-1-mini");
-  form.append("prompt", String(prompt || "").slice(0, 1500));
-  form.append("size", "1024x1024");
-  form.append("image", new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" }), "photo.jpg");
-  const r = await tfetch("https://api.openai.com/v1/images/edits", {
-    method: "POST", headers: { authorization: "Bearer " + key }, body: form
-  }, 90000);
-  if (!r.ok) throw new Error("openai " + r.status + " " + (await r.text()).slice(0, 90));
-  const out = imageOut(await r.json());
-  if (!out) throw new Error("openai empty");
-  return out;
+  const models = [...new Set([env("OPENAI_IMAGE_MODEL"), "gpt-image-1", "gpt-image-1-mini"].filter(Boolean))];
+  let last = "openai empty";
+  for (const model of models) {
+    const form = new FormData();
+    form.append("model", model);
+    form.append("prompt", String(prompt || "").slice(0, 1500));
+    form.append("size", "1024x1024");
+    form.append("quality", "low");
+    const blob = new Blob([Buffer.from(im.b64, "base64")], { type: im.mime || "image/jpeg" });
+    form.append("image[]", blob, "photo.jpg");
+    const r = await tfetch("https://api.openai.com/v1/images/edits", {
+      method: "POST", headers: { authorization: "Bearer " + key }, body: form
+    }, 90000);
+    if (!r.ok) { last = "openai " + r.status + " " + (await r.text()).slice(0, 70); continue; }
+    const j = await r.json();
+    const out = imageOut(j);
+    if (out) return out;
+    const url = ((j.data || [])[0] || {}).url;
+    if (url && /^https:/.test(url)) {
+      const img = await tfetch(url, {}, 30000);
+      if (img.ok) return { mime: (img.headers.get("content-type") || "image/png").split(";")[0], b64: await b64OfRes(img) };
+    }
+    last = "openai empty " + model;
+  }
+  throw new Error(last);
 }
 async function cloudflareSd(prompt, images) {
   const token = env("CLOUDFLARE_API_TOKEN"), account = env("CLOUDFLARE_ACCOUNT_ID");
@@ -371,9 +410,12 @@ async function runChain(steps) {
       const t = Date.now();
       const out = await step.run();
       return { ...out, provider: step.name, ms: Date.now() - t };
-    } catch (e) { errs.push(String(e && e.message || e).slice(0, 110)); }
+    } catch (e) { errs.push(step.name + " " + String(e && e.message || e).replace(/\s+/g, " ").slice(0, 48)); }
   }
-  const detail = errs.join("; ");
+  const detail = errs.join("; ")
+    .replace(/\b429\b/g, "daily-limit")
+    .replace(/allocation/gi, "allowance")
+    .replace(/quota/gi, "limit");
   const tried = errs.filter(e => !/no-key/.test(e));
   const allQuota = tried.length > 0 && tried.every(e => /429|allocation|quota|rate.?limit/i.test(e));
   const err = new Error(allQuota ? "quota_exhausted" : (tried.length ? "edit_failed" : "no_image_provider"));
@@ -383,11 +425,10 @@ async function runChain(steps) {
 }
 function editSteps(brief, images, w, h) {
   return [
-    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, images) },
-    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) },
-    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, images) },
     { name: "openai", on: () => !!env("OPENAI_API_KEY"), run: () => openaiPicture(brief, images) },
+    { name: "flux2", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareFlux2(brief, images, w, h) },
     { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
+    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) },
     { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiEdit(brief, images) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, images) },
     { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, images) }
