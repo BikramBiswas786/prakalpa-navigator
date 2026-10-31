@@ -435,24 +435,59 @@
     g.putImageData(img, 0, 0);
     return canvasBlob(c, "image/jpeg", 0.93);
   }
+  let segPromise = null;
+  function loadSegmenter() {
+    if (!segPromise) segPromise = (async () => {
+      const { FilesetResolver, ImageSegmenter } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs");
+      const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm");
+      return ImageSegmenter.createFromOptions(files, {
+        baseOptions: { modelAssetPath: "/models/selfie_segmenter.tflite", delegate: "CPU" },
+        runningMode: "IMAGE",
+        outputCategoryMask: true
+      });
+    })().catch(err => { segPromise = null; throw err; });
+    return segPromise;
+  }
+  async function personMask(src) {
+    try {
+      const seg = await loadSegmenter();
+      const result = seg.segment(src);
+      const cat = result && result.categoryMask;
+      if (!cat) throw new Error("no mask");
+      const w = cat.width, h = cat.height, raw = cat.getAsUint8Array();
+      const bg = new Uint8Array(w * h);
+      let center = 0, cn = 0;
+      const x0 = (w * 0.3) | 0, x1 = (w * 0.7) | 0, y0 = (h * 0.22) | 0, y1 = (h * 0.82) | 0;
+      for (let y = y0; y < y1; y += 2) for (let x = x0; x < x1; x += 2) { cn++; if (raw[y * w + x]) center++; }
+      const personHigh = center / Math.max(1, cn) > 0.28;
+      let kept = 0;
+      for (let i = 0; i < raw.length; i++) {
+        const person = personHigh ? raw[i] > 0 : raw[i] === 0;
+        bg[i] = person ? 0 : 1;
+        if (person) kept++;
+      }
+      if (cat.close) cat.close();
+      if (result.close) result.close();
+      if (kept < raw.length * 0.08 || kept > raw.length * 0.93) return subjectMask(src);
+      return { bg, w, h };
+    } catch (err) { return subjectMask(src); }
+  }
   async function localBg(blob) {
-    const src = await canvasFromBlob(blob, 1400);
-    const mask = subjectMask(src);
+    const src = await canvasFromBlob(blob, 960);
+    const mask = await personMask(src);
     const c = cutSubject(src, mask, (g, cv) => {
       const wall = g.createLinearGradient(0, 0, 0, cv.height);
-      wall.addColorStop(0, "#f7f4ef");
-      wall.addColorStop(0.62, "#d9d3cb");
-      wall.addColorStop(1, "#b7b0a6");
+      wall.addColorStop(0, "#f4f1eb");
+      wall.addColorStop(0.55, "#d5cfc6");
+      wall.addColorStop(1, "#a9a197");
       g.fillStyle = wall;
       g.fillRect(0, 0, cv.width, cv.height);
-      g.fillStyle = "rgba(90, 80, 70, 0.18)";
-      g.fillRect(0, cv.height * 0.72, cv.width, cv.height * 0.28);
     });
     return canvasBlob(c, "image/jpeg", 0.92);
   }
   async function localIsolate(blob) {
-    const src = await canvasFromBlob(blob, 1400);
-    const mask = subjectMask(src);
+    const src = await canvasFromBlob(blob, 960);
+    const mask = await personMask(src);
     const c = cutSubject(src, mask, (g, cv) => {
       g.fillStyle = "#ffffff";
       g.fillRect(0, 0, cv.width, cv.height);
@@ -586,6 +621,28 @@
         prompt = (line || "movie poster") + ". Turn into a high-end poster with clear readable text if requested. Cinematic, sharp.";
       }
       const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt, video: kind === "video", images, w: size.w, h: size.h };
+      if (usePhoto && /^(enhance|restore|bg|isolate|hero|vfx|poster)$/.test(kind)) {
+        try {
+          const local = kind === "bg" ? await localBg(photo.blob)
+            : kind === "isolate" ? await localIsolate(photo.blob)
+            : (kind === "hero" || kind === "vfx" || kind === "poster") ? await localCinematic(photo.blob)
+            : await localClearer(photo.blob);
+          if (local) {
+            thread.pop();
+            const cap = kind === "bg" ? "People cut onto a studio wall, on this phone."
+              : kind === "isolate" ? "Background removed on this phone."
+              : (kind === "hero" || kind === "vfx" || kind === "poster") ? "Hero grade on this phone."
+              : "Sharpened on this phone.";
+            await pushPicture({ blob: local }, cap);
+            say(t.ready);
+            busy = false;
+            studio(body).then(async j => {
+              if (j && j.blob) { await pushPicture(j, j.provider || "AI"); renderThread(); }
+            }).catch(() => {});
+            return;
+          }
+        } catch (err) { /* hosts next */ }
+      }
       let j;
       try { j = await studio(body); }
       catch (e) {
