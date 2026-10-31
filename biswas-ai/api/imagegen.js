@@ -2,6 +2,7 @@
 // Order: Cloudflare Workers AI (flux-1-schnell) -> NVIDIA NIM (flux.1-schnell) -> Pollinations (no key) -> Gemini image -> OpenAI (hard daily cap).
 // Never logs keys or prompts' secrets; only provider names and HTTP status.
 const env = n => (process.env[n] || "").trim();
+const xaiKey = () => env("XAI_API_KEY") || env("X_AI_APY") || env("X_AI_API_KEY") || env("X_AI_API") || env("XAI_APY");
 const OPENAI_DAILY = Math.max(0, Number(env("IMAGE_OPENAI_DAILY") || 20));
 const PER_IP_DAILY = Math.max(1, Number(env("IMAGE_PER_IP_DAILY") || 40));
 const day = () => new Date().toISOString().slice(0, 10);
@@ -239,7 +240,7 @@ function fitSize(w, h) {
 }
 
 async function xaiGenerate(prompt, w, h) {
-  const key = env("XAI_API_KEY");
+  const key = xaiKey();
   if (!key) throw new Error("xai missing");
   const r = await tfetch("https://api.x.ai/v1/images/generations", {
     method: "POST",
@@ -259,7 +260,7 @@ async function xaiGenerate(prompt, w, h) {
   return { mime: "image/jpeg", b64: String(b64).replace(/^data:[^,]+,/, "").replace(/\s/g, "") };
 }
 async function xaiEdit(prompt, images) {
-  const key = env("XAI_API_KEY");
+  const key = xaiKey();
   if (!key) throw new Error("xai missing");
   const im = (images || [])[0];
   if (!im || !im.b64) throw new Error("xai no image");
@@ -543,7 +544,7 @@ function editSteps(brief, images, w, h) {
     { name: "flux2", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareFlux2(brief, images, w, h) },
     { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareKlein(brief, images, w, h) },
     { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, images) },
-    { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiEdit(brief, images) },
+    { name: "xai", on: () => !!xaiKey(), run: () => xaiEdit(brief, images) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, images) },
     { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, images) }
   ];
@@ -553,7 +554,7 @@ function makeSteps(brief, w, h) {
     { name: "llm7", on: () => !!env("LLM7_API_KEY"), run: () => llm7Picture(brief, []) },
     { name: "nara", on: () => !!env("NARA_API_KEY"), run: () => naraPicture(brief, []) },
     { name: "zai", on: () => !!(env("ZAI_API_KEY") || env("Z_AI")), run: () => zaiPicture(brief) },
-    { name: "xai", on: () => !!env("XAI_API_KEY"), run: () => xaiGenerate(brief, w, h) },
+    { name: "xai", on: () => !!xaiKey(), run: () => xaiGenerate(brief, w, h) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, []) },
     { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, []) },
     { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, []) },
@@ -564,7 +565,7 @@ function makeSteps(brief, w, h) {
   ];
 }
 function keyedOn() {
-  return !!(env("LLM7_API_KEY") || env("NARA_API_KEY") || env("ZAI_API_KEY") || env("Z_AI") || env("XAI_API_KEY") || env("OPENROUTER_API_KEY") || env("TOGETHER_API_KEY") || env("NVIDIA_API_KEY") || env("OPENAI_API_KEY") || env("GEMINI_API_KEY") || (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")));
+  return !!(env("LLM7_API_KEY") || env("NARA_API_KEY") || env("ZAI_API_KEY") || env("Z_AI") || xaiKey() || env("OPENROUTER_API_KEY") || env("TOGETHER_API_KEY") || env("NVIDIA_API_KEY") || env("OPENAI_API_KEY") || env("GEMINI_API_KEY") || (env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")));
 }
 async function editWithFallback(brief, images, w, h) {
   return runChain(editSteps(brief, images, w, h));

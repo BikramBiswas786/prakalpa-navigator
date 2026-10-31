@@ -33,18 +33,18 @@
 
 const env = name => (process.env[name] || "").trim();
 // A provider key may also be set under an older/alternate name (Render has Z_AI).
-const keyOf = p => env(p.key) || (p.alt ? env(p.alt) : "");
+const keyOf = p => env(p.key) || (p.alt ? env(p.alt) : "") || (p.alts || []).map(env).find(Boolean) || "";
 const list = (name, fallback) => (env(name) || fallback).split(",").map(s => s.trim()).filter(Boolean);
 
 const PROVIDERS = {
   llm7: { key: "LLM7_API_KEY", kind: "openai", url: "https://api.llm7.io/v1/chat/completions", models: list("LLM7_MODELS", "fast,default,gpt-oss") },
   nara: { key: "NARA_API_KEY", kind: "openai", url: "https://router.bynara.id/v1/chat/completions", models: list("NARA_MODELS", "agnes-2.5-flash,nemotron-3.5-lightning-free,laguna-s-2.1") },
   gemini: { key: "GEMINI_API_KEY", kind: "gemini", vision: true, models: list("GEMINI_MODELS", env("GEMINI_MODEL") || "gemini-flash-lite-latest,gemini-flash-latest") },
-  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b") },
+  nvidia: { key: "NVIDIA_API_KEY", kind: "openai", vision: true, url: "https://integrate.api.nvidia.com/v1/chat/completions", models: list("NVIDIA_MODELS", "nvidia/nemotron-3.5-lightning-30b-a3b") },
   mistral: { key: "MISTRAL_API_KEY", kind: "openai", vision: true, url: "https://api.mistral.ai/v1/chat/completions", models: list("MISTRAL_MODELS", "mistral-small-latest,mistral-medium-latest") },
-  groq: { key: "GROQ_API_KEY", kind: "openai", url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-20b,openai/gpt-oss-120b") },
-  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free") },
-  cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
+  groq: { key: "GROQ_API_KEY", kind: "openai", vision: true, url: "https://api.groq.com/openai/v1/chat/completions", models: list("GROQ_MODELS", "openai/gpt-oss-20b,openai/gpt-oss-120b") },
+  openrouter: { key: "OPENROUTER_API_KEY", kind: "openai", vision: true, url: "https://openrouter.ai/api/v1/chat/completions", models: list("OPENROUTER_MODELS", "nvidia/nemotron-3-ultra-550b-a55b:free,google/gemma-4-26b-a4b-it:free,poolside/laguna-s-2.1:free") },
+  cloudflare: { key: "CLOUDFLARE_API_TOKEN", also: "CLOUDFLARE_ACCOUNT_ID", kind: "openai", vision: true, url: () => `https://api.cloudflare.com/client/v4/accounts/${env("CLOUDFLARE_ACCOUNT_ID")}/ai/v1/chat/completions`, models: list("CLOUDFLARE_MODELS", "@cf/meta/llama-3.3-70b-instruct-fp8-fast,@cf/meta/llama-4-scout-17b-16e-instruct") },
   sambanova: { key: "SAMBANOVA_API_KEY", kind: "openai", url: "https://api.sambanova.ai/v1/chat/completions", models: list("SAMBANOVA_MODELS", "Meta-Llama-3.3-70B-Instruct") },
   zai: { key: "ZAI_API_KEY", alt: "Z_AI", kind: "openai", url: "https://api.z.ai/api/paas/v4/chat/completions", models: list("ZAI_MODELS", "glm-4.7-flash") },
   cohere: { key: "COHERE_API_KEY", kind: "openai", url: "https://api.cohere.ai/compatibility/v1/chat/completions", models: list("COHERE_MODELS", "command-a-plus-05-2026") },
@@ -54,8 +54,8 @@ const PROVIDERS = {
   deepseek: { key: "DEEPSEEK_API_KEY", kind: "openai", url: "https://api.deepseek.com/chat/completions", models: list("DEEPSEEK_MODELS", "deepseek-flash") },
   qwen: { key: "DASHSCOPE_API_KEY", kind: "openai", url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions", models: list("QWEN_MODELS", "qwen-flash") },
   openai: { key: "OPENAI_API_KEY", kind: "openai", vision: true, url: "https://api.openai.com/v1/chat/completions", models: list("OPENAI_MODELS", "gpt-6-luna").slice(0, 1), paid: true },
-  xai: { key: "XAI_API_KEY", kind: "openai", url: "https://api.x.ai/v1/chat/completions", models: list("XAI_MODELS", "grok-4.7") },
-  together: { key: "TOGETHER_API_KEY", kind: "openai", url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
+  xai: { key: "XAI_API_KEY", alts: ["X_AI_APY", "X_AI_API_KEY", "X_AI_API", "XAI_APY"], kind: "openai", url: "https://api.x.ai/v1/chat/completions", models: list("XAI_MODELS", "grok-4.7") },
+  together: { key: "TOGETHER_API_KEY", kind: "openai", vision: true, url: "https://api.together.xyz/v1/chat/completions", models: list("TOGETHER_MODELS", "meta-llama/Llama-3.3-70B-Instruct-Turbo") },
   fireworks: { key: "FIREWORKS_API_KEY", kind: "openai", url: "https://api.fireworks.ai/inference/v1/chat/completions", models: list("FIREWORKS_MODELS", "accounts/fireworks/models/llama-v3p3-70b-instruct") }
 };
 const ORDER = list("PROVIDER_ORDER", "llm7,nara,groq,gemini,nvidia,mistral,openrouter,cloudflare,sambanova,zai,cerebras,sarvam,kimi,openai").filter(id => PROVIDERS[id]);
@@ -209,7 +209,7 @@ function openaiEvent(ev) {
 // Mask anything key-like before it is stored, logged or counted.
 export function redact(text) {
   let s = String(text || "");
-  for (const p of Object.values(PROVIDERS)) for (const name of [p.key, p.also, p.alt]) {
+  for (const p of Object.values(PROVIDERS)) for (const name of [p.key, p.also, p.alt, ...(p.alts || [])]) {
     const v = name ? env(name) : ""; if (v.length >= 4) s = s.split(v).join("[redacted]");
   }
   return s
@@ -320,12 +320,20 @@ export async function POST(request) {
   if (problem) return json({ error: problem }, problem === "too large" ? 413 : 400);
 
   if (body.panel) {
-    const FREE = ["groq", "gemini", "nvidia", "cerebras", "mistral", "openrouter", "sambanova", "cloudflare", "zai", "llm7", "nara", "cohere", "sarvam"];
-    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, 5);
+    const FREE = ["groq", "gemini", "nvidia", "cerebras", "mistral", "openrouter", "sambanova", "cloudflare", "zai", "llm7", "nara", "cohere", "sarvam", "together"];
+    const VISION_MODEL = {
+      groq: "meta-llama/llama-4-scout-17b-16e-instruct",
+      openrouter: "google/gemma-4-26b-a4b-it:free",
+      nvidia: "meta/llama-3.2-11b-vision-instruct",
+      cloudflare: "@cf/meta/llama-3.2-11b-vision-instruct",
+      together: "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+      mistral: "pixtral-large-latest"
+    };
     const out = Math.min(12288, Math.max(256, Number(body.maxOut) || 1400));
     const blob0 = (body.messages || []).map(m => String(m.content || "")).join("\n").slice(0, 2800);
     const fileJob = /FILE READING \(every row counted\)/.test(blob0);
     const visionJob = !fileJob && Array.isArray(body.images) && body.images.length > 0;
+    const ids = configured().filter(id => FREE.includes(id) && !cooled(id)).sort((a, b) => FREE.indexOf(a) - FREE.indexOf(b)).slice(0, visionJob ? 8 : 5);
     const capChars = fileJob ? 20000 : 14000;
     const readAll = async stream => {
       const reader = stream.getReader();
@@ -343,13 +351,16 @@ export async function POST(request) {
     const answers = await Promise.all(ids.map(async id => {
       try {
         const p = PROVIDERS[id];
-        const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
-        const models = p.models.slice();
-        for (const name of extra) if (!models.includes(name)) models.push(name);
-        models.sort((a, b) => rankModel(a) - rankModel(b));
+        const models = visionJob && VISION_MODEL[id] ? [VISION_MODEL[id]] : p.models.slice();
+        if (!visionJob) {
+          const extra = { nvidia: ["meta/llama-3.3-70b-instruct"], mistral: ["ministral-8b-latest", "open-mistral-nemo"] }[id] || [];
+          for (const name of extra) if (!models.includes(name)) models.push(name);
+          models.sort((a, b) => rankModel(a) - rankModel(b));
+        }
         let last = { provider: id, model: models[0], text: "", error: "no answer" };
-        for (const model of models.slice(0, 2)) {
-          const r = await attempt(p, model, { ...body, images: (p.vision && body.images && body.images.length) ? body.images : [], maxOut: out }, request.signal, fileJob ? 26000 : visionJob ? 22000 : 12000);
+        for (const model of models.slice(0, visionJob ? 1 : 2)) {
+          const sendImages = !!(visionJob && p.vision && body.images && body.images.length);
+          const r = await attempt(p, model, { ...body, images: sendImages ? body.images : [], maxOut: out }, request.signal, fileJob ? 26000 : visionJob ? 22000 : 12000);
           if (!r.ok) {
             const raw = String(r.error || "");
             last = { provider: id, model, text: "", error: /rate limit|429|1300/i.test(raw) ? "rate limit" : "no answer" };
