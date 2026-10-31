@@ -25,7 +25,7 @@ const PROVIDERS = [
     return { mime: "image/jpeg", b64: img };
   } },
   { name: "nvidia", ok: () => env("NVIDIA_API_KEY"), run: async (p, w, h) => {
-    const r = await tfetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell", { method: "POST", headers: { authorization: "Bearer " + env("NVIDIA_API_KEY"), "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ prompt: p, width: Math.min(1024, w), height: Math.min(1024, h), steps: 4, seed: 0 }) });
+    const r = await tfetch("https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell", { method: "POST", headers: { authorization: "Bearer " + env("NVIDIA_API_KEY"), "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ prompt: p, width: 1024, height: 1024, steps: 4, seed: 0 }) });
     if (!r.ok) throw new Error("nvidia " + r.status);
     const j = await r.json(); const a = j && (j.artifacts || [])[0]; if (!a || !a.base64) throw new Error("nvidia empty");
     return { mime: "image/jpeg", b64: a.base64 };
@@ -551,16 +551,16 @@ function editSteps(brief, images, w, h) {
 }
 function makeSteps(brief, w, h) {
   return [
+    { name: "cloudflare", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => PROVIDERS.find(x => x.name === "cloudflare").run(brief, w, h) },
+    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, []) },
+    { name: "pollinations", on: () => env("IMAGE_POLLINATIONS") !== "off", run: () => PROVIDERS.find(x => x.name === "pollinations").run(brief, w, h) },
+    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, []) },
     { name: "llm7", on: () => !!env("LLM7_API_KEY"), run: () => llm7Picture(brief, []) },
     { name: "nara", on: () => !!env("NARA_API_KEY"), run: () => naraPicture(brief, []) },
     { name: "zai", on: () => !!(env("ZAI_API_KEY") || env("Z_AI")), run: () => zaiPicture(brief) },
     { name: "xai", on: () => !!xaiKey(), run: () => xaiGenerate(brief, w, h) },
     { name: "openrouter", on: () => !!env("OPENROUTER_API_KEY"), run: () => openrouterPicture(brief, []) },
     { name: "together", on: () => !!env("TOGETHER_API_KEY"), run: () => togetherPicture(brief, []) },
-    { name: "nvidia", on: () => !!env("NVIDIA_API_KEY"), run: () => nvidiaPicture(brief, []) },
-    { name: "pollinations", on: () => env("IMAGE_POLLINATIONS") !== "off", run: () => PROVIDERS.find(x => x.name === "pollinations").run(brief, w, h) },
-    { name: "cf-sd", on: () => !!(env("CLOUDFLARE_API_TOKEN") && env("CLOUDFLARE_ACCOUNT_ID")), run: () => cloudflareSd(brief, []) },
-    { name: "gemini", on: () => !!env("GEMINI_API_KEY"), run: () => geminiPicture(brief, []) },
     { name: "openai", on: () => !!env("OPENAI_API_KEY") && OPENAI_DAILY > 0, run: () => openaiPicture(brief, []) }
   ];
 }

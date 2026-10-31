@@ -621,28 +621,6 @@
         prompt = (line || "movie poster") + ". Turn into a high-end poster with clear readable text if requested. Cinematic, sharp.";
       }
       const body = { task: kind === "swap" ? "swap" : images.length ? "edit" : "make", prompt, video: kind === "video", images, w: size.w, h: size.h };
-      if (usePhoto && /^(enhance|restore|bg|isolate|hero|vfx|poster)$/.test(kind)) {
-        try {
-          const local = kind === "bg" ? await localBg(photo.blob)
-            : kind === "isolate" ? await localIsolate(photo.blob)
-            : (kind === "hero" || kind === "vfx" || kind === "poster") ? await localCinematic(photo.blob)
-            : await localClearer(photo.blob);
-          if (local) {
-            thread.pop();
-            const cap = kind === "bg" ? "People cut onto a studio wall, on this phone."
-              : kind === "isolate" ? "Background removed on this phone."
-              : (kind === "hero" || kind === "vfx" || kind === "poster") ? "Hero grade on this phone."
-              : "Sharpened on this phone.";
-            await pushPicture({ blob: local }, cap);
-            say(t.ready);
-            busy = false;
-            studio(body).then(async j => {
-              if (j && j.blob) { await pushPicture(j, j.provider || "AI"); renderThread(); }
-            }).catch(() => {});
-            return;
-          }
-        } catch (err) { /* hosts next */ }
-      }
       let j;
       try { j = await studio(body); }
       catch (e) {
