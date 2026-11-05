@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "202";
+const BUILD = "203";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -54,7 +54,7 @@ const PAGE_HEADERS = {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob:",
     "media-src 'self' blob:",
-    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com${[...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].map(o => " " + o).join("")}`,
+    `connect-src 'self' https://cdn.jsdelivr.net https://cdn.sheetjs.com https://huggingface.co https://cdn-lfs.huggingface.co https://*.gcp.cdn.hf.co https://*.xethub.hf.co${[...new Set(pd.pool.map(b => b.st.origin).filter(Boolean))].map(o => " " + o).join("")}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob: data:",
     "object-src 'none'",
@@ -1137,6 +1137,14 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === "/fonts/ba-pdf.ttf") { res.writeHead(200, { "content-type": "font/ttf", "cache-control": "public, max-age=604800" }).end(fs.readFileSync(path.join(DIR, "fonts", "ba-pdf.ttf"))); return; }
     if (url.pathname === "/models/selfie_segmenter.tflite") {
       res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "public, max-age=86400" }).end(fs.readFileSync(path.join(DIR, "models", "selfie_segmenter.tflite")));
+      return;
+    }
+    if (url.pathname === "/brain/wllama.js") {
+      res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" }).end(fs.readFileSync(path.join(DIR, "brain", "wllama.js")));
+      return;
+    }
+    if (url.pathname === "/brain/wllama.wasm") {
+      res.writeHead(200, { "content-type": "application/wasm", "cache-control": "public, max-age=86400" }).end(fs.readFileSync(path.join(DIR, "brain", "wllama.wasm")));
       return;
     }
     if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store", "x-build": BUILD }).end("ok"); return; }
