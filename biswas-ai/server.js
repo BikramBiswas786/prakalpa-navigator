@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "203";
+const BUILD = "204";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -1145,6 +1145,20 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === "/brain/wllama.wasm") {
       res.writeHead(200, { "content-type": "application/wasm", "cache-control": "public, max-age=86400" }).end(fs.readFileSync(path.join(DIR, "brain", "wllama.wasm")));
+      return;
+    }
+    if (url.pathname === "/api/brain-part") {
+      const SIZE = 105454432;
+      const SRC = "https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf";
+      const start = Math.max(0, Number(url.searchParams.get("s")) || 0);
+      if (limited(req, "brain", 80, 60 * 1000)) { tooMany(res); return; }
+      if (start >= SIZE) { res.writeHead(416).end(); return; }
+      const end = Math.min(SIZE - 1, start + 4 * 1024 * 1024 - 1);
+      const r = await fetch(SRC, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(60000) });
+      if (!(r.status === 206 || r.status === 200)) { res.writeHead(502, { "content-type": "text/plain" }).end("download failed"); return; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "no-store", "x-start": String(start), "x-total": String(SIZE) });
+      res.end(buf);
       return;
     }
     if (url.pathname === "/healthz") { res.writeHead(200, { "content-type": "text/plain", "cache-control": "no-store", "x-build": BUILD }).end("ok"); return; }

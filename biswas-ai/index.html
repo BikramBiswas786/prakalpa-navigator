@@ -172,11 +172,12 @@ header.top { background: var(--surface); border-bottom: 1px solid var(--line); p
 #v-chat .banner { grid-row: 1; }
 #v-chat .scroll { grid-row: 2; }
 #v-chat .composer { grid-row: 3; }
-#v-agent, #v-others, #v-brain { grid-template-rows: minmax(8rem, 1fr) auto; display: grid; }
-#v-agent .scroll, #v-others .scroll, #v-brain .scroll { grid-row: 1; min-height: 8rem; }
-#v-agent .composer, #v-others .composer, #v-brain .composer { grid-row: 2; }
+#v-agent, #v-others, #v-brain, #v-offline { grid-template-rows: minmax(8rem, 1fr) auto; display: grid; }
+#v-agent .scroll, #v-others .scroll, #v-brain .scroll, #v-offline .scroll { grid-row: 1; min-height: 8rem; }
+#v-agent .composer, #v-others .composer, #v-brain .composer, #v-offline .composer { grid-row: 2; }
 #v-agent .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-#v-brain .msg.ai .bubble { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 9px 14px; max-width: 88%; white-space: pre-wrap; overflow-wrap: anywhere; }
+#v-brain .msg.ai .bubble, #v-offline .msg.ai .bubble { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px 14px 14px 4px; padding: 9px 14px; max-width: 88%; white-space: pre-wrap; overflow-wrap: anywhere; }
+#off-skills button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 #v-brain .br-head { width: min(820px, 100%); margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 10px; }
 #br-lesson-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 #br-lesson-list li { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
@@ -910,6 +911,27 @@ dialog.ed-pick::backdrop { background: rgba(10,12,20,.45); }
       </div></div>
     </section>
 
+    <section class="view chat" id="v-offline" hidden>
+      <div class="scroll" id="off-scroll">
+        <div class="br-head">
+          <h2 data-t="off_h"></h2>
+          <p class="lead" data-t="off_lead"></p>
+          <p class="status-line" id="off-status" role="status"></p>
+          <div class="tools" id="off-skills"></div>
+          <div class="tools"><button class="btn primary" type="button" id="off-get" data-t="br_get"></button></div>
+        </div>
+        <div class="thread" id="off-thread"></div>
+      </div>
+      <div class="composer"><div class="inner">
+        <form class="box" id="off-form">
+          <textarea id="off-q" rows="1" enterkeyhint="send" data-t-ph="off_ph"></textarea>
+          <button class="iconbtn send" type="submit" id="off-go" aria-label="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </div></div>
+    </section>
+
     <section class="view chat" id="v-agent" hidden>
       <div class="scroll" id="ag-scroll"><div class="thread" id="ag-thread"></div></div>
       <div class="composer"><div class="inner">
@@ -1390,7 +1412,7 @@ const STR = {
     mem_count: (a, b) => `স্মৃতিতে ${a}টি তথ্য ও ${b}টি অনুমোদিত খসড়া।`,
     brand: "বিশ্বাস AI", brand_sub: "আলাদা চ্যাট · লিঙ্কে যায় না",
     nav_simple: "চ্যাট", ai_h: "বিশ্বাস AI", ai_p: "বিশ্বাস AI চ্যাট। অক্টোবর ২০২৬। উত্তর প্রশ্নের মাপমতো বড় হয়। স্মৃতি বাড়ে। গভীর খোঁজ এজেন্টে। অন্য AI আলাদা পাতায়।", ph_ai: "বিশ্বাস AI-কে লিখুন…",
-    ag_tab: "এজেন্ট", br_tab: "মস্তিষ্ক", br_h: "মস্তিষ্ক", br_lead: "এটা এই ফোনে চলে। কোনো API চাবি লাগে না। প্রথমবার একটা ছোট খোলা মডেল (প্রায় ৪০৯ MB) নেমে এখানে থাকে। তারপর ইন্টারনেট বন্ধ করেও উত্তর দেয়। ক্লাউড চ্যাটের চেয়ে দুর্বল। USB বা মেমরি কার্ড থেকে .gguf ফাইলও খোলা যায়।", br_get: "ছোট মস্তিষ্ক এই ফোনে রাখুন", br_file: ".gguf ফাইল খুলুন", br_save: "স্মৃতি ফাইলে রাখুন", br_open: "স্মৃতি ফাইল খুলুন", br_forget: "মস্তিষ্কের ফাইল সরান", br_mem_note: "এই লাইনগুলো ফোন মনে রাখে এবং প্রতি উত্তরে দেয়। মডেল ফাইল নিজে বদলায় না। ফাইলটা অন্য ফোনে নিয়ে যাওয়া যায়।", br_lesson_ph: "মনে রাখবে, যেমন: অফিস — কালনা মহকুমা", br_remember: "মনে রাখুন", br_ph: "মস্তিষ্ককে লিখুন…", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "শুধু গভীর খোঁজ। অনেক সার্চ ইঞ্জিন, তারপর ৩০টির বেশি পাতা পড়া, তারপর একটা বিশ্লেষণ মডেল পুরো উত্তর লেখে। অন্য AI এখানে ডাকা হয় না।",
+    ag_tab: "এজেন্ট", br_tab: "মস্তিষ্ক", br_h: "মস্তিষ্ক", br_lead: "এটা এই ফোনে চলে। কোনো API চাবি লাগে না। প্রথমবার প্রায় ১০০ MB নামে (আগের ৪০৯ MB ফাইল ফোনে আটকে যাচ্ছিল)। তারপর ইন্টারনেট বন্ধ করেও উত্তর দেয়। ক্লাউড চ্যাটের চেয়ে দুর্বল। USB থেকে .ggufও খোলা যায়।", br_get: "ছোট মস্তিষ্ক এই ফোনে রাখুন", br_file: ".gguf ফাইল খুলুন", br_save: "স্মৃতি ফাইলে রাখুন", br_open: "স্মৃতি ফাইল খুলুন", br_forget: "মস্তিষ্কের ফাইল সরান", br_mem_note: "এই লাইনগুলো ফোন মনে রাখে এবং প্রতি উত্তরে দেয়। মডেল ফাইল নিজে বদলায় না। ফাইলটা অন্য ফোনে নিয়ে যাওয়া যায়।", br_lesson_ph: "মনে রাখবে, যেমন: অফিস — কালনা মহকুমা", br_remember: "মনে রাখুন", br_ph: "মস্তিষ্ককে লিখুন…", off_tab: "অফলাইন AI", off_h: "অফলাইন AI", off_lead: "অফিস AI-এর দক্ষতা এখানেই: খসড়া, চিঠি, নোটশিট, আদেশ, নোটিশ, রিপোর্ট, Excel, সারাংশ, অনুবাদ, কোড। এই ফোনের পুরো চ্যাট এবং বাড়তে থাকা স্মৃতি নিজে থেকে পড়ে। কোনো চাবি লাগে না। ছোট মডেল, তাই অফিস AI-এর চেয়ে দুর্বল।", off_ph: "অফলাইন AI-কে লিখুন…", pd_fmt: "আউটপুটের ধরন", pd_fmt_auto: "নিজে থেকে", pd_fmt_table: "টেবিল", pd_fmt_report: "রিপোর্ট", pd_fmt_letter: "চিঠি", ag_h: "একটা কাজ", ag_note: "শুধু গভীর খোঁজ। অনেক সার্চ ইঞ্জিন, তারপর ৩০টির বেশি পাতা পড়া, তারপর একটা বিশ্লেষণ মডেল পুরো উত্তর লেখে। অন্য AI এখানে ডাকা হয় না।",
     ag_ph: "একটা কাজ লিখুন। এজেন্ট অনেক পাতা পড়ে বিস্তারিত উত্তর দেবে।", ot_tab: "অন্য AI", ot_h: "অন্য AI", ot_note: "Gemini, Groq, Mistral এবং বাকি ফ্রি AI এখানে। Word, PDF, Excel, ছবি পাঠান। তাদের উত্তর ও ফাইল ফিরে আসে। বিশ্বাস AI চ্যাট ও এজেন্টের সঙ্গে মেশে না।", ot_ph: "অন্য AI-কে লিখুন, বা ফাইল যোগ করুন…",
     ag_go: "কাজ দিন", ag_new: "নতুন কাজ", ag_reply: "আরও বলুন", ag_think: "কী করছে",
     ag_search: "কোন পাতা খুলব, খুঁজছি…",
@@ -1464,7 +1486,7 @@ const STR = {
     mem_count: (a, b) => `${a} remembered facts and ${b} approved drafts.`,
     brand: "Biswas AI", brand_sub: "Private chat · not in the link",
     nav_simple: "Chat", ai_h: "Biswas AI", ai_p: "Biswas AI chat. October 2026. Answers grow with the question. Memory grows. Deep research is Agents. Other AIs are on their own page.", ph_ai: "Message Biswas AI…",
-    ag_tab: "Agents", br_tab: "Brain", br_h: "Brain", br_lead: "This runs on this phone. It does not use an API key. The first time, one small open model (about 409 MB) is downloaded and kept here. After that it answers with the internet off. It is weaker than the cloud chat. A .gguf file from a USB or a memory card can be opened instead.", br_get: "Put the small brain on this phone", br_file: "Open a .gguf file", br_save: "Save memory to a file", br_open: "Open a memory file", br_forget: "Remove the brain file", br_mem_note: "This phone keeps these lines and adds them to every answer. The model file itself does not change. The memory file can be carried to another phone.", br_lesson_ph: "Remember this, e.g. Office — Kalna subdivision", br_remember: "Remember", br_ph: "Write to the brain…", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "Deep research only. It searches many engines, reads more than 30 sources, then one analysis model writes a full A-to-Z answer. Other AIs are not called here.",
+    ag_tab: "Agents", br_tab: "Brain", br_h: "Brain", br_lead: "This runs on this phone. It does not use an API key. The first time it downloads about 100 MB (the old 409 MB file was failing on the phone). After that it answers with the internet off. It is weaker than the cloud chat. A .gguf file from a USB can still be opened.", br_get: "Put the small brain on this phone", br_file: "Open a .gguf file", br_save: "Save memory to a file", br_open: "Open a memory file", br_forget: "Remove the brain file", br_mem_note: "This phone keeps these lines and adds them to every answer. The model file itself does not change. The memory file can be carried to another phone.", br_lesson_ph: "Remember this, e.g. Office — Kalna subdivision", br_remember: "Remember", br_ph: "Write to the brain…", off_tab: "Offline AI", off_h: "Offline AI", off_lead: "The office skills are here: drafting, letters, notesheets, orders, notices, reports, Excel, summary, translation and code. It reads the chats on this phone and the memory as that memory grows. No API key. The model is small, so it is weaker than Office AI.", off_ph: "Write to Offline AI…", pd_fmt: "Output format", pd_fmt_auto: "Auto", pd_fmt_table: "Table", pd_fmt_report: "Report", pd_fmt_letter: "Letter", ag_h: "One job", ag_note: "Deep research only. It searches many engines, reads more than 30 sources, then one analysis model writes a full A-to-Z answer. Other AIs are not called here.",
     ag_ph: "Write one job. The agent reads many pages, then writes a full answer.", ot_tab: "Other AI", ot_h: "Other AI", ot_note: "Gemini, Groq, Mistral and the other free AIs live here. Send Word, PDF, Excel or a picture. Their answers and files come back. This page does not mix with Biswas AI chat or Agents.", ot_ph: "Write to the other AIs, or attach a file…",
     ag_go: "Give the job", ag_new: "New job", ag_reply: "Add to this job", ag_think: "What it is doing",
     ag_search: "Looking for pages to open…",
@@ -3230,14 +3252,14 @@ const attachText = files => files.filter(f => f.text).map(f => `--- Attached fil
 const attachImages = files => files.flatMap(f => f.images || []);
 
 /* ---------------- sections and tabs ---------------- */
-const TABS = { ai: ["chat", "agent", "others", "brain"], office: ["chat", "deskchat", "draft", "table", "word", "files", "grammar", "pendrive"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
-const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write", brain: "br_tab" };
+const TABS = { ai: ["chat", "offline", "agent", "others", "brain"], office: ["chat", "offline", "deskchat", "draft", "table", "word", "files", "grammar", "pendrive"], public: ["catalog", "chat", "write"], pendrive: ["pendrive"] };
+const TAB_LABEL = { pendrive: "pd_tab", draft: "tab_draft", deskchat: "tab_deskchat", table: "tab_table", files: "tab_files", chat: "tab_chat", catalog: "tab_catalog", grammar: "nav_grammar", word: "word_h", agent: "ag_tab", others: "ot_tab", write: "tab_write", brain: "br_tab", offline: "off_tab" };
 function closeRail() { const r = $("#rail"); if (r) r.classList.remove("open"); const s = $("#scrim"); if (s) s.hidden = true; }
 const PD_BOOT_HASH = /^#pd=/.test(location.hash) ? decodeURIComponent(location.hash.slice(4)) : null; // folder to reopen after a reload
 function clearAddress() { if (!location.hash) return; try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* ignore */ } }
 function renderRail() {
   const tab = tabs[mode];
-  const items = [["home", "", "home"], ["ai", "brain", "br_tab"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["office", "pendrive", "pd_tab"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
+  const items = [["home", "", "home"], ["ai", "offline", "off_tab"], ["ai", "brain", "br_tab"], ["pendrive", "pendrive", "pd_tab"], ["grammar", "", "nav_grammar"], ["office", "word", "word_h"], ["office", "chat", "nav_chat"], ["office", "offline", "off_tab"], ["office", "deskchat", "nav_deskchat"], ["office", "draft", "nav_draft"], ["office", "table", "nav_excel"], ["office", "files", "nav_files"], ["office", "pendrive", "pd_tab"], ["public", "catalog", "nav_schemes"], ["public", "write", "tab_write"]];
   const nav = $("#rail-nav"); if (!nav) return;
   nav.innerHTML = items.map(([sec, id, key]) => {
     const on = key === "home" ? mode === "ai" && tab === "chat" : key === "nav_grammar" ? tab === "grammar" : key === "word_h" ? tab === "word" : mode === sec && (tab === id || (id === "catalog" && tab === "detail"));
@@ -3260,7 +3282,7 @@ function showView() {
   $("#subnav").hidden = mode === "pendrive";
   $("#subnav").innerHTML = TABS[mode].map(id => `<button role="tab" type="button" data-tab="${id}" aria-selected="${tab === id || (tab === "detail" && id === "catalog")}">${esc(t(id === "chat" ? (mode === "public" ? "tab_helper" : mode === "office" ? "tab_office_ai" : "tab_bikram") : TAB_LABEL[id]))}</button>`).join("");
   const shown = tab === "deskchat" || tab === "write" ? "chat" : tab;
-  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "others", "pendrive", "brain"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
+  ["draft", "table", "files", "catalog", "detail", "chat", "grammar", "word", "agent", "others", "pendrive", "brain", "offline"].forEach(id => { const el = $("#v-" + id); if (el) el.hidden = id !== shown; });
   if (tab === "draft") renderDraftForm();
   if (tab === "table") renderGrid();
   if (tab === "files") { renderTools(); renderSdo(); }
@@ -3271,6 +3293,7 @@ function showView() {
   if (tab === "others") renderOtherView();
   if (tab === "pendrive") renderPendrive();
   if (tab === "brain" && window.BA_BRAIN) BA_BRAIN.open();
+  if (tab === "offline" && window.BA_BRAIN) BA_BRAIN.openOffline();
   document.querySelectorAll("[data-pd-pick='chat']").forEach(el => { el.hidden = mode === "public"; });
   refreshHistory();
   renderRail();
@@ -3325,6 +3348,7 @@ function applyLang() {
   const aj = $("#ag-job"); if (aj) aj.placeholder = t("ag_ph");
   const bq = $("#br-q"); if (bq) bq.placeholder = t("br_ph");
   const bl = $("#br-lesson"); if (bl) bl.placeholder = t("br_lesson_ph");
+  const oq = $("#off-q"); if (oq) oq.placeholder = t("off_ph");
   const oj = $("#ot-job"); if (oj) oj.placeholder = t("ot_ph");
   const wt = $("#word-title"); if (wt) wt.placeholder = t("word_title_ph");
   const wb = $("#word-body"); if (wb) wb.placeholder = t("word_body_ph");
