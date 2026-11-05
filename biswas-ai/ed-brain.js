@@ -76,7 +76,7 @@
 
   async function cachedHf() { return false; }
 
-  const cfg = () => ({ n_ctx: 2048, n_threads: 1, n_batch: 128 });
+  const cfg = () => ({ n_ctx: 512, n_threads: 1, n_batch: 64 });
 
   async function downloadParts() {
     if (!navigator.storage || !navigator.storage.getDirectory) throw new Error("no storage");
@@ -113,7 +113,7 @@
     catch (e) {
       await dropEngine();
       w = await engineOf();
-      await w.loadModel([file], { n_ctx: 1024, n_threads: 1, n_batch: 128 });
+      await w.loadModel([file], { n_ctx: 512, n_threads: 1, n_batch: 64 });
     }
     loaded = label || file.name || "file";
     setStatus(L("এই ফোনে প্রস্তুত। কোনো চাবি লাগে না।", "Ready on this phone. No key is used."));
@@ -156,52 +156,102 @@
     if (sc) sc.scrollTop = sc.scrollHeight;
   }
 
-  async function ask(q) {
-    if (busy) return;
-    if (!loaded) {
-      setStatus(L("আগে মস্তিষ্ক এই ফোনে রাখুন, বা একটি .gguf ফাইল খুলুন।", "Put the brain on this phone first, or open a .gguf file."));
+  let gen = 0;
+
+  function sayStatus(el, text) {
+    if (el) el.textContent = text;
+    else setStatus(text);
+  }
+
+  async function ensure() {
+    if (loaded && engine) return;
+    const own = await ownFile();
+    if (own && Math.abs(own.size - SIZE) < 4096) {
+      setStatus(L("ফোনে রাখা ফাইল খোলা হচ্ছে। নিজের PDF, Word বা Excel লাগবে না।", "Opening the file already on this phone. You do not need your own PDF, Word or Excel."));
+      await useBlob(own, "SmolLM2");
       return;
     }
-    data.turns.push({ role: "user", content: q });
-    data.turns.push({ role: "assistant", content: "…" });
+    const err = new Error("nofile");
+    throw err;
+  }
+
+  async function speak(list, q, extra, statusEl) {
+    if (busy) return;
+    const id = ++gen;
+    list.push({ role: "user", content: q });
+    list.push({ role: "assistant", content: "…" });
     saveData();
     paint();
+    paintOff();
+    const go = $("br-go");
+    const og = $("off-go");
+    if (go) go.disabled = true;
+    if (og) og.disabled = true;
     const ac = new AbortController();
     busy = ac;
-    const go = $("br-go");
-    if (go) go.disabled = true;
-    try {
-      const w = await engineOf();
-      const opts = {
-        nPredict: 160,
-        abortSignal: ac.signal,
-        sampling: { temp: 0.6, top_k: 40, top_p: 0.9 },
-        onNewToken: (_tok, _piece, current) => {
-          data.turns[data.turns.length - 1].content = current;
-          paint();
-        }
-      };
-      let text = "";
-      try { text = await w.createChatCompletion(messages(), opts); }
-      catch (e) {
-        const prompt = messages().map((m) => m.role + ": " + m.content).join("\n") + "\nassistant:";
-        text = await w.createCompletion(prompt, opts);
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      if (id !== gen) return;
+      const s = Math.round((Date.now() - t0) / 1000);
+      const cur = list[list.length - 1] && list[list.length - 1].content;
+      if (cur === "…" || /^… \d+$/.test(cur || "")) {
+        list[list.length - 1].content = "… " + s;
+        paint();
+        paintOff();
       }
-      text = String(text || "").trim();
-      data.turns[data.turns.length - 1].content = text || L("কিছু আসেনি। আবার বলুন।", "Nothing came back. Try again.");
+      sayStatus(statusEl, L("উত্তর আসছে… " + s + " সেকেন্ড। ফোন একটু ধীর।", "Answer is coming… " + s + "s. This phone is slow."));
+    }, 1000);
+    let killer = 0;
+    try {
+      await ensure();
+      if (id !== gen) return;
+      killer = setTimeout(() => ac.abort(), 90000);
+      const w = await engineOf();
+      const mem = (data.lessons || []).slice(-3).map((x) => String(x).slice(0, 60)).join("; ");
+      const prompt = String(extra || "Answer in one or two short sentences.").slice(0, 360) + (mem ? "\nRemember: " + mem : "") + "\nUser: " + String(q).slice(0, 300) + "\nAssistant:";
+      const text = String(await w.createCompletion(prompt, {
+        nPredict: 40,
+        abortSignal: ac.signal,
+        sampling: { temp: 0.7, top_k: 20, top_p: 0.9 },
+        onNewToken: (_a, _b, current) => {
+          if (id !== gen || !current) return;
+          list[list.length - 1].content = current;
+          paint();
+          paintOff();
+        }
+      }) || "").trim();
+      if (id !== gen) return;
+      list[list.length - 1].content = text || L("কিছু আসেনি। ছোট করে আবার লিখুন।", "Nothing came back. Write a shorter question.");
       saveData();
       paint();
+      paintOff();
+      sayStatus(statusEl, L("উত্তর এসেছে।", "Answer is ready."));
     } catch (e) {
-      const aborted = e && (e.name === "WllamaAbortError" || e.name === "AbortError");
-      data.turns.pop();
-      if (!aborted) data.turns.pop();
+      if (id !== gen) return;
+      const aborted = !!(ac.signal.aborted || (e && (e.name === "AbortError" || e.name === "WllamaAbortError")));
+      const nofile = e && e.message === "nofile";
+      list[list.length - 1].content = nofile
+        ? L("১০০ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন। নিজের PDF বা Excel লাগবে না।", "The 100 MB file is not on this phone yet. Tap the button above. You do not need your own PDF or Excel.")
+        : aborted
+          ? L("৯০ সেকেন্ডে শব্দ আসেনি। আরও ছোট প্রশ্ন লিখুন।", "No word came in 90 seconds. Write a shorter question.")
+          : L("উত্তর হয়নি। ", "No answer. ") + String(e && e.message || e).slice(0, 120);
       saveData();
       paint();
-      if (!aborted) setStatus(String(e && e.message || e).slice(0, 180));
+      paintOff();
+      sayStatus(statusEl, list[list.length - 1].content);
     } finally {
-      busy = null;
-      if (go) go.disabled = false;
+      if (killer) clearTimeout(killer);
+      clearInterval(timer);
+      if (id === gen) {
+        busy = null;
+        if (go) go.disabled = false;
+        if (og) og.disabled = false;
+      }
     }
+  }
+
+  async function ask(q) {
+    await speak(data.turns, q, "", null);
   }
 
   function pack() {
@@ -396,53 +446,18 @@
   }
 
   async function askOff(q) {
-    if (busy) return;
-    if (!loaded) {
-      const el = $("off-status");
-      if (el) el.textContent = L("আগে মস্তিষ্ক এই ফোনে রাখুন। Brain পাতায় গিয়ে নামান, অথবা এখানেই নামান।", "Put the brain on this phone first. Download it on the Brain page, or download it here.");
-      return;
-    }
     data.off = data.off || [];
-    data.off.push({ role: "user", content: q });
-    data.off.push({ role: "assistant", content: "…" });
-    saveData();
-    paintOff();
-    const ac = new AbortController();
-    busy = ac;
-    const go = $("off-go");
-    if (go) go.disabled = true;
+    let skill = "Write a short office draft if asked. Otherwise answer in one or two sentences.";
     try {
-      const w = await engineOf();
-      const desk = readDesk();
-      const prior = data.off.filter(t => !(t.role === "assistant" && t.content === "…")).slice(-6);
-      const messages = [{ role: "system", content: desk.system }, ...prior.map(t => ({ role: t.role, content: t.content }))];
-      const opts = { nPredict: 220, abortSignal: ac.signal, sampling: { temp: 0.6, top_k: 40, top_p: 0.9 }, onNewToken: (_a, _b, current) => { data.off[data.off.length - 1].content = current; paintOff(); } };
-      let text = "";
-      try { text = await w.createChatCompletion(messages, opts); }
-      catch (e) { text = await w.createCompletion(messages.map(m => m.role + ": " + m.content).join("\n") + "\nassistant:", opts); }
-      text = String(text || "").trim();
-      try {
-        if (typeof splitMemory === "function" && typeof learn === "function") {
-          const sp = splitMemory(text);
-          if (sp.lines && sp.lines.length) learn(sp.lines, "office");
-          if (sp.clean) text = sp.clean;
-        }
-      } catch (e) { /* memory parse is optional */ }
-      data.off[data.off.length - 1].content = text || L("কিছু আসেনি। আবার বলুন।", "Nothing came back. Try again.");
-      saveData();
-      paintOff();
-      offNote();
-    } catch (e) {
-      const aborted = e && (e.name === "WllamaAbortError" || e.name === "AbortError");
-      data.off.pop();
-      if (!aborted) data.off.pop();
-      saveData();
-      paintOff();
-      if (!aborted) { const el = $("off-status"); if (el) el.textContent = String(e && e.message || e).slice(0, 180); }
-    } finally {
-      busy = null;
-      if (go) go.disabled = false;
-    }
+      const id = BA.skill();
+      skill = "Skill: " + (en() ? BA.SKILLS[id].en : BA.SKILLS[id].bn) + ". If they want a paper, write a short draft and leave blanks as ______. Do not invent a memo number.";
+    } catch (e) { /* skills not ready */ }
+    let known = "";
+    try {
+      const bag = (officeMemory || []).concat(memory || []).slice(-4).map((m) => m && m.text).filter(Boolean);
+      if (bag.length) known = " Known facts: " + bag.map((t) => String(t).slice(0, 50)).join("; ");
+    } catch (e) { /* no memory yet */ }
+    await speak(data.off, q, skill + known, $("off-status"));
   }
 
   function bindOff() {
@@ -482,8 +497,27 @@
   }
 
   window.BA_BRAIN = {
-    open() { bind(); paint(); if (!loaded) refresh(); },
-    openOffline() { bindOff(); offNote(); if (!loaded) refresh(); },
+    open() {
+      bind();
+      const last = data.turns[data.turns.length - 1];
+      if (last && last.role === "assistant" && (last.content === "…" || /^… \d+$/.test(last.content))) {
+        last.content = L("আগের উত্তর আটকে গিয়েছিল। আবার লিখুন।", "The last answer got stuck. Write again.");
+        saveData();
+      }
+      paint();
+      if (!loaded) refresh();
+    },
+    openOffline() {
+      bindOff();
+      data.off = data.off || [];
+      const last = data.off[data.off.length - 1];
+      if (last && last.role === "assistant" && (last.content === "…" || /^… \d+$/.test(last.content))) {
+        last.content = L("আগের উত্তর আটকে গিয়েছিল। আবার লিখুন।", "The last answer got stuck. Write again.");
+        saveData();
+      }
+      offNote();
+      if (!loaded) refresh();
+    },
     relabel() { paint(); paintOff(); }
   };
 })();
