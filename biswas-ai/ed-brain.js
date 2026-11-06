@@ -455,9 +455,75 @@
       ? "Government of West Bengal\nOffice of the Sub-Divisional Officer, " + subdiv + " Sub-Division" + (district ? ", " + district : "")
       : "পশ্চিমবঙ্গ সরকার\nমহকুমা শাসকের কার্যালয়, " + subdiv + " মহকুমা" + (district ? ", " + district : "");
   }
+  function linesOf(p) { return String(p.text || "").split("\n").map((s) => s.trim()).filter(Boolean); }
+  function allLines() {
+    const out = [];
+    packs.forEach((p) => linesOf(p).forEach((line) => out.push({ file: p.name, line })));
+    return out;
+  }
+  function remembered() {
+    try { return (officeMemory || []).concat(memory || []).map((m) => m && m.text).filter(Boolean).slice(-8); }
+    catch (e) { return []; }
+  }
+  function firstMatch(re) {
+    for (const row of allLines()) if (re.test(row.line)) return row.line.replace(re, "").replace(/^[\s:.\-]+/, "").trim().slice(0, 180);
+    return "";
+  }
+  function grabAll(re, n) {
+    const out = [];
+    const seen = new Set();
+    const rx = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const row of allLines()) {
+      for (const m of row.line.matchAll(rx)) {
+        const v = String(m[1] || m[0]).trim();
+        if (!v || seen.has(v)) continue;
+        seen.add(v);
+        out.push(v);
+        if (out.length >= n) return out;
+      }
+    }
+    return out;
+  }
+  function keyLines() {
+    const seen = new Set();
+    const out = [];
+    for (const row of allLines()) {
+      if (row.line.length < 28) continue;
+      const k = row.line.slice(0, 60);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(row.line.slice(0, 220));
+      if (out.length >= 8) break;
+    }
+    return out;
+  }
+  function caseFacts() {
+    const subject = firstMatch(/(?:বিষয়|subject)\s*[:.\-]?\s*/i) || (packs[0] && packs[0].name.replace(/\.[a-z0-9]+$/i, "")) || "______";
+    const to = firstMatch(/(?:^প্রতি|^to)\b\s*[:,]?\s*/i);
+    const dates = grabAll(/\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/g, 6);
+    const memos = grabAll(/(?:memo(?:\s*no\.?)?|স্মারক(?:\s*নং)?|ref(?:erence)?)\s*[:.\-]?\s*([A-Za-z0-9][A-Za-z0-9\/\-]{2,})/i, 4);
+    const money = [];
+    for (const row of allLines()) {
+      if (!/(₹|টাকা|rs\.?|rupees|amount|মূল্য)/i.test(row.line) && !/\d{1,3}(?:,\d{3})+/.test(row.line)) continue;
+      money.push(row.line.slice(0, 180));
+      if (money.length >= 5) break;
+    }
+    return { subject, to, dates, memos, money, lines: keyLines() };
+  }
   function fileFacts() {
-    if (!packs.length) return en() ? "(No file attached. The blanks stay empty.)" : "(কোনো ফাইল যুক্ত নেই। ফাঁকা জায়গা খালিই থাকবে।)";
-    return packs.map((p) => "### " + p.name + "\n" + String(p.text || "").slice(0, 1800)).join("\n\n");
+    if (!packs.length) return en() ? "No file is attached, so every missing fact stays ______." : "কোনো ফাইল যুক্ত নেই, তাই যা জানা নেই তা ______।";
+    const f = caseFacts();
+    const bn = !en();
+    const bits = [];
+    bits.push((bn ? "বিষয়: " : "Subject: ") + f.subject);
+    if (f.to) bits.push((bn ? "প্রাপক: " : "Addressee: ") + f.to);
+    if (f.dates.length) bits.push((bn ? "তারিখ: " : "Dates: ") + f.dates.join(", "));
+    if (f.memos.length) bits.push((bn ? "স্মারক / সূত্র: " : "Memo / reference: ") + f.memos.join(", "));
+    if (f.money.length) bits.push((bn ? "টাকার লাইন:" : "Amount lines:") + "\n" + f.money.map((l) => "- " + l).join("\n"));
+    if (f.lines.length) bits.push((bn ? "ফাইল থেকে নেওয়া কথা:" : "Taken from the file:") + "\n" + f.lines.map((l) => "- " + l).join("\n"));
+    const mem = remembered();
+    if (mem.length) bits.push((bn ? "এই ফোন যা মনে রেখেছে:" : "Remembered on this phone:") + "\n" + mem.map((l) => "- " + String(l).slice(0, 160)).join("\n"));
+    return bits.join("\n\n");
   }
   function numOf(s) {
     const t = String(s == null ? "" : s).replace(/[₹$,\s]/g, "");
@@ -500,11 +566,23 @@
           const st = columnStats(s.rows);
           parts.push("### " + s.name + " — " + s.rows.length + (en() ? " rows" : " সারি"));
           if (!st.length) { parts.push(en() ? "No number column to add." : "যোগ করার মতো সংখ্যার কলাম নেই।"); continue; }
+          const biggest = st.slice().sort((a, b) => b.n - a.n)[0];
+          const colIndex = s.rows[0].findIndex((h) => String(h) === String(biggest.name));
           parts.push("| Column | Count | Sum | Average | Min | Max |\n| --- | --- | --- | --- | --- | --- |");
           const rows = [["Column", "Count", "Sum", "Average", "Min", "Max"]];
           for (const c of st) {
             parts.push("| " + c.name + " | " + c.n + " | " + fmt(c.sum) + " | " + fmt(c.avg) + " | " + fmt(c.min) + " | " + fmt(c.max) + " |");
             rows.push([String(c.name), String(c.n), String(fmt(c.sum)), String(fmt(c.avg)), String(fmt(c.min)), String(fmt(c.max))]);
+          }
+          if (colIndex >= 0 && biggest.sum) {
+            const ranked = s.rows.slice(1).map((r) => ({ label: r[0] || "", n: numOf(r[colIndex]) })).filter((x) => x.n != null).sort((a, b) => b.n - a.n).slice(0, 8);
+            if (ranked.length) {
+              parts.push(en() ? "Largest rows in " + biggest.name + ":" : biggest.name + "-এ সবচেয়ে বড় সারি:");
+              parts.push("| Row | Amount | Share |\n| --- | --- | --- |");
+              ranked.forEach((r) => parts.push("| " + (r.label || "—") + " | " + fmt(r.n) + " | " + fmt(r.n / biggest.sum * 100) + "% |"));
+              rows.push(["—", "—", "—", "—", "—", "—"]);
+              ranked.forEach((r) => rows.push([String(r.label || ""), String(fmt(r.n)), fmt(r.n / biggest.sum * 100) + "%", "", "", ""]));
+            }
           }
           tables.push({ name: String(s.name).slice(0, 31), rows });
         }
@@ -527,32 +605,96 @@
   }
   function draftMd(kind) {
     const head = officeHead();
-    const sub = (packs[0] && packs[0].name) || "______";
+    const f = packs.length ? caseFacts() : { subject: "______", to: "", dates: [], memos: [], money: [], lines: [] };
+    const sub = f.subject || "______";
+    const who = f.to || "______";
     const body = fileFacts();
+    const when = f.dates[0] || "______";
+    const ref = f.memos[0] || "______";
     const bn = !en();
+    const note = bn ? "ফাইলে যা নেই তা ______। কিছু বানানো হয়নি।" : "Anything not in the file stays ______. Nothing was invented.";
     if (kind === "notesheet") {
       return bn
-        ? "**নোট**\n\n**বিষয়:** " + sub + "\n\nবিচার্য পত্র এই ফোনে পড়া হয়েছে। এই খসড়া ১০০ MB মডেল লেখেনি। ফাইলে যা নেই তা ______ রাখা হয়েছে।\n\n" + body + "\n\nপ্রস্তাব: ______\n\nসদয় অবগতি ও আদেশের জন্য পেশ করা হল।\n\n(ডিলিং অ্যাসিস্ট্যান্ট)\nতারিখ: ______\n\nমহকুমা শাসক"
-        : "**NOTE**\n\n**Subject:** " + sub + "\n\nThe paper was read on this phone. The 100 MB model did not write this draft. Anything not in the file is left as ______.\n\n" + body + "\n\nProposal: ______\n\nPut up for kind perusal and orders, please.\n\n(Dealing assistant)\nDate: ______\n\nSub-Divisional Officer";
+        ? "**নোট**\n\n**বিষয়:** " + sub + "\n**সূত্র:** " + ref + "\n\nবিচার্য পত্র এই ফোনে পড়া হয়েছে। " + note + "\n\n" + body + "\n\nপ্রস্তাব: ______\n\nসদয় অবগতি ও আদেশের জন্য পেশ করা হল।\n\n(ডিলিং অ্যাসিস্ট্যান্ট)\nতারিখ: " + when + "\n\nমহকুমা শাসক"
+        : "**NOTE**\n\n**Subject:** " + sub + "\n**Reference:** " + ref + "\n\nThe paper was read on this phone. " + note + "\n\n" + body + "\n\nProposal: ______\n\nPut up for kind perusal and orders, please.\n\n(Dealing assistant)\nDate: " + when + "\n\nSub-Divisional Officer";
     }
     if (kind === "letter") {
       return bn
-        ? head + "\n\nস্মারক নং: ______          তারিখ: ______\n\nপ্রতি,\n______\n\n**বিষয়:** " + sub + "\n\nমহাশয়,\n\n" + body + "\n\nঅতএব ______ করার জন্য অনুরোধ করা হচ্ছে।\n\nভবদীয়,\n\nমহকুমা শাসক"
-        : head + "\n\nMemo No. ______          Date: ______\n\nTo\n______\n\n**Subject:** " + sub + "\n\nSir,\n\n" + body + "\n\nYou are requested to ______.\n\nYours faithfully,\n\nSub-Divisional Officer";
+        ? head + "\n\nস্মারক নং: ______          তারিখ: " + when + "\n\nপ্রতি,\n" + who + "\n\n**বিষয়:** " + sub + "\n**সূত্র:** " + ref + "\n\nমহাশয়,\n\n" + body + "\n\n" + note + "\n\nঅতএব ______ করার জন্য অনুরোধ করা হচ্ছে।\n\nভবদীয়,\n\nমহকুমা শাসক"
+        : head + "\n\nMemo No. ______          Date: " + when + "\n\nTo\n" + who + "\n\n**Subject:** " + sub + "\n**Reference:** " + ref + "\n\nSir,\n\n" + body + "\n\n" + note + "\n\nYou are requested to ______.\n\nYours faithfully,\n\nSub-Divisional Officer";
     }
     if (kind === "order") {
       return bn
-        ? head + "\n\n**অফিস আদেশ**\n\nস্মারক নং: ______    তারিখ: ______\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\nএতদ্বারা আদেশ করা হচ্ছে যে ______। এই আদেশ ______ তারিখ থেকে কার্যকর।\n\nমহকুমা শাসক"
-        : head + "\n\n**OFFICE ORDER**\n\nMemo No. ______    Date: ______\n\n**Subject:** " + sub + "\n\n" + body + "\n\nIt is hereby ordered that ______. This order takes effect from ______.\n\nSub-Divisional Officer";
+        ? head + "\n\n**অফিস আদেশ**\n\nস্মারক নং: ______    তারিখ: " + when + "\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\n" + note + "\n\nএতদ্বারা আদেশ করা হচ্ছে যে ______। এই আদেশ ______ তারিখ থেকে কার্যকর।\n\nমহকুমা শাসক"
+        : head + "\n\n**OFFICE ORDER**\n\nMemo No. ______    Date: " + when + "\n\n**Subject:** " + sub + "\n\n" + body + "\n\n" + note + "\n\nIt is hereby ordered that ______. This order takes effect from ______.\n\nSub-Divisional Officer";
     }
     if (kind === "notice") {
       return bn
-        ? head + "\n\n**নোটিশ**\n\nস্মারক নং: ______    তারিখ: ______\n\nপ্রতি,\n______\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\nআপনাকে ______ তারিখে ______ স্থানে হাজির হতে বলা হচ্ছে। লিখিত জবাব ______ দিনের মধ্যে দিন।\n\nমহকুমা শাসক"
-        : head + "\n\n**NOTICE**\n\nMemo No. ______    Date: ______\n\nTo\n______\n\n**Subject:** " + sub + "\n\n" + body + "\n\nYou are asked to appear on ______ at ______. A written reply is due within ______ days.\n\nSub-Divisional Officer";
+        ? head + "\n\n**নোটিশ**\n\nস্মারক নং: ______    তারিখ: " + when + "\n\nপ্রতি,\n" + who + "\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\n" + note + "\n\nআপনাকে ______ তারিখে ______ স্থানে হাজির হতে বলা হচ্ছে। লিখিত জবাব ______ দিনের মধ্যে দিন।\n\nমহকুমা শাসক"
+        : head + "\n\n**NOTICE**\n\nMemo No. ______    Date: " + when + "\n\nTo\n" + who + "\n\n**Subject:** " + sub + "\n\n" + body + "\n\n" + note + "\n\nYou are asked to appear on ______ at ______. A written reply is due within ______ days.\n\nSub-Divisional Officer";
     }
     return bn
-      ? "# প্রতিবেদন\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\n## সুপারিশ\n\n______\n\nতারিখ: ______"
-      : "# Report\n\n**Subject:** " + sub + "\n\n" + body + "\n\n## Recommendation\n\n______\n\nDate: ______";
+      ? "# প্রতিবেদন\n\n**বিষয়:** " + sub + "\n**সূত্র:** " + ref + "\n\n" + body + "\n\n## সুপারিশ\n\n______\n\n" + note + "\n\nতারিখ: " + when
+      : "# Report\n\n**Subject:** " + sub + "\n**Reference:** " + ref + "\n\n" + body + "\n\n## Recommendation\n\n______\n\n" + note + "\n\nDate: " + when;
+  }
+  function wordMath(text) {
+    const t = String(text || "").replace(/,/g, "");
+    let m = t.match(/(\d+(?:\.\d+)?)\s*%\s*(?:of|এর)?\s*(\d+(?:\.\d+)?)/i);
+    if (m) return { n: Number(m[2]) * Number(m[1]) / 100, how: m[1] + "% of " + m[2] };
+    m = t.match(/(\d+(?:\.\d+)?)\s*(?:এর|of)\s*(\d+(?:\.\d+)?)\s*%/i);
+    if (m) return { n: Number(m[1]) * Number(m[2]) / 100, how: m[2] + "% of " + m[1] };
+    m = t.match(/(?:sum|যোগ|মোট)\s*[:=]?\s*(\d+(?:\.\d+)?(?:\s*[+,]\s*\d+(?:\.\d+)?)+)/i);
+    if (m) {
+      const nums = m[1].split(/[+,\s]+/).map(Number).filter((n) => Number.isFinite(n));
+      if (nums.length > 1) return { n: nums.reduce((a, b) => a + b, 0), how: nums.join(" + ") };
+    }
+    m = t.match(/(\d+(?:\.\d+)?)\s*(?:থেকে|from)\s*(\d+(?:\.\d+)?)/i);
+    if (m && /বাড়|বৃদ্ধি|increase|কম|decrease|change|শতাংশ|%/i.test(t)) {
+      const a = Number(m[1]), b = Number(m[2]);
+      if (a) return { n: (b - a) / a * 100, how: a + " → " + b, suffix: "%" };
+    }
+    return null;
+  }
+  function answerFile(q) {
+    if (!packs.length) return null;
+    const ql = q.toLowerCase();
+    let colHit = null;
+    for (const p of packs) {
+      if (p.kind !== "sheet") continue;
+      for (const s of sheetsOf(p.text)) {
+        for (const c of columnStats(s.rows)) {
+          const name = String(c.name || "").toLowerCase();
+          if (name.length > 1 && ql.includes(name.slice(0, Math.min(16, name.length)))) colHit = c;
+        }
+      }
+    }
+    const skip = /^(the|and|for|what|this|that|with|from|কত|কী|কি|এর|যে|একটা|করে|করা)$/;
+    const words = ql.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 2 && !skip.test(w));
+    const hits = [];
+    allLines().forEach((row) => {
+      const low = row.line.toLowerCase();
+      let s = 0;
+      words.forEach((w) => { if (low.includes(w)) s += 1; });
+      if (s) hits.push(Object.assign({ s }, row));
+    });
+    hits.sort((a, b) => b.s - a.s);
+    const top = hits.slice(0, 8);
+    const dates = /কবে|তারিখ|when|date/i.test(q) ? grabAll(/\b(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})\b/g, 8) : [];
+    if (!top.length && !colHit && !dates.length) return null;
+    const bn = !en();
+    const parts = [bn ? "# ফাইল থেকে উত্তর" : "# Answer from the file", bn ? "১০০ MB মডেল ব্যবহার হয়নি। শুধু এই ফাইলে যা লেখা আছে।" : "The 100 MB model was not used. Only what is written in the file."];
+    const tables = [];
+    if (colHit) {
+      parts.push((bn ? "কলাম **" : "Column **") + colHit.name + "**: " + (bn ? "যোগ " : "sum ") + fmt(colHit.sum) + (bn ? ", গড় " : ", average ") + fmt(colHit.avg) + (bn ? ", সংখ্যা " : ", count ") + colHit.n);
+      tables.push({ name: "Column", rows: [["Column", "Count", "Sum", "Average", "Min", "Max"], [String(colHit.name), String(colHit.n), String(fmt(colHit.sum)), String(fmt(colHit.avg)), String(fmt(colHit.min)), String(fmt(colHit.max))]] });
+    }
+    if (dates.length) parts.push((bn ? "তারিখ: " : "Dates: ") + dates.join(", "));
+    if (top.length) {
+      parts.push(bn ? "প্রশ্নের সঙ্গে যে লাইন মেলে:" : "Lines that match the question:");
+      top.forEach((h) => parts.push("- " + h.line.slice(0, 240)));
+    }
+    if (!top.length) parts.push(bn ? "প্রশ্নের শব্দ কোনো লাইনে মেলেনি।" : "No line contained the words of the question.");
+    return { md: parts.join("\n\n"), tables };
   }
   function calc(src) {
     const s = String(src || "").replace(/,/g, "").replace(/[x×]/gi, "*").replace(/÷/g, "/").trim();
@@ -612,10 +754,19 @@
     else if (/আদেশ|\border\b/i.test(text)) kind = "order";
     else if (/রিপোর্ট|\breport\b/i.test(text)) kind = "report";
     else if (/চিঠি|\bletter\b|\bdfa\b/i.test(text)) kind = "letter";
-    else if (/বিশ্লেষণ|analys|সারাংশ|summary|মোট|total|হিসাব/i.test(text)) kind = "analyse";
-    else if (/^[\d.+\-*/()%,\s]+$/.test(text) && /\d/.test(text) && /[+\-*/%]/.test(text)) kind = "math";
-    else if (packs.length && text) kind = "analyse";
-    else return false;
+    else if (/বিশ্লেষণ|analys|সারাংশ|summary/i.test(text)) kind = "analyse";
+    const wm = wordMath(text);
+    if (wm && !kind) {
+      showLocal(text, (en() ? "Result: **" : "ফলাফল: **") + fmt(wm.n) + (wm.suffix || "") + "**\n\n" + wm.how + " = " + fmt(wm.n) + (wm.suffix || ""));
+      return true;
+    }
+    if (!kind && packs.length && text) {
+      const ans = answerFile(text);
+      if (ans) { showLocal(text, ans.md, ans.tables); return true; }
+      kind = "analyse";
+    }
+    if (!kind && /^[\d.+\-*/()%,\s]+$/.test(text) && /\d/.test(text) && /[+\-*/%]/.test(text)) kind = "math";
+    if (!kind) return false;
     if (kind === "math") {
       try { const n = calc(text); showLocal(text, (en() ? "Result: **" : "ফলাফল: **") + fmt(n) + "**\n\n" + text + " = " + fmt(n)); }
       catch (e) { showLocal(text, en() ? "This phone could not do that sum. Use digits and + - * / ( ). Example: 1200*5/100" : "এই অঙ্ক হয়নি। সংখ্যা আর + - * / ( ) দিন। যেমন: 1200*5/100"); }
