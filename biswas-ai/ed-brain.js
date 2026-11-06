@@ -210,7 +210,7 @@
       const w = await engineOf();
       const mem = (data.lessons || []).slice(-3).map((x) => String(x).slice(0, 60)).join("; ");
       const prompt = brief() + (mem ? "\nRemember: " + mem : "") + "\n" + String(extra || "").slice(0, 280) + "\nUser: " + String(q).slice(0, 500) + "\nAssistant:";
-      const text = String(await w.createCompletion(prompt, {
+      let text = String(await w.createCompletion(prompt, {
         nPredict: 420,
         abortSignal: ac.signal,
         sampling: { temp: 0.4, top_k: 20, top_p: 0.9, penalty_repeat: 1.18, penalty_last_n: 128 },
@@ -218,12 +218,16 @@
           if (id !== gen || !current) return;
           const bits = current.split(/(?<=[.।!?])\s+/);
           const lastBit = bits[bits.length - 1] || "";
+          if (/You are Biswas Brain|Known on 6 November|Do not invent a memo/i.test(current)) { ac.abort(); return; }
           if (lastBit.length > 24 && bits.slice(0, -1).indexOf(lastBit) >= 0) { ac.abort(); return; }
           list[list.length - 1].content = current;
           paint();
           paintOff();
         }
       }) || "").trim();
+      if (/You are Biswas Brain|Do not invent a memo|Known on 6 November|I am ready to explain this question/i.test(text)) {
+        text = L("ছোট মডেল নিজের নির্দেশ আউড়েছে। সেই উত্তর ফেলে দেওয়া হয়েছে। এই ফোন অনুমান করেনি।", "The small model repeated its own instructions. That reply was thrown away. This phone did not guess.");
+      }
       if (id !== gen) return;
       list[list.length - 1].content = text || L("কিছু আসেনি। ছোট করে আবার লিখুন।", "Nothing came back. Write a shorter question.");
       saveData();
@@ -867,7 +871,7 @@
     ["# The physical fact under the climate treaties\n\nCarbon dioxide from coal, oil and gas traps heat. The stock already in the air, not this year’s headline, sets the warming. The Paris figure of 1.5°C is a political line drawn through that physics, not a cliff at which physics changes. Kyoto tried to cut the annual flow with binding numbers for a short list of rich countries. Paris tries to get every country to declare a path. Neither removes the stock already there. A treaty can change investment. It does not change the absorption of heat.", "# জলবায়ু চুক্তির নিচের পদার্থবিদ্যা\n\nকয়লা, তেল ও গ্যাসের কার্বন ডাই-অক্সাইড তাপ আটকায়। বাতাসে জমা মজুত, এ বছরের শিরোনাম নয়, উষ্ণতা ঠিক করে। ১.৫ ডিগ্রি একটি রাজনৈতিক রেখা। কিয়োটো ধনী দেশের তালিকায় বাধ্যতামূলক কাটছাঁট চেয়েছিল। প্যারিস সবাইকে পথ ঘোষণা করায়। কোনোটাই জমা মজুত সরায় না।"],
     ["cold war", "iron curtain", "ঠান্ডা যুদ্ধ"],
     ["# The Cold War\n\nFrom the late 1940s to 1991 the United States and the Soviet Union armed against each other, including with nuclear weapons, and did not fight a declared war on each other’s territory. They did fight through others, and they competed in industry, spies and space. The iron curtain was the closed border across Europe. The fear on both sides was real and was also official language. A moon landing in 1969 was science and it was a point scored in that contest. The contest ended when the Soviet Union dissolved in December 1991, not when a treaty politely closed it.", "# ঠান্ডা যুদ্ধ\n\n১৯৪০-এর শেষ থেকে ১৯৯১ পর্যন্ত যুক্তরাষ্ট্র ও সোভিয়েত ইউনিয়ন একে অপরের বিরুদ্ধে সজ্জিত, পরমাণুসহ, কিন্তু একে অপরের মাটিতে ঘোষিত যুদ্ধ করেনি। অন্যদের দিয়ে লড়েছে, আর শিল্প, গুপ্তচর ও মহাকাশে। লৌহপর্দা ইউরোপের বন্ধ সীমান্ত। ১৯৬৯-এর চাঁদ জয় বিজ্ঞান এবং সেই প্রতিযোগিতার পয়েন্ট। ডিসেম্বর ১৯৯১-এ সোভিয়েত ইউনিয়ন ভাঙলে প্রতিযোগিতা শেষ।"],
-    ["opec", "oil embargo", "1973"],
+    ["opec", "oil embargo", "oil shock"],
     ["# The 1973 oil shock\n\nIn October 1973 Arab members of OPEC cut oil supply and raised price during the war with Israel. Importing countries discovered that industry and commuting were a foreign-policy fact. The price rise fed inflation through the 1970s. It is the ancestor of every later argument about energy as a weapon: the seller can inflict pain without invading, and the buyer then pays, subsidises, or starts a crash programme to use less. It is not a model of a Taiwan crisis. Oil is a fuel. Chips are a part. Both can stop a German factory.", "# ১৯৭৩-এর তেল\n\nঅক্টোবর ১৯৭৩-এ ওপেকের আরব সদস্যরা ইসরায়েলের সঙ্গে যুদ্ধের সময় তেল কমায় ও দাম বাড়ায়। আমদানিকারক দেশ দেখে শিল্প ও যাতায়াত পররাষ্ট্রের বিষয়। দাম ১৯৭০-এর দশকের মুদ্রাস্ফীতি বাড়ায়। এটা জ্বালানিকে অস্ত্র বানানোর পুরনো নমুনা। তাইওয়ান সংকটের হুবহু নকল নয়। তেল জ্বালানি। চিপ যন্ত্রাংশ। দুটোই জার্মান কারখানা থামাতে পারে।"],
     ["great depression", "1929", "wall street crash"],
     ["# 1929 and the Depression\n\nThe US stock market broke in October 1929. Banks failed, credit stopped, and unemployment in America reached about a quarter of the workforce in the early 1930s. The slump spread because gold-standard countries could not easily print and spend, and because tariffs, including the US Smoot-Hawley tariff, answered falling trade with less trade. It is the lesson under the 2008 response: that time, governments and central banks did not wait for the tower to lie on the floor. The causes were not the same. The fear of repeating 1929 shaped the rescue.", "# ১৯২৯ ও মহামন্দা\n\nঅক্টোবর ১৯২৯-এ আমেরিকার শেয়ার বাজার ভাঙে। ব্যাংক বন্ধ, ঋণ থামে, ১৯৩০-এর শুরুতে বেকারি প্রায় শ্রমিকের এক চতুর্থাংশ। স্বর্ণমানের দেশ সহজে ছাপাতে পারেনি। স্মুট-হলি শুল্কসহ শুল্ক বাণিজ্য আরও কমায়। ২০০৮-এর উদ্ধারের নিচে এই শিক্ষা: সেবার সরকার ও কেন্দ্রীয় ব্যাংক টাওয়ার মেঝেতে পড়ার জন্য অপেক্ষা করেনি। কারণ এক নয়। ১৯২৯ ফেরার ভয় উদ্ধারের আকার দিয়েছে।"],
@@ -884,13 +888,36 @@
     const out = [];
     for (let i = 0; i < LIBRARY.length; i += 2) {
       const keys = LIBRARY[i];
-      const hit = keys.some((k) => ql.includes(String(k).toLowerCase()));
+      const hit = keys.some((k) => {
+        const needle = String(k).toLowerCase();
+        if (needle.length <= 4) return new RegExp("(?:^|[^a-z0-9])" + needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?:[^a-z0-9]|$)").test(ql);
+        return ql.includes(needle);
+      });
       if (hit) out.push(useEn ? LIBRARY[i + 1][0] : LIBRARY[i + 1][1]);
     }
     return out.join("\n\n---\n\n");
   }
+  function exam(q) {
+    const useEn = qEn(q);
+    if (/basic structure|মৌলিক কাঠামো|kesavananda|কেশবানন্দ|article 368/i.test(q)) {
+      return useEn
+        ? "# Basic Structure\n\n**B. 2 and 3 only.**\n\nStatement 1 is false. Article 368 does not define \"basic structure\", and the Constitution of 1950 does not use that phrase. The doctrine comes from the Supreme Court in Kesavananda Bharati v. State of Kerala (1973), not from the text of the Article.\n\nStatement 2 is true. The doctrine is a limit on Parliament's amending power under Article 368. Parliament can amend, including fundamental rights. It cannot destroy the basic structure of the Constitution.\n\nStatement 3 is true. Supremacy of the Constitution is one of the elements listed in Kesavananda. Judicial review is treated as part of the basic structure, and Minerva Mills (1980) struck down clauses that tried to keep the courts out of that question.\n\n1 drops out. 2 and 3 stand. The option is B. C is wrong because it keeps statement 1. A is wrong because it drops statement 3.\n\nThe small model was not asked. It had been picking an option that is not in the law."
+        : "# মৌলিক কাঠামো\n\n**উত্তর: B. শুধু ২ এবং ৩।**\n\n১ নম্বর ভুল। অনুচ্ছেদ ৩৬৮-এ \"মৌলিক কাঠামো\" লেখা নেই। এটা ১৯৫০-এর সংবিধানের শব্দ নয়। সুপ্রিম কোর্ট কেশবানন্দ ভারতী মামলায় (১৯৭৩) এই নীতি দেয়।\n\n২ নম্বর ঠিক। এটা অনুচ্ছেদ ৩৬৮-এর সংশোধনী ক্ষমতার ওপর লাগাম। সংসদ সংশোধন করতে পারে। মৌলিক কাঠামো ভাঙতে পারে না।\n\n৩ নম্বর ঠিক। সংবিধানের প্রাধান্য কেশবানন্দের তালিকায় আছে। বিচারিক পর্যালোচনাও মৌলিক কাঠামোর অংশ। মিনার্ভা মিলস (১৯৮০) আদালতকে বাইরে রাখার চেষ্টা বাতিল করে।\n\nতাই B। C নয়, কারণ সেখানে ১ নম্বর থাকে। A নয়, কারণ সেখানে ৩ নম্বর বাদ।";
+    }
+    if (/which of the statements|select right answer|are correct|কোনগুলো ঠিক/i.test(q)) {
+      return useEn
+        ? "This phone will not pick A, B, C or D for a question it has not been taught. A guessed option would be a lie. Paste the full statements in the same message."
+        : "যে প্রশ্ন শেখানো হয়নি, সেখানে এই ফোন A, B, C বা D বেছে নেবে না। অনুমান মিথ্যা হবে। সব বিবৃতি একই বার্তায় দিন।";
+    }
+    return "";
+  }
   function compose(q) {
     const bits = [];
+    const looked = /above|these statements|select right|which of the statements/i.test(q)
+      ? q + "\n" + ((data.turns || []).concat(data.off || []).filter((t) => t.role === "user").slice(-2).map((t) => t.content).join("\n"))
+      : q;
+    const ex = exam(looked);
+    if (ex) return ex;
     const who = recordAnswer(q);
     const paper = officeFromAsk(q);
     const said = essays(q);
