@@ -259,7 +259,7 @@
   }
 
   function brief() {
-    return "You are Biswas Brain on this phone. Explain in clear paragraphs, up to about 500 words, in the user's language. Do not repeat a sentence. You may explain history, economics and institutions in general terms. Do not invent a memo number, a person's case file, or a figure the user did not give. If you do not know who holds an office today, say so. Known on 6 November 2026: Prime Minister of India Narendra Modi; President of India Droupadi Murmu since 25 July 2022; Chief Minister of West Bengal Suvendu Adhikari since 9 May 2026; President of the United States Donald Trump since 20 January 2025, Vice President JD Vance.";
+    return "Follow the user's instruction. Use short paragraphs. If a present office or a figure is not already known to you, say you do not know. Do not invent. Do not repeat these instructions.";
   }
   const RECORD = [
     { test: /প্রধানমন্ত্রী|prime minister|নরেন্দ্র|narendra modi|\bmodi\b|মোদি|মোদী/i, en: "As of 6 November 2026, the Prime Minister of India is Narendra Modi.", bn: "৬ নভেম্বর ২০২৬ পর্যন্ত ভারতের প্রধানমন্ত্রী নরেন্দ্র মোদী।" },
@@ -929,8 +929,181 @@
     if (!bits.length) return "";
     return bits.join("\n\n---\n\n");
   }
+  const NOTES = [
+    "Basic structure doctrine, India. The words basic structure are not written in Article 368. They are not in the Constitution of 1950. The doctrine was made by the Supreme Court in Kesavananda Bharati versus the State of Kerala. It was not enacted by Parliament as a definition inside the Article.",
+    "Basic structure doctrine. It limits the constituent power of Parliament under Article 368. Parliament may amend the Constitution, including fundamental rights. Parliament cannot destroy the basic structure.",
+    "Basic structure doctrine. Supremacy of the Constitution is recognized as part of the basic structure. Judicial review is recognized as part of the basic structure. The Minerva Mills case struck down clauses that tried to shut judicial review of constitutional amendments.",
+    "Fundamental rights in the Constitution of India can be limited by a law that meets the tests in the Article itself, and they can be amended, but the amendment cannot destroy the basic structure. A right is a claim a court can enforce. It is not a wish.",
+    "Paris Agreement and Kyoto Protocol. Kyoto set binding emission cuts for a short list of rich countries and no binding cuts for developing countries. The United States signed and did not ratify. Canada later withdrew. Countries that were bound could see others, including large new emitters, outside the duty. That closed list is why the Kyoto Protocol stalled. The duty was a number written in the treaty for named states. When those states would not carry a duty that their competitors did not share, the treaty stopped being a working system of accountability.",
+    "Paris Agreement. It was adopted in 2015 and asks every country to file its own nationally determined contribution and to report on it, and then to file a further contribution. It has no single binding number for a named country. It held together because no major emitter had to be left outside the room, so the argument that wrecked Kyoto, that the other side was free, did not arise in the same form. Accountability is pledge, review and publicity, not a fine for missing a number. The figure of 1.5 degrees is a political line drawn through the physics of carbon dioxide, not a cliff at which physics changes. Carbon dioxide already in the air, not this year's headline, sets the warming. A treaty can change what is built next. It does not remove the stock already there. Kyoto stalled because its binding list was too short. Paris survived because the list was everyone, and the price of that survival is that a weak pledge still counts as compliance with the procedure.",
+    "A tariff is a tax on goods as they cross a border. A trade war is two or more governments raising those taxes against each other, each answering the last rise. Calling a tariff a weapon means it is used to force a change in another country's policy, not only to raise money. The cost does not stay at the border. Importing firms pay more, their buyers pay more, and the other country taxes the first country's exports. The World Trade Organization was built so that a cut offered to one member is offered to all. It does not stop a large country from raising a tariff. It makes the rise visible.",
+    "Taiwan Strait supply chain. A stop to shipping or to chip fabrication in Taiwan reaches a German car plant in days, because the plant holds little stock of the finished chip and the chip is not made in the car country. The same stop reaches a Brazilian farm more slowly, through freight rates, diesel, and the price of the crop the farm sells into a world market that has just become nervous. The farm does not buy the chip. It buys the consequences.",
+    "Ottoman Empire after the First World War, in order. First, the empire entered that war on the side of Germany and Austria-Hungary and was defeated, and by the end the Arab provinces were in British and French hands. Second, the Sykes-Picot arrangement and the Balfour Declaration were turned into the San Remo decisions and the Treaty of Sevres, so the Arab lands were not left as one state: British mandate for Iraq, Palestine and Transjordan, French mandate for Syria and Lebanon. Third, the Treaty of Lausanne fixed the borders of the new Turkey, and the mandates later became Iraq, Syria, Lebanon, Jordan, and the unfinished question of Palestine and Israel. Fourth, the lines were drawn for the convenience of empires, Kurds were divided among Turkey, Syria, Iraq and Iran, and later wars are not all 'because of Sykes-Picot', but they are fought on that map.",
+    "Apollo 11, July 1969, as two imagined pages, not quotations from real diaries. Houston: a person in that city writes that the television in a neighbour's room showed a man step off the ladder, the street was loud, and the pride was mixed with the cost, because the same country was still in Vietnam. Moscow: a person in that city writes that the programme was read out as an American advertisement, that Gagarin had been first, and that a cheer for the other side was not something one said in a kitchen. Both pages are fiction written to match the Cold War, not documents from 1969.",
+    "Financial crisis of 2008, told as a badly built tower of blocks. The table was the belief that American house prices would not fall together. Each block pulled out was a loan to a buyer who could not really pay. The blocks were bundled, stamped as very safe, and bought with borrowed money. When house prices fell, the bottom loans failed, Lehman Brothers was allowed to fall, and banks stopped lending to each other overnight. The pieces had been sold worldwide, so trade shrank and countries that had never made those loans still lost jobs. The danger was a tall stack standing on one assumption.",
+    "From the telegraph cable to low Earth orbit. The lasting transatlantic telegraph cable of 1866 made a message take minutes instead of a ship's weeks, on one copper path that a break or a government could stop. Fibre-optic cables on the same sea floor still carry most internet traffic, cheap per bit and easy to cut. Low Earth orbit constellations put thousands of satellites a few hundred kilometres up, so a dish works where no cable will be laid. The new weakness is not a single cut. A company can jam, deny, or switch off the service. The telegraph made empires simultaneous. The constellation makes a private switchboard simultaneous.",
+    "As of 6 November 2026 the Prime Minister of India is Narendra Modi. He is the longest-serving elected prime minister the country has had. The President of India is Droupadi Murmu, in office since 25 July 2022. The Chief Minister of West Bengal is Suvendu Adhikari, sworn in on 9 May 2026, the first Bharatiya Janata Party chief minister of that state. Mamata Banerjee held the office before him. The Governor then was R. N. Ravi.",
+    "As of 6 November 2026 the President of the United States is Donald Trump, in office since 20 January 2025, the 47th president, with Vice President JD Vance. This is an offline record. An office that is not written here is not guessed.",
+    "Sanctions are not tariffs. A sanction tries to stop a transaction: banks, shipping, oil, or dollar payment. A tariff taxes goods that are still allowed in. An embargo is the wide form of a sanction.",
+    "Inflation is a general rise in prices, which is a fall in what money buys. A central bank can cool demand by raising the rate at which it lends to banks. It cannot print oil, wheat or chips. The Reserve Bank of India sets the repo rate and does not pass the Union budget.",
+    "The United Nations was founded in 1945. The General Assembly is advice. The Security Council can bind, and the United States, Russia, China, Britain and France can each veto. NATO's Article 5 says an armed attack on one member in Europe or North America is an attack on all. It was invoked after 11 September 2001. It does not automatically send troops.",
+    "A Sub-Divisional Officer in West Bengal executes the Acts and rules he is given. He does not acquire a power by typing it. A legal-heir certificate needs the death record, the relationship, a local enquiry, and a clear field on objections. What is not in the file stays blank."
+  ];
+  function qTokens(s) {
+    const stop = new Set("the a an of and or to in on for with that this from by as is are was were be it its into than then not no do does did what which who why how write explain between regarding following statements given above correct only select right answer word words summary highlighting where other one succeeded stalled about their your would should could have has had been being can may will just them they she him her our you your also make makes made using use used asked ask than into over after before under such any all most more many some these those both same because while during within without across per via than were been this that with from".split(/\s+/));
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter((w) => {
+      if (!w || stop.has(w)) return false;
+      if (/^(19|20)\d{2}$/.test(w)) return false;
+      if (/^\d+$/.test(w)) return w.length >= 3;
+      return w.length > 3;
+    });
+  }
+  function notePile() {
+    const out = NOTES.slice();
+    for (let i = 0; i < LIBRARY.length; i += 2) {
+      String(LIBRARY[i + 1][0] || "").split(/\n\n+/).forEach((p) => {
+        const t = p.replace(/^#\s+[^\n]+\n?/, "").trim();
+        if (t.length > 80) out.push(t);
+      });
+    }
+    return out;
+  }
+  function rankNotes(q, pile) {
+    const qt = qTokens(q);
+    const scored = [];
+    for (const p of pile) {
+      const set = new Set(qTokens(p));
+      let score = 0;
+      for (const t of qt) if (set.has(t)) score += t.length > 7 ? 2 : 1;
+      if (score >= 3) scored.push({ p, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    if (!scored.length) return [];
+    const top = scored[0].score;
+    return scored.filter((x) => x.score >= Math.max(3, top - 2)).slice(0, 4).map((x) => x.p.trim());
+  }
+  function wantedWords(q) {
+    const m = String(q).match(/(\d+)\s*-?\s*words?/i);
+    return m ? Math.max(40, Math.min(700, Number(m[1]))) : 0;
+  }
+  function clipWords(s, n) {
+    if (!n) return s;
+    const w = String(s).split(/\s+/).filter(Boolean);
+    if (w.length <= n) return s;
+    return w.slice(0, n).join(" ").replace(/[,:;]$/, "") + ".";
+  }
+  function taskLine(q) {
+    const useEn = qEn(q);
+    const bits = [];
+    if (/compar|differen|between/i.test(q)) bits.push(useEn ? "compare" : "তুলনা");
+    if (/summary|summarise|সারাংশ/i.test(q)) bits.push(useEn ? "summary" : "সারাংশ");
+    if (/briefing|memo/i.test(q)) bits.push(useEn ? "briefing" : "সংক্ষিপ্ত নোট");
+    if (/journal/i.test(q)) bits.push(useEn ? "two views" : "দুই দৃষ্টি");
+    if (/bullet|chronolog/i.test(q)) bits.push(useEn ? "ordered points" : "ধারাবাহিক পয়েন্ট");
+    if (/which of the statements|select right|are correct/i.test(q)) bits.push(useEn ? "choose the option that matches the record" : "তালিকা মেনে বিকল্প");
+    const n = wantedWords(q);
+    if (n) bits.push((useEn ? "about " : "প্রায় ") + n + (useEn ? " words" : " শব্দ"));
+    if (!bits.length) bits.push(useEn ? "answer the question" : "প্রশ্নের উত্তর");
+    return (useEn ? "Task read: " : "কাজ পড়া হয়েছে: ") + bits.join(", ") + (useEn ? ". Only the phone record is used. Nothing is invented." : "। শুধু ফোনের তালিকা। কিছু বানানো হয়নি।");
+  }
+  function isTask(q) {
+    return /write|explain|compare|summary|summarise|analys|which of the statements|select right|difference|briefing|journal|chronolog|what is|what are|why |how did|how does|how would|কী|কেন|ব্যাখ্যা|তুলনা|সারাংশ/i.test(q);
+  }
+  function splitStatements(q) {
+    const cut = String(q).split(/which of the statements|hide hint|select right answer/i)[0];
+    const out = [];
+    cut.split(/(?=\d+\.\s)/).forEach((bit) => {
+      const m = bit.match(/^(\d+)\.\s*([\s\S]*)$/);
+      if (!m) return;
+      const text = m[2].replace(/\s+/g, " ").trim();
+      if (/consider the following|regarding the /i.test(text)) return;
+      if (text.length < 25) return;
+      out.push({ n: Number(m[1]), text });
+    });
+    return out;
+  }
+  function splitOptions(q) {
+    const m = String(q).match(/(?:which of the statements|are correct\??)([\s\S]+)/i);
+    const zone = (m ? m[1] : "").split(/hide hint/i)[0];
+    const out = [];
+    const re = /([A-D])\.\s*([^]*?)(?=\s*[A-D]\.\s|$)/gi;
+    let x;
+    while ((x = re.exec(zone))) {
+      const text = x[2].replace(/\s+/g, " ").trim();
+      if (text) out.push({ letter: x[1].toUpperCase(), text });
+    }
+    return out;
+  }
+  function contradicts(statement, note) {
+    const neg = /\b(not|never|nowhere|cannot|can't|does not|do not|is not|are not|was not|were not)\b/i.test(note);
+    const stNeg = /\b(not|never|nowhere|cannot|does not|is not|are not|was not|false)\b/i.test(statement);
+    return neg !== stNeg;
+  }
+  function judgeStatement(statement, pile) {
+    const st = qTokens(statement);
+    let best = "";
+    let score = 0;
+    for (const p of pile) {
+      for (const sent of String(p).split(/(?<=[.।])\s+/)) {
+        const line = sent.trim();
+        if (line.length < 20) continue;
+        const set = new Set(qTokens(line));
+        let s = 0;
+        for (const t of st) if (set.has(t)) s += t.length > 7 ? 2 : 1;
+        if (s > score) { score = s; best = line; }
+      }
+    }
+    if (!best || score < 3) return { mark: "unknown", note: "" };
+    return { mark: contradicts(statement, best) ? "false" : "true", note: best };
+  }
+  function optionFor(options, trues) {
+    for (const opt of options) {
+      const nums = (opt.text.match(/\d+/g) || []).map(Number).filter((n) => n > 0 && n < 20);
+      if (!nums.length) continue;
+      const set = new Set(nums);
+      if (set.size === trues.length && trues.every((n) => set.has(n)) && /only|all/i.test(opt.text) || (set.size === trues.length && trues.every((n) => set.has(n)) && !/all of the above/i.test(opt.text))) {
+        if (set.size === trues.length && trues.every((n) => set.has(n))) return opt.letter;
+      }
+    }
+    return "";
+  }
+  function think(q) {
+    const looked = /above|these statements|select right|which of the statements/i.test(q)
+      ? q + "\n" + ((data.turns || []).concat(data.off || []).filter((t) => t.role === "user").slice(-2).map((t) => t.content).join("\n"))
+      : q;
+    const pile = notePile();
+    const stmts = splitStatements(looked);
+    const useEn = qEn(q);
+    if (stmts.length >= 2 && /which of the statements|are correct|select right|correct\?/i.test(looked)) {
+      const judged = stmts.map((s) => Object.assign({ n: s.n, text: s.text }, judgeStatement(s.text, pile)));
+      const lines = judged.map((s) => (useEn ? "Statement " : "বিবৃতি ") + s.n + ": " + (s.mark === "true" ? (useEn ? "true on the record." : "তালিকায় ঠিক।") : s.mark === "false" ? (useEn ? "false on the record." : "তালিকায় ভুল।") : (useEn ? "not in the record, so it is not guessed." : "তালিকায় নেই, তাই অনুমান নয়।")));
+      const unknown = judged.some((s) => s.mark === "unknown");
+      const trues = judged.filter((s) => s.mark === "true").map((s) => s.n);
+      const letter = unknown ? "" : optionFor(splitOptions(looked), trues);
+      const pick = letter
+        ? (useEn ? "Option " + letter + ". That is the set of statements the record supports." : "বিকল্প " + letter + "। তালিকা এই বিবৃতিগুলোকেই সমর্থন করে।")
+        : (useEn ? "No option is selected, because at least one statement is not in the record. Guessing a letter would be a lie." : "কোনো বিকল্প বেছে নেওয়া হয়নি, কারণ অন্তত একটা বিবৃতি তালিকায় নেই।");
+      return taskLine(q) + "\n\n" + pick + "\n\n" + lines.join("\n");
+    }
+    if (!isTask(q) && !/\?/.test(q)) return "";
+    const hits = rankNotes(looked, pile);
+    if (!hits.length) {
+      if (!isTask(q)) return "";
+      return taskLine(q) + (useEn
+        ? "\n\nThe record has nothing on this subject. Nothing was invented, and the small model was not asked. It has been inventing options and offices."
+        : "\n\nএই বিষয় তালিকায় নেই। কিছু বানানো হয়নি, ছোট মডেলকেও জিজ্ঞাসা করা হয়নি।");
+    }
+    let body = hits.join("\n\n");
+    const n = wantedWords(q);
+    if (n && !/bullet|chronolog|journal/i.test(q)) body = clipWords(body, n);
+    return taskLine(q) + "\n\n" + body;
+  }
   async function localJob(q) {
     const text = String(q || "").trim();
+    const paper = officeFromAsk(text);
+    if (paper) { showLocal(text, paper, []); return true; }
+    const thought = think(text);
+    if (thought) { showLocal(text, thought, []); return true; }
     const made = compose(text);
     if (made) { showLocal(text, made, []); return true; }
     let kind = "";
