@@ -210,7 +210,7 @@
       const mem = (data.lessons || []).slice(-3).map((x) => String(x).slice(0, 60)).join("; ");
       const prompt = String(extra || "Answer in one or two short sentences.").slice(0, 360) + (mem ? "\nRemember: " + mem : "") + "\nUser: " + String(q).slice(0, 300) + "\nAssistant:";
       const text = String(await w.createCompletion(prompt, {
-        nPredict: 40,
+        nPredict: 160,
         abortSignal: ac.signal,
         sampling: { temp: 0.7, top_k: 20, top_p: 0.9 },
         onNewToken: (_a, _b, current) => {
@@ -445,9 +445,191 @@
     );
   }
 
-  async function askOff(q) {
+  let packs = [];
+  let paper = null;
+
+  function officeHead() {
+    let subdiv = "______", district = "";
+    try { subdiv = settings.subdiv || subdiv; district = settings.district || ""; } catch (e) { /* defaults */ }
+    return en()
+      ? "Government of West Bengal\nOffice of the Sub-Divisional Officer, " + subdiv + " Sub-Division" + (district ? ", " + district : "")
+      : "পশ্চিমবঙ্গ সরকার\nমহকুমা শাসকের কার্যালয়, " + subdiv + " মহকুমা" + (district ? ", " + district : "");
+  }
+  function fileFacts() {
+    if (!packs.length) return en() ? "(No file attached. The blanks stay empty.)" : "(কোনো ফাইল যুক্ত নেই। ফাঁকা জায়গা খালিই থাকবে।)";
+    return packs.map((p) => "### " + p.name + "\n" + String(p.text || "").slice(0, 1800)).join("\n\n");
+  }
+  function numOf(s) {
+    const t = String(s == null ? "" : s).replace(/[₹$,\s]/g, "");
+    if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+    return Number(t);
+  }
+  function fmt(n) { return Math.round(n * 100) / 100; }
+  function sheetsOf(text) {
+    const out = [];
+    for (const block of String(text || "").split(/\n(?=\[Sheet:)/)) {
+      const lines = block.split("\n");
+      const name = (lines[0].match(/^\[Sheet:\s*([^\]]+)/) || [])[1] || "Sheet";
+      const rows = lines.slice(1).filter((l) => l.trim() && !/rows\]?$/.test(l.trim()) && !/^\[/.test(l)).map((l) => l.split("\t"));
+      if (rows.length) out.push({ name, rows });
+    }
+    return out;
+  }
+  function columnStats(rows) {
+    const width = Math.max(...rows.map((r) => r.length));
+    const body = rows.slice(1);
+    const stats = [];
+    for (let c = 0; c < width; c++) {
+      const nums = body.map((r) => numOf(r[c])).filter((n) => n != null);
+      if (!nums.length || nums.length < Math.max(1, body.length * 0.4)) continue;
+      const sum = nums.reduce((a, b) => a + b, 0);
+      stats.push({ name: rows[0][c] || ("Col " + (c + 1)), n: nums.length, sum, min: Math.min(...nums), max: Math.max(...nums), avg: sum / nums.length });
+    }
+    return stats;
+  }
+  function analyseMd() {
+    if (!packs.length) return { md: en() ? "Attach a PDF, Word file or Excel first." : "আগে একটি PDF, Word বা Excel যুক্ত করুন।", tables: [] };
+    const parts = [en() ? "# Reading done on this phone" : "# এই ফোনে পড়া হয়েছে", en() ? "The 100 MB model was not used. Every total below was calculated on the phone." : "১০০ MB মডেল ব্যবহার হয়নি। নিচের সব যোগ এই ফোনেই করা হয়েছে।"];
+    const tables = [];
+    for (const p of packs) {
+      parts.push("## " + p.name);
+      parts.push((en() ? "Kind: " : "ধরন: ") + (p.kind || "") + (p.pages ? (en() ? ". Pages: " : "। পাতা: ") + p.pages : "") + (en() ? ". Characters: " : "। অক্ষর: ") + String(p.text || "").length);
+      const sh = p.kind === "sheet" ? sheetsOf(p.text) : [];
+      if (sh.length) {
+        for (const s of sh) {
+          const st = columnStats(s.rows);
+          parts.push("### " + s.name + " — " + s.rows.length + (en() ? " rows" : " সারি"));
+          if (!st.length) { parts.push(en() ? "No number column to add." : "যোগ করার মতো সংখ্যার কলাম নেই।"); continue; }
+          parts.push("| Column | Count | Sum | Average | Min | Max |\n| --- | --- | --- | --- | --- | --- |");
+          const rows = [["Column", "Count", "Sum", "Average", "Min", "Max"]];
+          for (const c of st) {
+            parts.push("| " + c.name + " | " + c.n + " | " + fmt(c.sum) + " | " + fmt(c.avg) + " | " + fmt(c.min) + " | " + fmt(c.max) + " |");
+            rows.push([String(c.name), String(c.n), String(fmt(c.sum)), String(fmt(c.avg)), String(fmt(c.min)), String(fmt(c.max))]);
+          }
+          tables.push({ name: String(s.name).slice(0, 31), rows });
+        }
+      } else {
+        const lines = String(p.text || "").split("\n").map((x) => x.trim()).filter(Boolean);
+        const amounts = [];
+        for (const line of lines) {
+          const found = line.match(/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g) || [];
+          found.forEach((x) => { const n = numOf(x); if (n != null) amounts.push(n); });
+        }
+        if (amounts.length) {
+          const sum = amounts.reduce((a, b) => a + b, 0);
+          parts.push((en() ? "Numbers found: " : "পাওয়া সংখ্যা: ") + amounts.length + (en() ? ". Sum: " : "। যোগ: ") + fmt(sum) + (en() ? ". Average: " : "। গড়: ") + fmt(sum / amounts.length) + (en() ? ". Smallest: " : "। সবচেয়ে কম: ") + fmt(Math.min(...amounts)) + (en() ? ". Largest: " : "। সবচেয়ে বেশি: ") + fmt(Math.max(...amounts)));
+          tables.push({ name: "Numbers", rows: [["Value"], ...amounts.slice(0, 400).map((n) => [String(n)]), ["Sum", String(fmt(sum))]] });
+        }
+        parts.push(lines.slice(0, 40).map((l) => "- " + l.slice(0, 200)).join("\n"));
+      }
+    }
+    return { md: parts.join("\n\n"), tables };
+  }
+  function draftMd(kind) {
+    const head = officeHead();
+    const sub = (packs[0] && packs[0].name) || "______";
+    const body = fileFacts();
+    const bn = !en();
+    if (kind === "notesheet") {
+      return bn
+        ? "**নোট**\n\n**বিষয়:** " + sub + "\n\nবিচার্য পত্র এই ফোনে পড়া হয়েছে। এই খসড়া ১০০ MB মডেল লেখেনি। ফাইলে যা নেই তা ______ রাখা হয়েছে।\n\n" + body + "\n\nপ্রস্তাব: ______\n\nসদয় অবগতি ও আদেশের জন্য পেশ করা হল।\n\n(ডিলিং অ্যাসিস্ট্যান্ট)\nতারিখ: ______\n\nমহকুমা শাসক"
+        : "**NOTE**\n\n**Subject:** " + sub + "\n\nThe paper was read on this phone. The 100 MB model did not write this draft. Anything not in the file is left as ______.\n\n" + body + "\n\nProposal: ______\n\nPut up for kind perusal and orders, please.\n\n(Dealing assistant)\nDate: ______\n\nSub-Divisional Officer";
+    }
+    if (kind === "letter") {
+      return bn
+        ? head + "\n\nস্মারক নং: ______          তারিখ: ______\n\nপ্রতি,\n______\n\n**বিষয়:** " + sub + "\n\nমহাশয়,\n\n" + body + "\n\nঅতএব ______ করার জন্য অনুরোধ করা হচ্ছে।\n\nভবদীয়,\n\nমহকুমা শাসক"
+        : head + "\n\nMemo No. ______          Date: ______\n\nTo\n______\n\n**Subject:** " + sub + "\n\nSir,\n\n" + body + "\n\nYou are requested to ______.\n\nYours faithfully,\n\nSub-Divisional Officer";
+    }
+    if (kind === "order") {
+      return bn
+        ? head + "\n\n**অফিস আদেশ**\n\nস্মারক নং: ______    তারিখ: ______\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\nএতদ্বারা আদেশ করা হচ্ছে যে ______। এই আদেশ ______ তারিখ থেকে কার্যকর।\n\nমহকুমা শাসক"
+        : head + "\n\n**OFFICE ORDER**\n\nMemo No. ______    Date: ______\n\n**Subject:** " + sub + "\n\n" + body + "\n\nIt is hereby ordered that ______. This order takes effect from ______.\n\nSub-Divisional Officer";
+    }
+    if (kind === "notice") {
+      return bn
+        ? head + "\n\n**নোটিশ**\n\nস্মারক নং: ______    তারিখ: ______\n\nপ্রতি,\n______\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\nআপনাকে ______ তারিখে ______ স্থানে হাজির হতে বলা হচ্ছে। লিখিত জবাব ______ দিনের মধ্যে দিন।\n\nমহকুমা শাসক"
+        : head + "\n\n**NOTICE**\n\nMemo No. ______    Date: ______\n\nTo\n______\n\n**Subject:** " + sub + "\n\n" + body + "\n\nYou are asked to appear on ______ at ______. A written reply is due within ______ days.\n\nSub-Divisional Officer";
+    }
+    return bn
+      ? "# প্রতিবেদন\n\n**বিষয়:** " + sub + "\n\n" + body + "\n\n## সুপারিশ\n\n______\n\nতারিখ: ______"
+      : "# Report\n\n**Subject:** " + sub + "\n\n" + body + "\n\n## Recommendation\n\n______\n\nDate: ______";
+  }
+  function calc(src) {
+    const s = String(src || "").replace(/,/g, "").replace(/[x×]/gi, "*").replace(/÷/g, "/").trim();
+    if (!/^[\d.+\-*/()%\s]+$/.test(s) || !/\d/.test(s)) throw new Error("bad");
+    const n = Function('"use strict"; return (' + s.replace(/(\d+(?:\.\d+)?)%/g, "($1/100)") + ")")();
+    if (typeof n !== "number" || !Number.isFinite(n)) throw new Error("bad");
+    return n;
+  }
+  function showLocal(q, md, tables) {
     data.off = data.off || [];
-    let skill = "Write a short office draft if asked. Otherwise answer in one or two sentences.";
+    data.off.push({ role: "user", content: q });
+    data.off.push({ role: "assistant", content: String(md).slice(0, 8000) });
+    paper = { md: String(md), tables: tables || [] };
+    saveData();
+    paintOff();
+    const bar = $("off-save");
+    if (bar) bar.hidden = false;
+    const el = $("off-status");
+    if (el) el.textContent = L("এই উত্তর ফোনেই তৈরি। নিচে Word, PDF বা Excel নিন।", "This answer was made on the phone. Save Word, PDF or Excel below.");
+  }
+  async function takeFiles(list) {
+    const el = $("off-status");
+    if (el) el.textContent = L("ফাইল পড়া হচ্ছে…", "Reading the file…");
+    for (const f of list) {
+      try {
+        const row = await readFile(f);
+        packs.push({ name: row.name, kind: row.kind, pages: row.pages || 0, text: row.text || "" });
+      } catch (e) {
+        packs.push({ name: f.name, kind: "error", text: String(e && e.message || e) });
+      }
+    }
+    const names = $("off-files");
+    if (names) names.textContent = packs.map((p) => p.name).join(", ");
+    if (el) el.textContent = L(packs.length + "টি ফাইল পড়া হয়েছে। এখন বিশ্লেষণ, খসড়া বা অঙ্ক চাপুন।", packs.length + " file(s) read. Tap analyse, a draft, or calculate.");
+  }
+  async function savePaper(type) {
+    if (!paper) {
+      const last = (data.off || []).filter((t) => t.role === "assistant").pop();
+      if (!last) return;
+      paper = { md: last.content, tables: [] };
+    }
+    const el = $("off-status");
+    try {
+      if (type === "docx") await BA.download(await BA.docxFromMd(paper.md, { title: "Offline" }), "offline.docx");
+      else if (type === "pdf") await BA.download(await BA.pdfFromMd(paper.md, { title: "Offline" }), "offline.pdf");
+      else await BA.download(BA.xlsxFromTables(paper.tables && paper.tables.length ? paper.tables : [{ name: "Draft", rows: String(paper.md).split("\n").map((l) => [l]) }]), "offline.xlsx");
+      if (el) el.textContent = L("ফাইল নেমেছে।", "File saved.");
+    } catch (e) {
+      if (el) el.textContent = String(e && e.message || e).slice(0, 160);
+    }
+  }
+  async function localJob(q) {
+    const text = String(q || "").trim();
+    let kind = "";
+    if (/নোটশিট|notesheet/i.test(text)) kind = "notesheet";
+    else if (/নোটিশ|notice|show-?cause/i.test(text)) kind = "notice";
+    else if (/আদেশ|\border\b/i.test(text)) kind = "order";
+    else if (/রিপোর্ট|\breport\b/i.test(text)) kind = "report";
+    else if (/চিঠি|\bletter\b|\bdfa\b/i.test(text)) kind = "letter";
+    else if (/বিশ্লেষণ|analys|সারাংশ|summary|মোট|total|হিসাব/i.test(text)) kind = "analyse";
+    else if (/^[\d.+\-*/()%,\s]+$/.test(text) && /\d/.test(text) && /[+\-*/%]/.test(text)) kind = "math";
+    else if (packs.length && text) kind = "analyse";
+    else return false;
+    if (kind === "math") {
+      try { const n = calc(text); showLocal(text, (en() ? "Result: **" : "ফলাফল: **") + fmt(n) + "**\n\n" + text + " = " + fmt(n)); }
+      catch (e) { showLocal(text, en() ? "This phone could not do that sum. Use digits and + - * / ( ). Example: 1200*5/100" : "এই অঙ্ক হয়নি। সংখ্যা আর + - * / ( ) দিন। যেমন: 1200*5/100"); }
+      return true;
+    }
+    if (kind === "analyse") { const r = analyseMd(); showLocal(text || (en() ? "Analyse" : "বিশ্লেষণ"), r.md, r.tables); return true; }
+    showLocal(text, draftMd(kind), []);
+    return true;
+  }
+
+  async function askOff(q) {
+    if (await localJob(q)) return;
+    data.off = data.off || [];
+    let skill = "Write a full answer, several paragraphs if needed. Do not stop after three lines.";
     try {
       const id = BA.skill();
       skill = "Skill: " + (en() ? BA.SKILLS[id].en : BA.SKILLS[id].bn) + ". If they want a paper, write a short draft and leave blanks as ______. Do not invent a memo number.";
@@ -492,6 +674,45 @@
         BA.setSkill(b.dataset.offSkill);
         paintOff();
         offNote();
+      });
+    }
+    const work = $("off-work");
+    const file = $("off-file");
+    const math = $("off-math");
+    if (work && file && !work._off) {
+      work._off = true;
+      work.addEventListener("click", async (ev) => {
+        const b = ev.target.closest("[data-off-do]");
+        if (!b) return;
+        const doWhat = b.dataset.offDo;
+        if (doWhat === "read") { file.click(); return; }
+        if (doWhat === "clear") { packs = []; const names = $("off-files"); if (names) names.textContent = ""; const el = $("off-status"); if (el) el.textContent = L("ফাইল সরিয়ে দেওয়া হয়েছে।", "Files cleared."); return; }
+        if (doWhat === "analyse") { const r = analyseMd(); showLocal(en() ? "Analyse" : "বিশ্লেষণ", r.md, r.tables); return; }
+        if (doWhat === "math") { math && math.requestSubmit(); return; }
+        showLocal(b.textContent.trim(), draftMd(doWhat), []);
+      });
+      file.addEventListener("change", async () => {
+        const list = [...(file.files || [])];
+        file.value = "";
+        if (list.length) await takeFiles(list);
+      });
+    }
+    if (math && !math._off) {
+      math._off = true;
+      math.addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const inp = $("off-expr");
+        const text = (inp && inp.value || "").trim();
+        if (!text) return;
+        askOff(text);
+      });
+    }
+    const save = $("off-save");
+    if (save && !save._off) {
+      save._off = true;
+      save.addEventListener("click", (ev) => {
+        const b = ev.target.closest("[data-off-save]");
+        if (b) savePaper(b.dataset.offSave);
       });
     }
   }
