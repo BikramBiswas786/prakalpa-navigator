@@ -1,8 +1,8 @@
 /* Brain: a small open model that runs on this phone. No API key. After the file is stored here, it answers with the network off. */
 (function () {
-  const SIZE = 105454432;
+  const SIZE = 270590880;
   const KEY = "biswas-brain-v1";
-  const FILE_NAME = "biswas-brain.gguf";
+  const FILE_NAME = "biswas-brain-360.gguf";
 
   const $ = (id) => document.getElementById(id);
   const en = () => document.documentElement.lang === "en";
@@ -76,7 +76,7 @@
 
   async function cachedHf() { return false; }
 
-  const cfg = () => ({ n_ctx: 512, n_threads: 1, n_batch: 64 });
+  const cfg = () => ({ n_ctx: 768, n_threads: 1, n_batch: 64 });
 
   async function downloadParts() {
     if (!navigator.storage || !navigator.storage.getDirectory) throw new Error("no storage");
@@ -99,7 +99,7 @@
       await w.write(buf);
       have += buf.byteLength;
       const pct = Math.min(100, Math.round((have / SIZE) * 100));
-      setStatus(L("নামছে " + pct + "% · প্রায় ১০০ MB", "Downloading " + pct + "% · about 100 MB"));
+      setStatus(L("নামছে " + pct + "% · প্রায় ২৫৮ MB", "Downloading " + pct + "% · about 258 MB"));
     }
     await w.close();
     return fh.getFile();
@@ -122,10 +122,11 @@
   async function useHf() {
     let file = await ownFile();
     if (!file || Math.abs(file.size - SIZE) > 4096) {
-      setStatus(L("প্রথমবার প্রায় ১০০ MB নামছে। আগের ৪০৯ MB ফাইল আর লাগবে না।", "First time: about 100 MB. The old 409 MB file is not used."));
+      setStatus(L("প্রথমবার প্রায় ২৫৮ MB, ছোট ছোট অংশে। আগের ১০০ MB ফাইল আর ব্যবহার হয় না।", "First time: about 258 MB, in small pieces. The old 100 MB file is not used."));
+      try { const root = await navigator.storage.getDirectory(); await root.removeEntry("biswas-brain.gguf"); } catch (e) { /* old file already gone */ }
       file = await downloadParts();
     } else setStatus(L("ফোনের কপি খোলা হচ্ছে…", "Opening the copy on this phone…"));
-    await useBlob(file, "SmolLM2");
+    await useBlob(file, "SmolLM2-360M");
     setStatus(L("এই ফোনে প্রস্তুত। ইন্টারনেট বন্ধ থাকলেও উত্তর দেবে। কোনো চাবি লাগে না।", "Ready on this phone. It still answers with the internet off. No key is used."));
   }
 
@@ -205,16 +206,19 @@
     try {
       await ensure();
       if (id !== gen) return;
-      killer = setTimeout(() => ac.abort(), 90000);
+      killer = setTimeout(() => ac.abort(), 180000);
       const w = await engineOf();
       const mem = (data.lessons || []).slice(-3).map((x) => String(x).slice(0, 60)).join("; ");
-      const prompt = String(extra || "Answer in one or two short sentences.").slice(0, 360) + (mem ? "\nRemember: " + mem : "") + "\nUser: " + String(q).slice(0, 300) + "\nAssistant:";
+      const prompt = brief() + (mem ? "\nRemember: " + mem : "") + "\n" + String(extra || "").slice(0, 280) + "\nUser: " + String(q).slice(0, 500) + "\nAssistant:";
       const text = String(await w.createCompletion(prompt, {
-        nPredict: 160,
+        nPredict: 420,
         abortSignal: ac.signal,
-        sampling: { temp: 0.7, top_k: 20, top_p: 0.9 },
+        sampling: { temp: 0.4, top_k: 20, top_p: 0.9, penalty_repeat: 1.18, penalty_last_n: 128 },
         onNewToken: (_a, _b, current) => {
           if (id !== gen || !current) return;
+          const bits = current.split(/(?<=[.।!?])\s+/);
+          const lastBit = bits[bits.length - 1] || "";
+          if (lastBit.length > 24 && bits.slice(0, -1).indexOf(lastBit) >= 0) { ac.abort(); return; }
           list[list.length - 1].content = current;
           paint();
           paintOff();
@@ -231,9 +235,9 @@
       const aborted = !!(ac.signal.aborted || (e && (e.name === "AbortError" || e.name === "WllamaAbortError")));
       const nofile = e && e.message === "nofile";
       list[list.length - 1].content = nofile
-        ? L("১০০ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন। নিজের PDF বা Excel লাগবে না।", "The 100 MB file is not on this phone yet. Tap the button above. You do not need your own PDF or Excel.")
+        ? L("২৫৮ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন। নিজের PDF বা Excel লাগবে না।", "The 258 MB file is not on this phone yet. Tap the button above. You do not need your own PDF or Excel.")
         : aborted
-          ? L("৯০ সেকেন্ডে শব্দ আসেনি। আরও ছোট প্রশ্ন লিখুন।", "No word came in 90 seconds. Write a shorter question.")
+          ? L("তিন মিনিটে শব্দ আসেনি। আরও ছোট প্রশ্ন লিখুন।", "No word came in three minutes. Write a shorter question.")
           : L("উত্তর হয়নি। ", "No answer. ") + String(e && e.message || e).slice(0, 120);
       saveData();
       paint();
@@ -250,7 +254,30 @@
     }
   }
 
+  function brief() {
+    return "You are Biswas Brain on this phone. Write in the user's language. A draft or an analysis may run to about 500 words. Do not repeat a sentence. Do not invent a name, a date, a law or a number. Unknown office facts stay ______. Current facts you may use, checked 6 November 2026: Prime Minister of India is Narendra Modi. President of India is Droupadi Murmu, in office since 25 July 2022. Chief Minister of West Bengal is Suvendu Adhikari since 9 May 2026; Mamata Banerjee was Chief Minister before that. President of the United States is Donald Trump since 20 January 2025 until 20 January 2029; the Vice President is JD Vance. If a fact is not in this list or in the attached file, say it is not in the offline record.";
+  }
+  const RECORD = [
+    { test: /প্রধানমন্ত্রী|prime minister|নরেন্দ্র|narendra modi|\bmodi\b|মোদি|মোদী/i, en: "As of 6 November 2026, the Prime Minister of India is Narendra Modi.", bn: "৬ নভেম্বর ২০২৬ পর্যন্ত ভারতের প্রধানমন্ত্রী নরেন্দ্র মোদী।" },
+    { test: /রাষ্ট্রপতি|president of india|droupadi|murmu|মুর্মু/i, en: "Droupadi Murmu has been President of India since 25 July 2022. This offline record has no later change.", bn: "দ্রৌপদী মুর্মু ২৫ জুলাই ২০২২ থেকে ভারতের রাষ্ট্রপতি। এই অফলাইন তালিকায় তারপর কোনো বদল নেই।" },
+    { test: /মুখ্যমন্ত্রী|chief minister|west bengal|পশ্চিমবঙ্গ|suvendu|অধিকারী|mamata|মমতা|রাজ্যপাল|\bgovernor\b/i, en: "As of 6 November 2026, the Chief Minister of West Bengal is Suvendu Adhikari (Bharatiya Janata Party), sworn in on 9 May 2026. He is the first BJP Chief Minister of the state. Mamata Banerjee was Chief Minister before that. The Governor named with that change was R. N. Ravi.", bn: "৬ নভেম্বর ২০২৬ পর্যন্ত পশ্চিমবঙ্গের মুখ্যমন্ত্রী শুভেন্দু অধিকারী (ভারতীয় জনতা পার্টি)। তিনি ৯ মে ২০২৬ শপথ নেন। রাজ্যের প্রথম বিজেপি মুখ্যমন্ত্রী। তার আগে মুখ্যমন্ত্রী ছিলেন মমতা বন্দ্যোপাধ্যায়। সেই সময়ে রাজ্যপাল আর. এন. রবি।" },
+    { test: /united states|u\.s\.a|\busa\b|america|যুক্তরাষ্ট্র|মার্কিন|trump|ট্রাম্প|\bvance\b|ভাইস প্রেসিডেন্ট|vice president/i, en: "As of 6 November 2026, the President of the United States is Donald Trump. He has been in office since 20 January 2025. This term runs to 20 January 2029. He is the 47th president. The Vice President is JD Vance.", bn: "৬ নভেম্বর ২০২৬ পর্যন্ত যুক্তরাষ্ট্রের প্রেসিডেন্ট ডোনাল্ড ট্রাম্প। তিনি ২০ জানুয়ারি ২০২৫ থেকে দায়িত্বে। এই মেয়াদ ২০ জানুয়ারি ২০২৯ পর্যন্ত। তিনি ৪৭তম প্রেসিডেন্ট। ভাইস প্রেসিডেন্ট জেডি ভ্যান্স।" }
+  ];
+  function recordAnswer(q) {
+    const hits = RECORD.filter((r) => r.test.test(q));
+    if (hits.length) return hits.map((h) => en() ? h.en : h.bn).join("\n\n") + (en() ? "\n\nOffline record, 6 November 2026. Anything not written here was not guessed." : "\n\nঅফলাইন তালিকা, ৬ নভেম্বর ২০২৬। এখানে নেই এমন কিছু অনুমান করা হয়নি।");
+    if (/who is|who was|কে হলেন|কে ছিলেন|এখন কে|current (president|prime minister|chief minister)|প্রেসিডেন্ট কে|রাষ্ট্রপতি কে/i.test(q)) {
+      return en()
+        ? "That is not in the offline record of 6 November 2026. This brain will not guess.\n\nThe record does have: Prime Minister of India, President of India, Chief Minister of West Bengal, and President of the United States."
+        : "এটা ৬ নভেম্বর ২০২৬-এর অফলাইন তালিকায় নেই। এই মস্তিষ্ক অনুমান করবে না।\n\nতালিকায় আছে: ভারতের প্রধানমন্ত্রী, ভারতের রাষ্ট্রপতি, পশ্চিমবঙ্গের মুখ্যমন্ত্রী, যুক্তরাষ্ট্রের প্রেসিডেন্ট।";
+    }
+    return "";
+  }
+
   async function ask(q) {
+    sink = data.turns;
+    try { if (await localJob(q)) return; }
+    finally { sink = null; }
     await speak(data.turns, q, "", null);
   }
 
@@ -264,7 +291,7 @@
       setStatus(L("ছোট মস্তিষ্ক এই ফোনে আছে (" + Math.round(own.size / 1048576) + " MB)। খুললেই চলবে।", "The small brain is already on this phone (" + Math.round(own.size / 1048576) + " MB). Open it when you want."));
       return;
     }
-    setStatus(L("এখনো এই ফোনে নেই। প্রথমবার প্রায় ১০০ MB। আগের ৪০৯ MB ফাইল আর ব্যবহার হয় না।", "Not on this phone yet. The first time is about 100 MB. The old 409 MB file is no longer used."));
+    setStatus(L("এখনো এই ফোনে নেই। প্রথমবার প্রায় ২৫৮ MB, ছোট ছোট অংশে।", "Not on this phone yet. The first time is about 258 MB, in small pieces."));
   }
 
   function bind() {
@@ -703,12 +730,14 @@
     if (typeof n !== "number" || !Number.isFinite(n)) throw new Error("bad");
     return n;
   }
+  let sink = null;
   function showLocal(q, md, tables) {
-    data.off = data.off || [];
-    data.off.push({ role: "user", content: q });
-    data.off.push({ role: "assistant", content: String(md).slice(0, 8000) });
+    const list = sink || (data.off = data.off || []);
+    list.push({ role: "user", content: q });
+    list.push({ role: "assistant", content: String(md).slice(0, 12000) });
     paper = { md: String(md), tables: tables || [] };
     saveData();
+    paint();
     paintOff();
     const bar = $("off-save");
     if (bar) bar.hidden = false;
@@ -753,8 +782,12 @@
     else if (/নোটিশ|notice|show-?cause/i.test(text)) kind = "notice";
     else if (/আদেশ|\border\b/i.test(text)) kind = "order";
     else if (/রিপোর্ট|\breport\b/i.test(text)) kind = "report";
-    else if (/চিঠি|\bletter\b|\bdfa\b/i.test(text)) kind = "letter";
+    else if (/চিঠি|\bletter\b|\bdfa\b|draft|খসড়া/i.test(text)) kind = "letter";
     else if (/বিশ্লেষণ|analys|সারাংশ|summary/i.test(text)) kind = "analyse";
+    if (!kind) {
+      const known = recordAnswer(text);
+      if (known) { showLocal(text, known, []); return true; }
+    }
     const wm = wordMath(text);
     if (wm && !kind) {
       showLocal(text, (en() ? "Result: **" : "ফলাফল: **") + fmt(wm.n) + (wm.suffix || "") + "**\n\n" + wm.how + " = " + fmt(wm.n) + (wm.suffix || ""));

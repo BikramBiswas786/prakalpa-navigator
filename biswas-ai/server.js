@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "207";
+const BUILD = "208";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -1148,8 +1148,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url.pathname === "/api/brain-part") {
-      const SIZE = 105454432;
-      const SRC = "https://huggingface.co/bartowski/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf";
+      const SIZE = 270590880;
+      const SRC = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
       const start = Math.max(0, Number(url.searchParams.get("s")) || 0);
       if (limited(req, "brain", 80, 60 * 1000)) { tooMany(res); return; }
       if (start >= SIZE) { res.writeHead(416).end(); return; }
