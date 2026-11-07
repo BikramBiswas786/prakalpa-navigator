@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "214";
+const BUILD = "215";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -1153,10 +1153,11 @@ const server = http.createServer(async (req, res) => {
       const start = Math.max(0, Number(url.searchParams.get("s")) || 0);
       if (limited(req, "brain", 800, 60 * 1000)) { tooMany(res); return; }
       if (start >= SIZE) { res.writeHead(416).end(); return; }
-      const end = Math.min(SIZE - 1, start + 512 * 1024 - 1);
-      const r = await fetch(SRC, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(25000) });
+      const asked = Math.min(4 * 1024 * 1024, Math.max(64 * 1024, Number(url.searchParams.get("n")) || (2 * 1024 * 1024)));
+      const end = Math.min(SIZE - 1, start + asked - 1);
+      const r = await fetch(SRC, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(30000) });
       const announced = Number(r.headers.get("content-length") || 0);
-      if (r.status !== 206 || announced > 2 * 1024 * 1024) {
+      if (r.status !== 206 || (announced && announced > asked + 64)) {
         try { await r.body.cancel(); } catch (e) { /* ignore */ }
         res.writeHead(502, { "content-type": "text/plain" }).end("range failed");
         return;

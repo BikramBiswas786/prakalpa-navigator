@@ -79,28 +79,58 @@
   const cfg = () => ({ n_ctx: 768, n_threads: 1, n_batch: 64 });
 
   const HF = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
-  const CHUNK = 512 * 1024;
+  let via = "";
+  let piece = 2 * 1024 * 1024;
 
-  async function pullChunk(start) {
-    const end = Math.min(SIZE - 1, start + CHUNK - 1);
-    const want = end - start + 1;
-    const urls = [HF, "/api/brain-part?s=" + start];
+  async function grab(start, len, which, signal) {
+    const end = start + len - 1;
+    const url = which === "hf" ? HF : "/api/brain-part?s=" + start + "&n=" + len;
+    const opt = { signal };
+    if (which === "hf") opt.headers = { Range: "bytes=" + start + "-" + end };
+    const r = await fetch(url, opt);
+    if (!r.ok) throw new Error("download " + r.status);
+    const announced = Number(r.headers.get("content-length") || 0);
+    if (announced > len + 64) throw new Error("range ignored");
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength < len) throw new Error("short part");
+    return buf.byteLength === len ? buf : buf.slice(0, len);
+  }
+
+  async function pullExact(start, len) {
+    if (!via) {
+      const ctrls = [];
+      const jobs = ["proxy", "hf"].map((which) => {
+        const ac = new AbortController();
+        ctrls.push(ac);
+        const timer = setTimeout(() => ac.abort(), 15000);
+        const p = grab(start, len, which, ac.signal).then((buf) => ({ which, buf, timer }));
+        p.catch(() => {});
+        return p;
+      });
+      try {
+        const won = await Promise.any(jobs);
+        ctrls.forEach((c) => c.abort());
+        clearTimeout(won.timer);
+        via = won.which;
+        return won.buf;
+      } catch (e) {
+        ctrls.forEach((c) => c.abort());
+        throw new Error("Failed to fetch");
+      }
+    }
+    const order = [via, via === "hf" ? "proxy" : "hf"];
     let last = new Error("Failed to fetch");
-    for (const url of urls) {
-      for (let n = 0; n < 3; n++) {
-        try {
-          const opt = url.startsWith("http") ? { headers: { Range: "bytes=" + start + "-" + end } } : {};
-          const r = await fetch(url, opt);
-          if (!r.ok) throw new Error("download " + r.status);
-          const announced = Number(r.headers.get("content-length") || 0);
-          if (announced > CHUNK * 3) throw new Error("range ignored");
-          const buf = await r.arrayBuffer();
-          if (buf.byteLength < want) throw new Error("short part");
-          return buf.byteLength === want ? buf : buf.slice(0, want);
-        } catch (e) {
-          last = e;
-          await new Promise((res) => setTimeout(res, 500 * (n + 1)));
-        }
+    for (const which of order) {
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 20000);
+      try {
+        const buf = await grab(start, len, which, ac.signal);
+        via = which;
+        clearTimeout(timer);
+        return buf;
+      } catch (e) {
+        last = e;
+        clearTimeout(timer);
       }
     }
     throw last;
@@ -120,13 +150,34 @@
     if (have > 0 && have < SIZE) {
       try { await w.seek(have); } catch (e) { await w.close(); w = await fh.createWritable(); have = 0; }
     } else have = 0;
+    const started = Date.now();
+    const from = have;
     try {
-      while (have < SIZE) {
-        const buf = await pullChunk(have);
+      if (have < SIZE) {
+        const buf = await pullExact(have, Math.min(piece, SIZE - have));
         await w.write(buf);
         have += buf.byteLength;
+      }
+      while (have < SIZE) {
+        const jobs = [];
+        for (let i = 0; i < 4 && have + i * piece < SIZE; i++) {
+          const start = have + i * piece;
+          jobs.push(pullExact(start, Math.min(piece, SIZE - start)));
+        }
+        let parts;
+        try { parts = await Promise.all(jobs); }
+        catch (e) {
+          if (piece > 512 * 1024) { piece = 512 * 1024; continue; }
+          throw e;
+        }
+        for (const buf of parts) {
+          await w.write(buf);
+          have += buf.byteLength;
+        }
         const pct = Math.min(100, Math.round((have / SIZE) * 100));
-        setStatus(L("নামছে " + pct + "% · প্রায় ২৫৮ MB। নেট কেটে গেলে আবার চাপুন, যা নামেছে তা থাকে।", "Downloading " + pct + "% · about 258 MB. If the network drops, tap again. What is saved is kept."));
+        const sec = Math.max(1, (Date.now() - started) / 1000);
+        const rate = ((have - from) / sec / 1048576).toFixed(1);
+        setStatus(L("নামছে " + pct + "% · " + rate + " MB/সেকেন্ড। কেটে গেলে আবার চাপুন।", "Downloading " + pct + "% · " + rate + " MB/s. If it stops, tap again."));
       }
     } catch (e) {
       try { await w.close(); } catch (err) { /* already closed */ }
