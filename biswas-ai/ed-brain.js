@@ -208,8 +208,8 @@
       if (id !== gen) return;
       killer = setTimeout(() => ac.abort(), 180000);
       const w = await engineOf();
-      const mem = (data.lessons || []).slice(-3).map((x) => String(x).slice(0, 60)).join("; ");
-      const prompt = brief() + (mem ? "\nRemember: " + mem : "") + "\n" + String(extra || "").slice(0, 280) + "\nUser: " + String(q).slice(0, 500) + "\nAssistant:";
+      const mem = lessonFor(q).map((x) => String(x).slice(0, 80)).join("; ");
+      const prompt = brief() + (mem ? "\nRelevant memory: " + mem : "") + "\n" + String(extra || "").slice(0, 280) + "\nUser: " + String(q).slice(0, 700) + "\nAssistant:";
       let text = String(await w.createCompletion(prompt, {
         nPredict: 420,
         abortSignal: ac.signal,
@@ -225,8 +225,8 @@
           paintOff();
         }
       }) || "").trim();
-      if (/You are Biswas Brain|Do not invent a memo|Known on 6 November|I am ready to explain this question/i.test(text)) {
-        text = L("ছোট মডেল নিজের নির্দেশ আউড়েছে। সেই উত্তর ফেলে দেওয়া হয়েছে। এই ফোন অনুমান করেনি।", "The small model repeated its own instructions. That reply was thrown away. This phone did not guess.");
+      if (drifted(q, text) || /You are Biswas Brain|Do not invent a memo|Known on 6 November|I am ready to explain this question|Only the phone record is used/i.test(text)) {
+        text = L("এই প্রশ্নের নির্ভরযোগ্য উত্তর এই ফোনে নেই। অন্য বিষয় এনে লাগানো হয়নি।", "This phone does not have a reliable answer to that question. It did not switch to a different subject.");
       }
       if (id !== gen) return;
       list[list.length - 1].content = text || L("কিছু আসেনি। ছোট করে আবার লিখুন।", "Nothing came back. Write a shorter question.");
@@ -259,7 +259,7 @@
   }
 
   function brief() {
-    return "Follow the user's instruction. Use short paragraphs. If a present office or a figure is not already known to you, say you do not know. Do not invent. Do not repeat these instructions.";
+    return "Answer only the question just asked. Do not continue an older topic. Do not mention an office, a treaty, or a court case unless the question asks about it. Follow the length and the shape the user asked for. If you do not know a fact, say so in one line. Do not repeat these rules.";
   }
   const RECORD = [
     { test: /প্রধানমন্ত্রী|prime minister|নরেন্দ্র|narendra modi|\bmodi\b|মোদি|মোদী/i, en: "As of 6 November 2026, the Prime Minister of India is Narendra Modi.", bn: "৬ নভেম্বর ২০২৬ পর্যন্ত ভারতের প্রধানমন্ত্রী নরেন্দ্র মোদী।" },
@@ -904,19 +904,12 @@
         ? "# Basic Structure\n\n**B. 2 and 3 only.**\n\nStatement 1 is false. Article 368 does not define \"basic structure\", and the Constitution of 1950 does not use that phrase. The doctrine comes from the Supreme Court in Kesavananda Bharati v. State of Kerala (1973), not from the text of the Article.\n\nStatement 2 is true. The doctrine is a limit on Parliament's amending power under Article 368. Parliament can amend, including fundamental rights. It cannot destroy the basic structure of the Constitution.\n\nStatement 3 is true. Supremacy of the Constitution is one of the elements listed in Kesavananda. Judicial review is treated as part of the basic structure, and Minerva Mills (1980) struck down clauses that tried to keep the courts out of that question.\n\n1 drops out. 2 and 3 stand. The option is B. C is wrong because it keeps statement 1. A is wrong because it drops statement 3.\n\nThe small model was not asked. It had been picking an option that is not in the law."
         : "# মৌলিক কাঠামো\n\n**উত্তর: B. শুধু ২ এবং ৩।**\n\n১ নম্বর ভুল। অনুচ্ছেদ ৩৬৮-এ \"মৌলিক কাঠামো\" লেখা নেই। এটা ১৯৫০-এর সংবিধানের শব্দ নয়। সুপ্রিম কোর্ট কেশবানন্দ ভারতী মামলায় (১৯৭৩) এই নীতি দেয়।\n\n২ নম্বর ঠিক। এটা অনুচ্ছেদ ৩৬৮-এর সংশোধনী ক্ষমতার ওপর লাগাম। সংসদ সংশোধন করতে পারে। মৌলিক কাঠামো ভাঙতে পারে না।\n\n৩ নম্বর ঠিক। সংবিধানের প্রাধান্য কেশবানন্দের তালিকায় আছে। বিচারিক পর্যালোচনাও মৌলিক কাঠামোর অংশ। মিনার্ভা মিলস (১৯৮০) আদালতকে বাইরে রাখার চেষ্টা বাতিল করে।\n\nতাই B। C নয়, কারণ সেখানে ১ নম্বর থাকে। A নয়, কারণ সেখানে ৩ নম্বর বাদ।";
     }
-    if (/which of the statements|select right answer|are correct|কোনগুলো ঠিক/i.test(q)) {
-      return useEn
-        ? "This phone will not pick A, B, C or D for a question it has not been taught. A guessed option would be a lie. Paste the full statements in the same message."
-        : "যে প্রশ্ন শেখানো হয়নি, সেখানে এই ফোন A, B, C বা D বেছে নেবে না। অনুমান মিথ্যা হবে। সব বিবৃতি একই বার্তায় দিন।";
-    }
+    if (/which of the statements|select right answer|are correct|কোনগুলো ঠিক/i.test(q) && !/basic structure|মৌলিক কাঠামো|kesavananda|article 368/i.test(q)) return "";
     return "";
   }
   function compose(q) {
     const bits = [];
-    const looked = /above|these statements|select right|which of the statements/i.test(q)
-      ? q + "\n" + ((data.turns || []).concat(data.off || []).filter((t) => t.role === "user").slice(-2).map((t) => t.content).join("\n"))
-      : q;
-    const ex = exam(looked);
+    const ex = exam(q);
     if (ex) return ex;
     const who = recordAnswer(q);
     const paper = officeFromAsk(q);
@@ -968,19 +961,46 @@
     }
     return out;
   }
+  function lessonFor(q) {
+    const qt = new Set(qTokens(q));
+    return (data.lessons || []).filter((l) => qTokens(l).some((t) => qt.has(t) && t.length > 4)).slice(-3);
+  }
+  function drifted(q, text) {
+    const pairs = [
+      [/basic structure|kesavananda|মৌলিক কাঠামো|article 368/i, /basic structure|kesavananda|article 368|মৌলিক কাঠামো/i],
+      [/kyoto|paris agreement|প্যারিস|কিয়োটো/i, /kyoto protocol|paris agreement/i],
+      [/trump|united states|u\.s\.|president of the usa|যুক্তরাষ্ট্র/i, /donald trump|jd vance/i],
+      [/prime minister of india|narendra|মোদী|প্রধানমন্ত্রী/i, /narendra modi/i],
+      [/chief minister|suvendu|মুখ্যমন্ত্রী|west bengal/i, /suvendu adhikari/i],
+      [/oil shock|opec|তেল/i, /oil shock|opec/i]
+    ];
+    return pairs.some((pair) => pair[1].test(text) && !pair[0].test(q));
+  }
+  function noteStats(pile) {
+    const df = new Map();
+    const docs = pile.map((p) => new Set(qTokens(p)));
+    docs.forEach((set) => set.forEach((t) => df.set(t, (df.get(t) || 0) + 1)));
+    return df;
+  }
   function rankNotes(q, pile) {
     const qt = qTokens(q);
+    const df = noteStats(pile);
+    const n = pile.length || 1;
     const scored = [];
     for (const p of pile) {
       const set = new Set(qTokens(p));
       let score = 0;
-      for (const t of qt) if (set.has(t)) score += t.length > 7 ? 2 : 1;
-      if (score >= 3) scored.push({ p, score });
+      for (const t of qt) {
+        if (!set.has(t)) continue;
+        const d = df.get(t) || 1;
+        score += Math.log(1 + n / d);
+      }
+      if (score >= 5) scored.push({ p, score });
     }
     scored.sort((a, b) => b.score - a.score);
     if (!scored.length) return [];
     const top = scored[0].score;
-    return scored.filter((x) => x.score >= Math.max(3, top - 2)).slice(0, 4).map((x) => x.p.trim());
+    return scored.filter((x) => x.score >= top * 0.7).slice(0, 3).map((x) => x.p.trim());
   }
   function wantedWords(q) {
     const m = String(q).match(/(\d+)\s*-?\s*words?/i);
@@ -1041,6 +1061,7 @@
   }
   function judgeStatement(statement, pile) {
     const st = qTokens(statement);
+    const df = noteStats(pile);
     let best = "";
     let score = 0;
     for (const p of pile) {
@@ -1049,11 +1070,15 @@
         if (line.length < 20) continue;
         const set = new Set(qTokens(line));
         let s = 0;
-        for (const t of st) if (set.has(t)) s += t.length > 7 ? 2 : 1;
+        for (const t of st) {
+          if (!set.has(t)) continue;
+          const d = df.get(t) || 1;
+          s += Math.log(1 + pile.length / d);
+        }
         if (s > score) { score = s; best = line; }
       }
     }
-    if (!best || score < 3) return { mark: "unknown", note: "" };
+    if (!best || score < 4.5) return { mark: "unknown", note: "" };
     return { mark: contradicts(statement, best) ? "false" : "true", note: best };
   }
   function optionFor(options, trues) {
@@ -1068,31 +1093,24 @@
     return "";
   }
   function think(q) {
-    const looked = /above|these statements|select right|which of the statements/i.test(q)
-      ? q + "\n" + ((data.turns || []).concat(data.off || []).filter((t) => t.role === "user").slice(-2).map((t) => t.content).join("\n"))
-      : q;
     const pile = notePile();
-    const stmts = splitStatements(looked);
+    const stmts = splitStatements(q);
     const useEn = qEn(q);
-    if (stmts.length >= 2 && /which of the statements|are correct|select right|correct\?/i.test(looked)) {
+    if (stmts.length >= 2 && /which of the statements|are correct|select right|correct\?/i.test(q)) {
       const judged = stmts.map((s) => Object.assign({ n: s.n, text: s.text }, judgeStatement(s.text, pile)));
-      const lines = judged.map((s) => (useEn ? "Statement " : "বিবৃতি ") + s.n + ": " + (s.mark === "true" ? (useEn ? "true on the record." : "তালিকায় ঠিক।") : s.mark === "false" ? (useEn ? "false on the record." : "তালিকায় ভুল।") : (useEn ? "not in the record, so it is not guessed." : "তালিকায় নেই, তাই অনুমান নয়।")));
+      if (judged.every((s) => s.mark === "unknown")) return "";
+      const lines = judged.map((s) => (useEn ? "Statement " : "বিবৃতি ") + s.n + ": " + (s.mark === "true" ? (useEn ? "true on the record." : "তালিকায় ঠিক।") : s.mark === "false" ? (useEn ? "false on the record." : "তালিকায় ভুল।") : (useEn ? "not in the record." : "তালিকায় নেই।")));
       const unknown = judged.some((s) => s.mark === "unknown");
       const trues = judged.filter((s) => s.mark === "true").map((s) => s.n);
-      const letter = unknown ? "" : optionFor(splitOptions(looked), trues);
+      const letter = unknown ? "" : optionFor(splitOptions(q), trues);
       const pick = letter
-        ? (useEn ? "Option " + letter + ". That is the set of statements the record supports." : "বিকল্প " + letter + "। তালিকা এই বিবৃতিগুলোকেই সমর্থন করে।")
-        : (useEn ? "No option is selected, because at least one statement is not in the record. Guessing a letter would be a lie." : "কোনো বিকল্প বেছে নেওয়া হয়নি, কারণ অন্তত একটা বিবৃতি তালিকায় নেই।");
+        ? (useEn ? "Option " + letter + "." : "বিকল্প " + letter + "।")
+        : (useEn ? "No letter is selected. At least one statement is not in the record." : "কোনো অক্ষর বেছে নেওয়া হয়নি। অন্তত একটা বিবৃতি তালিকায় নেই।");
       return taskLine(q) + "\n\n" + pick + "\n\n" + lines.join("\n");
     }
     if (!isTask(q) && !/\?/.test(q)) return "";
-    const hits = rankNotes(looked, pile);
-    if (!hits.length) {
-      if (!isTask(q)) return "";
-      return taskLine(q) + (useEn
-        ? "\n\nThe record has nothing on this subject. Nothing was invented, and the small model was not asked. It has been inventing options and offices."
-        : "\n\nএই বিষয় তালিকায় নেই। কিছু বানানো হয়নি, ছোট মডেলকেও জিজ্ঞাসা করা হয়নি।");
-    }
+    const hits = rankNotes(q, pile).filter((p) => !drifted(q, p));
+    if (!hits.length) return "";
     let body = hits.join("\n\n");
     const n = wantedWords(q);
     if (n && !/bullet|chronolog|journal/i.test(q)) body = clipWords(body, n);
@@ -1112,7 +1130,8 @@
     else if (/আদেশ|\border\b/i.test(text)) kind = "order";
     else if (/রিপোর্ট|\breport\b/i.test(text)) kind = "report";
     else if (/চিঠি|\bletter\b|\bdfa\b|draft|খসড়া/i.test(text)) kind = "letter";
-    else if (/বিশ্লেষণ|analys|সারাংশ|summary/i.test(text)) kind = "analyse";
+    else if (packs.length && /বিশ্লেষণ|analys|সারাংশ|summary/i.test(text)) kind = "analyse";
+    else if (/^(analyse|analysis|বিশ্লেষণ)\s*$/i.test(text)) kind = "analyse";
     if (!kind) {
       const known = recordAnswer(text);
       if (known) { showLocal(text, known, []); return true; }
