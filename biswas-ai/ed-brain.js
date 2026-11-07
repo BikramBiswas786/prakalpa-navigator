@@ -79,61 +79,31 @@
   const cfg = () => ({ n_ctx: 768, n_threads: 1, n_batch: 64 });
 
   const HF = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
-  let via = "";
-  let piece = 2 * 1024 * 1024;
+  let via = "proxy";
 
-  async function grab(start, len, which, signal) {
+  async function grab(start, len, which) {
     const end = start + len - 1;
-    const url = which === "hf" ? HF : "/api/brain-part?s=" + start + "&n=" + len;
-    const opt = { signal };
-    if (which === "hf") opt.headers = { Range: "bytes=" + start + "-" + end };
-    const r = await fetch(url, opt);
-    if (!r.ok) throw new Error("download " + r.status);
-    const announced = Number(r.headers.get("content-length") || 0);
-    if (announced > len + 64) throw new Error("range ignored");
-    const buf = await r.arrayBuffer();
-    if (buf.byteLength < len) throw new Error("short part");
-    return buf.byteLength === len ? buf : buf.slice(0, len);
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 60000);
+    try {
+      const url = which === "hf" ? HF : "/api/brain-part?s=" + start + "&n=" + len;
+      const opt = { signal: ac.signal };
+      if (which === "hf") opt.headers = { Range: "bytes=" + start + "-" + end };
+      const r = await fetch(url, opt);
+      if (!r.ok) throw new Error("download " + r.status);
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength < len) throw new Error("short " + buf.byteLength);
+      return buf.byteLength === len ? buf : buf.slice(0, len);
+    } finally { clearTimeout(timer); }
   }
 
-  async function pullExact(start, len) {
-    if (!via) {
-      const ctrls = [];
-      const jobs = ["proxy", "hf"].map((which) => {
-        const ac = new AbortController();
-        ctrls.push(ac);
-        const timer = setTimeout(() => ac.abort(), 15000);
-        const p = grab(start, len, which, ac.signal).then((buf) => ({ which, buf, timer }));
-        p.catch(() => {});
-        return p;
-      });
-      try {
-        const won = await Promise.any(jobs);
-        ctrls.forEach((c) => c.abort());
-        clearTimeout(won.timer);
-        via = won.which;
-        return won.buf;
-      } catch (e) {
-        ctrls.forEach((c) => c.abort());
-        throw new Error("Failed to fetch");
-      }
-    }
-    const order = [via, via === "hf" ? "proxy" : "hf"];
-    let last = new Error("Failed to fetch");
+  function pull(start, len) {
+    const order = via === "hf" ? ["hf", "proxy"] : ["proxy", "hf"];
+    let last = Promise.reject(new Error("Failed to fetch"));
     for (const which of order) {
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), 20000);
-      try {
-        const buf = await grab(start, len, which, ac.signal);
-        via = which;
-        clearTimeout(timer);
-        return buf;
-      } catch (e) {
-        last = e;
-        clearTimeout(timer);
-      }
+      last = last.catch(() => grab(start, len, which).then((buf) => { via = which; return buf; }));
     }
-    throw last;
+    return last;
   }
 
   async function downloadParts() {
@@ -143,48 +113,45 @@
     const fh = await root.getFileHandle(FILE_NAME, { create: true });
     let have = 0;
     try { have = (await fh.getFile()).size; } catch (e) { have = 0; }
-    if (have > SIZE || (have > 0 && have < 1000000)) have = 0;
+    if (have > SIZE) have = 0;
+    const piece = 1024 * 1024;
     let w;
     try { w = await fh.createWritable({ keepExistingData: have > 0 && have < SIZE }); }
     catch (e) { w = await fh.createWritable(); have = 0; }
     if (have > 0 && have < SIZE) {
-      try { await w.seek(have); } catch (e) { await w.close(); w = await fh.createWritable(); have = 0; }
-    } else have = 0;
+      try { await w.seek(have); }
+      catch (e) { try { await w.close(); } catch (err) { /* keep the saved bytes */ } throw new Error("resume failed"); }
+    }
     const started = Date.now();
     const from = have;
+    let queued = null;
+    const say = () => {
+      const pct = Math.min(99, Math.round((have / SIZE) * 100));
+      const moved = have - from;
+      const sec = Math.max(1, (Date.now() - started) / 1000);
+      const rate = moved > 0 ? (moved / sec / 1048576).toFixed(1) : "…";
+      setStatus(L("নামছে " + pct + "% · " + rate + " MB/সেকেন্ড", "Downloading " + pct + "% · " + rate + " MB/s"));
+    };
     try {
-      if (have < SIZE) {
-        const buf = await pullExact(have, Math.min(piece, SIZE - have));
+      say();
+      while (have < SIZE) {
+        const len = Math.min(piece, SIZE - have);
+        const job = queued && queued.start === have ? queued.p : pull(have, len);
+        const nxt = have + len;
+        queued = nxt < SIZE ? { start: nxt, p: pull(nxt, Math.min(piece, SIZE - nxt)) } : null;
+        const buf = await job;
         await w.write(buf);
         have += buf.byteLength;
-      }
-      while (have < SIZE) {
-        const jobs = [];
-        for (let i = 0; i < 4 && have + i * piece < SIZE; i++) {
-          const start = have + i * piece;
-          jobs.push(pullExact(start, Math.min(piece, SIZE - start)));
-        }
-        let parts;
-        try { parts = await Promise.all(jobs); }
-        catch (e) {
-          if (piece > 512 * 1024) { piece = 512 * 1024; continue; }
-          throw e;
-        }
-        for (const buf of parts) {
-          await w.write(buf);
-          have += buf.byteLength;
-        }
-        const pct = Math.min(100, Math.round((have / SIZE) * 100));
-        const sec = Math.max(1, (Date.now() - started) / 1000);
-        const rate = ((have - from) / sec / 1048576).toFixed(1);
-        setStatus(L("নামছে " + pct + "% · " + rate + " MB/সেকেন্ড। কেটে গেলে আবার চাপুন।", "Downloading " + pct + "% · " + rate + " MB/s. If it stops, tap again."));
+        say();
       }
     } catch (e) {
+      if (queued) queued.p.catch(() => {});
       try { await w.close(); } catch (err) { /* already closed */ }
       const pct = Math.min(99, Math.round((have / SIZE) * 100));
+      const why = String(e && e.message || e).slice(0, 40);
       const err = new Error(L(
-        "নামা " + pct + "%-এ থেমেছে। আবার চাপুন। যা নামেছে তা আছে।",
-        "Stopped at " + pct + "%. Tap again. The saved part is kept."
+        "নামা " + pct + "%-এ থেমেছে (" + why + ")। আবার চাপুন। যা নামেছে তা আছে।",
+        "Stopped at " + pct + "% (" + why + "). Tap again. The saved part is kept."
       ));
       err.have = have;
       throw err;
