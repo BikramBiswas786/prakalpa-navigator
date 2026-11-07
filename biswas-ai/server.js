@@ -27,7 +27,7 @@ const PD_STATUS = { storage: pd.storage ? (pd.storage.provider || "local") : "no
 const PORT = Number(process.env.PORT) || 3000;
 const PAGE = path.join(DIR, "index.html");
 // Internal build id: only in the X-Build header of /healthz (deploy check). Never shown in the UI.
-const BUILD = "213";
+const BUILD = "214";
 // Cache-busting by content hash (no number a person would read as a version).
 const ATTACH_TAG = crypto.createHash("sha256").update(fs.readFileSync(path.join(DIR, "attach.js"))).digest("hex").slice(0, 10);
 // the Drafting Desk scripts: editors.js (frame, picker, save) and one module per editor; each tag is a content hash
@@ -1151,12 +1151,18 @@ const server = http.createServer(async (req, res) => {
       const SIZE = 270590880;
       const SRC = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
       const start = Math.max(0, Number(url.searchParams.get("s")) || 0);
-      if (limited(req, "brain", 80, 60 * 1000)) { tooMany(res); return; }
+      if (limited(req, "brain", 800, 60 * 1000)) { tooMany(res); return; }
       if (start >= SIZE) { res.writeHead(416).end(); return; }
-      const end = Math.min(SIZE - 1, start + 4 * 1024 * 1024 - 1);
-      const r = await fetch(SRC, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(60000) });
-      if (!(r.status === 206 || r.status === 200)) { res.writeHead(502, { "content-type": "text/plain" }).end("download failed"); return; }
+      const end = Math.min(SIZE - 1, start + 512 * 1024 - 1);
+      const r = await fetch(SRC, { headers: { Range: `bytes=${start}-${end}` }, signal: AbortSignal.timeout(25000) });
+      const announced = Number(r.headers.get("content-length") || 0);
+      if (r.status !== 206 || announced > 2 * 1024 * 1024) {
+        try { await r.body.cancel(); } catch (e) { /* ignore */ }
+        res.writeHead(502, { "content-type": "text/plain" }).end("range failed");
+        return;
+      }
       const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length < end - start + 1) { res.writeHead(502, { "content-type": "text/plain" }).end("short part"); return; }
       res.writeHead(200, { "content-type": "application/octet-stream", "cache-control": "no-store", "x-start": String(start), "x-total": String(SIZE) });
       res.end(buf);
       return;

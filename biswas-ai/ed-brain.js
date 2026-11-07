@@ -78,8 +78,37 @@
 
   const cfg = () => ({ n_ctx: 768, n_threads: 1, n_batch: 64 });
 
+  const HF = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
+  const CHUNK = 512 * 1024;
+
+  async function pullChunk(start) {
+    const end = Math.min(SIZE - 1, start + CHUNK - 1);
+    const want = end - start + 1;
+    const urls = [HF, "/api/brain-part?s=" + start];
+    let last = new Error("Failed to fetch");
+    for (const url of urls) {
+      for (let n = 0; n < 3; n++) {
+        try {
+          const opt = url.startsWith("http") ? { headers: { Range: "bytes=" + start + "-" + end } } : {};
+          const r = await fetch(url, opt);
+          if (!r.ok) throw new Error("download " + r.status);
+          const announced = Number(r.headers.get("content-length") || 0);
+          if (announced > CHUNK * 3) throw new Error("range ignored");
+          const buf = await r.arrayBuffer();
+          if (buf.byteLength < want) throw new Error("short part");
+          return buf.byteLength === want ? buf : buf.slice(0, want);
+        } catch (e) {
+          last = e;
+          await new Promise((res) => setTimeout(res, 500 * (n + 1)));
+        }
+      }
+    }
+    throw last;
+  }
+
   async function downloadParts() {
     if (!navigator.storage || !navigator.storage.getDirectory) throw new Error("no storage");
+    try { if (navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* the browser may refuse */ }
     const root = await navigator.storage.getDirectory();
     const fh = await root.getFileHandle(FILE_NAME, { create: true });
     let have = 0;
@@ -91,15 +120,23 @@
     if (have > 0 && have < SIZE) {
       try { await w.seek(have); } catch (e) { await w.close(); w = await fh.createWritable(); have = 0; }
     } else have = 0;
-    while (have < SIZE) {
-      const r = await fetch("/api/brain-part?s=" + have);
-      if (!r.ok) throw new Error("download " + r.status);
-      const buf = await r.arrayBuffer();
-      if (!buf.byteLength) throw new Error("empty part");
-      await w.write(buf);
-      have += buf.byteLength;
-      const pct = Math.min(100, Math.round((have / SIZE) * 100));
-      setStatus(L("নামছে " + pct + "% · প্রায় ২৫৮ MB", "Downloading " + pct + "% · about 258 MB"));
+    try {
+      while (have < SIZE) {
+        const buf = await pullChunk(have);
+        await w.write(buf);
+        have += buf.byteLength;
+        const pct = Math.min(100, Math.round((have / SIZE) * 100));
+        setStatus(L("নামছে " + pct + "% · প্রায় ২৫৮ MB। নেট কেটে গেলে আবার চাপুন, যা নামেছে তা থাকে।", "Downloading " + pct + "% · about 258 MB. If the network drops, tap again. What is saved is kept."));
+      }
+    } catch (e) {
+      try { await w.close(); } catch (err) { /* already closed */ }
+      const pct = Math.min(99, Math.round((have / SIZE) * 100));
+      const err = new Error(L(
+        "নামা " + pct + "%-এ থেমেছে। আবার চাপুন। যা নামেছে তা আছে।",
+        "Stopped at " + pct + "%. Tap again. The saved part is kept."
+      ));
+      err.have = have;
+      throw err;
     }
     await w.close();
     return fh.getFile();
@@ -122,8 +159,10 @@
   async function useHf() {
     let file = await ownFile();
     if (!file || Math.abs(file.size - SIZE) > 4096) {
-      setStatus(L("প্রথমবার প্রায় ২৫৮ MB, ছোট ছোট অংশে। আগের ১০০ MB ফাইল আর ব্যবহার হয় না।", "First time: about 258 MB, in small pieces. The old 100 MB file is not used."));
-      try { const root = await navigator.storage.getDirectory(); await root.removeEntry("biswas-brain.gguf"); } catch (e) { /* old file already gone */ }
+      const got = file ? file.size : 0;
+      setStatus(got > 1000000
+        ? L("আগের অংশ থেকে চলছে, " + Math.round((got / SIZE) * 100) + "%। আবার গোড়া থেকে নয়।", "Continuing from " + Math.round((got / SIZE) * 100) + "%. Not starting over.")
+        : L("২৫৮ MB এই ফোনে নেই। ছোট ছোট অংশে নামছে। নেট কাটলে যা নামেছে তা থাকে।", "The 258 MB copy is not on this phone yet. It downloads in small pieces. A saved part is kept if the network drops."));
       file = await downloadParts();
     } else setStatus(L("ফোনের কপি খোলা হচ্ছে…", "Opening the copy on this phone…"));
     await useBlob(file, "SmolLM2-360M");
