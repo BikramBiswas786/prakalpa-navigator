@@ -52,6 +52,7 @@
     const w = engine;
     engine = null;
     loaded = "";
+    cfgTag = "";
     if (w) { try { await w.exit(); } catch (e) { /* already gone */ } }
   }
 
@@ -76,7 +77,9 @@
 
   async function cachedHf() { return false; }
 
-  const cfg = () => ({ n_ctx: 768, n_threads: 1, n_batch: 64 });
+  const cfg = () => ({ n_ctx: 1024, n_threads: 1, n_batch: 512 });
+  const CFG_TAG = "1024-512";
+  let cfgTag = "";
 
   const HF = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
   let via = "proxy";
@@ -168,9 +171,10 @@
     catch (e) {
       await dropEngine();
       w = await engineOf();
-      await w.loadModel([file], { n_ctx: 512, n_threads: 1, n_batch: 64 });
+      await w.loadModel([file], { n_ctx: 1024, n_threads: 1, n_batch: 256 });
     }
     loaded = label || file.name || "file";
+    cfgTag = CFG_TAG;
     setStatus(L("এই ফোনে প্রস্তুত। কোনো চাবি লাগে না।", "Ready on this phone. No key is used."));
   }
 
@@ -222,7 +226,7 @@
   }
 
   async function ensure() {
-    if (loaded && engine) return;
+    if (loaded && engine && cfgTag === CFG_TAG) return;
     const own = await ownFile();
     if (own && Math.abs(own.size - SIZE) < 4096) {
       setStatus(L("ফোনে রাখা ফাইল খোলা হচ্ছে। নিজের PDF, Word বা Excel লাগবে না।", "Opening the file already on this phone. You do not need your own PDF, Word or Excel."));
@@ -257,55 +261,63 @@
         paint();
         paintOff();
       }
-      sayStatus(statusEl, L("উত্তর আসছে… " + s + " সেকেন্ড। ফোন একটু ধীর।", "Answer is coming… " + s + "s. This phone is slow."));
+      sayStatus(statusEl, L("প্রশ্ন পড়ছে…", "Reading the question…"));
     }, 1000);
     let killer = 0;
+    let silence = 0;
+    let started = false;
     try {
       await ensure();
       if (id !== gen) return;
-      killer = setTimeout(() => ac.abort(), 180000);
+      killer = setTimeout(() => ac.abort(), 120000);
+      silence = setTimeout(() => { if (!started) ac.abort(); }, 35000);
       const w = await engineOf();
-      const mem = lessonFor(q).map((x) => String(x).slice(0, 80)).join("; ");
-      const prompt = brief() + (mem ? "\nRelevant memory: " + mem : "") + "\n" + String(extra || "").slice(0, 280) + "\nUser: " + String(q).slice(0, 700) + "\nAssistant:";
+      const ask = String(q).slice(0, 1500);
+      const prompt = "<|im_start|>system\nWrite the full piece asked for. An article or a draft needs several paragraphs, not one line.<|im_end|>\n<|im_start|>user\n" + ask + "<|im_end|>\n<|im_start|>assistant\n";
       let text = String(await w.createCompletion(prompt, {
-        nPredict: 420,
+        nPredict: 520,
         abortSignal: ac.signal,
-        sampling: { temp: 0.4, top_k: 20, top_p: 0.9, penalty_repeat: 1.18, penalty_last_n: 128 },
+        sampling: { temp: 0.7, top_k: 40, top_p: 0.9, penalty_repeat: 1.05, penalty_last_n: 64 },
         onNewToken: (_a, _b, current) => {
           if (id !== gen || !current) return;
-          const bits = current.split(/(?<=[.।!?])\s+/);
-          const lastBit = bits[bits.length - 1] || "";
-          if (/You are Biswas Brain|Known on 6 November|Do not invent a memo/i.test(current)) { ac.abort(); return; }
-          if (lastBit.length > 24 && bits.slice(0, -1).indexOf(lastBit) >= 0) { ac.abort(); return; }
-          list[list.length - 1].content = current;
+          started = true;
+          if (silence) { clearTimeout(silence); silence = 0; }
+          let shown = current.replace(/<\|im_end\|>[\s\S]*$/, "").replace(/<\|im_start\|>/g, "").trim();
+          if (!shown) return;
+          if (current.includes("<|im_end|>")) ac.abort();
+          list[list.length - 1].content = shown;
           paint();
           paintOff();
+          const words = shown.split(/\s+/).length;
+          sayStatus(statusEl, L("লিখছে… " + words + " শব্দ", "Writing… " + words + " words"));
         }
-      }) || "").trim();
-      if (drifted(q, text) || /You are Biswas Brain|Do not invent a memo|Known on 6 November|I am ready to explain this question|Only the phone record is used/i.test(text)) {
-        text = L("এই প্রশ্নের নির্ভরযোগ্য উত্তর এই ফোনে নেই। অন্য বিষয় এনে লাগানো হয়নি।", "This phone does not have a reliable answer to that question. It did not switch to a different subject.");
-      }
+      }) || "").replace(/<\|im_end\|>[\s\S]*$/, "").replace(/<\|im_start\|>/g, "").trim();
       if (id !== gen) return;
-      list[list.length - 1].content = text || L("কিছু আসেনি। ছোট করে আবার লিখুন।", "Nothing came back. Write a shorter question.");
+      if (!text && list[list.length - 1].content && list[list.length - 1].content !== "…" && !/^… \d+$/.test(list[list.length - 1].content)) {
+        text = list[list.length - 1].content;
+      }
+      list[list.length - 1].content = text || L("একটাও শব্দ আসেনি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "Not one word came back. Ask the same question again. Do not shorten it.");
       saveData();
       paint();
       paintOff();
-      sayStatus(statusEl, L("উত্তর এসেছে।", "Answer is ready."));
+      sayStatus(statusEl, text ? L("উত্তর এসেছে।", "Answer is ready.") : list[list.length - 1].content);
     } catch (e) {
       if (id !== gen) return;
-      const aborted = !!(ac.signal.aborted || (e && (e.name === "AbortError" || e.name === "WllamaAbortError")));
       const nofile = e && e.message === "nofile";
+      const sofar = list[list.length - 1] && list[list.length - 1].content;
+      const partial = sofar && sofar !== "…" && !/^… \d+$/.test(sofar) ? sofar : "";
       list[list.length - 1].content = nofile
         ? L("২৫৮ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন। নিজের PDF বা Excel লাগবে না।", "The 258 MB file is not on this phone yet. Tap the button above. You do not need your own PDF or Excel.")
-        : aborted
-          ? L("তিন মিনিটে শব্দ আসেনি। আরও ছোট প্রশ্ন লিখুন।", "No word came in three minutes. Write a shorter question.")
-          : L("উত্তর হয়নি। ", "No answer. ") + String(e && e.message || e).slice(0, 120);
+        : partial
+          ? partial
+          : L("লেখা শুরু হয়নি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "Writing did not start. Ask the same question again. Do not shorten it.");
       saveData();
       paint();
       paintOff();
-      sayStatus(statusEl, list[list.length - 1].content);
+      sayStatus(statusEl, partial ? L("যতটুকু লেখা হয়েছে।", "This is as far as the writing got.") : list[list.length - 1].content);
     } finally {
       if (killer) clearTimeout(killer);
+      if (silence) clearTimeout(silence);
       clearInterval(timer);
       if (id === gen) {
         busy = null;
@@ -1177,6 +1189,7 @@
     const text = String(q || "").trim();
     const paper = officeFromAsk(text);
     if (paper) { showLocal(text, paper, []); return true; }
+    if (/\b(article|essay|নিবন্ধ|প্রবন্ধ)\b/i.test(text)) return false;
     const thought = think(text);
     if (thought) { showLocal(text, thought, []); return true; }
     const made = compose(text);
@@ -1311,7 +1324,7 @@
       bind();
       const last = data.turns[data.turns.length - 1];
       if (last && last.role === "assistant" && (last.content === "…" || /^… \d+$/.test(last.content))) {
-        last.content = L("আগের উত্তর আটকে গিয়েছিল। আবার লিখুন।", "The last answer got stuck. Write again.");
+        last.content = L("আগের লেখা শেষ হয়নি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "The last write did not finish. Ask the same question again. Do not shorten it.");
         saveData();
       }
       paint();
@@ -1322,7 +1335,7 @@
       data.off = data.off || [];
       const last = data.off[data.off.length - 1];
       if (last && last.role === "assistant" && (last.content === "…" || /^… \d+$/.test(last.content))) {
-        last.content = L("আগের উত্তর আটকে গিয়েছিল। আবার লিখুন।", "The last answer got stuck. Write again.");
+        last.content = L("আগের লেখা শেষ হয়নি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "The last write did not finish. Ask the same question again. Do not shorten it.");
         saveData();
       }
       offNote();
