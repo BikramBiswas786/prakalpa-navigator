@@ -77,8 +77,8 @@
 
   async function cachedHf() { return false; }
 
-  const cfg = () => ({ n_ctx: 1024, n_threads: 1, n_batch: 512 });
-  const CFG_TAG = "1024-512";
+  const cfg = () => ({ n_ctx: 512, n_threads: 1, n_batch: 128 });
+  const CFG_TAG = "512-128";
   let cfgTag = "";
 
   const HF = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf";
@@ -171,7 +171,7 @@
     catch (e) {
       await dropEngine();
       w = await engineOf();
-      await w.loadModel([file], { n_ctx: 1024, n_threads: 1, n_batch: 256 });
+      await w.loadModel([file], { n_ctx: 512, n_threads: 1, n_batch: 64 });
     }
     loaded = label || file.name || "file";
     cfgTag = CFG_TAG;
@@ -251,52 +251,35 @@
     if (og) og.disabled = true;
     const ac = new AbortController();
     busy = ac;
-    const t0 = Date.now();
     const timer = setInterval(() => {
       if (id !== gen) return;
-      const s = Math.round((Date.now() - t0) / 1000);
       const cur = list[list.length - 1] && list[list.length - 1].content;
-      if (cur === "…" || /^… \d+$/.test(cur || "")) {
-        list[list.length - 1].content = "… " + s;
-        paint();
-        paintOff();
-      }
-      sayStatus(statusEl, L("প্রশ্ন পড়ছে…", "Reading the question…"));
+      if (cur === "…" || /^… \d+$/.test(cur || "")) sayStatus(statusEl, L("প্রশ্ন পড়ছে। প্রথম শব্দ এলে লেখা শুরু হবে।", "Reading the question. Writing starts when the first word appears."));
     }, 1000);
-    let killer = 0;
-    let silence = 0;
-    let started = false;
     try {
       await ensure();
       if (id !== gen) return;
-      killer = setTimeout(() => ac.abort(), 120000);
-      silence = setTimeout(() => { if (!started) ac.abort(); }, 35000);
       const w = await engineOf();
-      const ask = String(q).slice(0, 1500);
-      const prompt = "<|im_start|>system\nWrite the full piece asked for. An article or a draft needs several paragraphs, not one line.<|im_end|>\n<|im_start|>user\n" + ask + "<|im_end|>\n<|im_start|>assistant\n";
+      const ask = String(q).slice(0, 900);
+      const prompt = "<|im_start|>user\n" + ask + "<|im_end|>\n<|im_start|>assistant\n";
       let text = String(await w.createCompletion(prompt, {
-        nPredict: 520,
-        abortSignal: ac.signal,
+        nPredict: 320,
         sampling: { temp: 0.7, top_k: 40, top_p: 0.9, penalty_repeat: 1.05, penalty_last_n: 64 },
-        onNewToken: (_a, _b, current) => {
+        onNewToken: (_a, _b, current, info) => {
           if (id !== gen || !current) return;
-          started = true;
-          if (silence) { clearTimeout(silence); silence = 0; }
-          let shown = current.replace(/<\|im_end\|>[\s\S]*$/, "").replace(/<\|im_start\|>/g, "").trim();
-          if (!shown) return;
-          if (current.includes("<|im_end|>")) ac.abort();
-          list[list.length - 1].content = shown;
-          paint();
-          paintOff();
-          const words = shown.split(/\s+/).length;
-          sayStatus(statusEl, L("লিখছে… " + words + " শব্দ", "Writing… " + words + " words"));
+          const shown = current.replace(/<\|im_end\|>[\s\S]*$/, "").replace(/<\|im_start\|>/g, "").trim();
+          if (shown) {
+            list[list.length - 1].content = shown;
+            paint();
+            paintOff();
+            sayStatus(statusEl, L("লিখছে… " + shown.split(/\s+/).length + " শব্দ", "Writing… " + shown.split(/\s+/).length + " words"));
+          }
+          if (current.includes("<|im_end|>") && info && info.abortSignal) info.abortSignal();
         }
       }) || "").replace(/<\|im_end\|>[\s\S]*$/, "").replace(/<\|im_start\|>/g, "").trim();
       if (id !== gen) return;
-      if (!text && list[list.length - 1].content && list[list.length - 1].content !== "…" && !/^… \d+$/.test(list[list.length - 1].content)) {
-        text = list[list.length - 1].content;
-      }
-      list[list.length - 1].content = text || L("একটাও শব্দ আসেনি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "Not one word came back. Ask the same question again. Do not shorten it.");
+      if (!text && list[list.length - 1].content && !/^…/.test(list[list.length - 1].content)) text = list[list.length - 1].content;
+      list[list.length - 1].content = text || L("এইবার শব্দ আসেনি। আরেকবার পাঠান।", "No words this time. Send it once more.");
       saveData();
       paint();
       paintOff();
@@ -305,19 +288,15 @@
       if (id !== gen) return;
       const nofile = e && e.message === "nofile";
       const sofar = list[list.length - 1] && list[list.length - 1].content;
-      const partial = sofar && sofar !== "…" && !/^… \d+$/.test(sofar) ? sofar : "";
+      const partial = sofar && !/^…/.test(sofar) ? sofar : "";
       list[list.length - 1].content = nofile
-        ? L("২৫৮ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন। নিজের PDF বা Excel লাগবে না।", "The 258 MB file is not on this phone yet. Tap the button above. You do not need your own PDF or Excel.")
-        : partial
-          ? partial
-          : L("লেখা শুরু হয়নি। একই প্রশ্ন আবার দিন। ছোট করতে হবে না।", "Writing did not start. Ask the same question again. Do not shorten it.");
+        ? L("২৫৮ MB ফাইল এখনো এই ফোনে নেই। ওপরের বোতাম চাপুন।", "The 258 MB file is not on this phone yet. Tap the button above.")
+        : partial || (L("উত্তর হয়নি। ", "No answer. ") + String(e && e.message || e).slice(0, 80));
       saveData();
       paint();
       paintOff();
-      sayStatus(statusEl, partial ? L("যতটুকু লেখা হয়েছে।", "This is as far as the writing got.") : list[list.length - 1].content);
+      sayStatus(statusEl, list[list.length - 1].content);
     } finally {
-      if (killer) clearTimeout(killer);
-      if (silence) clearTimeout(silence);
       clearInterval(timer);
       if (id === gen) {
         busy = null;
